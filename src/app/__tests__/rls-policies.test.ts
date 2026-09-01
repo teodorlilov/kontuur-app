@@ -88,18 +88,30 @@ function policies(): Policy[] {
 }
 
 /**
- * Every table in the database, read from the schema baseline.
+ * Every table in the database, read from the schema baseline plus any migration
+ * written since.
  *
- * This is what §8.2 bought beyond "the database can be rebuilt": until `00000000_baseline.sql`
- * existed, the migrations described 12 of 31 tables, so a test could not enumerate what it was
- * supposed to be checking. Coverage was unmeasurable, which is the same reason the bad policy
- * survived — nothing could see the whole surface at once.
+ * The baseline is what §8.2 bought beyond "the database can be rebuilt": until
+ * `00000000_baseline.sql` existed, the migrations described 12 of 31 tables, so a test could not
+ * enumerate what it was supposed to be checking. Coverage was unmeasurable, which is the same
+ * reason the bad policy survived — nothing could see the whole surface at once.
+ *
+ * The later migrations are read too because the baseline is REGENERATED FROM PRODUCTION. A table
+ * created in a migration that has not been applied yet is therefore absent from it, and reading
+ * the baseline alone made the policy on such a table look like a policy on a table that does not
+ * exist. That is backwards: the window between writing a migration and applying it is exactly
+ * when this check has the most to say, and it was the one window it was blind in.
  */
 function tables(): string[] {
-  const baseline = readFileSync(path.join(MIGRATIONS, '00000000_baseline.sql'), 'utf8')
-  return [...baseline.matchAll(/^create table if not exists public\.([a-z_]+)/gim)].map(
-    (m) => m[1] ?? ''
-  )
+  const sources = readdirSync(MIGRATIONS)
+    .filter((name) => name.endsWith('.sql'))
+    .map((name) => readFileSync(path.join(MIGRATIONS, name), 'utf8'))
+  // `public.` is optional: the baseline is generated fully qualified, hand-written
+  // migrations usually are not.
+  const found = sources.flatMap((sql) => [
+    ...sql.matchAll(/^create table (?:if not exists )?(?:public\.)?([a-z_]+)/gim),
+  ])
+  return [...new Set(found.map((m) => m[1] ?? ''))]
 }
 
 describe('RLS policies in migrations', () => {

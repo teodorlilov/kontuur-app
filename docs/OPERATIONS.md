@@ -85,6 +85,19 @@ true.
 | Sync a client's Instagram metrics | `syncAllClientMetrics` | [features/analytics/lib/sync-metrics.ts](../src/features/analytics/lib/sync-metrics.ts) |
 | Write a day of account metrics | `upsertAccountMetricDays` | [features/analytics/lib/account-metrics-store.ts](../src/features/analytics/lib/account-metrics-store.ts) |
 
+### Comments
+
+`purgeAccountAnalytics` above erases `ig_comments` too — it is the one table in that purge holding
+data about people who are neither the agency nor its client, which makes that line the part of
+Meta's data-deletion callback that erases third parties.
+
+| Operation | Function | File |
+| --- | --- | --- |
+| Sync a client's Instagram comments | `syncClientComments` | [features/comments/lib/sync-comments.ts](../src/features/comments/lib/sync-comments.ts) |
+| Reply to a comment as the client | `replyToComment` | [features/comments/actions/comment-actions.ts](../src/features/comments/actions/comment-actions.ts) |
+| Hide or unhide a comment | `setCommentHidden` | [features/comments/actions/comment-actions.ts](../src/features/comments/actions/comment-actions.ts) |
+| Delete a comment | `deleteComment` | [features/comments/actions/comment-actions.ts](../src/features/comments/actions/comment-actions.ts) |
+
 ### Generation
 
 | Operation | Function | File |

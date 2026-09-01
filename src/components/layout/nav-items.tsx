@@ -5,13 +5,14 @@ import {
   ClipboardList,
   Calendar,
   MessageSquare,
+  MessageCircle,
   BarChart2,
   Settings,
   type LucideIcon,
 } from 'lucide-react'
 
 /** Which live count a nav item shows as a badge, if any. */
-export type NavBadge = 'pending' | 'ideas'
+export type NavBadge = 'pending' | 'ideas' | 'comments'
 
 export interface NavItem {
   label: string
@@ -26,6 +27,8 @@ export const AGENCY_NAV: NavItem[] = [
   { label: 'Generate posts', href: '/generate', icon: Sparkles },
   { label: 'Review queue', href: '/review', icon: ClipboardList, badge: 'pending' },
   { label: 'Calendar', href: '/calendar', icon: Calendar },
+  // MessageCircle, not MessageSquare — that one is Client ideas, directly below.
+  { label: 'Comments', href: '/comments', icon: MessageCircle, badge: 'comments' },
   { label: 'Client ideas', href: '/ideas', icon: MessageSquare, badge: 'ideas' },
   { label: 'Analytics', href: '/analytics', icon: BarChart2 },
 ]
@@ -35,6 +38,7 @@ export const SOLO_NAV: NavItem[] = [
   { label: 'Create content', href: '/generate', icon: Sparkles },
   { label: 'My drafts', href: '/review', icon: ClipboardList, badge: 'pending' },
   { label: 'My calendar', href: '/calendar', icon: Calendar },
+  { label: 'My comments', href: '/comments', icon: MessageCircle, badge: 'comments' },
   { label: 'My results', href: '/analytics', icon: BarChart2 },
 ]
 

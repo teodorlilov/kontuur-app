@@ -121,6 +121,63 @@ export interface ApprovalBatchData {
   expiresAt: string
 }
 
+// ---- Comments ----
+
+/** What we can do about a comment, once it is in front of someone. */
+export type CommentStatus = 'needs_reply' | 'answered' | 'hidden'
+
+/**
+ * One comment as the queue renders it.
+ *
+ * Deliberately not `Tables<'ig_comments'>`: the stored row carries the scoping
+ * columns the read already spent (`client_id`, `ig_account_id`, `ig_media_id`) and
+ * none of the derivation the surface needs. `status` and `replies` are computed on
+ * the server so the browser never has to know what "answered" means.
+ */
+export interface QueuedComment {
+  id: string
+  /** Null when the app lacks Advanced Access — Instagram returns the id alone. */
+  authorUsername: string | null
+  text: string | null
+  commentedAt: string | null
+  likeCount: number | null
+  hidden: boolean
+  status: CommentStatus
+  /** Threaded under this comment, oldest first. Includes our own replies. */
+  replies: QueuedCommentReply[]
+}
+
+export interface QueuedCommentReply {
+  id: string
+  authorUsername: string | null
+  text: string | null
+  commentedAt: string | null
+  /** True when the reply was posted by the client's own connected account. */
+  fromUs: boolean
+}
+
+/**
+ * A post and everything said under it — the queue's unit, because a comment read
+ * without the post it answers is half a sentence.
+ *
+ * `postId` is null for media published outside Kontuur, which is a normal case: the
+ * agency may have posted from the Instagram app before connecting. Those groups
+ * still render, from `thumbnailUrl` and the comments themselves.
+ */
+export interface CommentGroup {
+  igMediaId: string
+  postId: string | null
+  clientId: string
+  clientName: string
+  caption: string | null
+  pillar: string | null
+  publishedAt: string | null
+  imageUrl: string | null
+  /** Instagram's own link to the post, when the nightly metrics sync has recorded one. */
+  permalink: string | null
+  comments: QueuedComment[]
+}
+
 // ---- Calendar ----
 
 /**

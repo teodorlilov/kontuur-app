@@ -33,23 +33,34 @@ export async function purgeAccountAnalytics(
   const scoped = (table: string) =>
     admin.from(table).delete().eq('client_id', clientId).eq('ig_account_id', accountId)
 
-  const [accountRes, postRes, snapshotRes, reportRes, unstampedRes] = await Promise.all([
-    scoped('ig_account_metrics'),
-    scoped('ig_post_metrics'),
-    scoped('ig_audience_snapshots'),
-    scoped('analytics_reports'),
-    // analytics_reports.ig_account_id is nullable where the ig_* columns are
-    // NOT NULL (20260826): archived deliverables predating account stamping
-    // kept NULL on purpose. A plain `.eq` therefore strands them, invisible to
-    // the account-scoped archive list and unreachable by `deleteReport`. A
-    // legal erasure has to sweep them; an account switch must not, because a
-    // NULL row cannot be proven to belong to the account being left.
-    // A second statement rather than `.or()`: the account id comes from Meta,
-    // and it is not going anywhere near a PostgREST filter string.
-    options?.includeUnstampedReports
-      ? admin.from('analytics_reports').delete().eq('client_id', clientId).is('ig_account_id', null)
-      : Promise.resolve({ error: null }),
-  ])
+  const [accountRes, postRes, snapshotRes, reportRes, commentRes, unstampedRes] = await Promise.all(
+    [
+      scoped('ig_account_metrics'),
+      scoped('ig_post_metrics'),
+      scoped('ig_audience_snapshots'),
+      scoped('analytics_reports'),
+      // Comments are the one table here holding data about people who are not the
+      // agency and not its client — the audience. That makes this line the part of
+      // Meta's data-deletion callback that actually erases third parties, and the
+      // reason it is a line here rather than a second purge function.
+      scoped('ig_comments'),
+      // analytics_reports.ig_account_id is nullable where the ig_* columns are
+      // NOT NULL (20260826): archived deliverables predating account stamping
+      // kept NULL on purpose. A plain `.eq` therefore strands them, invisible to
+      // the account-scoped archive list and unreachable by `deleteReport`. A
+      // legal erasure has to sweep them; an account switch must not, because a
+      // NULL row cannot be proven to belong to the account being left.
+      // A second statement rather than `.or()`: the account id comes from Meta,
+      // and it is not going anywhere near a PostgREST filter string.
+      options?.includeUnstampedReports
+        ? admin
+            .from('analytics_reports')
+            .delete()
+            .eq('client_id', clientId)
+            .is('ig_account_id', null)
+        : Promise.resolve({ error: null }),
+    ]
+  )
 
   // Every table is attempted before anything throws — a partial purge is better
   // than one that stops at the first failure and leaves three tables untouched.
@@ -58,6 +69,7 @@ export async function purgeAccountAnalytics(
     { table: 'ig_post_metrics', error: postRes.error },
     { table: 'ig_audience_snapshots', error: snapshotRes.error },
     { table: 'analytics_reports', error: reportRes.error },
+    { table: 'ig_comments', error: commentRes.error },
     { table: 'analytics_reports (unstamped)', error: unstampedRes.error },
   ].filter((result) => result.error !== null)
 

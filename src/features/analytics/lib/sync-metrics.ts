@@ -17,6 +17,7 @@ import {
   type IGDemographics,
 } from '@/lib/meta/insights'
 import { notify } from '@/lib/notifications/notify'
+import { fetchPostIdsByMediaId } from '@/lib/queries/posts-by-media-id'
 import {
   SOCIAL_CONNECTION_SYNC_COLUMNS,
   type SocialConnectionSyncColumns,
@@ -558,24 +559,6 @@ export async function syncPostMetrics(
     .from('ig_post_metrics')
     .upsert(rows, { onConflict: 'client_id,ig_account_id,ig_media_id' })
   if (error) throw new Error(`ig_post_metrics upsert failed: ${error.message}`)
-}
-
-async function fetchPostIdsByMediaId(
-  admin: SupabaseClient,
-  clientId: string,
-  mediaIds: string[]
-): Promise<Map<string, string>> {
-  const { data, error } = await admin
-    .from('posts')
-    .select('id, ig_media_id')
-    .eq('client_id', clientId)
-    .in('ig_media_id', mediaIds)
-  if (error) throw new Error(`posts join query failed: ${error.message}`)
-  // WHY as: the shared SupabaseClient param is untyped, so the projection does not infer.
-  const rows = (data ?? []) as Array<{ id: string; ig_media_id: string | null }>
-  return new Map(
-    rows.flatMap((row) => (row.ig_media_id ? [[row.ig_media_id, row.id] as const] : []))
-  )
 }
 
 /**

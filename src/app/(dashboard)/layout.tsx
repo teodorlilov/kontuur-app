@@ -16,6 +16,8 @@ import {
   getCachedPendingRows,
 } from '@/lib/queries/cache'
 import { USER_AUTH_COLUMNS } from '@/lib/queries/select-columns'
+import { getCachedCommentQueue } from '@/features/comments/queries/comment-queue'
+import { countNeedingReply } from '@/features/comments/lib/comment-status'
 import { fetchActiveRuns } from '@/lib/generation/runs'
 import { extractInitials } from '@/utils/format'
 import { AuthProvider } from '@/components/providers/auth-provider'
@@ -78,17 +80,22 @@ export default async function DashboardLayout({ children }: { children: React.Re
   let agencyMode: 'agency' | 'solo' = 'agency'
   let pendingCount = 0
   let ideasCount = 0
+  let commentsCount = 0
   let agencyName = ''
   let timezone = 'UTC'
   let clients: Array<{ id: string; name: string }> = []
   let activeRuns: ActiveRun[] = []
 
   if (userData) {
-    const [agencyData, agencyClients, pendingRows, ideas, runs] = await Promise.all([
+    const [agencyData, agencyClients, pendingRows, ideas, commentQueue, runs] = await Promise.all([
       getCachedAgency(userData.agency_id),
       getCachedAgencyClients(userData.agency_id),
       getCachedPendingRows(userData.agency_id),
       getCachedNewIdeasCount(userData.agency_id),
+      // The same cached read the /comments page uses, not a second count query —
+      // which is what makes the badge and the queue's own tab agree by construction
+      // rather than by two pieces of code being kept in step.
+      getCachedCommentQueue(userData.agency_id),
       fetchActiveRuns(supabase, userData.agency_id),
     ])
 
@@ -97,6 +104,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
     timezone = agencyData?.timezone ?? 'UTC'
     pendingCount = pendingRows.length
     ideasCount = ideas
+    commentsCount = countNeedingReply(commentQueue.groups)
     clients = agencyClients.map((client) => ({ id: client.id, name: client.name }))
     activeRuns = runs
   }
@@ -123,6 +131,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
               agencyName={agencyName}
               pendingCount={pendingCount}
               ideasCount={ideasCount}
+              commentsCount={commentsCount}
               activeRuns={activeRuns}
             />
             {/* The column is a fixed-size box — .app-shell is h-screen

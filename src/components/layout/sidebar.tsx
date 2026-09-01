@@ -56,6 +56,8 @@ interface SidebarProps {
   agencyName: string
   pendingCount: number
   ideasCount: number
+  /** Comments on published posts still waiting on a reply. */
+  commentsCount: number
   activeRuns: ActiveRun[]
 }
 
@@ -226,6 +228,7 @@ export function Sidebar({
   agencyName,
   pendingCount,
   ideasCount,
+  commentsCount,
   activeRuns,
 }: SidebarProps) {
   const router = useRouter()
@@ -249,6 +252,7 @@ export function Sidebar({
   const badgeCounts: Record<NavBadge, number> = {
     pending: livePendingCount ?? pendingCount,
     ideas: ideasCount,
+    comments: commentsCount,
   }
   const sharedProps = {
     agencyMode,

@@ -7,6 +7,16 @@ import type { PostImage } from '@/types/api'
 import type { PostImageRow } from '@/types/index'
 
 /**
+ * The bulk read of a post's images.
+ *
+ * Lived under `features/assets` until the comments queue became its sixth importer
+ * and `npm run arch` pointed out that none of the six is inside that feature — the
+ * asset editor never called it. It reads `post_images` for whoever holds authorized
+ * post ids, which is a shared concern, so it belongs beside `map-image-row` that it
+ * already uses rather than inside a feature that had stopped describing it.
+ */
+
+/**
  * Which positions of each post already carry a canvas doc — the queue's
  * compose-on-open gate (doc-less AI art still needs its text baked). Admin
  * client for the same RLS reason as the images fetch; callers must only pass

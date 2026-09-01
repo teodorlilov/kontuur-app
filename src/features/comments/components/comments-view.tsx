@@ -1,0 +1,316 @@
+'use client'
+
+import { useMemo, useState, useTransition } from 'react'
+import { useRouter } from 'next/navigation'
+import { MessageCircle, RefreshCw } from 'lucide-react'
+import { PageHeader, HeaderMeta, MetaFlag } from '@/components/layout/page-header/page-header'
+import { PAGE_SHELL } from '@/components/layout/page-header/shared'
+import { TabRail, type TabItem } from '@/components/layout/page-header/tab-rail'
+import { ClientFilter } from '@/components/layout/page-header/client-filter'
+import { EmptyState } from '@/components/layout/empty-state'
+import { Button } from '@/components/ui/button'
+import { cn } from '@/utils/cn'
+import { pluralise } from '@/utils/format'
+import type { CommentGroup, CommentStatus, QueuedComment } from '@/types/api'
+import { computeQueueStats, formatDuration } from '../lib/queue-stats'
+import {
+  deleteComment as deleteCommentAction,
+  replyToComment as replyToCommentAction,
+  setCommentHidden as setCommentHiddenAction,
+} from '../actions/comment-actions'
+import { PostGroup } from './post-group'
+import { CommentThread } from './comment-thread'
+
+const TABS: Array<{ id: CommentStatus; label: string }> = [
+  { id: 'needs_reply', label: 'Needs reply' },
+  { id: 'answered', label: 'Answered' },
+  { id: 'hidden', label: 'Hidden' },
+]
+
+interface Selection {
+  groupId: string
+  commentId: string
+}
+
+/**
+ * The comments queue.
+ *
+ * Tab and client scope are component state rather than URL params, matching the
+ * review queue and the calendar. The whole queue arrives in one server read, so
+ * filtering it here costs nothing, where putting either in the URL would make every
+ * filter click a round trip for data the browser already holds.
+ */
+export function CommentsView({
+  initialGroups,
+  clients,
+  accountNames,
+  withheldPostCount,
+  loadedAt,
+}: {
+  initialGroups: CommentGroup[]
+  clients: Array<{ id: string; name: string }>
+  /** Client id → the handle replies post as, so the composer can say which. */
+  accountNames: Record<string, string | null>
+  withheldPostCount: number
+  /** The server's render instant, so relative times match between SSR and hydration. */
+  loadedAt: string
+}) {
+  const router = useRouter()
+  const [groups, setGroups] = useState(initialGroups)
+  const [tab, setTab] = useState<CommentStatus>('needs_reply')
+  const [selectedClientId, setSelectedClientId] = useState<string | null>(null)
+  const [selection, setSelection] = useState<Selection | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [pending, startTransition] = useTransition()
+  const [refreshing, startRefresh] = useTransition()
+
+  const now = useMemo(() => new Date(loadedAt), [loadedAt])
+  const stats = useMemo(() => computeQueueStats(groups, now), [groups, now])
+
+  const scoped = useMemo(
+    () =>
+      selectedClientId ? groups.filter((group) => group.clientId === selectedClientId) : groups,
+    [groups, selectedClientId]
+  )
+
+  /** Groups with at least one comment in the active tab, each carrying only those. */
+  const visible = useMemo(
+    () =>
+      scoped
+        .map((group) => ({
+          group,
+          comments: group.comments.filter((comment) => comment.status === tab),
+        }))
+        .filter((entry) => entry.comments.length > 0),
+    [scoped, tab]
+  )
+
+  const active = useMemo(() => {
+    if (!selection) return null
+    const entry = visible.find((candidate) => candidate.group.igMediaId === selection.groupId)
+    const comment = entry?.comments.find((candidate) => candidate.id === selection.commentId)
+    return entry && comment ? { group: entry.group, comment } : null
+  }, [visible, selection])
+
+  const tabs: Array<TabItem<CommentStatus>> = TABS.map((entry) => ({
+    id: entry.id,
+    label: entry.label,
+    count: countInTab(scoped, entry.id),
+    warn: entry.id === 'needs_reply' && countInTab(scoped, 'needs_reply') > 0,
+  }))
+
+  /** Applies a change to our copy so the queue is right before the server catches up. */
+  function patch(commentId: string, change: (comment: QueuedComment) => QueuedComment | null) {
+    setGroups((current) =>
+      current
+        .map((group) => ({
+          ...group,
+          comments: group.comments.flatMap((comment) => {
+            if (comment.id !== commentId) return [comment]
+            const next = change(comment)
+            return next ? [next] : []
+          }),
+        }))
+        .filter((group) => group.comments.length > 0)
+    )
+  }
+
+  function run(action: () => Promise<{ ok: boolean; error?: string }>) {
+    setError(null)
+    startTransition(async () => {
+      const result = await action()
+      if (!result.ok) {
+        setError(result.error ?? 'Something went wrong')
+        // Our optimistic copy is now a lie. The server holds the truth.
+        router.refresh()
+      }
+    })
+  }
+
+  function reply(comment: QueuedComment, group: CommentGroup, message: string) {
+    const accountName = accountNames[group.clientId] ?? null
+    patch(comment.id, (current) => ({
+      ...current,
+      status: 'answered',
+      replies: [
+        ...current.replies,
+        {
+          id: `pending-${current.id}`,
+          authorUsername: accountName,
+          text: message,
+          commentedAt: new Date().toISOString(),
+          fromUs: true,
+        },
+      ],
+    }))
+    run(() => replyToCommentAction({ commentId: comment.id, message }))
+    return true
+  }
+
+  const headerCount = stats.needsReply + stats.answered + stats.hidden
+
+  return (
+    <>
+      <PageHeader
+        crumb={[{ label: 'Comments' }]}
+        title="Comments"
+        count={headerCount}
+        meta={
+          <HeaderMeta
+            parts={[
+              stats.needsReply > 0 ? (
+                <MetaFlag>{pluralise(stats.needsReply, 'reply')} owed</MetaFlag>
+              ) : (
+                'Everything published has been answered'
+              ),
+              stats.oldestWaitingMs !== null &&
+                `oldest waiting ${formatDuration(stats.oldestWaitingMs)}`,
+              stats.medianReplyMs !== null &&
+                `usually answered in ${formatDuration(stats.medianReplyMs)}`,
+            ]}
+          />
+        }
+        actions={
+          <>
+            <ClientFilter
+              clients={clients}
+              value={selectedClientId}
+              onChange={(id) => {
+                setSelectedClientId(id)
+                setSelection(null)
+              }}
+            />
+            <Button
+              size="sm"
+              variant="secondary"
+              loading={refreshing}
+              onClick={() => startRefresh(() => router.refresh())}
+            >
+              <RefreshCw size={13} aria-hidden="true" />
+              Refresh
+            </Button>
+          </>
+        }
+        tabs={
+          <TabRail
+            items={tabs}
+            active={tab}
+            label="Filter comments"
+            onSelect={(next) => {
+              setTab(next)
+              setSelection(null)
+            }}
+          />
+        }
+      />
+
+      <div className={cn(PAGE_SHELL, 'pb-10 pt-5')}>
+        {error && (
+          <p
+            role="alert"
+            className="mb-4 rounded-sm border border-line2 bg-surface px-3 py-2 text-caption text-ink"
+          >
+            {error}
+          </p>
+        )}
+
+        {withheldPostCount > 0 && (
+          <p className="mb-4 rounded-card border border-line2 bg-surface px-3.5 py-3 text-caption leading-relaxed text-text2">
+            <span className="font-semibold text-ink">
+              Instagram is not releasing comments on{' '}
+              {pluralise(withheldPostCount, 'published post')} yet.
+            </span>{' '}
+            It reports how many there are but withholds who wrote them and what they say until the
+            app has Advanced Access for comment moderation, which Meta grants through App Review.
+            Comments from anyone with a role on the Meta app come through in the meantime.
+          </p>
+        )}
+
+        {visible.length === 0 ? (
+          <EmptyState
+            icon={<MessageCircle size={18} aria-hidden="true" />}
+            title={emptyTitle(tab)}
+            description={emptyDescription(tab, groups.length > 0)}
+          />
+        ) : (
+          <div className="grid gap-6 min-[1140px]:grid-cols-[minmax(0,1fr)_316px] min-[1140px]:items-start">
+            <div className="flex flex-col gap-3">
+              {visible.map((entry) => (
+                <PostGroup
+                  key={entry.group.igMediaId}
+                  group={entry.group}
+                  comments={entry.comments}
+                  selectedCommentId={selection?.commentId ?? null}
+                  onSelect={(comment, group) =>
+                    setSelection({ groupId: group.igMediaId, commentId: comment.id })
+                  }
+                  now={now}
+                />
+              ))}
+            </div>
+
+            {/* Hidden below 1140px rather than stacked: at that width the pane sits so
+                far under the queue that acting on a comment means scrolling away from
+                the list you picked it from. */}
+            <div className="max-[1139px]:hidden">
+              {active ? (
+                <CommentThread
+                  group={active.group}
+                  comment={active.comment}
+                  accountName={accountNames[active.group.clientId] ?? null}
+                  now={now}
+                  pending={pending}
+                  onReply={async (message) => reply(active.comment, active.group, message)}
+                  onToggleHidden={() => {
+                    const hidden = !active.comment.hidden
+                    patch(active.comment.id, (current) => ({
+                      ...current,
+                      hidden,
+                      status: hidden
+                        ? 'hidden'
+                        : current.replies.some((reply) => reply.fromUs)
+                          ? 'answered'
+                          : 'needs_reply',
+                    }))
+                    run(() => setCommentHiddenAction({ commentId: active.comment.id, hidden }))
+                  }}
+                  onDelete={() => {
+                    patch(active.comment.id, () => null)
+                    setSelection(null)
+                    run(() => deleteCommentAction({ commentId: active.comment.id }))
+                  }}
+                />
+              ) : (
+                <aside className="rounded-card border border-dashed border-line2 px-3.5 py-6 text-center text-caption text-text3">
+                  Pick a comment to see the post it is on, and reply here.
+                </aside>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    </>
+  )
+}
+
+function countInTab(groups: readonly CommentGroup[], status: CommentStatus): number {
+  return groups.reduce(
+    (total, group) => total + group.comments.filter((comment) => comment.status === status).length,
+    0
+  )
+}
+
+function emptyTitle(tab: CommentStatus): string {
+  if (tab === 'needs_reply') return 'Nothing waiting on a reply'
+  if (tab === 'answered') return 'Nothing answered yet'
+  return 'Nothing hidden'
+}
+
+function emptyDescription(tab: CommentStatus, hasAny: boolean): string {
+  if (!hasAny) {
+    return 'Comments appear here within half an hour of someone leaving one on a published post.'
+  }
+  if (tab === 'needs_reply') return 'Every question on a published post has an answer.'
+  if (tab === 'answered') return 'Replies you send from here will collect in this tab.'
+  return 'Hiding a comment removes it from public view without telling its author.'
+}

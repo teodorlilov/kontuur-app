@@ -251,16 +251,21 @@ export const SOCIAL_CONNECTION_COLUMNS =
 
 /**
  * The credential read — the ONLY projection that pulls access_token, used by the
- * three callers that must actually talk to Meta (the manual publish route, the
- * publish scheduler, and the analytics regenerate action's window refresh).
- * Day-to-day analytics reads and the performance source stay on the stored
- * ig_* tables and never touch a token.
+ * callers that must actually talk to Meta (the manual publish route, the publish
+ * scheduler, the analytics regenerate action's window refresh, and the comment
+ * moderation actions). Day-to-day analytics reads and the performance source
+ * stay on the stored ig_* tables and never touch a token.
+ *
+ * `account_name` rides along rather than justifying a fourth near-identical
+ * projection: replying to a comment has to stamp the reply with the handle it
+ * was posted as, in the same breath as fetching the token to post it.
  *
  * Deliberately separate from SOCIAL_CONNECTION_COLUMNS, which omits the token so
  * display reads cannot leak one. Keep it that way: widening the display constant
  * to cover this would put a live token on every connections list.
  */
-export const SOCIAL_CONNECTION_AUTH_COLUMNS = 'account_id, access_token, token_expires_at'
+export const SOCIAL_CONNECTION_AUTH_COLUMNS =
+  'account_id, account_name, access_token, token_expires_at'
 
 /**
  * The AUTH_COLUMNS projection, as a type. Two callers hand-wrote this shape
@@ -269,7 +274,7 @@ export const SOCIAL_CONNECTION_AUTH_COLUMNS = 'account_id, access_token, token_e
  */
 export type SocialConnectionAuthColumns = Pick<
   SocialConnectionRow,
-  'account_id' | 'access_token' | 'token_expires_at'
+  'account_id' | 'account_name' | 'access_token' | 'token_expires_at'
 >
 
 /** The metrics cron's roster read — AUTH_COLUMNS plus the client to file rows under. */
@@ -379,6 +384,32 @@ export const PUBLISHED_POST_PIN_COLUMNS = PUBLISHED_POST_PIN_KEYS.join(', ') as 
 >
 
 export type PublishedPostPinColumns = Pick<PostRow, (typeof PUBLISHED_POST_PIN_KEYS)[number]>
+
+/**
+ * posts, as the comments queue reads it: enough to render the post a comment sits
+ * under, beside the comment.
+ *
+ * A fourth posts projection rather than a reused one, because none of the three
+ * above fits and widening any of them would cost every one of their callers.
+ * PUBLISHED_POST_PIN has `ig_media_id` but no `pillar`; POST_COLUMNS has `pillar`
+ * but no `ig_media_id`; PENDING_PREVIEW has neither. The overlap is real and the
+ * gap is one column each way.
+ */
+const COMMENTED_POST_KEYS = [
+  'id',
+  'client_id',
+  'ig_media_id',
+  'caption',
+  'pillar',
+  'published_at',
+] as const satisfies readonly (keyof PostRow)[]
+
+export const COMMENTED_POST_COLUMNS = COMMENTED_POST_KEYS.join(', ') as Join<
+  typeof COMMENTED_POST_KEYS,
+  ', '
+>
+
+export type CommentedPostColumns = Pick<PostRow, (typeof COMMENTED_POST_KEYS)[number]>
 
 // ig_audience_snapshots
 const IG_AUDIENCE_SNAPSHOT_KEYS = [

@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import { createSemaphore } from '@/lib/concurrency'
-import { fetchImagesByPost } from '@/features/assets/lib/fetch-post-images'
+import { fetchImagesByPost } from '@/lib/posts/fetch-post-images'
 import { generatePostVisual } from '@/lib/visual/generate-post-visual'
 import { pickVisualBacklog, type BacklogPost } from '@/lib/visual/visual-backlog'
 import { VISUAL_BACKLOG_POST_COLUMNS } from '@/lib/queries/select-columns'

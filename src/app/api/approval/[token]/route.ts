@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
-import { fetchImagesByPost } from '@/features/assets/lib/fetch-post-images'
+import { fetchImagesByPost } from '@/lib/posts/fetch-post-images'
 import type { ApprovalPostData, ApprovalBatchData } from '@/types/api'
 
 /** Public: resolve a client approval link into the batch of posts awaiting sign-off. */

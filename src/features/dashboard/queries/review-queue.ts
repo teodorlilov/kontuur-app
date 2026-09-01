@@ -4,7 +4,7 @@ import { cache } from 'react'
 import { unstable_cache } from 'next/cache'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import { PENDING_PREVIEW_COLUMNS, type PendingPreviewColumns } from '@/lib/queries/select-columns'
-import { fetchImagesByPost } from '@/features/assets/lib/fetch-post-images'
+import { fetchImagesByPost } from '@/lib/posts/fetch-post-images'
 
 /** The dashboard queue scrolls, so it holds more than a glance's worth. */
 const PENDING_PREVIEW_LIMIT = 12

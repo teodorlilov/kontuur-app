@@ -2,7 +2,7 @@ import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { requireSessionUser } from '@/lib/auth/session'
 import { getCachedAgencyClients } from '@/lib/queries/cache'
 import { POST_COLUMNS, type PostColumns } from '@/lib/queries/select-columns'
-import { fetchCanvasDocPositions, fetchImagesByPost } from '@/features/assets/lib/fetch-post-images'
+import { fetchCanvasDocPositions, fetchImagesByPost } from '@/lib/posts/fetch-post-images'
 import {
   fallbackValidationData,
   needsSlopFallback,
