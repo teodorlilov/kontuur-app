@@ -186,15 +186,15 @@ or a feature's `lib/`), do all three. A name grep alone does NOT satisfy this ru
 - Found duplication outside the current scope? Note it, don't fix it.
 
 ### Database writes — one operation, one function
-A column must not be written from two places that mean the same thing. Before writing
-`.insert`/`.update`/`.upsert`/`.delete` against a table, run `npm run writers` and read
-who already writes it: `scripts/table-writers.json` names every writer with a reason.
+A column must not be written from two places that mean the same thing.
+**[docs/OPERATIONS.md](./OPERATIONS.md) lists every operation and the one function that performs
+it — read it before writing any DB write.** Then run `npm run writers` to see who already writes
+that table: `scripts/table-writers.json` names every writer with a reason.
 
 - Reuse the existing writer. Needing a different cache tag, a different client, or one
   extra field is a reason to pass an option — not to fork the write.
 - A genuinely new operation adds a line to that JSON with a reason, and `npm run check`
-  fails until it does. That line is the review: a second writer is a decision somebody
-  makes on purpose, not something that appears.
+  fails until it does.
 - No hand-written row objects beside a writer that already builds one. Two files spelling
   out the same insert is how the columns drift apart.
 

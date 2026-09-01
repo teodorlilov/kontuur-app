@@ -154,4 +154,29 @@ if (stale.length > 0) {
   for (const entry of stale) console.error(`  - ${entry}`)
 }
 
-if (unlisted.length > 0 || stale.length > 0) process.exit(1)
+/**
+ * Every writer file must appear in docs/OPERATIONS.md.
+ *
+ * The registry answers "who may write this table". It does NOT answer "what operation is this, and
+ * which function owns it" — a person needs that, and only prose can give it. The first version of
+ * OPERATIONS.md covered 26 of 43 writer files while its own opening line claimed to list every
+ * operation, which is the failure mode this check exists to prevent: a document that is wrong in
+ * the direction of looking complete.
+ */
+const OPERATIONS_DOC = join(ROOT, 'docs/OPERATIONS.md')
+const undocumented = []
+if (existsSync(OPERATIONS_DOC)) {
+  const doc = readFileSync(OPERATIONS_DOC, 'utf8')
+  for (const file of new Set([...found.values()].flatMap((s) => [...s]))) {
+    if (!doc.includes(file)) undocumented.push(file)
+  }
+  if (undocumented.length > 0) {
+    console.error(
+      '\nThese files write the database but no operation in docs/OPERATIONS.md names them.'
+    )
+    console.error('Add a row: the operation in plain words, the function that owns it, the file.\n')
+    for (const f of undocumented.sort()) console.error(`  - ${f}`)
+  }
+}
+
+if (unlisted.length > 0 || stale.length > 0 || undocumented.length > 0) process.exit(1)
