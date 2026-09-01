@@ -1,6 +1,7 @@
 import {
   Archivo_Black,
   Bebas_Neue,
+  Dela_Gothic_One,
   Oswald,
   Playfair,
   Sofia_Sans_Extra_Condensed,
@@ -16,9 +17,12 @@ import {
  * the user is choosing between them; on the public page it would be a render-blocking request to a
  * third party for fifty families nobody is going to see.
  *
- * These seven are the WHOLE Layouts pack, which is why that pack and not Essentials: Essentials
- * spans sixteen families and twenty-three faces, and no marketing section is worth that download.
- * The pack is shown complete, so the page is not quietly a highlight reel either.
+ * WHICH faces the demo needs is not decided here: every Layouts lockup draws `fonts.display` and
+ * `fonts.body` from its context, and `lockup-previews.ts` fills those from `getBrandStyle(undefined)`.
+ * So the set below tracks the DEFAULT brand style's pairing in `lib/visual/brand-styles.ts` — change
+ * that pairing to a face this file does not host and the landing page throws on render. It did:
+ * 4d49586 moved the default's display face from Oswald to Dela Gothic One and took `/` down with it.
+ * The extra faces are the rest of the picker's Layouts pack, kept so the same swap has room to land.
  *
  * `preload: false` because the section sits well below the fold — preloading would make the browser
  * fetch seven display faces before the hero has painted, to draw something nobody has scrolled to.
@@ -31,6 +35,13 @@ const archivoBlack = Archivo_Black({
   preload: false,
   weight: '400',
   variable: '--lk-archivo-black',
+})
+const delaGothicOne = Dela_Gothic_One({
+  subsets: ['latin'],
+  display: 'swap',
+  preload: false,
+  weight: '400',
+  variable: '--lk-dela-gothic-one',
 })
 const bebasNeue = Bebas_Neue({
   subsets: ['latin'],
@@ -79,6 +90,7 @@ const yesevaOne = Yeseva_One({
 export const LOCKUP_FONT_VARIABLES = [
   archivoBlack.variable,
   bebasNeue.variable,
+  delaGothicOne.variable,
   oswald.variable,
   playfair.variable,
   sofiaCondensed.variable,
@@ -96,6 +108,7 @@ export const LOCKUP_FONT_VARIABLES = [
 const VARIABLE_BY_FAMILY: Record<string, string> = {
   'Archivo Black': '--lk-archivo-black',
   'Bebas Neue': '--lk-bebas-neue',
+  'Dela Gothic One': '--lk-dela-gothic-one',
   Oswald: '--lk-oswald',
   Playfair: '--lk-playfair',
   'Sofia Sans Extra Condensed': '--lk-sofia-condensed',
