@@ -1,8 +1,10 @@
 'use client'
 
 import Image from 'next/image'
+import { ImageOff } from 'lucide-react'
 import { cn } from '@/utils/cn'
-import { formatRelativeTime, parseTimestamp, toPreviewLine } from '@/utils/format'
+import { formatRelativeTime, parseTimestamp } from '@/utils/format'
+import { postOrigin, postTitle } from '../lib/post-label'
 import type { CommentGroup, QueuedComment } from '@/types/api'
 
 /**
@@ -38,8 +40,8 @@ export function PostGroup({
       )}
     >
       <header className="flex items-center gap-3 border-b border-line px-3.5 py-3">
-        <div className="relative size-10 shrink-0 overflow-hidden rounded-sm bg-sunken">
-          {group.imageUrl && (
+        <div className="relative grid size-10 shrink-0 place-items-center overflow-hidden rounded-sm bg-sunken">
+          {group.imageUrl ? (
             <Image
               src={group.imageUrl}
               alt=""
@@ -48,16 +50,23 @@ export function PostGroup({
               className="object-cover"
               unoptimized
             />
+          ) : (
+            // An icon, not an empty square: a bare grey box reads as an image that
+            // failed to load rather than one we never had.
+            <ImageOff size={14} aria-hidden="true" className="text-text3" />
           )}
         </div>
         <div className="min-w-0 flex-1">
-          <p className="truncate text-body font-medium text-ink">
-            {group.caption ? toPreviewLine(group.caption) : 'Untitled post'}
-          </p>
+          <p className="truncate text-body font-medium text-ink">{postTitle(group)}</p>
           <p className="mt-px truncate text-micro text-text2">
-            {group.clientName}
-            {group.publishedAt &&
-              ` · published ${formatRelativeTime(parseTimestamp(group.publishedAt), now)}`}
+            {[
+              group.clientName,
+              group.publishedAt &&
+                `published ${formatRelativeTime(parseTimestamp(group.publishedAt), now)}`,
+              postOrigin(group),
+            ]
+              .filter(Boolean)
+              .join(' · ')}
           </p>
         </div>
         {/* "1 of 4" rather than "4": the second number is why the list looks shorter

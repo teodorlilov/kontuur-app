@@ -116,11 +116,16 @@ export function extractInitials(name: string): string {
 /**
  * A count and its noun: `pluralise(1, 'post')` → "1 post", `pluralise(3, 'post')` → "3 posts".
  *
- * Every noun this app counts is a regular plural, so the rule is one `s`. It was written
- * inline roughly twenty times, in three spellings of the same ternary — `=== 1 ? '' : 's'`,
- * `!== 1 ? 's' : ''`, and a local copy of this exact function in the clients roster. The
- * approval surfaces are converted here; the rest follow when they are next touched.
+ * Written inline roughly twenty times before this existed, in three spellings of the same
+ * ternary — `=== 1 ? '' : 's'`, `!== 1 ? 's' : ''`, and a local copy of this exact function
+ * in the clients roster.
+ *
+ * `plural` is for the nouns the `+s` rule gets wrong. It was optional-and-unused until the
+ * comments header shipped "2 replys owed" to production: every noun the app counted happened
+ * to be regular, so the rule looked like a law. Pass it for anything ending in a consonant
+ * plus -y, and for the -s/-x/-ch family.
  */
-export function pluralise(count: number, noun: string): string {
-  return `${count} ${noun}${count === 1 ? '' : 's'}`
+export function pluralise(count: number, noun: string, plural?: string): string {
+  if (count === 1) return `${count} ${noun}`
+  return `${count} ${plural ?? `${noun}s`}`
 }

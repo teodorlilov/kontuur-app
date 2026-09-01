@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { StatusPill } from '@/components/ui/status-pill'
 import { cn } from '@/utils/cn'
 import { formatRelativeTime, parseTimestamp } from '@/utils/format'
+import { postOrigin, postTitle } from '../lib/post-label'
 import type { CommentGroup, QueuedComment } from '@/types/api'
 
 /**
@@ -39,6 +40,7 @@ export function CommentThread({
 }) {
   const [message, setMessage] = useState('')
   const [confirmingDelete, setConfirmingDelete] = useState(false)
+  const origin = postOrigin(group)
 
   async function submit() {
     const trimmed = message.trim()
@@ -52,8 +54,10 @@ export function CommentThread({
       aria-label="Selected comment"
       className="overflow-hidden rounded-card border border-ink/[0.05] bg-surface"
     >
-      <div className="relative aspect-square w-full bg-sunken">
-        {group.imageUrl && (
+      {/* Only when there is one. An empty square the width of the pane is a large
+          blank claiming to be a picture. */}
+      {group.imageUrl && (
+        <div className="relative aspect-square w-full bg-sunken">
           <Image
             src={group.imageUrl}
             alt=""
@@ -62,12 +66,14 @@ export function CommentThread({
             className="object-cover"
             unoptimized
           />
-        )}
-      </div>
+        </div>
+      )}
 
       <div className="border-b border-line px-3.5 py-3">
-        {group.caption && (
+        {group.caption ? (
           <p className="line-clamp-4 text-caption leading-relaxed text-text2">{group.caption}</p>
+        ) : (
+          <p className="text-caption leading-relaxed text-text3">{postTitle(group)}</p>
         )}
         <div className="mt-2 flex flex-wrap gap-1.5">
           {group.pillar && <StatusPill tone="neutral">{group.pillar}</StatusPill>}
@@ -76,6 +82,7 @@ export function CommentThread({
               Published {formatRelativeTime(parseTimestamp(group.publishedAt), now)}
             </StatusPill>
           )}
+          {origin && <StatusPill tone="neutral">{origin}</StatusPill>}
         </div>
       </div>
 

@@ -9,6 +9,7 @@ import { TabRail, type TabItem } from '@/components/layout/page-header/tab-rail'
 import { ClientFilter } from '@/components/layout/page-header/client-filter'
 import { EmptyState } from '@/components/layout/empty-state'
 import { Button } from '@/components/ui/button'
+import { toast } from '@/components/ui/toast'
 import { cn } from '@/utils/cn'
 import { pluralise } from '@/utils/format'
 import type { CommentGroup, CommentStatus, QueuedComment } from '@/types/api'
@@ -85,12 +86,21 @@ export function CommentsView({
     [scoped, tab]
   )
 
+  /**
+   * Resolved against the client scope, NOT the active tab.
+   *
+   * Replying moves a comment from Needs reply to Answered. Resolving this against the
+   * tab-filtered list meant the pane emptied the instant you sent — the card vanished
+   * with no sign it had worked, which is what shipped and what this fixes. Against the
+   * unfiltered scope the pane stays put and your reply appears threaded under the
+   * comment, while the list entry moves tabs behind it.
+   */
   const active = useMemo(() => {
     if (!selection) return null
-    const entry = visible.find((candidate) => candidate.group.igMediaId === selection.groupId)
-    const comment = entry?.comments.find((candidate) => candidate.id === selection.commentId)
-    return entry && comment ? { group: entry.group, comment } : null
-  }, [visible, selection])
+    const group = scoped.find((candidate) => candidate.igMediaId === selection.groupId)
+    const comment = group?.comments.find((candidate) => candidate.id === selection.commentId)
+    return group && comment ? { group, comment } : null
+  }, [scoped, selection])
 
   const tabs: Array<TabItem<CommentStatus>> = TABS.map((entry) => ({
     id: entry.id,
@@ -115,15 +125,23 @@ export function CommentsView({
     )
   }
 
-  function run(action: () => Promise<{ ok: boolean; error?: string }>) {
+  /**
+   * `done` is not decoration. Every action here changes something on Instagram that
+   * the page cannot show you — the reply is live under someone else's comment, the
+   * hidden comment is gone from public view. Without a word back, the only evidence
+   * of success is a row quietly moving tabs, which reads as the click having failed.
+   */
+  function run(action: () => Promise<{ ok: boolean; error?: string }>, done: string) {
     setError(null)
     startTransition(async () => {
       const result = await action()
-      if (!result.ok) {
-        setError(result.error ?? 'Something went wrong')
-        // Our optimistic copy is now a lie. The server holds the truth.
-        router.refresh()
+      if (result.ok) {
+        toast.success(done)
+        return
       }
+      setError(result.error ?? 'Something went wrong')
+      // Our optimistic copy is now a lie. The server holds the truth.
+      router.refresh()
     })
   }
 
@@ -143,7 +161,8 @@ export function CommentsView({
         },
       ],
     }))
-    run(() => replyToCommentAction({ commentId: comment.id, message }))
+    const handle = accountName ? `@${accountName}` : 'the client'
+    run(() => replyToCommentAction({ commentId: comment.id, message }), `Replied as ${handle}`)
     return true
   }
 
@@ -159,7 +178,7 @@ export function CommentsView({
           <HeaderMeta
             parts={[
               stats.needsReply > 0 ? (
-                <MetaFlag>{pluralise(stats.needsReply, 'reply')} owed</MetaFlag>
+                <MetaFlag>{pluralise(stats.needsReply, 'reply', 'replies')} owed</MetaFlag>
               ) : (
                 'Everything published has been answered'
               ),
@@ -226,27 +245,38 @@ export function CommentsView({
           </p>
         )}
 
-        {visible.length === 0 ? (
+        {visible.length === 0 && !active ? (
           <EmptyState
             icon={<MessageCircle size={18} aria-hidden="true" />}
             title={emptyTitle(tab)}
             description={emptyDescription(tab, groups.length > 0)}
           />
         ) : (
+          /* `!active` above, not just an empty list: answering the last unanswered
+             comment empties this tab, and collapsing to a full-width empty state would
+             take the pane — and the reply you just sent — down with it. */
           <div className="grid gap-6 min-[1140px]:grid-cols-[minmax(0,1fr)_316px] min-[1140px]:items-start">
             <div className="flex flex-col gap-3">
-              {visible.map((entry) => (
-                <PostGroup
-                  key={entry.group.igMediaId}
-                  group={entry.group}
-                  comments={entry.comments}
-                  selectedCommentId={selection?.commentId ?? null}
-                  onSelect={(comment, group) =>
-                    setSelection({ groupId: group.igMediaId, commentId: comment.id })
-                  }
-                  now={now}
+              {visible.length === 0 ? (
+                <EmptyState
+                  icon={<MessageCircle size={18} aria-hidden="true" />}
+                  title={emptyTitle(tab)}
+                  description={emptyDescription(tab, groups.length > 0)}
                 />
-              ))}
+              ) : (
+                visible.map((entry) => (
+                  <PostGroup
+                    key={entry.group.igMediaId}
+                    group={entry.group}
+                    comments={entry.comments}
+                    selectedCommentId={selection?.commentId ?? null}
+                    onSelect={(comment, group) =>
+                      setSelection({ groupId: group.igMediaId, commentId: comment.id })
+                    }
+                    now={now}
+                  />
+                ))
+              )}
             </div>
 
             {/* Hidden below 1140px rather than stacked: at that width the pane sits so
@@ -272,12 +302,18 @@ export function CommentsView({
                           ? 'answered'
                           : 'needs_reply',
                     }))
-                    run(() => setCommentHiddenAction({ commentId: active.comment.id, hidden }))
+                    run(
+                      () => setCommentHiddenAction({ commentId: active.comment.id, hidden }),
+                      hidden ? 'Hidden from public view — its author is not told' : 'Visible again'
+                    )
                   }}
                   onDelete={() => {
                     patch(active.comment.id, () => null)
                     setSelection(null)
-                    run(() => deleteCommentAction({ commentId: active.comment.id }))
+                    run(
+                      () => deleteCommentAction({ commentId: active.comment.id }),
+                      'Deleted from Instagram'
+                    )
                   }}
                 />
               ) : (

@@ -35,6 +35,11 @@ vi.mock('@/components/layout/shell-context', () => ({
   }),
 }))
 
+const toastSuccess = vi.fn()
+vi.mock('@/components/ui/toast', () => ({
+  toast: { success: (m: string) => toastSuccess(m), error: vi.fn() },
+}))
+
 const replyToComment = vi.fn()
 const setCommentHidden = vi.fn()
 const deleteComment = vi.fn()
@@ -141,7 +146,7 @@ describe('CommentsView', () => {
     expect(screen.getByPlaceholderText('Reply as @haelanclinic…')).toBeInTheDocument()
   })
 
-  it('moves a replied comment out of Needs reply immediately', async () => {
+  it('moves a replied comment out of the Needs reply LIST immediately', async () => {
     replyToComment.mockResolvedValue({ ok: true, data: undefined })
     const user = userEvent.setup()
     renderView([group()])
@@ -150,15 +155,78 @@ describe('CommentsView', () => {
     await user.type(screen.getByRole('textbox'), 'Yes, from age 3.')
     await user.click(screen.getByRole('button', { name: 'Reply' }))
 
-    // Without this the queue keeps telling you to do what you have just done, for
-    // up to the half hour until the next sync.
+    // Two before (queue row + detail pane), one after: the queue entry goes, the
+    // pane keeps it. Without this the queue keeps telling you to do what you have
+    // just done, for up to the half hour until the next sync.
     await waitFor(() =>
-      expect(screen.queryByText('Does this apply to children under 5?')).not.toBeInTheDocument()
+      expect(screen.getAllByText('Does this apply to children under 5?')).toHaveLength(1)
     )
     expect(replyToComment).toHaveBeenCalledWith({
       commentId: 'c1',
       message: 'Yes, from age 3.',
     })
+  })
+
+  it('keeps the pane open with the reply threaded, rather than emptying it', async () => {
+    // What shipped: the pane resolved against the tab-filtered list, so replying
+    // moved the comment to Answered and the card vanished with no sign it had
+    // worked. Sending a reply and watching the screen go blank reads as failure.
+    replyToComment.mockResolvedValue({ ok: true, data: undefined })
+    const user = userEvent.setup()
+    renderView([group()])
+
+    await user.click(screen.getByText('Does this apply to children under 5?'))
+    await user.type(screen.getByRole('textbox'), 'Yes, from age 3.')
+    await user.click(screen.getByRole('button', { name: 'Reply' }))
+
+    const pane = await screen.findByRole('complementary', { name: 'Selected comment' })
+    expect(within(pane).getByText('Does this apply to children under 5?')).toBeInTheDocument()
+    expect(within(pane).getByText('Yes, from age 3.')).toBeInTheDocument()
+  })
+
+  it('says the reply went out, and as whom', async () => {
+    // Every action here changes something on Instagram the page cannot show. Without
+    // a word back, a row quietly changing tabs is the only evidence it worked.
+    replyToComment.mockResolvedValue({ ok: true, data: undefined })
+    const user = userEvent.setup()
+    renderView([group()])
+
+    await user.click(screen.getByText('Does this apply to children under 5?'))
+    await user.type(screen.getByRole('textbox'), 'Yes')
+    await user.click(screen.getByRole('button', { name: 'Reply' }))
+
+    await waitFor(() => expect(toastSuccess).toHaveBeenCalledWith('Replied as @haelanclinic'))
+  })
+
+  it('counts replies in English', () => {
+    // Shipped as "2 replys owed". pluralise() appends a bare 's'.
+    renderView([group({ comments: [comment(), comment({ id: 'c2' })] })])
+
+    expect(screen.getByText(/2 replies owed/)).toBeInTheDocument()
+  })
+
+  it('does not claim a post record it does not have', async () => {
+    // postId null means posts.ig_media_id matched nothing, so calling it "Untitled
+    // post" over a blank grey square asserts a record we have not got — and reads
+    // as an image that failed to load.
+    const user = userEvent.setup()
+    renderView([group({ postId: null, caption: null, imageUrl: null })])
+
+    expect(screen.getByText('Post on Instagram')).toBeInTheDocument()
+    expect(screen.queryByText('Untitled post')).not.toBeInTheDocument()
+    expect(screen.getByText(/no matching post in Kontuur/)).toBeInTheDocument()
+
+    // And the detail pane agrees with the row rather than naming it differently.
+    await user.click(screen.getByText('Does this apply to children under 5?'))
+    const pane = within(screen.getByRole('complementary', { name: 'Selected comment' }))
+    expect(pane.getByText('Post on Instagram')).toBeInTheDocument()
+  })
+
+  it('still says "Untitled post" for a post we DO have, with no caption', () => {
+    renderView([group({ caption: null })])
+
+    expect(screen.getByText('Untitled post')).toBeInTheDocument()
+    expect(screen.queryByText(/no matching post/)).not.toBeInTheDocument()
   })
 
   it('will not send an empty reply', async () => {
