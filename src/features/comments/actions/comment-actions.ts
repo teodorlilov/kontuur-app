@@ -2,8 +2,10 @@
 
 import { revalidateTag } from 'next/cache'
 import { resolveActionAuth, verifyClientOwnership } from '@/lib/auth/helpers'
+import { parseActionId } from '@/lib/actions/parse-input'
 import type { ActionResult } from '@/lib/actions/types'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
+import { syncClientComments } from '../lib/sync-comments'
 import {
   SOCIAL_CONNECTION_AUTH_COLUMNS,
   type SocialConnectionAuthColumns,
@@ -240,4 +242,61 @@ export async function deleteComment(input: DeleteCommentInput): Promise<ActionRe
 
   revalidateTag(IG_COMMENTS_TAG, 'max')
   return { ok: true, data: undefined }
+}
+
+/**
+ * Ask Instagram for one client's comments now, instead of waiting for the cron.
+ *
+ * ONE client, deliberately. A button that swept every client would be a bulk
+ * operation across the roster, and it would put an unbounded burst on an app-wide
+ * Meta quota that scheduled publishing shares — the exact cost that made the whole
+ * feature sync-then-read rather than fetch-on-render. The cron is the thing allowed
+ * to touch every client, because it is sequential, time-budgeted, and stops on the
+ * first rate limit.
+ *
+ * Cheap to press twice: `syncClientComments` fetches comments only for posts whose
+ * count disagrees with what is stored, so a second press seconds later costs one
+ * media call rather than one per post.
+ *
+ * Not a new operation — it calls the same `syncClientComments` the cron does, which
+ * is why `docs/OPERATIONS.md` needs no new row for it.
+ */
+export async function checkClientComments(
+  clientId: string
+): Promise<ActionResult<{ postsWithNewComments: number }>> {
+  const parsed = parseActionId(clientId, 'client')
+  if (!parsed.ok) return parsed.result
+
+  const auth = await resolveActionAuth()
+  if (!auth.ok) return { ok: false, error: auth.error }
+
+  const owned = await verifyClientOwnership(auth.supabase, parsed.id, auth.agencyId)
+  if (!owned) return { ok: false, error: 'Not found' }
+
+  const admin = createAdminSupabaseClient()
+  const { data } = await admin
+    .from('social_connections')
+    .select(SOCIAL_CONNECTION_AUTH_COLUMNS)
+    .eq('client_id', parsed.id)
+    .eq('platform', 'instagram')
+    .maybeSingle()
+  const connection = data as SocialConnectionAuthColumns | null
+  if (!connection?.access_token) {
+    return { ok: false, error: 'This client has no connected Instagram account' }
+  }
+  if (isTokenExpired(connection.token_expires_at)) {
+    return { ok: false, error: 'The Instagram connection has expired — reconnect to continue' }
+  }
+
+  try {
+    const result = await syncClientComments(admin, {
+      clientId: parsed.id,
+      accountId: connection.account_id,
+      accessToken: connection.access_token,
+    })
+    revalidateTag(IG_COMMENTS_TAG, 'max')
+    return { ok: true, data: { postsWithNewComments: result.fetched } }
+  } catch (err) {
+    return { ok: false, error: describe(err, 'Could not reach Instagram just now') }
+  }
 }

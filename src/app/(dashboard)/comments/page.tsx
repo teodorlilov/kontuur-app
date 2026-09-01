@@ -4,6 +4,16 @@ import { getCachedCommentQueue } from '@/features/comments/queries/comment-queue
 import { CommentsView } from '@/features/comments/components/comments-view'
 
 /**
+ * The only dashboard page that sets this, and only for the sake of one action.
+ *
+ * The RENDER makes zero Graph calls and needs none of it. But `checkClientComments`
+ * runs inside this route's function, and it does talk to Instagram — one media call
+ * plus one per changed post. The default ceiling is generous enough for the common
+ * case and not for a client with a long backlog on its first check.
+ */
+export const maxDuration = 60
+
+/**
  * The comments queue.
  *
  * No `searchParams`: the tab and the client scope are component state, because the

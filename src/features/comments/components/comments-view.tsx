@@ -15,6 +15,7 @@ import { pluralise } from '@/utils/format'
 import type { CommentGroup, CommentStatus, QueuedComment } from '@/types/api'
 import { computeQueueStats, formatDuration } from '../lib/queue-stats'
 import {
+  checkClientComments as checkClientCommentsAction,
   deleteComment as deleteCommentAction,
   replyToComment as replyToCommentAction,
   setCommentHidden as setCommentHiddenAction,
@@ -64,6 +65,7 @@ export function CommentsView({
   const [error, setError] = useState<string | null>(null)
   const [pending, startTransition] = useTransition()
   const [refreshing, startRefresh] = useTransition()
+  const [checking, startCheck] = useTransition()
 
   const now = useMemo(() => new Date(loadedAt), [loadedAt])
   const stats = useMemo(() => computeQueueStats(groups, now), [groups, now])
@@ -175,6 +177,31 @@ export function CommentsView({
     return true
   }
 
+  /**
+   * Ask Instagram for this client's comments now.
+   *
+   * `router.refresh()` on the way out because the action revalidates the tag but the
+   * page already in the browser is holding the old copy — without it the button
+   * reports new comments that are nowhere on screen.
+   */
+  function checkNow(clientId: string) {
+    setError(null)
+    startCheck(async () => {
+      const result = await checkClientCommentsAction(clientId)
+      if (!result.ok) {
+        setError(result.error)
+        return
+      }
+      const found = result.data.postsWithNewComments
+      toast.success(
+        found === 0
+          ? 'Checked Instagram — nothing new'
+          : `Found new comments on ${pluralise(found, 'post')}`
+      )
+      router.refresh()
+    })
+  }
+
   const headerCount = stats.needsReply + stats.answered + stats.hidden
 
   return (
@@ -208,15 +235,41 @@ export function CommentsView({
                 setSelection(null)
               }}
             />
-            <Button
-              size="sm"
-              variant="secondary"
-              loading={refreshing}
-              onClick={() => startRefresh(() => router.refresh())}
-            >
-              <RefreshCw size={13} aria-hidden="true" />
-              Refresh
-            </Button>
+            {/**
+             * Two different promises, so two different buttons.
+             *
+             * With a client picked, this actually asks Instagram — one client only.
+             * Sweeping the whole roster from a button would put an unbounded burst on
+             * the app-wide Meta quota that scheduled publishing shares, which is the
+             * cost that made this feature sync-then-read in the first place. The cron
+             * is what is allowed to touch every client, because it is sequential,
+             * time-budgeted and stops on the first rate limit.
+             *
+             * With "All clients", it only re-reads the page. It says "Reload" rather
+             * than "Refresh" because the old label implied it was checking Instagram
+             * when it was not, and a comment left seconds earlier would not appear.
+             */}
+            {selectedClientId ? (
+              <Button
+                size="sm"
+                variant="secondary"
+                loading={checking}
+                onClick={() => checkNow(selectedClientId)}
+              >
+                <RefreshCw size={13} aria-hidden="true" />
+                Check now
+              </Button>
+            ) : (
+              <Button
+                size="sm"
+                variant="secondary"
+                loading={refreshing}
+                onClick={() => startRefresh(() => router.refresh())}
+              >
+                <RefreshCw size={13} aria-hidden="true" />
+                Reload
+              </Button>
+            )}
           </>
         }
         tabs={

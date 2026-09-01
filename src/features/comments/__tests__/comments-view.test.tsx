@@ -43,11 +43,13 @@ vi.mock('@/components/ui/toast', () => ({
 const replyToComment = vi.fn()
 const setCommentHidden = vi.fn()
 const deleteComment = vi.fn()
+const checkClientComments = vi.fn()
 // Wrapped rather than passed by reference: vi.mock is hoisted above the consts.
 vi.mock('../actions/comment-actions', () => ({
   replyToComment: (input: unknown) => replyToComment(input),
   setCommentHidden: (input: unknown) => setCommentHidden(input),
   deleteComment: (input: unknown) => deleteComment(input),
+  checkClientComments: (id: string) => checkClientComments(id),
 }))
 
 const LOADED_AT = '2026-09-01T12:00:00Z'
@@ -82,11 +84,20 @@ function group(over: Partial<CommentGroup> = {}): CommentGroup {
   }
 }
 
-function renderView(groups: CommentGroup[], withheldPostCount = 0) {
+function renderView(
+  groups: CommentGroup[],
+  withheldPostCount = 0,
+  // Two by default so the client filter renders — it hides itself for a
+  // single-client agency, and the check-now button keys off a chosen client.
+  clients = [
+    { id: 'client-1', name: 'Haelan' },
+    { id: 'client-2', name: 'Fizio' },
+  ]
+) {
   return render(
     <CommentsView
       initialGroups={groups}
-      clients={[{ id: 'client-1', name: 'Haelan' }]}
+      clients={clients}
       accountNames={{ 'client-1': 'haelanclinic' }}
       withheldPostCount={withheldPostCount}
       loadedAt={LOADED_AT}
@@ -307,6 +318,45 @@ describe('CommentsView', () => {
     expect(deleteComment).not.toHaveBeenCalled()
     await user.click(screen.getByRole('button', { name: 'Delete for good' }))
     expect(deleteComment).toHaveBeenCalledWith({ commentId: 'c1' })
+  })
+
+  it('only offers to reload while every client is in scope', () => {
+    // A button that asked Instagram for the whole roster would put an unbounded
+    // burst on the app-wide quota that scheduled publishing shares.
+    renderView([group()])
+
+    expect(screen.getByRole('button', { name: /Reload/ })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Check now/ })).not.toBeInTheDocument()
+  })
+
+  it('offers a real Instagram check once one client is picked', async () => {
+    checkClientComments.mockResolvedValue({ ok: true, data: { postsWithNewComments: 2 } })
+    const user = userEvent.setup()
+    renderView([group()])
+
+    await user.click(screen.getByRole('button', { name: /Client/ }))
+    await user.click(screen.getByRole('option', { name: 'Haelan' }))
+    await user.click(screen.getByRole('button', { name: /Check now/ }))
+
+    await waitFor(() => expect(checkClientComments).toHaveBeenCalledWith('client-1'))
+    expect(toastSuccess).toHaveBeenCalledWith('Found new comments on 2 posts')
+    // The action revalidates the tag, but the page in the browser still holds the
+    // old copy — without this it reports comments that are nowhere on screen.
+    expect(refresh).toHaveBeenCalled()
+  })
+
+  it('says so plainly when Instagram had nothing new', async () => {
+    checkClientComments.mockResolvedValue({ ok: true, data: { postsWithNewComments: 0 } })
+    const user = userEvent.setup()
+    renderView([group()])
+
+    await user.click(screen.getByRole('button', { name: /Client/ }))
+    await user.click(screen.getByRole('option', { name: 'Haelan' }))
+    await user.click(screen.getByRole('button', { name: /Check now/ }))
+
+    await waitFor(() =>
+      expect(toastSuccess).toHaveBeenCalledWith('Checked Instagram — nothing new')
+    )
   })
 
   it('explains the Advanced Access wall instead of claiming all is quiet', () => {
