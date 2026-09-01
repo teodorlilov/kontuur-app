@@ -8,7 +8,7 @@ import { useApproval, type ClientEntry } from '@/features/calendar/hooks/use-app
 import { toast } from '@/components/ui/toast'
 import { DiscardToast, DISCARD_TOAST_MS } from '@/components/ui/discard-toast'
 import { HeaderMeta, MetaFlag, PageHeader } from '@/components/layout/page-header/page-header'
-import { SelectControl } from '@/components/layout/page-header/select-control'
+import { ClientFilter } from '@/components/layout/page-header/client-filter'
 import { useShell } from '@/components/layout/shell-context'
 import { cn } from '@/utils/cn'
 import { deletePost } from '@/lib/actions/post-actions'
@@ -536,17 +536,12 @@ export function CalendarView({ initialPosts, clients, anchorWeekISO }: CalendarV
         }
         actions={
           <>
-            {clients.length > 1 && (
-              <SelectControl
-                label="Client"
-                value={selectedClientId ?? ''}
-                options={[
-                  { value: '', label: 'All clients' },
-                  ...clients.map((c) => ({ value: c.id, label: c.name })),
-                ]}
-                onChange={(id) => setSelectedClientId(id || null)}
-              />
-            )}
+            <ClientFilter
+              clients={clients}
+              value={selectedClientId}
+              onChange={setSelectedClientId}
+            />
+
             {/* Out of the crumb row, which is `overflow-hidden` so it can collapse when
                 the header sticks — its client picker was opening into a 44px clipping
                 box, invisible, which read as the button doing nothing. */}

@@ -6,7 +6,7 @@ import { toast } from '@/components/ui/toast'
 import { Button } from '@/components/ui/button'
 import { HeaderMeta, MetaFlag, PageHeader } from '@/components/layout/page-header/page-header'
 import { useShell } from '@/components/layout/shell-context'
-import { SelectControl } from '@/components/layout/page-header/select-control'
+import { ClientFilter } from '@/components/layout/page-header/client-filter'
 import { TabRail, type TabItem } from '@/components/layout/page-header/tab-rail'
 import { BatchScheduleModal } from '@/components/scheduling/batch-schedule-modal'
 import { DraftRail } from '@/components/draft-editing/draft-rail'
@@ -664,10 +664,6 @@ export function ReviewQueue({
     { id: 'waiting_on_client', label: 'Waiting on client', count: counts.waiting_on_client },
   ]
   const readyPosts = triaged.filter((t) => t.bucket === 'ready').map((t) => t.post)
-  const clientOptions = [
-    { value: '', label: 'All clients' },
-    ...clients.map((c) => ({ value: c.id, label: c.name })),
-  ]
 
   // No scroll container of its own — see settings-view. StickyShell's sentinel has
   // to leave the intersection of the page's real scroller, and an overflow-hidden
@@ -692,14 +688,11 @@ export function ReviewQueue({
         }
         actions={
           <>
-            {clients.length > 1 && (
-              <SelectControl
-                label="Client"
-                value={selectedClientId ?? ''}
-                options={clientOptions}
-                onChange={(id) => setSelectedClientId(id || null)}
-              />
-            )}
+            <ClientFilter
+              clients={clients}
+              value={selectedClientId}
+              onChange={setSelectedClientId}
+            />
             <Button
               size="sm"
               disabled={readyPosts.length === 0}

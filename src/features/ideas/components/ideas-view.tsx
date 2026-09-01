@@ -33,6 +33,14 @@ import { hashIndex } from '@/utils/hash-index'
 import { cn } from '@/utils/cn'
 import type { ClientIdea, IdeaStatus } from '@/types/api'
 
+/**
+ * Not the shared `ClientFilter`'s empty-string sentinel, and not a candidate for
+ * it: this scope lives in the URL, so it needs a value a query string can carry,
+ * and changing it navigates for a fresh server fetch rather than filtering rows
+ * already in hand. The review queue and the calendar share that component
+ * because they are both state-backed; this one is a different mechanism wearing
+ * the same clothes.
+ */
 const ALL_CLIENTS = 'all'
 
 interface IdeasViewProps {
