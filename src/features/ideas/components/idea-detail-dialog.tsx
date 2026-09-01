@@ -7,6 +7,7 @@ import { StatusPill } from '@/components/ui/status-pill'
 import { IdeaDueChip } from './idea-due-chip'
 import { formatRelativeTime } from '@/utils/format'
 import type { ClientIdea } from '@/types/api'
+import { generatedPostWasDeleted } from '@/features/ideas/lib/idea-filters'
 
 interface IdeaDetailDialogProps {
   /** The open idea, or null when the dialog is closed. */
@@ -89,7 +90,11 @@ export function IdeaDetailDialog({
               </>
             )}
             <dt className="text-label font-semibold uppercase text-text3">Status</dt>
-            <dd className="text-body text-ink">{STATUS_TEXT[idea.status] ?? idea.status}</dd>
+            <dd className="text-body text-ink">
+              {generatedPostWasDeleted(idea)
+                ? 'A post was generated from this, and has since been deleted'
+                : (STATUS_TEXT[idea.status] ?? idea.status)}
+            </dd>
           </dl>
 
           <div className="mt-1 flex items-center gap-2">
@@ -122,7 +127,11 @@ export function IdeaDetailDialog({
             <Button variant="secondary" size="sm" onClick={onClose}>
               Close
             </Button>
-            {idea.status === 'generated' ? (
+            {generatedPostWasDeleted(idea) ? (
+              <ActionLink href={`/generate?ideaId=${idea.id}`} size="sm">
+                Generate again
+              </ActionLink>
+            ) : idea.status === 'generated' ? (
               idea.generatedPostId && (
                 <ActionLink href={`/calendar?editPost=${idea.generatedPostId}`} size="sm">
                   View post

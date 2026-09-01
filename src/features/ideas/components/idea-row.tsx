@@ -8,6 +8,7 @@ import { IDEA_GRID, IDEA_GRID_DROP } from './grid'
 import { formatRelativeTime } from '@/utils/format'
 import { cn } from '@/utils/cn'
 import type { ClientIdea } from '@/types/api'
+import { generatedPostWasDeleted } from '@/features/ideas/lib/idea-filters'
 
 interface IdeaRowProps {
   idea: ClientIdea
@@ -93,7 +94,16 @@ export function IdeaRow({
       </td>
 
       <td className="flex items-center justify-end gap-1.5">
-        {idea.status === 'generated' ? (
+        {generatedPostWasDeleted(idea) ? (
+          // Say what happened and give the way back. Without this branch the row rendered nothing
+          // at all — see generatedPostWasDeleted.
+          <>
+            <span className="text-micro text-text3">Post deleted</span>
+            <ActionLink href={`/generate?ideaId=${idea.id}`} size="sm">
+              Generate again
+            </ActionLink>
+          </>
+        ) : idea.status === 'generated' ? (
           // The one reader of generated_post_id, which has been written, selected and
           // mapped since the feature shipped and displayed by nothing.
           idea.generatedPostId && (

@@ -127,3 +127,24 @@ export function applyPendingStatuses(
     return stays ? [{ ...idea, status }] : []
   })
 }
+
+/**
+ * The post this idea produced has been deleted.
+ *
+ * `status: 'generated'` is only ever written by `linkIdeaToPost`, which always sets
+ * `generated_post_id` in the same statement — so generated with no link means exactly one thing:
+ * the post was deleted afterwards and the FK went to NULL.
+ *
+ * It matters because both surfaces gate their action on the link being present, and "Generate from
+ * this idea" only appears on the not-generated branch. Without this, such an idea renders with no
+ * action at all on either surface: a client's request that can never be opened, regenerated or
+ * dismissed again.
+ *
+ * The status stays `generated` on purpose. We DID generate a post from it, and reverting the idea
+ * to `new` would put it back in the inbox as though nobody had ever looked at it.
+ */
+export function generatedPostWasDeleted(
+  idea: Pick<ClientIdea, 'status' | 'generatedPostId'>
+): boolean {
+  return idea.status === 'generated' && idea.generatedPostId === null
+}
