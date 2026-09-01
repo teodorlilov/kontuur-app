@@ -18,7 +18,7 @@ const BACKOFF_BASE_MS = 1_000
 const RETRY_AFTER_CAP_MS = 10_000
 
 interface GraphRequestOptions {
-  method: 'GET' | 'POST'
+  method: 'GET' | 'POST' | 'DELETE'
   token: string
   body?: Record<string, unknown>
   searchParams?: Record<string, string>
@@ -136,4 +136,21 @@ export function graphPost<Schema extends z.ZodType>(
   body: Record<string, unknown>
 ): Promise<z.infer<Schema>> {
   return graphRequest(schema, url, { method: 'POST', token, body })
+}
+
+/**
+ * DELETE a Graph resource. Meta answers `{ success: true }`, not 204, so it parses like the rest.
+ *
+ * Added for comment deletion — the only destructive Graph call this app makes. It goes through the
+ * same retry and error classification as everything else, which matters here: a retried DELETE is
+ * safe because the second attempt 404s on an already-deleted node rather than removing something
+ * new, and `classifyGraphError` maps that to a non-retryable failure.
+ */
+export function graphDelete<Schema extends z.ZodType>(
+  schema: Schema,
+  url: string,
+  token: string,
+  searchParams?: Record<string, string>
+): Promise<z.infer<Schema>> {
+  return graphRequest(schema, url, { method: 'DELETE', token, searchParams })
 }

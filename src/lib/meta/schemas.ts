@@ -160,3 +160,39 @@ export const igMediaListSchema = z.looseObject({
 
 export type IGMediaItem = z.infer<typeof igMediaItemSchema>
 export type IGMediaListPage = z.infer<typeof igMediaListSchema>
+
+// ── Comments ──────────────────────────────────────────────────────────────────────────────────
+
+/**
+ * One comment on a media item.
+ *
+ * `username` and `text` are OPTIONAL, and that is the whole story of this feature: with Standard
+ * (development) Access Instagram withholds the body and author of comments written by the general
+ * public. The edge answers HTTP 200 with an empty `data` array — it does not error — so a schema
+ * that required these fields would turn a permissions state into a parse crash.
+ */
+export const igCommentSchema = z.looseObject({
+  id: z.string(),
+  text: z.string().optional(),
+  username: z.string().optional(),
+  timestamp: z.string().optional(),
+  like_count: z.number().optional(),
+  hidden: z.boolean().optional(),
+  /** Replies arrive nested when asked for; absent otherwise. */
+  replies: z.looseObject({ data: z.array(z.looseObject({ id: z.string() })) }).optional(),
+})
+
+export const igCommentsResponseSchema = z.looseObject({
+  data: z.array(igCommentSchema),
+  paging: z
+    .looseObject({ cursors: z.looseObject({ after: z.string().optional() }).optional() })
+    .optional(),
+})
+
+/** A created reply returns only its id, like every other Graph write. */
+export const igCommentCreatedSchema = z.looseObject({ id: z.string() })
+
+/** Hide/unhide and delete both answer `{ success: true }`. */
+export const igSuccessSchema = z.looseObject({ success: z.boolean().optional() })
+
+export type IgComment = z.infer<typeof igCommentSchema>
