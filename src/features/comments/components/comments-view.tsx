@@ -87,20 +87,29 @@ export function CommentsView({
   )
 
   /**
-   * Resolved against the client scope, NOT the active tab.
+   * What the pane is showing.
    *
-   * Replying moves a comment from Needs reply to Answered. Resolving this against the
-   * tab-filtered list meant the pane emptied the instant you sent — the card vanished
-   * with no sign it had worked, which is what shipped and what this fixes. Against the
-   * unfiltered scope the pane stays put and your reply appears threaded under the
-   * comment, while the list entry moves tabs behind it.
+   * Two deliberate properties, both of them fixes for the pane going blank.
+   *
+   * It resolves against the client scope, NOT the active tab. Replying moves a
+   * comment from Needs reply to Answered; resolving against the tab-filtered list
+   * emptied the pane the instant you sent, so the card vanished with no sign it had
+   * worked. Against the scope it stays put and your reply appears threaded under it.
+   *
+   * And it FALLS BACK to the first comment in the tab rather than to nothing. An
+   * empty pane beside a full queue is a dead end — it puts the burden on the reader
+   * to discover that rows are clickable, and it is what someone lands on every time
+   * they open the page. Falling back also covers deleting the selected comment,
+   * which would otherwise leave the pane empty until the next click.
    */
   const active = useMemo(() => {
-    if (!selection) return null
+    const first = visible[0]
+    const fallback = first?.comments[0] ? { group: first.group, comment: first.comments[0] } : null
+    if (!selection) return fallback
     const group = scoped.find((candidate) => candidate.igMediaId === selection.groupId)
     const comment = group?.comments.find((candidate) => candidate.id === selection.commentId)
-    return group && comment ? { group, comment } : null
-  }, [scoped, selection])
+    return group && comment ? { group, comment } : fallback
+  }, [scoped, visible, selection])
 
   const tabs: Array<TabItem<CommentStatus>> = TABS.map((entry) => ({
     id: entry.id,
@@ -269,7 +278,10 @@ export function CommentsView({
                     key={entry.group.igMediaId}
                     group={entry.group}
                     comments={entry.comments}
-                    selectedCommentId={selection?.commentId ?? null}
+                    // The EFFECTIVE selection, not the raw one: with the fallback
+                    // above, the pane can be showing a comment nobody clicked, and
+                    // the row it belongs to has to look selected or the two disagree.
+                    selectedCommentId={active?.comment.id ?? null}
                     onSelect={(comment, group) =>
                       setSelection({ groupId: group.igMediaId, commentId: comment.id })
                     }
@@ -279,10 +291,25 @@ export function CommentsView({
               )}
             </div>
 
-            {/* Hidden below 1140px rather than stacked: at that width the pane sits so
-                far under the queue that acting on a comment means scrolling away from
-                the list you picked it from. */}
-            <div className="max-[1139px]:hidden">
+            {/**
+             * Below 1140px there is no second column, so this used to be hidden
+             * outright — which made clicking a comment do nothing whatsoever on a
+             * narrower window. A control that silently has no effect is worse than
+             * one that is absent.
+             *
+             * Now it appears ABOVE the queue, and only once something has actually
+             * been clicked: the auto-selected fallback would otherwise push the list
+             * off the screen on arrival, on the one layout that can least afford it.
+             *
+             * Sticky on wide screens so it stays beside the row you picked while you
+             * read down a long queue.
+             */}
+            <div
+              className={cn(
+                'max-[1139px]:order-first min-[1140px]:sticky min-[1140px]:top-4',
+                !selection && 'max-[1139px]:hidden'
+              )}
+            >
               {active ? (
                 <CommentThread
                   group={active.group}

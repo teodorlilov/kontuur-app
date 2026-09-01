@@ -94,6 +94,21 @@ function renderView(groups: CommentGroup[], withheldPostCount = 0) {
   )
 }
 
+/**
+ * The queue row, as opposed to the same comment echoed in the detail pane.
+ *
+ * Needed because the pane auto-selects the first comment, so any comment on screen
+ * legitimately appears twice. An unscoped `getByText` was ambiguous, and — worse —
+ * would have passed on the pane alone while the queue rendered nothing.
+ */
+function queueRow(name: RegExp) {
+  return screen.getByRole('button', { name })
+}
+
+function pane() {
+  return within(screen.getByRole('complementary', { name: 'Selected comment' }))
+}
+
 beforeEach(() => vi.clearAllMocks())
 
 describe('CommentsView', () => {
@@ -104,7 +119,7 @@ describe('CommentsView', () => {
       }),
     ])
 
-    expect(screen.getByText('Does this apply to children under 5?')).toBeInTheDocument()
+    expect(queueRow(/Does this apply/)).toBeInTheDocument()
     expect(screen.queryByText('Thanks!')).not.toBeInTheDocument()
   })
 
@@ -118,30 +133,60 @@ describe('CommentsView', () => {
 
     await user.click(screen.getByRole('button', { name: /Answered/ }))
 
-    expect(screen.getByText('Thanks!')).toBeInTheDocument()
+    expect(queueRow(/Thanks!/)).toBeInTheDocument()
     expect(screen.queryByText('Does this apply to children under 5?')).not.toBeInTheDocument()
+  })
+
+  it('opens with the first comment already in the pane', () => {
+    // An empty pane beside a full queue is a dead end: it lands you on nothing and
+    // makes you discover that rows are clickable. It is also what you saw if a click
+    // did not register for any reason.
+    renderView([group()])
+
+    expect(pane().getByText('Does this apply to children under 5?')).toBeInTheDocument()
+    expect(screen.queryByText(/Pick a comment/)).not.toBeInTheDocument()
+  })
+
+  it('marks the row the pane is showing, even when nobody clicked it', () => {
+    renderView([group()])
+
+    // Otherwise the pane and the queue disagree about what is selected.
+    expect(screen.getByRole('button', { name: /Does this apply/ })).toHaveAttribute(
+      'aria-current',
+      'true'
+    )
+  })
+
+  it('falls back to another comment when the selected one is deleted', async () => {
+    deleteComment.mockResolvedValue({ ok: true, data: undefined })
+    const user = userEvent.setup()
+    renderView([group({ comments: [comment(), comment({ id: 'c2', text: 'Second question' })] })])
+
+    await user.click(screen.getByRole('button', { name: 'Delete' }))
+    await user.click(screen.getByRole('button', { name: 'Delete for good' }))
+
+    expect(pane().getByText('Second question')).toBeInTheDocument()
   })
 
   it('shows the post beside the comment, which is the whole point of the layout', async () => {
     const user = userEvent.setup()
     renderView([group()])
 
-    await user.click(screen.getByText('Does this apply to children under 5?'))
+    await user.click(queueRow(/Does this apply/))
 
     // Scoped to the detail pane on purpose: the caption also heads the group in the
-    // queue, and an unscoped query would pass on that one alone.
-    const pane = within(screen.getByRole('complementary', { name: 'Selected comment' }))
-    // The caption and pillar come from OUR post record — no competitor can render
-    // this, because none of them authored the post.
-    expect(pane.getByText('Five habits for a calmer evening')).toBeInTheDocument()
-    expect(pane.getByText('Sleep & routine')).toBeInTheDocument()
+    // queue, and an unscoped query would pass on that one alone. The caption and
+    // pillar come from OUR post record — no competitor can render this, because
+    // none of them authored the post.
+    expect(pane().getByText('Five habits for a calmer evening')).toBeInTheDocument()
+    expect(pane().getByText('Sleep & routine')).toBeInTheDocument()
   })
 
   it('names the handle a reply will post as', async () => {
     const user = userEvent.setup()
     renderView([group()])
 
-    await user.click(screen.getByText('Does this apply to children under 5?'))
+    await user.click(queueRow(/Does this apply/))
 
     expect(screen.getByPlaceholderText('Reply as @haelanclinic…')).toBeInTheDocument()
   })
@@ -151,7 +196,7 @@ describe('CommentsView', () => {
     const user = userEvent.setup()
     renderView([group()])
 
-    await user.click(screen.getByText('Does this apply to children under 5?'))
+    await user.click(queueRow(/Does this apply/))
     await user.type(screen.getByRole('textbox'), 'Yes, from age 3.')
     await user.click(screen.getByRole('button', { name: 'Reply' }))
 
@@ -175,13 +220,13 @@ describe('CommentsView', () => {
     const user = userEvent.setup()
     renderView([group()])
 
-    await user.click(screen.getByText('Does this apply to children under 5?'))
+    await user.click(queueRow(/Does this apply/))
     await user.type(screen.getByRole('textbox'), 'Yes, from age 3.')
     await user.click(screen.getByRole('button', { name: 'Reply' }))
 
-    const pane = await screen.findByRole('complementary', { name: 'Selected comment' })
-    expect(within(pane).getByText('Does this apply to children under 5?')).toBeInTheDocument()
-    expect(within(pane).getByText('Yes, from age 3.')).toBeInTheDocument()
+    await screen.findByRole('complementary', { name: 'Selected comment' })
+    expect(pane().getByText('Does this apply to children under 5?')).toBeInTheDocument()
+    expect(pane().getByText('Yes, from age 3.')).toBeInTheDocument()
   })
 
   it('says the reply went out, and as whom', async () => {
@@ -191,7 +236,7 @@ describe('CommentsView', () => {
     const user = userEvent.setup()
     renderView([group()])
 
-    await user.click(screen.getByText('Does this apply to children under 5?'))
+    await user.click(queueRow(/Does this apply/))
     await user.type(screen.getByRole('textbox'), 'Yes')
     await user.click(screen.getByRole('button', { name: 'Reply' }))
 
@@ -205,27 +250,23 @@ describe('CommentsView', () => {
     expect(screen.getByText(/2 replies owed/)).toBeInTheDocument()
   })
 
-  it('does not claim a post record it does not have', async () => {
+  it('does not claim a post record it does not have', () => {
     // postId null means posts.ig_media_id matched nothing, so calling it "Untitled
     // post" over a blank grey square asserts a record we have not got — and reads
     // as an image that failed to load.
-    const user = userEvent.setup()
     renderView([group({ postId: null, caption: null, imageUrl: null })])
 
-    expect(screen.getByText('Post on Instagram')).toBeInTheDocument()
     expect(screen.queryByText('Untitled post')).not.toBeInTheDocument()
-    expect(screen.getByText(/no matching post in Kontuur/)).toBeInTheDocument()
-
-    // And the detail pane agrees with the row rather than naming it differently.
-    await user.click(screen.getByText('Does this apply to children under 5?'))
-    const pane = within(screen.getByRole('complementary', { name: 'Selected comment' }))
-    expect(pane.getByText('Post on Instagram')).toBeInTheDocument()
+    // Twice on purpose: the queue row and the detail pane share one naming rule, so
+    // one post cannot be called two things a few hundred pixels apart.
+    expect(screen.getAllByText('Post on Instagram')).toHaveLength(2)
+    expect(screen.getAllByText(/no matching post in Kontuur/)).toHaveLength(2)
   })
 
   it('still says "Untitled post" for a post we DO have, with no caption', () => {
     renderView([group({ caption: null })])
 
-    expect(screen.getByText('Untitled post')).toBeInTheDocument()
+    expect(screen.getAllByText('Untitled post')).toHaveLength(2)
     expect(screen.queryByText(/no matching post/)).not.toBeInTheDocument()
   })
 
@@ -233,7 +274,7 @@ describe('CommentsView', () => {
     const user = userEvent.setup()
     renderView([group()])
 
-    await user.click(screen.getByText('Does this apply to children under 5?'))
+    await user.click(queueRow(/Does this apply/))
 
     expect(screen.getByRole('button', { name: 'Reply' })).toBeDisabled()
   })
@@ -246,7 +287,7 @@ describe('CommentsView', () => {
     const user = userEvent.setup()
     renderView([group()])
 
-    await user.click(screen.getByText('Does this apply to children under 5?'))
+    await user.click(queueRow(/Does this apply/))
     await user.type(screen.getByRole('textbox'), 'Yes')
     await user.click(screen.getByRole('button', { name: 'Reply' }))
 
@@ -260,7 +301,7 @@ describe('CommentsView', () => {
     const user = userEvent.setup()
     renderView([group()])
 
-    await user.click(screen.getByText('Does this apply to children under 5?'))
+    await user.click(queueRow(/Does this apply/))
     await user.click(screen.getByRole('button', { name: 'Delete' }))
 
     expect(deleteComment).not.toHaveBeenCalled()
