@@ -314,9 +314,12 @@ reopen would show every text twice. So the doc tracks TWO storage references (se
   art) — enforced at all three rebind sites: the editor's `resolveDoc`, the auto-compose reuse
   path, and the apply-to-all sibling path. Recompose after copy edits never rebinds, so the crop
   survives text refreshes.
-- **`replaceExistingImage` gained `preserveStoragePath?`** (`features/publishing/lib/storage.ts`):
-  the row is always deleted, the storage object kept when its path matches — so the clean file
-  survives its own row being replaced by the flattened export. Existing callers unchanged.
+- **`putPostImage` takes `preserveStoragePath?`** (`src/features/assets/lib/storage.ts`): the row
+  is UPSERTED against `uq_post_images_post_position`, not deleted and re-inserted — a failed write
+  now leaves the existing row untouched, where the delete-then-insert form could lose the picture.
+  The old storage object is unlinked only once the row already points elsewhere, and is kept when
+  its path matches `preserveStoragePath`, so the clean file survives its own row becoming the
+  flattened export.
 
 ### 4. Seeding & autofit
 
@@ -343,17 +346,18 @@ reopen would show every text twice. So the doc tracks TWO storage references (se
 
 ### 5. API surface
 
-- **`GET /api/posts/[id]/canvas?position=N`** → `{ doc | null, identity: { palette, style } }` —
-  identity rides along so the editor opens in one round trip (`fetchVisualIdentityOrDefault`
-  falls back to the default identity; no doc / invalid doc → null → reseed).
+- **`GET /api/posts/[id]/canvas`** → `{ docs: [{ position, doc }], identity: { palette, style } }` —
+  every doc for the post in one read; identity rides along so the editor opens in one round trip
+  (`fetchVisualIdentityOrDefault` falls back to the default identity; a malformed row drops out of
+  the list and that position reseeds). The per-position variant was removed — it had no caller.
 - **`PUT /api/posts/[id]/canvas`** — save is ONE multipart request (flattened jpeg + doc JSON +
   `baseImagePath` = the storage_path the editor opened against), so doc and image can never
   drift. Server order: validate (shared `validateImageFile`, 8MB jpeg/png) → ownership → re-read
   the current row → **409 when its storage_path ≠ `baseImagePath`** (stale-save guard; also
   covers two tabs — client toasts "reopen the editor", doc intact) → upload the flattened file →
   stale-background cleanup (§3) → doc upsert (`onConflict: 'post_id,position'`, stored with
-  `flattenedStoragePath` = the new path) → `replaceExistingImage(..., preserveStoragePath:
-  doc.background.storagePath)` → insert the new `post_images` row → `{ image }`. On any failure
+  `flattenedStoragePath` = the new path) → `putPostImage(..., preserveStoragePath:
+  doc.background.storagePath)`, which upserts the `post_images` row → `{ image }`. On any failure
   the editor stays open + dirty; retry rewrites both (idempotent).
 - **`GET /api/clients/[id]/visual-identity`** — identity for wizard drafts (no post row yet).
 - **`POST /api/ai/generate-visual/upload`** — multipart draft flattened upload (`file`,
@@ -503,7 +507,7 @@ font-library, google-fonts, seed-doc, autofit, cover-crop, node-attrs — **all 
 node-testable**, no React/Konva/DOM) ← `src/features/canvas-editor/` (everything Konva/DOM:
 components, hooks, export/compose/save libs, `ensureFontsReady`) + API routes. Konva imports
 exist ONLY under `features/canvas-editor/`; multipart file rules ONLY in the extracted
-`features/publishing/lib/validate-image-file.ts` (reused by the images route, canvas PUT, draft
+`src/features/assets/lib/validate-image-file.ts` (reused by the images route, canvas PUT, draft
 upload, and client-side slot validation). `DraftVisual` stays the wizard's own type, importing
 `CanvasDoc` one-way.
 

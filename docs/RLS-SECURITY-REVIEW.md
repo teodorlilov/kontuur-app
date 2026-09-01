@@ -244,8 +244,10 @@ Supabase Security Advisor warnings so they stop being silently "fixed" in the da
 
 ## Current workarounds in code (keep until this task lands)
 - Admin client (`createAdminSupabaseClient`) for `brand_visual_identity` reads/writes
-  (`src/lib/visual/queries.ts`), `brand_kit_extractions` (extract routes), `brand_image_bank`
-  (`src/lib/images/generate-backdrops.ts`), and `post_images` (`src/features/publishing/lib/storage.ts`).
+  (`src/lib/visual/queries.ts`), `brand_kit_extractions` (extract routes), and `post_images`
+  (`src/features/assets/lib/storage.ts`). (`brand_image_bank` was listed here with a writer at
+  `src/lib/images/generate-backdrops.ts`; neither has existed for some time, and the table itself
+  was dropped by migration 20260836.)
 - All callers verify agency ownership in code before the admin call, so bypassing RLS is safe.
 
 ## Suggested steps for the fix task

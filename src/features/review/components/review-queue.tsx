@@ -399,7 +399,9 @@ export function ReviewQueue({
      * Copy first: if the status write fails the rollback restores the queue, and the user's
      * typing has still been saved. The reverse order could approve a post carrying stale text.
      * savePostCopy deliberately skips the client-post-stats revalidation, and does not need to —
-     * updatePost busts that tag on the very next line, which is the write that changes a count.
+     * schedulePosts busts that tag after the status write (post-actions.ts), which is the write
+     * that changes a count. (This said `updatePost`, naming a function this path stopped calling
+     * in the same commit that wrote the sentence.)
      */
     savePostCopy(postId, { caption: edits.caption, slides_json: edits.slidesJson })
       .then((copy) => {

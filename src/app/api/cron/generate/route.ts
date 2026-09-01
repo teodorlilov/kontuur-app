@@ -319,7 +319,6 @@ export async function GET(request: NextRequest) {
 
         if (agency?.mode === 'solo') {
           // SECURITY: admin client bypasses RLS — must scope pending count to this agency's clients
-          // agencyNiche already computed above — no extra niche query needed
           const { data: agencyClients, error: clientsError } = await supabase
             .from('clients')
             .select('id')

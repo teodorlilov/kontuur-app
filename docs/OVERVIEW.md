@@ -127,7 +127,7 @@ route handler or a server action (`src/features/*/actions/`).
 | -------------- | ----------- | ---------------------------------------------------------------- |
 | `(marketing)`  | public      | Landing page, pricing, privacy, terms, data-deletion             |
 | `(auth)`       | public      | Login, signup, forgot / setup password                           |
-| `(onboarding)` | authed      | New-client AI interview                                          |
+| `(onboarding)` | authed      | New-client site read into an editable draft sheet                |
 | `(dashboard)`  | authed      | Dashboard, clients, review, calendar, ideas, analytics, settings |
 | `(generate)`   | authed      | Full-screen generation wizard                                    |
 | `(public)`     | token-based | Client approval portal + client idea submission (no login)       |
@@ -338,7 +338,8 @@ brief is a post the user asked for whether or not planning found it a source.
 
 ### Validation (`src/ai/validation/`)
 
-`validatePost()` runs **one LLM call** — quality and language judged together — then computes
+`validatePost()` runs **one grader call**, plus a second sequential native-proofreader call for
+non-English clients — then computes
 a multi-dimensional score set. They were two parallel calls over the same text at the same
 model and temperature, which meant two corrected versions of one caption and no defined
 precedence: the language pass could reinstate a fabricated statistic the grounding pass had
@@ -375,10 +376,12 @@ Targeted rewrite of an existing post from reviewer feedback, incrementing `posts
 invites with a setup-password flow; forgot-password; auth rate limiting; role-based access
 (admin/member).
 
-**AI client onboarding** — Conversational interview → AI-generated brand profile. `analyze-url`
-can bootstrap a profile from a website or Instagram URL. Editable review step before save;
-creates the `clients`, `brand_profiles`, and `posting_schedules` rows and kicks off best-time
-generation.
+**AI client onboarding** — a one-shot site read into an editable draft sheet (no interview).
+`analyze-url` bootstraps the profile from a website or Instagram URL, and the sheet is editable
+before save. `provisionClient` is the single writer and creates FIVE rows: `clients`,
+`brand_profiles`, `posting_schedules`, the web-research `client_sources` row, and
+`brand_visual_identity`. It does not touch best times — those are derived from measured Instagram
+data later, by `refreshObservedBestTime`.
 
 **Brand profiles & content pillars** — Full editable brand settings; content pillars with
 per-pillar source mapping; language + formality controls; health-niche compliance flag.
@@ -488,7 +491,7 @@ Configured in `vercel.json`, all authenticated with `Authorization: Bearer $CRON
 
 | Endpoint                       | Schedule                  | Does                                                                                                                                                                                                                                                                                                                           |
 | ------------------------------ | ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `GET /api/cron/generate`       | hourly `0 * * * *`        | For each active posting schedule whose day + hour slot (agency timezone) has passed today and has no generation run since the slot: research → generate → validate → save `pending_review` → notify agency → refresh stale best-time. Then one weekly intelligence briefing per agency (+ solo coaching). `maxDuration: 300s`. |
+| `GET /api/cron/generate`       | hourly `0 * * * *`        | For each active posting schedule whose day + hour slot (agency timezone) has passed today and has no generation run since the slot: research → generate → validate → save `pending_review` → notify agency → distill the style memo (skipped when fresh). Then one weekly intelligence briefing per agency (+ solo coaching). `maxDuration: 300s`. |
 | `GET /api/cron/visuals`        | hourly `10 * * * *`       | Paint missing visuals for `pending_review` posts (quality-gated, attempt-capped backlog) so drafts arrive in the queue as finished creatives. `maxDuration: 300s`.                                                                                                                                                             |
 | `GET /api/cron/publish`        | every 5 min `*/5 * * * *` | Publish every `status='scheduled'` post whose `scheduled_at` has passed (24h catch-up window; older posts are marked failed), grouped by client, to Instagram; atomic claim against double-publishing, retry up to 3 attempts. `maxDuration: 300s`.                                                                            |
 | `GET /api/cron/refresh-tokens` | daily `30 8 * * *`        | Refresh Instagram long-lived tokens expiring within 14 days; notify the agency (7-day cooldown) when a refresh fails and the account needs reconnecting. `maxDuration: 300s`.                                                                                                                                                  |
@@ -591,8 +594,8 @@ Auth redirect URLs at the deployed domain, and the two cron jobs run automatical
   but not auto-published.
 - **Meta App Review** — live Instagram publishing/analytics depend on approved Meta permissions.
 - **Publishing is Instagram-only in code** — Facebook connections exist and Page tokens are kept
-  alive, but `attemptPublish` fails any non-Instagram platform on purpose rather than posting it
-  to the wrong account.
+  alive, but `publishOnePost` (src/features/publishing/lib/publish-post.ts) fails any non-Instagram
+  platform on purpose rather than posting it to the wrong account.
 - **Deferred engineering debt** — [TECH-DEBT.md](./TECH-DEBT.md) is the live list. The largest open
   items: a lint-cleanup pass (§4) that currently makes `npm run check` red, the audit deferrals in
   §6 (client-`fetch` mutations that should be server actions, oversized route files, shared-primitive
