@@ -11,6 +11,7 @@ export type PostRow = Tables<'posts'>
 export type IGAccountMetricsRow = Tables<'ig_account_metrics'>
 export type IGPostMetricsRow = Tables<'ig_post_metrics'>
 export type IGAudienceSnapshotsRow = Tables<'ig_audience_snapshots'>
+export type IGCommentRow = Tables<'ig_comments'>
 export type SocialConnectionRow = Tables<'social_connections'>
 export type UserRow = Tables<'users'>
 export type ClientSourceRow = Tables<'client_sources'>

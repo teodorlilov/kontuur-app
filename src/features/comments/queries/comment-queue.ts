@@ -2,14 +2,20 @@ import 'server-only'
 
 import { cache } from 'react'
 import { unstable_cache } from 'next/cache'
-import type { SupabaseClient } from '@supabase/supabase-js'
+import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import { getCachedAgencyClients } from '@/lib/queries/cache'
-import { createCommentsAdminClient } from '@/features/comments/lib/admin-client'
-import { COMMENTED_POST_COLUMNS, type CommentedPostColumns } from '@/lib/queries/select-columns'
+import {
+  COMMENTED_POST_COLUMNS,
+  IG_COMMENT_COLUMNS,
+  type CommentedPostColumns,
+  type IGCommentColumns,
+} from '@/lib/queries/select-columns'
 import { fetchImagesByPost } from '@/lib/posts/fetch-post-images'
 import { commentStatus, isOurs } from '@/features/comments/lib/comment-status'
 import type { CommentGroup, QueuedComment, QueuedCommentReply } from '@/types/api'
 import type { IGPostMetricsRow } from '@/types/index'
+
+type Admin = ReturnType<typeof createAdminSupabaseClient>
 
 /** The tag the sync and the moderation actions bust. */
 export const IG_COMMENTS_TAG = 'ig-comments'
@@ -65,7 +71,7 @@ const fetchCommentQueue = unstable_cache(
     const clients = await getCachedAgencyClients(agencyId)
     if (clients.length === 0) return EMPTY
 
-    const admin = createCommentsAdminClient()
+    const admin = createAdminSupabaseClient()
     const clientIds = clients.map((client) => client.id)
     const nameByClient = new Map(clients.map((client) => [client.id, client.name]))
 
@@ -85,13 +91,9 @@ const fetchCommentQueue = unstable_cache(
       return EMPTY
     }
     const connections = new Map(
-      (
-        (connectionData ?? []) as Array<{
-          client_id: string | null
-          account_id: string
-          account_name: string | null
-        }>
-      ).flatMap((row) => (row.client_id ? [[row.client_id, row] as const] : []))
+      (connectionData ?? []).flatMap((row) =>
+        row.client_id ? [[row.client_id, row] as const] : []
+      )
     )
     // No connected account means nothing to scope comments to, and the withheld
     // count would be meaningless too — there is no Instagram here to withhold them.
@@ -99,9 +101,7 @@ const fetchCommentQueue = unstable_cache(
 
     const { data: commentData, error: commentError } = await admin
       .from('ig_comments')
-      .select(
-        'id, client_id, ig_account_id, ig_media_id, post_id, parent_id, author_username, text, hidden, like_count, commented_at'
-      )
+      .select(IG_COMMENT_COLUMNS)
       .in('client_id', clientIds)
       .order('commented_at', { ascending: true })
     if (commentError) {
@@ -119,7 +119,7 @@ const fetchCommentQueue = unstable_cache(
      * Filtered here rather than in the query because the condition is a (client,
      * account) pair per client, which PostgREST cannot express as one `in`.
      */
-    const rows = ((commentData ?? []) as CommentRow[]).filter(
+    const rows = (commentData ?? []).filter(
       (row) => connections.get(row.client_id)?.account_id === row.ig_account_id
     )
 
@@ -149,20 +149,8 @@ const fetchCommentQueue = unstable_cache(
 
 export const getCachedCommentQueue = cache(fetchCommentQueue)
 
-/** The stored row, as this read projects it. Hand-written until types regen after 20260837. */
-interface CommentRow {
-  id: string
-  client_id: string
-  ig_account_id: string
-  ig_media_id: string
-  post_id: string | null
-  parent_id: string | null
-  author_username: string | null
-  text: string | null
-  hidden: boolean
-  like_count: number | null
-  commented_at: string | null
-}
+/** The stored row, as this read projects it — derived from the constant it selects. */
+type CommentRow = IGCommentColumns
 
 /**
  * What the nightly metrics sync already knows about a media, reused rather than
@@ -175,14 +163,13 @@ interface CommentRow {
 type MediaFacts = Pick<IGPostMetricsRow, 'caption' | 'thumbnail_url' | 'permalink'>
 
 async function fetchPosts(
-  admin: SupabaseClient,
+  admin: Admin,
   postIds: string[]
 ): Promise<Map<string, CommentedPostColumns>> {
   if (postIds.length === 0) return new Map()
   const { data, error } = await admin.from('posts').select(COMMENTED_POST_COLUMNS).in('id', postIds)
   if (error) throw new Error(`commented posts query failed: ${error.message}`)
-  const rows = (data ?? []) as CommentedPostColumns[]
-  return new Map(rows.map((row) => [row.id, row]))
+  return new Map((data ?? []).map((row) => [row.id, row]))
 }
 
 /**
@@ -199,7 +186,7 @@ async function fetchPosts(
  * second copy of the media table.
  */
 async function fetchMediaFacts(
-  admin: SupabaseClient,
+  admin: Admin,
   clientIds: string[],
   mediaIds: string[]
 ): Promise<Map<string, MediaFacts>> {
@@ -212,8 +199,7 @@ async function fetchMediaFacts(
     .in('client_id', clientIds)
     .in('ig_media_id', mediaIds)
   if (error) throw new Error(`media facts query failed: ${error.message}`)
-  const rows = (data ?? []) as Array<{ ig_media_id: string } & MediaFacts>
-  return new Map(rows.map((row) => [row.ig_media_id, row]))
+  return new Map((data ?? []).map((row) => [row.ig_media_id, row]))
 }
 
 /**
@@ -226,7 +212,7 @@ async function fetchMediaFacts(
  * that state from a genuinely quiet week.
  */
 async function countWithheldPosts(
-  admin: SupabaseClient,
+  admin: Admin,
   clientIds: string[],
   mediaWithStoredComments: Set<string>
 ): Promise<number> {
@@ -241,9 +227,7 @@ async function countWithheldPosts(
     console.error('[comments] withheld count query failed:', error.message)
     return 0
   }
-  return ((data ?? []) as Array<{ ig_media_id: string }>).filter(
-    (row) => !mediaWithStoredComments.has(row.ig_media_id)
-  ).length
+  return (data ?? []).filter((row) => !mediaWithStoredComments.has(row.ig_media_id)).length
 }
 
 /**

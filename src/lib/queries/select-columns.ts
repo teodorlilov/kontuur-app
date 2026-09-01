@@ -13,6 +13,7 @@ import type {
   ClientSourceRow,
   IGAccountMetricsRow,
   IGAudienceSnapshotsRow,
+  IGCommentRow,
   IGPostMetricsRow,
   PostRow,
   SocialConnectionRow,
@@ -410,6 +411,29 @@ export const COMMENTED_POST_COLUMNS = COMMENTED_POST_KEYS.join(', ') as Join<
 >
 
 export type CommentedPostColumns = Pick<PostRow, (typeof COMMENTED_POST_KEYS)[number]>
+
+// ig_comments
+/**
+ * The queue's read. Everything except `synced_at`, which records when we last heard
+ * from Instagram and is bookkeeping the surface has no use for.
+ */
+const IG_COMMENT_KEYS = [
+  'id',
+  'client_id',
+  'ig_account_id',
+  'ig_media_id',
+  'post_id',
+  'parent_id',
+  'author_username',
+  'text',
+  'hidden',
+  'like_count',
+  'commented_at',
+] as const satisfies readonly (keyof IGCommentRow)[]
+
+export const IG_COMMENT_COLUMNS = IG_COMMENT_KEYS.join(', ') as Join<typeof IG_COMMENT_KEYS, ', '>
+
+export type IGCommentColumns = Pick<IGCommentRow, (typeof IG_COMMENT_KEYS)[number]>
 
 // ig_audience_snapshots
 const IG_AUDIENCE_SNAPSHOT_KEYS = [

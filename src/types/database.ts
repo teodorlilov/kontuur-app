@@ -842,6 +842,66 @@ export type Database = {
           },
         ]
       }
+      ig_comments: {
+        Row: {
+          author_username: string | null
+          client_id: string
+          commented_at: string | null
+          hidden: boolean
+          id: string
+          ig_account_id: string
+          ig_media_id: string
+          like_count: number | null
+          parent_id: string | null
+          post_id: string | null
+          synced_at: string
+          text: string | null
+        }
+        Insert: {
+          author_username?: string | null
+          client_id: string
+          commented_at?: string | null
+          hidden?: boolean
+          id: string
+          ig_account_id: string
+          ig_media_id: string
+          like_count?: number | null
+          parent_id?: string | null
+          post_id?: string | null
+          synced_at?: string
+          text?: string | null
+        }
+        Update: {
+          author_username?: string | null
+          client_id?: string
+          commented_at?: string | null
+          hidden?: boolean
+          id?: string
+          ig_account_id?: string
+          ig_media_id?: string
+          like_count?: number | null
+          parent_id?: string | null
+          post_id?: string | null
+          synced_at?: string
+          text?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ig_comments_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ig_comments_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ig_post_metrics: {
         Row: {
           caption: string | null

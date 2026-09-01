@@ -1,10 +1,9 @@
 'use server'
 
 import { revalidateTag } from 'next/cache'
-import type { SupabaseClient } from '@supabase/supabase-js'
 import { resolveActionAuth, verifyClientOwnership } from '@/lib/auth/helpers'
 import type { ActionResult } from '@/lib/actions/types'
-import { createCommentsAdminClient } from '../lib/admin-client'
+import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import {
   SOCIAL_CONNECTION_AUTH_COLUMNS,
   type SocialConnectionAuthColumns,
@@ -41,7 +40,7 @@ interface CommentScope {
   accountId: string
   accountName: string | null
   accessToken: string
-  admin: SupabaseClient
+  admin: ReturnType<typeof createAdminSupabaseClient>
 }
 
 /**
@@ -63,15 +62,15 @@ async function resolveComment(
   const auth = await resolveActionAuth()
   if (!auth.ok) return { ok: false, error: auth.error }
 
-  const admin = createCommentsAdminClient()
+  const admin = createAdminSupabaseClient()
   const { data, error } = await admin
     .from('ig_comments')
     .select('client_id, ig_account_id, ig_media_id')
     .eq('id', commentId)
     .maybeSingle()
   if (error) return { ok: false, error: 'Could not read that comment' }
-  const row = data as { client_id: string; ig_account_id: string; ig_media_id: string } | null
-  if (!row) return { ok: false, error: 'Not found' }
+  if (!data) return { ok: false, error: 'Not found' }
+  const row = data
 
   const owned = await verifyClientOwnership(auth.supabase, row.client_id, auth.agencyId)
   if (!owned) return { ok: false, error: 'Not found' }

@@ -1,6 +1,7 @@
 import 'server-only'
 
 import type { SupabaseClient } from '@supabase/supabase-js'
+import type { Database } from '@/types/database'
 import { GraphApiError } from '@/lib/meta/graph-errors'
 import { fetchMediaComments } from '@/lib/meta/comments'
 import { fetchMediaSince } from '@/lib/meta/insights'
@@ -50,21 +51,15 @@ type IGConnection = SocialConnectionSyncColumns & {
   access_token: string
 }
 
-/** Mirrors the `ig_comments` row. Hand-written until the migration reaches prod and types regen. */
-interface CommentRow {
-  id: string
-  client_id: string
-  ig_account_id: string
-  ig_media_id: string
-  post_id: string | null
-  parent_id: string | null
-  author_username: string | null
-  text: string | null
-  hidden: boolean
-  like_count: number | null
-  commented_at: string | null
-  synced_at: string
-}
+/**
+ * A row on its way in, as the generated schema defines it.
+ *
+ * Derived rather than restated, the same rule `sync-metrics.ts` follows with
+ * `IGPostMetricsInsert`: a hand-written copy of a table's columns is what
+ * `row-mirrors.test.ts` exists to catch, because that shape drifted from its table
+ * for three months without anything noticing.
+ */
+type CommentRow = Database['public']['Tables']['ig_comments']['Insert']
 
 export interface CommentsSyncOutcome {
   /** Clients whose comments were brought up to date. */
