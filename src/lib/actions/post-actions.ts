@@ -2,7 +2,7 @@
 
 import 'server-only'
 import { revalidateTag } from 'next/cache'
-import { validateInstagramCaption } from '@/features/publishing/lib/validate-caption'
+import { validateInstagramCaption } from '@/lib/meta/networks/instagram-caption'
 import { recordDiscardedDraft } from '@/lib/queries/discarded-drafts'
 import { z } from 'zod'
 import { resolveActionAuth, fetchOwnedPost, verifyPostsOwnership } from '@/lib/auth/helpers'

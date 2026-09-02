@@ -3,7 +3,8 @@ import 'server-only'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import type { PostStatus } from '@/lib/validation'
 import { GraphApiError } from '@/lib/meta/graph-errors'
-import { fetchRemainingQuota } from '@/lib/meta/publishing'
+import { resolveNetwork } from '@/lib/meta/networks'
+import type { NetworkAccount, NetworkAdapter } from '@/lib/meta/networks/types'
 import {
   markFailed,
   MAX_ATTEMPTS,
@@ -16,6 +17,16 @@ import type { PostRow } from '@/types'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { SOCIAL_CONNECTION_AUTH_COLUMNS } from '@/lib/queries/select-columns'
 import { MS_PER_DAY } from '@/utils/constants'
+
+/**
+ * The scheduler is still single-network: it reads one connection per client and
+ * quota-checks that one account, so the platform is named once here rather than
+ * spelled into both the query and the adapter lookup.
+ *
+ * Step 2 of the Facebook arc groups by (client, platform) and this goes with it —
+ * a client with two connections needs both, and a due publication knows its own.
+ */
+const SCHEDULER_NETWORK = 'instagram'
 
 /** How far back a due post is still worth publishing. Older posts are marked failed so they surface. */
 const PUBLISH_WINDOW_MS = MS_PER_DAY
@@ -166,7 +177,17 @@ export async function publishDuePosts(): Promise<PublishSchedulerResult> {
     // burns attempts on guaranteed rejections. Posts stay 'scheduled' and are
     // naturally retried once the rolling 24h window frees up.
     const token = connection?.access_token
-    if (connection && token && (await isQuotaExhausted(connection.account_id, token, result)))
+    const adapter = resolveNetwork(SCHEDULER_NETWORK)
+    if (
+      adapter &&
+      connection &&
+      token &&
+      (await isQuotaExhausted(
+        adapter,
+        { accountId: connection.account_id, accessToken: token },
+        result
+      ))
+    )
       continue
 
     for (const post of clientPosts) {
@@ -192,17 +213,24 @@ export async function publishDuePosts(): Promise<PublishSchedulerResult> {
   return result
 }
 
-/** True when the account has no publish quota left; the reason lands in writeErrors for the log. */
+/**
+ * True when the account has no publish quota left; the reason lands in writeErrors
+ * for the log.
+ *
+ * A network without `quotaRemaining` does not meter publishes, so there is nothing
+ * to exhaust. Absent must not read as zero — that would defer every post forever.
+ */
 async function isQuotaExhausted(
-  accountId: string,
-  accessToken: string,
+  adapter: NetworkAdapter,
+  account: NetworkAccount,
   result: PublishSchedulerResult
 ): Promise<boolean> {
+  if (!adapter.quotaRemaining) return false
   try {
-    const remaining = await fetchRemainingQuota(accountId, accessToken)
+    const remaining = await adapter.quotaRemaining(account)
     if (remaining > 0) return false
     result.writeErrors.push(
-      `account ${accountId} has exhausted its 24h publishing quota — posts deferred`
+      `account ${account.accountId} has exhausted its 24h publishing quota — posts deferred`
     )
     return true
   } catch (err) {
@@ -233,7 +261,7 @@ async function fetchInstagramConnection(
     .from('social_connections')
     .select(SOCIAL_CONNECTION_AUTH_COLUMNS)
     .eq('client_id', clientId)
-    .eq('platform', 'instagram')
+    .eq('platform', SCHEDULER_NETWORK)
     .maybeSingle()
   if (error) throw new Error(`connection lookup failed for client ${clientId}: ${error.message}`)
   // Supabase select returns the exact fields we project; narrow to InstagramConnection

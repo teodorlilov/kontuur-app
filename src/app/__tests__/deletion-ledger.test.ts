@@ -51,6 +51,12 @@ describe('deleted files stay deleted', () => {
     'src/features/ideas/components/idea-card.tsx',
     'src/features/ideas/lib/cache.ts',
     'src/lib/meta/facebook-metrics.ts',
+    // Network contract (2026-09): Instagram's publishing calls moved into
+    // lib/meta/networks/instagram.ts, behind the adapter the publish path talks
+    // to. A file here again would mean a network's Graph calls living outside
+    // its own module, which is how the last Facebook integration ended up as a
+    // parallel branch at every layer.
+    'src/lib/meta/publishing.ts',
   ])('%s does not exist', (relPath) => {
     expect(existsSync(path.resolve(SRC, '..', relPath))).toBe(false)
   })

@@ -5,7 +5,7 @@ import {
   CAPTION_MAX_MENTIONS,
   altTextFromCaption,
   validateInstagramCaption,
-} from '../validate-caption'
+} from '../instagram-caption'
 
 describe('validateInstagramCaption', () => {
   it('accepts an ordinary caption', () => {

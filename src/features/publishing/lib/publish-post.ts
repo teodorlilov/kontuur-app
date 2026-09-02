@@ -2,44 +2,32 @@ import 'server-only'
 
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { PostImageRow, PostRow } from '@/types'
-import { createSemaphore } from '@/lib/concurrency'
 import { GraphApiError } from '@/lib/meta/graph-errors'
-import {
-  createCarouselContainer,
-  createImageContainer,
-  getContainerStatus,
-  publishContainer,
-  fetchRecentMedia,
-} from '@/lib/meta/publishing'
+import { resolveNetwork } from '@/lib/meta/networks'
+import type { NetworkAdapter, NetworkPublishResult, PostPayload } from '@/lib/meta/networks/types'
 import { isTokenExpired } from '@/lib/meta/token-expiry'
-import { altTextFromCaption, validateInstagramCaption } from './validate-caption'
 import { notify } from '@/lib/notifications/notify'
 import type { InstagramConnection } from './types'
 
 /**
  * The one publish implementation — the every-5-minute cron and the manual
- * "Publish now" route both run a post through here, so the claim, the platform
- * guard, the retry ladder and the two-phase container flow cannot disagree.
+ * "Publish now" route both run a post through here, so the claim, the retry
+ * ladder and the state transitions cannot disagree.
  *
- * Two phases because a container can outlive a request: phase A creates the
- * container and persists its id BEFORE polling, so if this run dies or times
- * out, the next tick enters phase B and polls the SAME container instead of
- * creating a second one — which is how slow containers used to become
- * duplicate Instagram posts.
+ * It knows nothing about any particular network. A network is resolved from the
+ * post's platform and asked to publish; what comes back is `published`, `pending`
+ * or `rejected`, and this file decides what each means for the row. That split is
+ * deliberate and load-bearing: every database write lives here, so no network can
+ * write the same columns from a second place.
+ *
+ * `pending` is the reason the flow has two phases. A network may accept content
+ * before it is live — Instagram creates a container that can outlive the request
+ * — so the reference it hands back is persisted BEFORE anything waits on it. If
+ * this run dies past that line, the next tick resumes the SAME reference instead
+ * of publishing a second copy.
  */
 
 export const MAX_ATTEMPTS = 3
-
-/** Phase-A poll budget. Containers usually finish in seconds; slower ones roll to the next tick. */
-const CONTAINER_POLL_BUDGET_MS = 18_000
-/**
- * Single images usually finish within a second or two — polling fast at the
- * start is what lets a manual publish confirm quickly; the tail backs off so a
- * slow carousel doesn't hammer the status endpoint.
- */
-const POLL_SCHEDULE_MS = [1_000, 1_000, 2_000, 3_000]
-/** Carousel children are created concurrently, but politely. */
-const CHILD_CONTAINER_CONCURRENCY = 3
 
 type PublishableImage = Pick<PostImageRow, 'public_url' | 'position' | 'content_type'>
 
@@ -181,7 +169,7 @@ export async function markFailed(
   admin: SupabaseClient,
   post: { id: string; client_id: string },
   message: string,
-  options: { final: boolean; attempts: number; clearCreationId?: boolean }
+  options: { final: boolean; attempts: number; clearCreationId?: boolean; network?: string }
 ): Promise<{ final: boolean; writeError: string | null }> {
   const attempts = options.attempts
   const final = options.final || attempts >= MAX_ATTEMPTS
@@ -194,9 +182,13 @@ export async function markFailed(
   if (final) {
     // The durable record is publish_error on the row; the notification is how a
     // failure reaches someone who is not looking at the calendar.
+    //
+    // `network` is absent for the missed-window sweep, which fails a post no
+    // network ever saw — naming one there would invent a culprit.
+    const subject = options.network ? `A scheduled ${options.network} post` : 'A scheduled post'
     await notify(admin, {
       clientId: post.client_id,
-      message: `A scheduled Instagram post could not be published: ${message}`,
+      message: `${subject} could not be published: ${message}`,
     }).catch((err) => {
       console.error(`[publish] failure notification for post ${post.id} not sent:`, err)
     })
@@ -207,175 +199,101 @@ export async function markFailed(
   }
 }
 
-/** Map a Graph failure to what the retry ladder should do with it. */
-function graphFailureToDecision(err: GraphApiError): { message: string; final: boolean } {
+/**
+ * Map a Graph failure to what the retry ladder should do with it.
+ *
+ * The classification is Meta's, shared by every network on its Graph; only the
+ * name in the message differs, which is what `label` is for.
+ */
+function graphFailureToDecision(
+  err: GraphApiError,
+  label: string
+): { message: string; final: boolean } {
   switch (err.failure) {
     case 'token_invalid':
       return {
-        message: 'Instagram connection is no longer valid — reconnect the account',
+        message: `${label} connection is no longer valid — reconnect the account`,
         final: false,
       }
     case 'permission':
-      return { message: `Instagram permission error: ${err.message}`, final: true }
+      return { message: `${label} permission error: ${err.message}`, final: true }
     case 'media_invalid':
-      return { message: `Instagram rejected the media: ${err.message}`, final: true }
+      return { message: `${label} rejected the media: ${err.message}`, final: true }
     case 'rate_limited':
-      return { message: 'Instagram rate limit reached — will retry', final: false }
+      return { message: `${label} rate limit reached — will retry`, final: false }
     default:
       return { message: err.message, final: false }
   }
 }
 
-/** Poll a container within the given budget. Times out as IN_PROGRESS, never as failure. */
-async function pollContainer(
-  creationId: string,
-  accessToken: string,
-  budgetMs: number
-): Promise<'FINISHED' | 'IN_PROGRESS' | 'ERROR' | 'EXPIRED' | 'PUBLISHED'> {
-  const deadline = Date.now() + budgetMs
-  for (let poll = 0; ; poll++) {
-    const status = await getContainerStatus(creationId, accessToken)
-    if (status !== 'IN_PROGRESS') return status
-    const interval = POLL_SCHEDULE_MS[Math.min(poll, POLL_SCHEDULE_MS.length - 1)]!
-    if (Date.now() + interval > deadline) return 'IN_PROGRESS'
-    await new Promise((r) => setTimeout(r, interval))
+/** The row as a network sees it: the content, and nothing about our bookkeeping. */
+function toPayload(post: PublishablePost): PostPayload {
+  return {
+    caption: post.caption ?? '',
+    media: post.post_images.map((img) => ({
+      publicUrl: img.public_url,
+      position: img.position,
+      contentType: img.content_type,
+    })),
   }
 }
 
 /**
- * A container reporting PUBLISHED has media live on Instagram but no media id
- * in hand. Take the newest media posted since this attempt was claimed — the
- * account publishes through us, so the newest-since-claim item is this post.
+ * Credential problems, which read the same on every network and so are not an
+ * adapter's business. A network only judges the content.
  */
-async function reconcilePublishedContainer(
-  post: PublishablePost,
-  accountId: string,
-  accessToken: string
-): Promise<string | null> {
-  const claimedAt = post.publish_claimed_at ? new Date(post.publish_claimed_at).getTime() : 0
-  const recent = await fetchRecentMedia(accountId, accessToken)
-  const match = recent.find(
-    (m) => m.timestamp !== null && new Date(m.timestamp).getTime() >= claimedAt
-  )
-  return match?.id ?? null
-}
-
-/** Resume a post whose container already exists (phase B). */
-async function resumeContainer(
-  admin: SupabaseClient,
-  post: PublishablePost,
-  accountId: string,
-  accessToken: string,
-  creationId: string,
-  options: { pollBudgetMs: number; attempts: number }
-): Promise<PublishOutcome> {
-  const status = await pollContainer(creationId, accessToken, options.pollBudgetMs)
-
-  if (status === 'IN_PROGRESS') return { kind: 'pending', creationId }
-
-  if (status === 'FINISHED') {
-    const mediaId = await publishContainer(accountId, creationId, accessToken)
-    const writeError = await markPublished(admin, post.id, mediaId, accountId)
-    return { kind: 'published', mediaId, writeError: writeError ?? undefined }
-  }
-
-  if (status === 'PUBLISHED') {
-    const mediaId = await reconcilePublishedContainer(post, accountId, accessToken)
-    const writeError = await markPublished(admin, post.id, mediaId, accountId)
-    return { kind: 'published', mediaId, writeError: writeError ?? undefined }
-  }
-
-  // ERROR / EXPIRED: this container is dead — clear it so the retry starts clean.
-  const { final, writeError } = await markFailed(admin, post, `Instagram container ${status}`, {
-    final: false,
-    attempts: options.attempts,
-    clearCreationId: true,
-  })
-  return {
-    kind: 'failed',
-    error: `Instagram container ${status}`,
-    final,
-    writeError: writeError ?? undefined,
-  }
-}
-
-/** Create the container(s) for a post and persist the creation id (phase A). */
-async function createContainers(
-  admin: SupabaseClient,
-  post: PublishablePost,
-  accountId: string,
-  accessToken: string,
-  imageUrls: string[],
-  caption: string
-): Promise<string> {
-  const altText = altTextFromCaption(caption)
-  let creationId: string
-
-  if (imageUrls.length === 1) {
-    creationId = await createImageContainer(accountId, accessToken, {
-      imageUrl: imageUrls[0]!,
-      caption,
-      altText,
-    })
-  } else {
-    const semaphore = createSemaphore(CHILD_CONTAINER_CONCURRENCY)
-    const childIds = await Promise.all(
-      imageUrls.map(async (imageUrl) => {
-        const release = await semaphore.acquire()
-        try {
-          return await createImageContainer(accountId, accessToken, {
-            imageUrl,
-            altText,
-            isCarouselItem: true,
-          })
-        } finally {
-          release()
-        }
-      })
-    )
-    creationId = await createCarouselContainer(accountId, accessToken, childIds, caption)
-  }
-
-  // Persisted before the first poll: if this run dies past this line, the next
-  // tick resumes this container instead of creating a duplicate.
-  const writeError = await patchPost(admin, post.id, { ig_creation_id: creationId })
-  if (writeError) {
-    console.error(
-      `[publish] post ${post.id}: container ${creationId} created but the id write was lost`
-    )
-  }
-  return creationId
-}
-
-/** Reasons a claimed post cannot publish right now. Final = cannot resolve on its own. */
-function preflightBlocker(
-  post: PublishablePost,
+function connectionBlocker(
   connection: InstagramConnection | null,
-  caption: string
+  label: string
 ): { message: string; final: boolean } | null {
-  if (!connection) return { message: 'No Instagram account connected', final: false }
+  if (!connection) return { message: `No ${label} account connected`, final: false }
   if (!connection.access_token)
-    return { message: 'Instagram connection needs reconnecting', final: false }
+    return { message: `${label} connection needs reconnecting`, final: false }
   if (isTokenExpired(connection.token_expires_at))
-    return { message: 'Instagram token expired', final: false }
-  if (post.post_images.length === 0) return { message: 'No images attached', final: false }
-  if (post.post_images.length > 10)
-    return { message: 'Instagram carousels allow at most 10 images', final: true }
+    return { message: `${label} token expired`, final: false }
+  return null
+}
 
-  // Instagram accepts JPEG only; a PNG burns every attempt with an opaque error.
-  const nonJpeg = post.post_images.find(
-    (img) => img.content_type !== null && img.content_type !== 'image/jpeg'
-  )
-  if (nonJpeg) {
+/**
+ * Turn what the network said into rows and an outcome. The ONE place a publish
+ * result reaches the database.
+ *
+ * `pending` writes nothing here: the reference was persisted before the wait that
+ * produced it, which is the whole point of persisting it first.
+ */
+async function applyResult(
+  admin: SupabaseClient,
+  post: PublishablePost,
+  adapter: NetworkAdapter,
+  accountId: string,
+  result: NetworkPublishResult,
+  attempts: number
+): Promise<PublishOutcome> {
+  if (result.kind === 'published') {
+    const writeError = await markPublished(admin, post.id, result.externalPostId, accountId)
     return {
-      message: `Image at position ${nonJpeg.position + 1} is ${nonJpeg.content_type} — Instagram requires JPEG. Re-export or re-upload it.`,
-      final: true,
+      kind: 'published',
+      mediaId: result.externalPostId,
+      writeError: writeError ?? undefined,
     }
   }
 
-  const captionError = validateInstagramCaption(caption)
-  if (captionError) return { message: captionError, final: true }
-  return null
+  if (result.kind === 'pending') return { kind: 'pending', creationId: result.publishRef }
+
+  // Rejected: whatever reference it held is dead, so clear it and let the ladder
+  // start the next attempt clean.
+  const { final, writeError } = await markFailed(admin, post, result.reason, {
+    final: false,
+    attempts,
+    clearCreationId: true,
+    network: adapter.label,
+  })
+  return { kind: 'failed', error: result.reason, final, writeError: writeError ?? undefined }
+}
+
+/** When the current attempt took its claim — what a network needs to reconcile a lost id. */
+function claimedAtMs(post: PublishablePost): number | null {
+  return post.publish_claimed_at ? new Date(post.publish_claimed_at).getTime() : null
 }
 
 /**
@@ -388,85 +306,90 @@ export async function publishOnePost(
   connection: InstagramConnection | null,
   options: { skipPoll?: boolean } = {}
 ): Promise<PublishOutcome> {
-  // Case-insensitive: rows canonically store 'Instagram' (20260809), older
-  // writes stored lowercase. Runs before the claim — wrong-platform posts must
-  // never consume attempts or reach the wrong account.
-  if (post.platform.toLowerCase() !== 'instagram') {
-    const { writeError } = await markFailed(
-      admin,
-      post,
-      `Publishing to ${post.platform} is not supported yet`,
-      { final: true, attempts: post.publish_attempts + 1 }
-    )
-    return {
-      kind: 'failed',
-      error: `Publishing to ${post.platform} is not supported yet`,
+  // Runs before the claim — a post bound for a network we cannot publish to must
+  // never consume an attempt or reach the wrong account. Resolution is
+  // case-insensitive because rows canonically store 'Instagram' (20260809) while
+  // connections store 'instagram'.
+  const adapter = resolveNetwork(post.platform)
+  if (!adapter) {
+    const message = `Publishing to ${post.platform} is not supported yet`
+    const { writeError } = await markFailed(admin, post, message, {
       final: true,
-      writeError: writeError ?? undefined,
-    }
+      attempts: post.publish_attempts + 1,
+    })
+    return { kind: 'failed', error: message, final: true, writeError: writeError ?? undefined }
   }
 
   const claim = await claimPost(admin, post)
   if (!claim.claimed) return { kind: 'not_claimed' }
 
-  const caption = post.caption ?? ''
-  const blocker = preflightBlocker(post, connection, caption)
+  const payload = toPayload(post)
+  const blocker = connectionBlocker(connection, adapter.label) ?? adapter.preflight(payload)
   const accessToken = connection?.access_token ?? null
   if (blocker || !connection || !accessToken) {
     const message = blocker?.message ?? 'Unknown error'
     const { final, writeError } = await markFailed(admin, post, message, {
       final: blocker?.final ?? false,
       attempts: claim.attempts,
+      network: adapter.label,
     })
     return { kind: 'failed', error: message, final, writeError: writeError ?? undefined }
   }
 
+  const account = { accountId: connection.account_id, accessToken }
+
   try {
     if (post.ig_creation_id) {
-      return await resumeContainer(
-        admin,
-        post,
-        connection.account_id,
-        accessToken,
-        post.ig_creation_id,
-        { pollBudgetMs: CONTAINER_POLL_BUDGET_MS, attempts: claim.attempts }
+      const resumed = await adapter.resume({
+        account,
+        publishRef: post.ig_creation_id,
+        claimedAt: claimedAtMs(post),
+      })
+      return await applyResult(admin, post, adapter, account.accountId, resumed, claim.attempts)
+    }
+
+    const started = await adapter.publish({ account, payload })
+
+    // A network that publishes in one call is already done; there is nothing to
+    // persist and nothing to wait for.
+    if (started.kind !== 'pending') {
+      return await applyResult(admin, post, adapter, account.accountId, started, claim.attempts)
+    }
+
+    // Persisted before the first wait: if this run dies past this line, the next
+    // tick resumes this reference instead of publishing a duplicate.
+    const writeError = await patchPost(admin, post.id, { ig_creation_id: started.publishRef })
+    if (writeError) {
+      console.error(
+        `[publish] post ${post.id}: ${adapter.label} accepted ${started.publishRef} but the id write was lost`
       )
     }
 
-    // Copy before sorting: `.sort` is in place, so this was reordering the caller's
-    // `post.post_images` as a side effect of reading it.
-    const imageUrls = [...post.post_images]
-      .sort((a, b) => a.position - b.position)
-      .map((img) => img.public_url)
+    // Deferred mode: the reference exists and is persisted, which is all the
+    // caller needs before responding — the wait continues out of band.
+    if (options.skipPoll) return { kind: 'pending', creationId: started.publishRef }
 
-    const creationId = await createContainers(
+    const finished = await adapter.resume({
+      account,
+      publishRef: started.publishRef,
+      claimedAt: claimedAtMs(post),
+    })
+    return await applyResult(
       admin,
-      post,
-      connection.account_id,
-      accessToken,
-      imageUrls,
-      caption
-    )
-    // Deferred mode: the container exists and its id is persisted, which is all
-    // the caller needs before responding — polling continues out of band.
-    if (options.skipPoll) return { kind: 'pending', creationId }
-    // Reuse phase B for the fresh container: same poll, same publish, same
-    // terminal handling — the only difference is who created the container.
-    return await resumeContainer(
-      admin,
-      { ...post, ig_creation_id: creationId },
-      connection.account_id,
-      accessToken,
-      creationId,
-      { pollBudgetMs: CONTAINER_POLL_BUDGET_MS, attempts: claim.attempts }
+      { ...post, ig_creation_id: started.publishRef },
+      adapter,
+      account.accountId,
+      finished,
+      claim.attempts
     )
   } catch (err) {
     if (err instanceof GraphApiError) {
-      const decision = graphFailureToDecision(err)
+      const decision = graphFailureToDecision(err, adapter.label)
       const { final, writeError } = await markFailed(admin, post, decision.message, {
         final: decision.final,
         attempts: claim.attempts,
         clearCreationId: decision.final,
+        network: adapter.label,
       })
       return { kind: 'failed', error: decision.message, final, writeError: writeError ?? undefined }
     }
@@ -474,6 +397,7 @@ export async function publishOnePost(
     const { final, writeError } = await markFailed(admin, post, message, {
       final: false,
       attempts: claim.attempts,
+      network: adapter.label,
     })
     return { kind: 'failed', error: message, final, writeError: writeError ?? undefined }
   }
@@ -483,7 +407,7 @@ export async function publishOnePost(
  * Finish a deferred publish after the response has gone out. The caller's
  * request already holds the claim it took seconds ago, so this does NOT
  * re-claim — the scheduler's resume arm waits out a grace period before it may
- * touch the row, which is what keeps the two from polling the same container.
+ * touch the row, which is what keeps the two from resuming the same reference.
  */
 export async function resumePendingPublish(
   admin: SupabaseClient,
@@ -499,32 +423,35 @@ export async function resumePendingPublish(
   const post = data as unknown as PublishablePost | null
   if (!post || post.status !== 'publishing' || !post.ig_creation_id) return
 
+  const adapter = resolveNetwork(post.platform)
+  if (!adapter) return
+
   const { data: connData } = await admin
     .from('social_connections')
     .select('account_id, access_token, token_expires_at')
     .eq('client_id', post.client_id)
-    .eq('platform', 'instagram')
+    .eq('platform', adapter.platform)
     .maybeSingle()
   // Supabase select returns the exact fields we project; narrow to InstagramConnection
   const connection = connData as InstagramConnection | null
   if (!connection?.access_token) return
 
   try {
-    await resumeContainer(
-      admin,
-      post,
-      connection.account_id,
-      connection.access_token,
-      post.ig_creation_id,
-      { pollBudgetMs, attempts: post.publish_attempts }
-    )
+    const result = await adapter.resume({
+      account: { accountId: connection.account_id, accessToken: connection.access_token },
+      publishRef: post.ig_creation_id,
+      claimedAt: claimedAtMs(post),
+      pollBudgetMs,
+    })
+    await applyResult(admin, post, adapter, connection.account_id, result, post.publish_attempts)
   } catch (err) {
     if (err instanceof GraphApiError) {
-      const decision = graphFailureToDecision(err)
+      const decision = graphFailureToDecision(err, adapter.label)
       await markFailed(admin, post, decision.message, {
         final: decision.final,
         attempts: post.publish_attempts,
         clearCreationId: decision.final,
+        network: adapter.label,
       })
       return
     }
