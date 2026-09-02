@@ -180,7 +180,7 @@ export function PostDetail({
         {status !== 'approved' && (
           <FeedbackBox
             mode={status === 'changes_requested' ? 'read-only' : 'input'}
-            value={status === 'changes_requested' ? feedback : feedback}
+            value={feedback}
             onChange={status === 'pending' ? onFeedbackChange : undefined}
           />
         )}

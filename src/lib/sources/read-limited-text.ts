@@ -15,7 +15,10 @@ export async function readLimitedText(res: Response, maxBytes: number): Promise<
       chunks.push(decoder.decode(value, { stream: true }))
     }
   } finally {
-    reader.cancel()
+    // Awaited so the connection is actually released before we return rather than during
+    // some later tick, and `.catch` because a cancel that rejects here would otherwise
+    // replace the error the try block was already throwing.
+    await reader.cancel().catch(() => {})
   }
 
   return chunks.join('').slice(0, maxBytes)
@@ -44,7 +47,10 @@ export async function readLimitedBytes(res: Response, maxBytes: number): Promise
       chunks.push(Buffer.from(value))
     }
   } finally {
-    reader.cancel()
+    // Awaited so the connection is actually released before we return rather than during
+    // some later tick, and `.catch` because a cancel that rejects here would otherwise
+    // replace the error the try block was already throwing.
+    await reader.cancel().catch(() => {})
   }
 
   return Buffer.concat(chunks)

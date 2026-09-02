@@ -46,7 +46,8 @@ async function generateSearchQueries(
 
   const pillarsText =
     context.contentPillars && context.contentPillars.length > 0
-      ? context.contentPillars
+      ? // Copy first — sorting in place would reorder the caller's pillar array.
+        [...context.contentPillars]
           .sort((a, b) => b.weight - a.weight)
           .map((p) => `- ${p.pillar} (${p.weight}%)`)
           .join('\n')

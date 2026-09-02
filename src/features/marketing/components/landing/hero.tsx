@@ -44,7 +44,9 @@ function useHeroEntrance(prefersReducedMotion: boolean) {
     )
 
     const arm = () => observer.observe(element)
-    if (document.fonts?.ready) void document.fonts.ready.then(arm)
+    // `document.fonts.ready` is a promise, so testing it was always true — the check was
+    // meant to be feature detection, and the optional chain has to sit on `fonts` to be it.
+    if (document.fonts) void document.fonts.ready.then(arm)
     else arm()
 
     return () => {

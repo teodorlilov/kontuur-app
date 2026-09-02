@@ -115,20 +115,22 @@ export function ReviewQueue({
   const composeRequestedRef = useRef(new Set<string>())
   // Written by the effect below the visuals hook; read only inside async callbacks.
   const focusedPostIdRef = useRef('')
+  // Typed as the async function it actually holds. It was declared `=> void`, which let the
+  // call sites below read as synchronous when every one of them starts a compose and returns.
   const recomposeRef = useRef<
     (
       source: { post_type: string; slides_json: unknown; caption: string | null },
       images: PostImage[]
-    ) => void
-  >(() => {})
+    ) => Promise<void>
+  >(() => Promise.resolve())
   // Same reason as recomposeRef: the compose-on-open effect keys on the focused post, and reading
   // the hook's callback through a ref keeps it out of the dependency list.
   const composeMissingRef = useRef<
     (
       source: { post_type: string; slides_json: unknown; caption: string | null },
       images: PostImage[]
-    ) => void
-  >(() => {})
+    ) => Promise<void>
+  >(() => Promise.resolve())
   const slopRequestedRef = useRef(new Set<string>())
   // Discards pending their undo window: id → commit. Unmount commits them all —
   // leaving the tab must not resurrect a post the reviewer already dismissed.
@@ -220,7 +222,7 @@ export function ReviewQueue({
     // hook is still bound to this post; a text-only save is the safe fallback.
     const post = postsRef.current.find((p) => p.id === postId)
     if (post && postId === focusedPostIdRef.current) {
-      recomposeRef.current(
+      void recomposeRef.current(
         { post_type: post.post_type, slides_json: edits.slidesJson, caption: edits.caption },
         post.images
       )
@@ -287,7 +289,7 @@ export function ReviewQueue({
     )
     if (pending.length === 0) return
     composeRequestedRef.current.add(target.id)
-    composeMissingRef.current(
+    void composeMissingRef.current(
       { post_type: target.post_type, slides_json: target.slides_json, caption: target.caption },
       pending
     )
@@ -581,7 +583,7 @@ export function ReviewQueue({
     toast.success('Post rewritten')
     const post = postsRef.current.find((p) => p.id === postId)
     if (post) {
-      visuals.recompose(
+      void visuals.recompose(
         {
           post_type: post.post_type,
           slides_json: outcome.updatedPost.slides_json,

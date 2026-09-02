@@ -137,7 +137,7 @@ export function allocateByWeight(
         }))
       : rawAllocs.map((a, i) => ({ i, key: a.exact - floored[i]! }))
 
-  const indices = rank.sort((a, b) => b.key - a.key)
+  const indices = [...rank].sort((a, b) => b.key - a.key)
 
   for (const { i } of indices) {
     if (remaining <= 0) break

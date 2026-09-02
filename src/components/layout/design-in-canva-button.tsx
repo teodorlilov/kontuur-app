@@ -20,7 +20,13 @@ export function DesignInCanvaButton({ collapsed = false }: { collapsed?: boolean
     <button
       type="button"
       onClick={() => {
-        if (connected) window.open('https://www.canva.com/create/instagram-posts/', '_blank')
+        // noopener keeps the opened tab from reaching back through `window.opener`.
+        if (connected)
+          window.open(
+            'https://www.canva.com/create/instagram-posts/',
+            '_blank',
+            'noopener,noreferrer'
+          )
       }}
       disabled={!connected}
       title={connected ? (collapsed ? label : undefined) : 'Connect Canva in Settings'}

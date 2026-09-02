@@ -433,7 +433,9 @@ export async function publishOnePost(
       )
     }
 
-    const imageUrls = post.post_images
+    // Copy before sorting: `.sort` is in place, so this was reordering the caller's
+    // `post.post_images` as a side effect of reading it.
+    const imageUrls = [...post.post_images]
       .sort((a, b) => a.position - b.position)
       .map((img) => img.public_url)
 

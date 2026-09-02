@@ -122,7 +122,7 @@ export default function ApprovalPage() {
         setPageState('error')
       }
     }
-    load()
+    void load()
   }, [token])
 
   // Derived values

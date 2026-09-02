@@ -107,7 +107,9 @@ export async function exportDocToJpegBlob(
     layer.draw()
 
     return await new Promise<Blob>((resolve, reject) => {
-      stage.toBlob({
+      // `toBlob` both returns a promise and takes a callback; the callback is the one we
+      // use, so the returned promise is deliberately dropped.
+      void stage.toBlob({
         mimeType: 'image/jpeg',
         quality: 0.9,
         pixelRatio,

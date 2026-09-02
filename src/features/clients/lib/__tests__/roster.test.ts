@@ -77,7 +77,7 @@ describe('STATUS_PRECEDENCE', () => {
       'queue_empty',
       'on_schedule',
     ]
-    expect([...STATUS_PRECEDENCE].sort()).toEqual(all.sort())
+    expect([...STATUS_PRECEDENCE].sort()).toEqual([...all].sort())
     expect(new Set(STATUS_PRECEDENCE).size).toBe(STATUS_PRECEDENCE.length)
   })
 })

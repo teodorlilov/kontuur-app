@@ -41,7 +41,7 @@ export function InviteHandler() {
       router.replace('/setup-password')
     }
 
-    handleInvite()
+    void handleInvite()
   }, [router])
 
   return (

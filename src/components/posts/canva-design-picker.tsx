@@ -74,7 +74,7 @@ export function CanvaDesignPicker({
       setQuery('')
       setDesigns([])
       setContinuation(null)
-      fetchDesigns('')
+      void fetchDesigns('')
     }
   }, [open, fetchDesigns])
 

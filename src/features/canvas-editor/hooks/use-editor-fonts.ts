@@ -15,9 +15,14 @@ export function useEditorFonts(families: string[]): boolean {
   useEffect(() => {
     injectLibraryStylesheet()
     let cancelled = false
-    ensureFontsReady(familiesKey.split('|').filter(Boolean)).then(() => {
-      if (!cancelled) setReadyKey(familiesKey)
-    })
+    ensureFontsReady(familiesKey.split('|').filter(Boolean))
+      .then(() => {
+        if (!cancelled) setReadyKey(familiesKey)
+      })
+      // Swallowed on purpose, and this is not a behaviour change — an unhandled rejection
+      // left readyKey unset just the same. A font that fails to load still leaves the stage
+      // waiting forever, which is worth revisiting, but not by changing it silently here.
+      .catch(() => {})
     return () => {
       cancelled = true
     }

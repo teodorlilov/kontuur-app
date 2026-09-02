@@ -50,7 +50,7 @@ export function useExtractionStatus({ sessionId, enabled, onResolved }: UseExtra
     const deadline = Date.now() + POLL_TIMEOUT_MS
 
     const schedule = () => {
-      timer = setTimeout(poll, 2500)
+      timer = setTimeout(() => void poll(), 2500)
     }
 
     async function poll() {
@@ -79,7 +79,7 @@ export function useExtractionStatus({ sessionId, enabled, onResolved }: UseExtra
       }
     }
 
-    poll()
+    void poll()
     return () => {
       active = false
       clearTimeout(timer)

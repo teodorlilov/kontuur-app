@@ -1,7 +1,6 @@
 import 'server-only'
 
 import type { SupabaseClient } from '@supabase/supabase-js'
-import type { Database } from '@/types/database'
 import { GraphApiError } from '@/lib/meta/graph-errors'
 import {
   fetchAccountFields,
