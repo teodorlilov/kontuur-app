@@ -36,7 +36,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ tok
   const postIds = tokenRows.map((r) => r.post_id)
   const { data: posts } = await supabase
     .from('posts')
-    .select('id, caption, platform, post_type, slides_json, scheduled_at, pillar, client_id')
+    .select('id, caption, post_type, slides_json, scheduled_at, pillar, client_id')
     .in('id', postIds)
     .order('scheduled_at', { ascending: true })
 
@@ -62,7 +62,6 @@ export async function GET(_request: Request, { params }: { params: Promise<{ tok
   const approvalPosts: ApprovalPostData[] = posts.map((p) => ({
     id: p.id,
     caption: p.caption,
-    platform: p.platform,
     post_type: p.post_type,
     slides_json: p.slides_json,
     scheduled_at: p.scheduled_at,

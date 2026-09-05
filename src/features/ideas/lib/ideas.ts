@@ -172,8 +172,8 @@ export async function hasExceededSubmissionRate(tokenId: string): Promise<boolea
  * two inbox entries an agency has to dismiss separately, and two `brief_index` slots
  * competing for the same source if both are generated from.
  *
- * Compared case- and whitespace-insensitively on the idea text alone: the notes and
- * platform are refinements of the same request, and the first occurrence keeps them.
+ * Compared case- and whitespace-insensitively on the idea text alone: the notes and the
+ * target date are refinements of the same request, and the first occurrence keeps them.
  */
 export async function submitIdeas(
   tokenId: string,
@@ -198,7 +198,6 @@ export async function submitIdeas(
       token_id: tokenId,
       idea_text: i.ideaText,
       extra_notes: i.extraNotes || null,
-      platform: i.platform || null,
       target_date: i.targetDate || null,
     }))
   )
@@ -318,7 +317,6 @@ function mapIdeaRow(row: Record<string, unknown>): ClientIdea {
     clientNiche: clients?.niche ?? null,
     ideaText: row.idea_text as string,
     extraNotes: (row.extra_notes as string | null) ?? null,
-    platform: (row.platform as string | null) ?? null,
     targetDate: (row.target_date as string | null) ?? null,
     status: row.status as IdeaStatus,
     generatedPostId: (row.generated_post_id as string | null) ?? null,

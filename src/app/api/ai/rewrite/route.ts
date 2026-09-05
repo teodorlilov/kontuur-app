@@ -37,7 +37,6 @@ const rewriteSchema = z.object({
     .optional(),
   aiTells: z.array(z.string().max(1000)).max(MAX_EVIDENCE_ITEMS).optional(),
   qualityIssues: z.array(z.string().max(1000)).max(MAX_EVIDENCE_ITEMS).optional(),
-  platform: z.string().max(100).optional(),
   sourceExcerpt: z.string().max(20_000).nullish(),
   sourceUrl: z.string().max(2048).nullish(),
   /** Why the rewrite was triggered — controls which validations run */
@@ -70,7 +69,6 @@ export async function POST(request: Request) {
       slidesJson: body.slidesJson,
       aiTells: body.aiTells ?? [],
       qualityIssues: body.qualityIssues,
-      platform: body.platform ?? 'instagram',
       sourceExcerpt: body.sourceExcerpt,
       sourceUrl: body.sourceUrl,
       rewriteReason: body.rewriteReason ?? 'manual',

@@ -72,7 +72,6 @@ function renderView(over: Record<string, unknown> = {}) {
       timeZone="Europe/Sofia"
       runContext={{
         clientName: 'Acme',
-        platform: 'Instagram',
         postType: 'single',
         slideCount: 1,
         targetPostCount: 3,
@@ -131,7 +130,6 @@ describe('ReviewView focus clamp', () => {
         timeZone="Europe/Sofia"
         runContext={{
           clientName: 'Acme',
-          platform: 'Instagram',
           postType: 'single',
           slideCount: 1,
           targetPostCount: 2,
@@ -165,7 +163,6 @@ describe('ReviewView focus clamp', () => {
         timeZone="Europe/Sofia"
         runContext={{
           clientName: 'Acme',
-          platform: 'Instagram',
           postType: 'single',
           slideCount: 1,
           targetPostCount: 1,

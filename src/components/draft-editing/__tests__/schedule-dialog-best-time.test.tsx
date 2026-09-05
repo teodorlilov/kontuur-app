@@ -14,10 +14,10 @@ import type { MeasuredBestTimes } from '@/lib/suggested-times/schemas'
  * derived last night, at the one screen where the difference changes what a person does.
  */
 
-const measured = (measuredAt: string | null): MeasuredBestTimes => ({
+const measured = (measuredAt: string | null, platform = 'Instagram'): MeasuredBestTimes => ({
   platforms: [
     {
-      platform: 'Instagram',
+      platform,
       best_days: ['Tuesday'],
       best_time_windows: [{ time: '21:00' }],
       confidence: 'observed',
@@ -30,7 +30,6 @@ function renderDialog(bestTime: MeasuredBestTimes | null) {
   return render(
     <ScheduleDialog
       open
-      platform="Instagram"
       bestTime={bestTime}
       timeZone="Europe/Sofia"
       onConfirm={vi.fn()}
@@ -63,19 +62,12 @@ describe('ScheduleDialog — the best-time option', () => {
     expect(screen.getByText(/we never guess/i)).toBeInTheDocument()
   })
 
-  it('offers nothing for a platform with no measured times of its own', () => {
-    // The stored value can hold entries for platforms this post is not going to.
-    render(
-      <ScheduleDialog
-        open
-        platform="Facebook"
-        bestTime={measured('2026-08-14T02:10:00.000Z')}
-        timeZone="Europe/Sofia"
-        onConfirm={vi.fn()}
-        onClose={vi.fn()}
-      />
-    )
-    expect(screen.queryByText(/best time —/i)).not.toBeInTheDocument()
-    expect(screen.getByText(/we never guess/i)).toBeInTheDocument()
+  it('offers what was measured, whichever network that was', () => {
+    // The post being scheduled used to choose the entry, through a `platform` prop read off
+    // its own column. A post has no network to read, so the dialog offers the measurement
+    // that exists — the same rule the calendar's suggested slots follow.
+    renderDialog(measured('2026-08-14T02:10:00.000Z', 'Facebook'))
+    expect(screen.getByText(/best time — tuesday 21:00/i)).toBeInTheDocument()
+    expect(screen.getByText(/from facebook/i)).toBeInTheDocument()
   })
 })

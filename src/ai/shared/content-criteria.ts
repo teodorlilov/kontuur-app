@@ -1,23 +1,24 @@
-interface PlatformLimits {
-  readonly wordCount: { readonly min: number; readonly max: number }
-}
-
-export const PLATFORM_LIMITS: Record<string, PlatformLimits> = {
-  Instagram: { wordCount: { min: 150, max: 220 } },
-  Facebook: { wordCount: { min: 150, max: 300 } },
-  LinkedIn: { wordCount: { min: 200, max: 350 } },
-  'X / Twitter': { wordCount: { min: 1, max: 50 } },
-  TikTok: { wordCount: { min: 50, max: 150 } },
-} as const
+/**
+ * One caption length, for every network a post can reach.
+ *
+ * This was a per-platform table — Instagram 150-220, Facebook 150-300, LinkedIn 200-350 —
+ * read from the platform a post was WRITTEN FOR. Generation no longer chooses a network:
+ * copy is written once and the destination is picked when the post is scheduled, so the
+ * question "how long should this be" has to be answered before anyone knows where it goes.
+ *
+ * The answer is the tightest bound of the networks it could reach. Instagram's 220 words is
+ * inside Facebook's 300, so copy written to this fits either — whereas anything written to
+ * the looser bound would have to be cut to publish. Writing short and travelling everywhere
+ * beats writing long and being rejected.
+ */
+const CAPTION_WORD_COUNT = { min: 150, max: 220 } as const
 
 // ---- Sentence Variety ----
 
 // ---- Functions ----
 
-export function formatWordCount(platform: string): string {
-  const limits = PLATFORM_LIMITS[platform]
-  if (!limits) return 'Follow platform conventions'
-  return `${limits.wordCount.min}-${limits.wordCount.max} words`
+export function formatWordCount(): string {
+  return `${CAPTION_WORD_COUNT.min}-${CAPTION_WORD_COUNT.max} words`
 }
 
 export function formatHealthRules(): string {

@@ -4,8 +4,8 @@ import {
   type PillarCoverageState,
   type WeightedPillar,
 } from '@/lib/clients/content-pillars'
-import { LIVE_PLATFORMS } from '@/utils/constants'
 import { isTokenExpired } from '@/lib/meta/token-expiry'
+import { toPublishingPlatform } from '@/lib/validation'
 import type { ClientSourceSummary } from '@/lib/queries/db'
 import type { MetaConnection } from '@/types/api'
 
@@ -18,14 +18,19 @@ export interface PillarAllocation {
   coverage: PillarCoverageState
 }
 
-/** How publishing will behave for the chosen platform. */
+/**
+ * Whether this client's drafts have anywhere to go.
+ *
+ * It had a third state, `manual`: Kontuur wrote for LinkedIn and TikTok but published to
+ * neither, so a run aimed at one produced copy to paste out by hand. A run is not aimed at
+ * a network any more — copy is written once and its destinations are resolved when it is
+ * scheduled — so the only question left is whether the client has a live connection.
+ */
 export type PublishState =
-  /** Platform is live and this client has a working connection. */
+  /** This client has at least one connection with a working token. */
   | { kind: 'connected' }
-  /** Platform is live but the client has no working connection — drafts still generate. */
+  /** No working connection — drafts still generate, they just cannot go out. */
   | { kind: 'not_connected' }
-  /** Kontuur writes for this platform but does not publish there — copy out by hand. */
-  | { kind: 'manual' }
 
 export interface RunPlan {
   allocation: PillarAllocation[]
@@ -43,7 +48,6 @@ interface ComputeRunPlanInput {
   targetPostCount: number
   sources: ClientSourceSummary[]
   connections: MetaConnection[]
-  platform: string
 }
 
 /**
@@ -57,7 +61,6 @@ export function computeRunPlan({
   targetPostCount,
   sources,
   connections,
-  platform,
 }: ComputeRunPlanInput): RunPlan {
   const webResearchActive = sources.some((s) => s.type === 'tavily')
   const coverage = computePillarCoverage(pillars, sources)
@@ -82,19 +85,18 @@ export function computeRunPlan({
     starvedPillars,
     webOnlyPillars,
     webResearchActive,
-    publishState: computePublishState(platform, connections),
+    publishState: computePublishState(connections),
   }
 }
 
-/** Platform names ('Instagram') vs connection rows ('instagram') differ only by case. */
-function connectionMatchesPlatform(connection: MetaConnection, platform: string): boolean {
-  return connection.platform.toLowerCase() === platform.toLowerCase()
-}
-
-function computePublishState(platform: string, connections: MetaConnection[]): PublishState {
-  if (!LIVE_PLATFORMS.has(platform)) return { kind: 'manual' }
+/**
+ * Which of the client's connections can take THIS post is the adapters' business, and they
+ * are server-side. This preview claims only what it can see from the browser: a publishing
+ * connection with a live token. Canva rows share the table and are not one.
+ */
+function computePublishState(connections: MetaConnection[]): PublishState {
   const working = connections.some(
-    (c) => connectionMatchesPlatform(c, platform) && !isTokenExpired(c.token_expires_at)
+    (c) => toPublishingPlatform(c.platform) && !isTokenExpired(c.token_expires_at)
   )
   return working ? { kind: 'connected' } : { kind: 'not_connected' }
 }

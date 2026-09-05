@@ -67,49 +67,36 @@ beforeEach(() => {
   mocks.validatePostsBatch.mockResolvedValue([validation()])
 })
 
-describe('per-theme platform', () => {
-  it('writes, judges and records each theme on its own platform, falling back to the run', async () => {
-    // The load-bearing M19 behaviour: a brief's platform overrides the run's for
-    // that one post — writer prompt, judge and draft record all agree — while
-    // themes without one (research topics, cron themes) inherit.
+describe('platform-agnostic generation', () => {
+  it('names no network to the writer, the judge or the draft record', async () => {
+    // This pinned the opposite: a brief carried its own platform, it overrode the run's,
+    // and writer, judge and record all had to agree on which. Copy is written once now and
+    // its destinations are chosen when the post is scheduled, so a network reaching any of
+    // these three would be a network chosen before anyone could know where the post goes.
     const themes: EnrichedTheme[] = [
-      { description: 'the brief', count: 1, platform: 'Facebook' },
+      { description: 'the brief', count: 1 },
       { description: 'researched', count: 1 },
     ]
     const results = await runGenerationBatch({
       client: client(),
-      platform: 'Instagram',
       postType: 'single',
       themes,
       trackTheme: vi.fn().mockResolvedValue(undefined),
     })
 
-    const platformByTheme = new Map(results.map((r) => [r.post.topic_summary, r.post.platform]))
-    expect(platformByTheme.get('the brief')).toBe('Facebook')
-    expect(platformByTheme.get('researched')).toBe('Instagram')
-
-    const writerPlatforms = new Map(
-      mocks.generatePost.mock.calls
-        .map((c) => c[0] as { platform: string; theme: string })
-        .map((input): [string, string] => [input.theme, input.platform])
-    )
-    expect(writerPlatforms.get('the brief')).toBe('Facebook')
-    expect(writerPlatforms.get('researched')).toBe('Instagram')
-
-    const judgePlatforms = new Map(
-      mocks.validatePostsBatch.mock.calls
-        .map((c) => c[0] as { platform: string; theme: string })
-        .map((input): [string, string] => [input.theme, input.platform])
-    )
-    expect(judgePlatforms.get('the brief')).toBe('Facebook')
-    expect(judgePlatforms.get('researched')).toBe('Instagram')
+    for (const result of results) expect(result.post).not.toHaveProperty('platform')
+    for (const call of mocks.generatePost.mock.calls) {
+      expect(call[0]).not.toHaveProperty('platform')
+    }
+    for (const call of mocks.validatePostsBatch.mock.calls) {
+      expect(call[0]).not.toHaveProperty('platform')
+    }
   })
 })
 
 function run(themes: EnrichedTheme[]) {
   return runGenerationBatch({
     client: client(),
-    platform: 'Instagram',
     postType: 'single',
     themes,
     trackTheme: vi.fn().mockResolvedValue(undefined),

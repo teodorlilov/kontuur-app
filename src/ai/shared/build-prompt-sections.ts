@@ -12,10 +12,10 @@ import { sanitizePromptField, PROMPT_FIELD_LIMITS } from '@/ai/utils/sanitize'
  * Pillar intentionally absent: it varies per theme and would break the cached
  * system-prompt prefix — the user turn carries the pillar line instead.
  */
-export function buildClientBrief(client: ClientData, platform: string): string {
+export function buildClientBrief(client: ClientData): string {
   const lines = [
     `BRIEF:`,
-    `Niche: ${sanitizePromptField(client.niche)} | Audience: ${sanitizePromptField(client.targetAudience)} | Platform: ${platform}`,
+    `Niche: ${sanitizePromptField(client.niche)} | Audience: ${sanitizePromptField(client.targetAudience)}`,
     `Tone: ${sanitizePromptField(client.tone)}`,
   ]
   // Conditional so a client who never answered the question keeps a byte-identical prompt — the
@@ -29,7 +29,7 @@ export function buildClientBrief(client: ClientData, platform: string): string {
  * Detailed client profile for validation prompts.
  * Pillar-invariant for the same cache-prefix reason as buildClientBrief.
  */
-export function buildClientProfile(client: ClientData, platform: string): string {
+export function buildClientProfile(client: ClientData): string {
   const lc = client.languageConfig
   // Pre-computed rather than inlined so an unanswered goal contributes no line at all, keeping the
   // prompt byte-identical for every client who has not set one.
@@ -37,7 +37,7 @@ export function buildClientProfile(client: ClientData, platform: string): string
     ? `\nPost goal: ${sanitizePromptField(client.socialGoals)}`
     : ''
   return `CLIENT PROFILE:
-Client: ${sanitizePromptField(client.name)} | Niche: ${sanitizePromptField(client.niche)} | Platform: ${platform}
+Client: ${sanitizePromptField(client.name)} | Niche: ${sanitizePromptField(client.niche)}
 Language: ${sanitizePromptField(lc.language, PROMPT_FIELD_LIMITS.short)} | Formality: ${sanitizePromptField(lc.formality, PROMPT_FIELD_LIMITS.short)}
 Target audience: ${sanitizePromptField(client.targetAudience)}${goalLine}
 Content pillars: ${client.contentPillars.map((p) => `${sanitizePromptField(p.pillar)} (${p.weight}%)`).join(', ')}
@@ -119,10 +119,13 @@ ${rules}`
 }
 
 /**
- * Word count limits for the platform.
+ * The caption length every post is written to.
+ *
+ * No longer per-platform: the destination is chosen after the copy exists, so this is the
+ * tightest bound of the networks a post can reach. See CAPTION_WORD_COUNT.
  */
-export function buildPlatformLimits(platform: string): string {
-  return `PLATFORM LIMITS:\nWord count: ${formatWordCount(platform)}`
+export function buildPlatformLimits(): string {
+  return `LENGTH:\nWord count: ${formatWordCount()}`
 }
 
 /**

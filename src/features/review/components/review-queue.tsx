@@ -354,7 +354,6 @@ export function ReviewQueue({
 
   function nextSlotFor(post: QueuePost, occupied: string[]): string | null {
     return pickNextOpenSlot({
-      platform: post.platform,
       bestTimes: bestTimeMap[post.client_id]?.platforms ?? null,
       postsPerWeek: postsPerWeekByClient[post.client_id] ?? 0,
       occupiedSlots: occupied,
@@ -628,7 +627,6 @@ export function ReviewQueue({
       countsByDay,
       target: postsPerWeekByClient[scheduleTargetPost.client_id] ?? 0,
       nextOpenSlot: pickNextOpenSlot({
-        platform: scheduleTargetPost.platform,
         bestTimes: bestTimeMap[scheduleTargetPost.client_id]?.platforms ?? null,
         postsPerWeek: postsPerWeekByClient[scheduleTargetPost.client_id] ?? 0,
         occupiedSlots: occupied,
@@ -764,12 +762,7 @@ export function ReviewQueue({
                   post={toDraft(focused).post}
                   visuals={visualsByPost[focused.post.id]}
                   positionInRun={`${focusedIndex + 1} of ${bucketItems.length}`}
-                  metaLine={[
-                    focused.post.client_name,
-                    focused.post.pillar,
-                    focused.post.platform,
-                    focused.post.post_type,
-                  ]
+                  metaLine={[focused.post.client_name, focused.post.pillar, focused.post.post_type]
                     .filter(Boolean)
                     .join(' · ')}
                   workingCaption={focusedEdits.caption}
@@ -835,7 +828,6 @@ export function ReviewQueue({
 
       <ScheduleDialog
         open={scheduleTarget !== null}
-        platform={scheduleTargetPost?.platform ?? null}
         bestTime={scheduleTargetPost ? (bestTimeMap[scheduleTargetPost.client_id] ?? null) : null}
         weekContext={scheduleWeekContext}
         timeZone={timezone}
@@ -850,7 +842,6 @@ export function ReviewQueue({
           id: p.id,
           client_name: p.client_name,
           caption: p.caption,
-          platform: p.platform,
         }))}
         timeZone={timezone}
         initialAssignments={batch?.assignments}

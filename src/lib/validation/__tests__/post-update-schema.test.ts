@@ -9,16 +9,12 @@ import { parsePostUpdate, postCopySchema, updatePostSchema } from '../post-updat
  * reads, was previously written with no validation on either path.
  */
 describe('updatePostSchema', () => {
-  it('is exactly the three columns its callers send', () => {
+  it('is exactly the two columns its callers send', () => {
     // Not decoration. Whitelisting a column here GRANTS a way to write it, so adding one is a
     // decision about who owns that column — a deliberate edit, not a line that slips in with a
     // feature. Six fields sat here with no caller at all until 2026-08-31, on columns the create
     // path and persistRewrite already owned: a second writer that had not been written yet.
-    expect(Object.keys(updatePostSchema.shape).sort()).toEqual([
-      'platform',
-      'scheduled_at',
-      'status',
-    ])
+    expect(Object.keys(updatePostSchema.shape).sort()).toEqual(['scheduled_at', 'status'])
   })
 
   it('does not accept a post\u2019s copy — savePostCopy owns those two columns', () => {
@@ -56,21 +52,21 @@ describe('postCopySchema', () => {
 
 describe('parsePostUpdate', () => {
   it('writes only the keys it was given', () => {
-    const result = parsePostUpdate({ platform: 'Instagram' })
-    expect(result).toEqual({ ok: true, updates: { platform: 'Instagram' } })
+    const result = parsePostUpdate({ status: 'approved' })
+    expect(result).toEqual({ ok: true, updates: { status: 'approved' } })
   })
 
   it('drops keys that are not writable rather than rejecting the write', () => {
     // Matches what both call sites did: an unknown key was simply never copied into
     // the payload. Rejecting instead would break any caller sending an extra field.
-    const result = parsePostUpdate({ platform: 'Instagram', agency_id: 'someone-elses' })
-    expect(result).toEqual({ ok: true, updates: { platform: 'Instagram' } })
+    const result = parsePostUpdate({ status: 'approved', agency_id: 'someone-elses' })
+    expect(result).toEqual({ ok: true, updates: { status: 'approved' } })
   })
 
   it('skips an explicit undefined instead of writing null', () => {
-    // Callers spread conditionals into these objects — `...(platform ? { platform } : {})`
+    // Callers spread conditionals into these objects — `...(at ? { scheduled_at: at } : {})`
     // — so `undefined` must mean "not touching this column", never "clear it".
-    const result = parsePostUpdate({ status: 'approved', platform: undefined })
+    const result = parsePostUpdate({ status: 'approved', scheduled_at: undefined })
     expect(result).toEqual({ ok: true, updates: { status: 'approved' } })
   })
 
@@ -117,18 +113,11 @@ describe('parsePostUpdate', () => {
   })
 
   describe('platform', () => {
-    it('accepts the display-case name the column stores', () => {
-      expect(parsePostUpdate({ platform: 'Instagram' }).ok).toBe(true)
-    })
-
-    it('rejects the connection-vocabulary spelling', () => {
-      // `isValidPostPlatform` is deliberately exact: accepting 'instagram' is what let a
-      // second spelling into the column, after which `platform === 'Instagram'` tests
-      // silently failed for those rows.
-      expect(parsePostUpdate({ platform: 'instagram' })).toEqual({
-        ok: false,
-        error: 'Invalid platform: instagram',
-      })
+    it('is not writable here at all — a post does not have one', () => {
+      // It was, under an exact display-case check, because `posts.platform` recorded the
+      // network a post was written for. A post reaches its networks through
+      // `post_publications`, one row per destination, so there is no column to write.
+      expect(parsePostUpdate({ platform: 'Instagram' })).toEqual({ ok: true, updates: {} })
     })
   })
 

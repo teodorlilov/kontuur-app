@@ -37,10 +37,9 @@ export function SourcesRail({ clientId, pillars, sources, postsPerWeek }: Source
         pillar_ids: s.pillar_ids,
       })),
     // The rail renders only the content mix — publishing is not previewed here,
-    // so placeholder publish inputs keep computeRunPlan's signature untouched
+    // so an empty connection list keeps computeRunPlan's signature untouched
     // for its generate consumers.
     connections: [],
-    platform: 'Instagram',
   })
 
   return (

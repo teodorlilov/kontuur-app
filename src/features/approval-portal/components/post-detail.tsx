@@ -88,7 +88,6 @@ function MetaTopbar({
     <div className="flex shrink-0 flex-wrap items-center gap-[7px] border-b border-ink/7 bg-surface px-5 py-2.5">
       <MetaPill label={`#${postIndex + 1}`} />
       <MetaPill label={post.scheduled_at ? formatScheduleDate(new Date(post.scheduled_at)) : ''} />
-      {post.platform && <MetaPill label={post.platform} />}
       <MetaPill label={postTypeLabel(post.post_type, post.slides_json)} />
       {post.pillar && <MetaPill label={post.pillar} dotColor={pillar?.hex} />}
       {statusStyle && (

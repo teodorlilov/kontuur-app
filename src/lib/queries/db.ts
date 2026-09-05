@@ -15,6 +15,7 @@
  * types the result from the table, not from the projection string.
  */
 
+import type { PostStatus } from '@/lib/validation'
 import {
   CLIENT_COLUMNS,
   AGENCY_SETTINGS_COLUMNS,
@@ -497,10 +498,12 @@ export async function fetchEngineContext(
       .from('posts')
       .select(EXEMPLAR_COLUMNS)
       .eq('client_id', clientId)
-      // Everything past review counts — publish transit or failure does not
-      // un-approve the copy, and excluding those states would churn the cached
-      // prompt prefix as posts move through publishing.
-      .in('status', ['approved', 'scheduled', 'publishing', 'published', 'failed'])
+      // Everything past review counts — publish transit or failure does not un-approve the
+      // copy, and excluding those states would churn the cached prompt prefix as posts move
+      // through publishing. That is now exactly these two: the publish lifecycle left this
+      // column for `post_publications`, so 'publishing', 'published' and 'failed' were three
+      // values it can no longer hold, describing an intent the remaining two already satisfy.
+      .in('status', ['approved', 'scheduled'] satisfies readonly PostStatus[])
       .order('edited_at', { ascending: false, nullsFirst: false })
       .order('created_at', { ascending: false })
       .limit(24),

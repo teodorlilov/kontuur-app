@@ -33,7 +33,6 @@ export interface BrandDraft {
   languageNotes: string
   defaultPostType: string
   defaultCarouselSlides: string
-  activePlatform: string
 }
 
 export interface ScheduleDraft {
@@ -80,8 +79,6 @@ export function buildDrafts(
   schedule: ScheduleRowInput,
   identity: VisualIdentity | null
 ): ClientDrafts {
-  const mix = readMix(profile?.weekly_mix_json)
-
   return {
     client: {
       name: client.name,
@@ -103,7 +100,6 @@ export function buildDrafts(
       languageNotes: profile?.language_notes ?? '',
       defaultPostType: profile?.default_post_type ?? 'single',
       defaultCarouselSlides: String(profile?.default_carousel_slides ?? 6),
-      activePlatform: Object.keys(mix).find((k) => !MIX_FORMAT_KEYS.has(k)) ?? 'Instagram',
     },
     schedule: {
       isActive: schedule?.is_active ?? true,
@@ -152,9 +148,9 @@ export function buildUpdatePayload(
       language_notes: brand.languageNotes || null,
       default_post_type: brand.defaultPostType,
       default_carousel_slides: parseInt(brand.defaultCarouselSlides, 10),
-      // Merged, not replaced: a bare `{ [platform]: 1 }` write would drop the format shares
-      // stored alongside it — the same keys `buildDrafts` reads back.
-      weekly_mix_json: { ...keepFormatKeys(readMix(originalMix)), [brand.activePlatform]: 1 },
+      // Format shares only. The platform key that used to be merged in beside them left with
+      // `activePlatform` — the column now holds what to make, never where to send it.
+      weekly_mix_json: keepFormatKeys(readMix(originalMix)),
     }
   }
 

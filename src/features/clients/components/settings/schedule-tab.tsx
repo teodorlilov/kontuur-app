@@ -1,14 +1,12 @@
 'use client'
 
-import { Chip, ChipGroup, Field, FormSection, ToggleRow } from '@/components/ui/form'
+import { Field, FormSection, ToggleRow } from '@/components/ui/form'
 import { Select } from '@/components/ui/select'
 import { WeekPreview } from '@/components/ui/week-preview'
 import { cn } from '@/utils/cn'
 import {
   CAROUSEL_SLIDE_OPTIONS,
   GENERATION_HOUR_OPTIONS,
-  LIVE_PLATFORMS,
-  PLATFORMS,
   POSTS_PER_RUN_OPTIONS,
   WEEKDAY_OPTIONS,
 } from '@/utils/constants'
@@ -30,42 +28,27 @@ const SLIDE_OPTIONS = CAROUSEL_SLIDE_OPTIONS.map((n) => ({
 interface ScheduleTabProps {
   brand: BrandDraft
   schedule: ScheduleDraft
-  /** Lower-cased platform names with a live connection, for the chip dots. */
-  connectedPlatforms: Set<string>
   onBrandChange: (patch: Partial<BrandDraft>) => void
   onScheduleChange: (patch: Partial<ScheduleDraft>) => void
 }
 
-/** Platform, format and autonomous generation. */
+/**
+ * Format and autonomous generation.
+ *
+ * A "Publishing platform" chip group stood above these, writing the client's one network
+ * into `weekly_mix_json`. Posts are not written for a network any more, and where one goes
+ * is settled per post when it is scheduled — a client-level answer to that question could
+ * only ever contradict the per-post one.
+ */
 export function ScheduleTab({
   brand,
   schedule,
-  connectedPlatforms,
   onBrandChange,
   onScheduleChange,
 }: ScheduleTabProps) {
   return (
     <>
-      <FormSection legend="Platform" description="Only connected platforms can publish.">
-        <div className="col-span-12">
-          <ChipGroup label="Publishing platform">
-            {PLATFORMS.map((platform) => {
-              const supported = LIVE_PLATFORMS.has(platform)
-              return (
-                <Chip
-                  key={platform}
-                  pressed={supported && brand.activePlatform === platform}
-                  disabled={!supported}
-                  live={supported ? connectedPlatforms.has(platform.toLowerCase()) : undefined}
-                  onClick={() => onBrandChange({ activePlatform: platform })}
-                >
-                  {supported ? platform : `${platform} · soon`}
-                </Chip>
-              )
-            })}
-          </ChipGroup>
-        </div>
-
+      <FormSection legend="Format" description="What Kontuur makes for this client by default.">
         <Field label="Default post type" span={4}>
           <Select
             value={brand.defaultPostType}

@@ -39,7 +39,6 @@ const base = {
   targetPostCount: 3,
   sources: [source({})],
   connections: [connection({})],
-  platform: 'Instagram',
 }
 
 describe('computeRunPlan', () => {
@@ -106,11 +105,11 @@ describe('computeRunPlan', () => {
   })
 
   describe('publishState', () => {
-    it('live platform with a valid connection → connected', () => {
+    it('a valid connection → connected', () => {
       expect(computeRunPlan(base).publishState).toEqual({ kind: 'connected' })
     })
 
-    it('live platform with an expired token → not_connected', () => {
+    it('an expired token → not_connected', () => {
       const plan = computeRunPlan({
         ...base,
         connections: [connection({ token_expires_at: '2020-01-01T00:00:00Z' })],
@@ -118,12 +117,12 @@ describe('computeRunPlan', () => {
       expect(plan.publishState).toEqual({ kind: 'not_connected' })
     })
 
-    it('live platform with no connection row → not_connected', () => {
+    it('no connection row → not_connected', () => {
       const plan = computeRunPlan({ ...base, connections: [] })
       expect(plan.publishState).toEqual({ kind: 'not_connected' })
     })
 
-    it('connection for another platform does not count', () => {
+    it('a connection we do not publish to does not count', () => {
       const plan = computeRunPlan({
         ...base,
         // WHY the assertion: Canva rows share social_connections and reach this
@@ -132,11 +131,6 @@ describe('computeRunPlan', () => {
         connections: [connection({ platform: 'canva' as MetaConnection['platform'] })],
       })
       expect(plan.publishState).toEqual({ kind: 'not_connected' })
-    })
-
-    it('non-live platform → manual regardless of connections', () => {
-      const plan = computeRunPlan({ ...base, platform: 'LinkedIn' })
-      expect(plan.publishState).toEqual({ kind: 'manual' })
     })
   })
 })

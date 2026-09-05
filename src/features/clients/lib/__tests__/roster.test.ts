@@ -45,7 +45,6 @@ function up(clientId: string, scheduledAt: string): PostSummary {
   return {
     id: `post-${clientId}-${scheduledAt}`,
     client_id: clientId,
-    platform: 'instagram',
     scheduled_at: scheduledAt,
   }
 }

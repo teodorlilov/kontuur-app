@@ -123,7 +123,6 @@ export function IdeaFormTab({
                 <p className="min-w-0 flex-1 truncate text-caption text-ink">
                   &ldquo;{idea.ideaText}&rdquo;
                 </p>
-                {idea.platform && <StatusPill tone="mark">{idea.platform}</StatusPill>}
                 {AWAITING_DECISION.includes(idea.status) && <StatusPill tone="ok">New</StatusPill>}
               </div>
             ))}

@@ -22,7 +22,6 @@ import { ApprovalAction } from './approval-tools'
 import { WeekGrid } from './week-grid'
 import { ClientsView } from './clients-view'
 import { countClientsBehind, postsInWeek } from '@/features/calendar/lib/week-model'
-import { suggestionPlatform } from '@/lib/suggested-times/slot-picker'
 import { TabRail } from '@/components/layout/page-header/tab-rail'
 import { MonthCoverage } from './month-coverage'
 import { QueueRail } from './queue-rail'
@@ -260,9 +259,9 @@ export function CalendarView({ initialPosts, clients, anchorWeekISO }: CalendarV
     if (next) setActivePostId(next.id)
   }
 
-  async function handleSchedule(postId: string, scheduledAt: string, platform: string) {
+  async function handleSchedule(postId: string, scheduledAt: string) {
     const idx = cardQueue.findIndex((p) => p.id === postId)
-    await schedulePost(postId, scheduledAt, platform)
+    await schedulePost(postId, scheduledAt)
     closeCard()
     const nextPost = cardQueue[idx + 1]
     setActivePostId(nextPost?.id ?? null)
@@ -414,10 +413,6 @@ export function CalendarView({ initialPosts, clients, anchorWeekISO }: CalendarV
       clients.map((client) => ({
         id: client.id,
         name: client.name,
-        // Read off what the client actually has stored rather than asserted. This was
-        // hardcoded 'Instagram' for every client, so a client whose suggestions are
-        // Facebook-only matched nothing and drew no slots at all.
-        platform: suggestionPlatform(client.best_times),
         bestTimes: client.best_times,
       })),
     [clients]

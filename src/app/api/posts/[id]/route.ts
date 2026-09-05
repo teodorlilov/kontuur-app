@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { resolveAuth } from '@/lib/auth/resolve-auth'
-import { POST_COLUMNS } from '@/lib/queries/select-columns'
+import { POST_COLUMNS, PUBLICATION_EMBED } from '@/lib/queries/select-columns'
 
 /**
  * Fetch one post.
@@ -24,7 +24,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   // Cast via unknown because Supabase cannot infer types from template-literal select strings.
   const { data: rawPost } = await supabase
     .from('posts')
-    .select(`${POST_COLUMNS}, clients(agency_id)`)
+    .select(`${POST_COLUMNS}, ${PUBLICATION_EMBED}, clients(agency_id)`)
     .eq('id', id)
     .single()
 

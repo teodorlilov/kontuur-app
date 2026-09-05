@@ -121,15 +121,6 @@ class GenerationPipeline {
       : original
   }
 
-  /**
-   * A brief with its own platform overrides the run's; everything else inherits.
-   * Prompt-cache note: system prompts cache per client+platform, so a mixed run
-   * warms one extra prefix per distinct brief platform — expected and bounded.
-   */
-  private platformFor(theme: EnrichedTheme): string {
-    return theme.platform ?? this.ctx.platform
-  }
-
   private buildThemeInput(theme: EnrichedTheme): SinglePostInput | CarouselInput {
     const base = {
       client: this.ctx.client,
@@ -147,10 +138,9 @@ class GenerationPipeline {
       return {
         ...base,
         slideCount: this.ctx.slideCount ?? DEFAULT_CAROUSEL_SLIDES,
-        platform: this.platformFor(theme),
       }
     }
-    return { ...base, platform: this.platformFor(theme), count: theme.count || 1 }
+    return { ...base, count: theme.count || 1 }
   }
 
   private buildGroundingContext(theme: EnrichedTheme) {
@@ -185,7 +175,6 @@ class GenerationPipeline {
     return {
       id: randomUUID(),
       client_id: this.ctx.client.id,
-      platform: this.platformFor(theme),
       status: 'draft',
       priority: theme.isPriority ?? false,
       topic_summary: theme.description,
@@ -220,7 +209,6 @@ class GenerationPipeline {
       caption: result.main_caption,
       slides: result.slides,
       client: this.ctx.client,
-      platform: this.platformFor(theme),
       sourceContext: this.buildGroundingContext(theme),
       theme: theme.description,
       targetPillar: theme.pillar,
@@ -296,7 +284,6 @@ class GenerationPipeline {
     return validatePostsBatch({
       captions,
       client: this.ctx.client,
-      platform: this.platformFor(theme),
       sourceContext: this.buildGroundingContext(theme),
       theme: theme.description,
       targetPillar: theme.pillar,

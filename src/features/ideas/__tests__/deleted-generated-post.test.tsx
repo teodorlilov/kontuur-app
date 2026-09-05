@@ -25,7 +25,6 @@ function idea(over: Partial<ClientIdea> = {}): ClientIdea {
     clientNiche: null,
     ideaText: 'Something the client asked for',
     extraNotes: null,
-    platform: null,
     targetDate: null,
     status: 'generated',
     generatedPostId: 'post-1',

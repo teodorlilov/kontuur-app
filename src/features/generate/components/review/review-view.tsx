@@ -34,7 +34,6 @@ type ReviewLayout = 'all' | 'focus'
 /** The run's fixed facts, threaded into the header meta and the work column. */
 interface RunContext {
   clientName: string
-  platform: string
   postType: string
   slideCount: number
   targetPostCount: number
@@ -281,7 +280,6 @@ export function ReviewView({
           <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-caption text-text2">
             {[
               runContext.clientName,
-              runContext.platform,
               runContext.postType === 'carousel'
                 ? `Carousel · ${runContext.slideCount} slides`
                 : 'Single image',
@@ -366,11 +364,9 @@ export function ReviewView({
               post={focused.post}
               visuals={visualsByDraft[focused.post.id]}
               positionInRun={`${focusedIndex + 1} of ${liveDrafts.length}`}
-              // The draft's own platform, not the run's — a brief can override it.
               // Requested posts carry no pillar; their origin is the label.
               metaLine={[
                 focused.post.priority ? 'Client idea' : focused.post.pillar,
-                focused.post.platform ?? runContext.platform,
                 runContext.postType,
               ]
                 .filter(Boolean)
@@ -421,11 +417,6 @@ export function ReviewView({
 
       <ScheduleDialog
         open={scheduleTarget !== null}
-        // Resolved from the target draft like requestedDate — its brief may have
-        // overridden the run platform.
-        platform={
-          posts.find((p) => p.post.id === scheduleTarget)?.post.platform ?? runContext.platform
-        }
         bestTime={bestTimeData}
         approving={approving}
         requestedDate={posts.find((p) => p.post.id === scheduleTarget)?.post.target_date ?? null}

@@ -21,7 +21,6 @@ export interface DiscardedDraft {
   pillar: string | null
   sourceUrl: string | null
   sourceType: string | null
-  platform: string | null
   discardedFrom: DiscardSource
   /**
    * Why, when a human said. Optional on purpose and NOT defaulted: the wizard never collects one,
@@ -36,7 +35,7 @@ export interface DiscardedDraft {
  *
  * Both discard surfaces feed one reader (`fetchSourceUsageStats` → `discardedCount`), and they
  * built the row separately: the wizard through a zod schema, `deletePost` from a hand-assembled
- * literal with no schema at all. Same eight columns, two spellings, and only one of them coalesced
+ * literal with no schema at all. Same columns, two spellings, and only one of them coalesced
  * its optional provenance fields.
  *
  * Best-effort by contract. This is telemetry attached to an action the user has already taken —
@@ -51,7 +50,6 @@ export async function recordDiscardedDraft(draft: DiscardedDraft): Promise<boole
     pillar: draft.pillar,
     source_url: draft.sourceUrl,
     source_type: draft.sourceType,
-    platform: draft.platform,
     discarded_from: draft.discardedFrom,
     reason: draft.reason ?? null,
   })

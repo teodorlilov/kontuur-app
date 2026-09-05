@@ -9,15 +9,15 @@ function draft(overrides: Partial<DraftProfile> = {}): DraftProfile {
 
 describe('blockingFields', () => {
   it('blocks on a question the sheet raised and the user has not answered', () => {
-    expect(blockingFields(draft(), ['goal', 'platform'])).toEqual(['goal', 'platform'])
+    expect(blockingFields(draft(), ['goal', 'tone'])).toEqual(['goal', 'tone'])
   })
 
   it('clears each one as it is answered', () => {
     const answered = draft({ goal: 'Book a viewing' })
-    expect(blockingFields(answered, ['goal', 'platform'])).toEqual(['platform'])
+    expect(blockingFields(answered, ['goal', 'tone'])).toEqual(['tone'])
 
-    const both = draft({ goal: 'Book a viewing', platform: 'Instagram' })
-    expect(blockingFields(both, ['goal', 'platform'])).toEqual([])
+    const both = draft({ goal: 'Book a viewing', tone: 'warm and direct' })
+    expect(blockingFields(both, ['goal', 'tone'])).toEqual([])
   })
 
   it('always blocks a nameless client, even when nothing was asked', () => {

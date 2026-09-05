@@ -9,7 +9,7 @@ import { toast } from '@/components/ui/toast'
 import { disconnectConnection } from '@/features/clients/actions/connection-actions'
 import { isTokenExpired } from '@/lib/meta/token-expiry'
 import { cn } from '@/utils/cn'
-import { PLATFORM_ACCOUNTS, type PlatformAccount } from '@/utils/constants'
+import { PLATFORM_ACCOUNTS, type PlatformAccount } from '@/features/clients/lib/platform-accounts'
 import type { MetaConnection } from '@/types/api'
 
 interface ConnectedAccountsTabProps {

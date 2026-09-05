@@ -4,7 +4,7 @@ import type { Json, PostRow } from '@/types'
  * The columns a generated draft carries into `posts`, however it gets there.
  *
  * Two callers write a draft: the generate cron inserts it directly, and the review
- * flow POSTs it to `/api/posts` on approval. Both enumerated these fourteen columns
+ * flow POSTs it to `/api/posts` on approval. Both enumerated these columns
  * by hand and had already drifted — the cron omitted the `?? null` coalescing the
  * other applied, so a draft with an undefined provenance field wrote differently
  * depending on which path saved it.
@@ -20,7 +20,7 @@ import type { Json, PostRow } from '@/types'
  */
 type DraftColumnSource = Pick<
   PostRow,
-  'client_id' | 'caption' | 'platform' | 'post_type' | 'quality_score_avg'
+  'client_id' | 'caption' | 'post_type' | 'quality_score_avg'
 > & {
   /** Carried un-narrowed, the same way PostData does — the column is structurally Json. */
   slides_json: unknown
@@ -44,14 +44,13 @@ export function draftColumns(post: DraftColumnSource) {
   return {
     client_id: post.client_id,
     caption: post.caption,
-    platform: post.platform,
     post_type: post.post_type,
     // WHY as: the read side types both columns `unknown` on purpose — each surface
     // parses them into its own shape rather than trusting the column — but a write
     // needs the column's actual type. This is the one place a draft becomes a write,
     // so the narrowing happens once here instead of at every caller. It replaces a
     // blanket `as posts['Insert']` on the whole row, which suppressed type checking
-    // for all fourteen columns rather than these two.
+    // for every column rather than these two.
     slides_json: (post.slides_json ?? null) as Json,
     validation_json: (post.validation_json ?? null) as Json,
     // The AI's own text, kept for the edit-diff the learning loop reads. MUST

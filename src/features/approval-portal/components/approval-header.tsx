@@ -7,7 +7,6 @@ interface ReviewHeaderProps {
   agencyName: string
   clientName: string
   dateRange: string
-  platform: string
   totalCount: number
   pendingCount: number
   approvedCount: number
@@ -53,7 +52,6 @@ export function ReviewHeader({
   agencyName,
   clientName,
   dateRange,
-  platform,
   totalCount,
   pendingCount,
   approvedCount,
@@ -82,8 +80,6 @@ export function ReviewHeader({
         <span>{clientName}</span>
         <span className="text-ink/20">·</span>
         <span>{dateRange}</span>
-        <span className="text-ink/20">·</span>
-        <span>{platform}</span>
       </div>
 
       {/* Status chips */}

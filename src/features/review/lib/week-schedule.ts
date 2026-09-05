@@ -29,7 +29,9 @@ export async function fetchWeekSchedule(
     .from('posts')
     .select('client_id, scheduled_at')
     .in('client_id', clientIds)
-    .in('status', ['scheduled', 'publishing', 'published'] satisfies readonly PostStatus[])
+    // Editorial only: a post that has gone out is still 'scheduled', because occupying a
+    // slot is what this measures and publishing does not vacate it.
+    .in('status', ['scheduled'] satisfies readonly PostStatus[])
     .gte('scheduled_at', from)
     .lt('scheduled_at', toEnd)
   if (error) throw new Error(`week schedule query failed: ${error.message}`)

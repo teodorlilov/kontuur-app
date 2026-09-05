@@ -11,8 +11,21 @@ import { POST_STATUSES } from '@/lib/validation'
  * exactly what this file exists to prevent.
  */
 describe('POST_STATUS_CHIP', () => {
-  it('covers every status the database can hold', () => {
-    expect(Object.keys(POST_STATUS_CHIP).sort()).toEqual([...POST_STATUSES].sort())
+  it('covers every editorial status the database can hold', () => {
+    // A post whose status has no chip renders blank, so this must never fall behind the
+    // column. It is a superset now: the chip also speaks the publish states, which live on
+    // the destinations rather than on posts.
+    for (const status of POST_STATUSES) {
+      expect(POST_STATUS_CHIP[status]).toBeDefined()
+    }
+  })
+
+  it('covers every publish state a destination can produce', () => {
+    // The other half of the same guarantee. 'unpublished' is deliberately absent — it is
+    // the state that means "show the editorial status instead".
+    for (const state of ['publishing', 'published', 'partly', 'failed'] as const) {
+      expect(POST_STATUS_CHIP[state]).toBeDefined()
+    }
   })
 
   it('only uses tones that exist in PILL_TONES', () => {

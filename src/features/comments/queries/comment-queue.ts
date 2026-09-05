@@ -160,7 +160,7 @@ type CommentRow = IGCommentColumns
  * `ig_post_metrics` row, and `row-mirrors.test.ts` exists because that pattern
  * drifted from its table for three months without anything noticing.
  */
-type MediaFacts = Pick<IGPostMetricsRow, 'caption' | 'thumbnail_url' | 'permalink'>
+type MediaFacts = Pick<IGPostMetricsRow, 'caption' | 'thumbnail_url' | 'permalink' | 'posted_at'>
 
 async function fetchPosts(
   admin: Admin,
@@ -195,7 +195,7 @@ async function fetchMediaFacts(
   // for the analytics report and this needs three.
   const { data, error } = await admin
     .from('ig_post_metrics')
-    .select('ig_media_id, caption, thumbnail_url, permalink')
+    .select('ig_media_id, caption, thumbnail_url, permalink, posted_at')
     .in('client_id', clientIds)
     .in('ig_media_id', mediaIds)
   if (error) throw new Error(`media facts query failed: ${error.message}`)
@@ -302,7 +302,10 @@ function assemble(
       // recognise. Instagram's copy is the fallback for posts we did not publish.
       caption: post?.caption ?? facts?.caption ?? null,
       pillar: post?.pillar ?? null,
-      publishedAt: post?.published_at ?? null,
+      // The destination's, not the post's. `ig_post_metrics.posted_at` is the same
+      // instant recorded by the nightly sync, and it is already loaded here — reaching
+      // for the publication row as well would be a second query for one timestamp.
+      publishedAt: facts?.posted_at ?? null,
       imageUrl:
         (row.post_id ? context.images.get(row.post_id)?.[0]?.publicUrl : null) ??
         facts?.thumbnail_url ??

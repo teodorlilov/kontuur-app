@@ -41,7 +41,7 @@ export async function generatePost(
   input: SinglePostInput,
   onToken?: (text: string) => void
 ): Promise<ParsedPost[]> {
-  const systemPrompt = buildGenerateSystemPrompt(input.client, input.platform, 'single')
+  const systemPrompt = buildGenerateSystemPrompt(input.client, 'single')
   const userMessage = buildGenerateUserPrompt(input)
   const outputSchema = buildPostsOutputSchema(input.count)
 
@@ -83,7 +83,7 @@ export async function revisePost(
 ): Promise<string | null> {
   const outputSchema = buildPostsOutputSchema(1)
   const message = await callAnthropic({
-    systemPrompt: buildGenerateSystemPrompt(input.client, input.platform, 'single'),
+    systemPrompt: buildGenerateSystemPrompt(input.client, 'single'),
     userMessage: buildRevisionPrompt(notes),
     conversationHistory: [
       { role: 'user', content: buildGenerateUserPrompt(input) },

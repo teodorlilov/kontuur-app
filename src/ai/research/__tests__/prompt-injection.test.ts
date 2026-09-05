@@ -153,8 +153,6 @@ describe('generation system prompt', () => {
   }
 
   it('carries the defensive clause', () => {
-    expect(buildGenerateSystemPrompt(client(), 'Instagram', 'single')).toContain(
-      DEFENSIVE_DATA_CLAUSE
-    )
+    expect(buildGenerateSystemPrompt(client(), 'single')).toContain(DEFENSIVE_DATA_CLAUSE)
   })
 })

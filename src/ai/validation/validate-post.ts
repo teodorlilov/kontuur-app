@@ -36,7 +36,6 @@ interface ValidatePostInput {
   caption: string
   slides?: SlideText[]
   client: ClientData
-  platform: string
   sourceContext?: SourceContext
   theme?: string
   targetPillar?: string
@@ -46,7 +45,6 @@ interface ValidatePostInput {
 interface ValidatePostsBatchInput {
   captions: string[]
   client: ClientData
-  platform: string
   sourceContext?: SourceContext
   theme?: string
   targetPillar?: string
@@ -228,7 +226,6 @@ export async function validatePost(input: ValidatePostInput): Promise<PostValida
     caption: input.caption,
     slides: input.slides,
     client: input.client,
-    platform: input.platform,
     theme: input.theme,
     targetPillar: input.targetPillar,
     sourceContext: input.sourceContext,
@@ -269,7 +266,6 @@ export async function validatePostsBatch(
   const results = await validateQualityBatch({
     captions: input.captions,
     client: input.client,
-    platform: input.platform,
     theme: input.theme,
     targetPillar: input.targetPillar,
     sourceContext: input.sourceContext,

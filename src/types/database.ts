@@ -321,7 +321,6 @@ export type Database = {
           generated_post_id: string | null
           id: string
           idea_text: string
-          platform: string | null
           read_at: string | null
           status: string
           submitted_at: string
@@ -335,7 +334,6 @@ export type Database = {
           generated_post_id?: string | null
           id?: string
           idea_text: string
-          platform?: string | null
           read_at?: string | null
           status?: string
           submitted_at?: string
@@ -349,7 +347,6 @@ export type Database = {
           generated_post_id?: string | null
           id?: string
           idea_text?: string
-          platform?: string | null
           read_at?: string | null
           status?: string
           submitted_at?: string
@@ -539,7 +536,6 @@ export type Database = {
           discarded_from: string
           id: string
           pillar: string | null
-          platform: string | null
           reason: string | null
           source_type: string | null
           source_url: string | null
@@ -551,7 +547,6 @@ export type Database = {
           discarded_from: string
           id?: string
           pillar?: string | null
-          platform?: string | null
           reason?: string | null
           source_type?: string | null
           source_url?: string | null
@@ -563,7 +558,6 @@ export type Database = {
           discarded_from?: string
           id?: string
           pillar?: string | null
-          platform?: string | null
           reason?: string | null
           source_type?: string | null
           source_url?: string | null
@@ -592,7 +586,6 @@ export type Database = {
           created_at: string | null
           id: string
           kind: string
-          platform: string | null
           slot_key: string | null
           status: string
           target_count: number | null
@@ -603,7 +596,6 @@ export type Database = {
           created_at?: string | null
           id?: string
           kind?: string
-          platform?: string | null
           slot_key?: string | null
           status?: string
           target_count?: number | null
@@ -614,7 +606,6 @@ export type Database = {
           created_at?: string | null
           id?: string
           kind?: string
-          platform?: string | null
           slot_key?: string | null
           status?: string
           target_count?: number | null
@@ -1320,6 +1311,59 @@ export type Database = {
           },
         ]
       }
+      post_publications: {
+        Row: {
+          account_id: string | null
+          created_at: string
+          external_post_id: string | null
+          id: string
+          platform: string
+          post_id: string
+          publish_attempts: number
+          publish_claimed_at: string | null
+          publish_error: string | null
+          publish_ref: string | null
+          published_at: string | null
+          status: string
+        }
+        Insert: {
+          account_id?: string | null
+          created_at?: string
+          external_post_id?: string | null
+          id?: string
+          platform: string
+          post_id: string
+          publish_attempts?: number
+          publish_claimed_at?: string | null
+          publish_error?: string | null
+          publish_ref?: string | null
+          published_at?: string | null
+          status: string
+        }
+        Update: {
+          account_id?: string | null
+          created_at?: string
+          external_post_id?: string | null
+          id?: string
+          platform?: string
+          post_id?: string
+          publish_attempts?: number
+          publish_claimed_at?: string | null
+          publish_error?: string | null
+          publish_ref?: string | null
+          published_at?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "post_publications_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       posting_schedules: {
         Row: {
           auto_generate_day: string
@@ -1371,17 +1415,9 @@ export type Database = {
           generated_caption: string | null
           generated_slides_json: Json | null
           id: string
-          ig_account_id: string | null
-          ig_creation_id: string | null
-          ig_media_id: string | null
           pillar: string | null
-          platform: string
           post_type: string
           priority: boolean
-          publish_attempts: number
-          publish_claimed_at: string | null
-          publish_error: string | null
-          published_at: string | null
           quality_score_avg: number | null
           rewrite_count: number
           scheduled_at: string | null
@@ -1408,17 +1444,9 @@ export type Database = {
           generated_caption?: string | null
           generated_slides_json?: Json | null
           id?: string
-          ig_account_id?: string | null
-          ig_creation_id?: string | null
-          ig_media_id?: string | null
           pillar?: string | null
-          platform: string
           post_type?: string
           priority?: boolean
-          publish_attempts?: number
-          publish_claimed_at?: string | null
-          publish_error?: string | null
-          published_at?: string | null
           quality_score_avg?: number | null
           rewrite_count?: number
           scheduled_at?: string | null
@@ -1445,17 +1473,9 @@ export type Database = {
           generated_caption?: string | null
           generated_slides_json?: Json | null
           id?: string
-          ig_account_id?: string | null
-          ig_creation_id?: string | null
-          ig_media_id?: string | null
           pillar?: string | null
-          platform?: string
           post_type?: string
           priority?: boolean
-          publish_attempts?: number
-          publish_claimed_at?: string | null
-          publish_error?: string | null
-          published_at?: string | null
           quality_score_avg?: number | null
           rewrite_count?: number
           scheduled_at?: string | null
@@ -1631,12 +1651,12 @@ export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1660,11 +1680,11 @@ export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1685,11 +1705,11 @@ export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1710,11 +1730,11 @@ export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1727,11 +1747,11 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
+    : never) = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }

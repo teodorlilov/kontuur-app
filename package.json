@@ -19,7 +19,7 @@
     "db:status": "npx supabase migration list --linked",
     "db:dump": "mkdir -p supabase/.temp && npx supabase db dump --linked --schema public -f supabase/.temp/prod-schema.sql && echo '→ supabase/.temp/prod-schema.sql (gitignored)'",
     "db:rls": "npm run --silent db:dump && node scripts/rls-report.mjs",
-    "db:types": "npx supabase gen types typescript --linked > src/types/database.ts",
+    "db:types": "mkdir -p supabase/.temp && npx supabase gen types typescript --linked > supabase/.temp/database.ts && grep -q 'export type Database' supabase/.temp/database.ts && mv supabase/.temp/database.ts src/types/database.ts && echo '→ src/types/database.ts'",
     "prepare": "husky",
     "arch": "node scripts/module-ownership.mjs",
     "writers": "node scripts/table-writers.mjs"

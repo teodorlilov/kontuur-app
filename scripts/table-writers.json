@@ -91,13 +91,15 @@
     "src/features/clients/actions/client-actions.ts": "createClient seeds it; updateSchedule is the schedule editor.",
     "src/features/clients/lib/provision-client.ts": "provisionClient — the ONE way a client and its mandatory children are created. The onboarding form and solo signup both build them here; before 2026-08-31 solo signup built them by hand and shipped without a visual identity, without a web-research row, and without a rollback."
   },
+  "post_publications": {
+    "src/features/publishing/lib/publication-store.ts": "The ONE writer, with seven operations: createPublications records where a post is going, withdrawPendingPublications drops the destinations of a post pulled off the calendar (only ones that have not gone out, so unscheduling cannot erase that it published), claimPublication takes a destination for an attempt, setPublishRef persists the reference a network handed back, markPublicationPublished and markPublicationFailed record the outcome, and rearmPublication is the only place attempts are reset. They are in one file BY DESIGN — they are the states of one lifecycle."
+  },
   "posts": {
     "src/lib/actions/post-actions.ts": "The agency's edits: updatePost (nine validated columns), savePostCopy (caption and slides, partial — the calendar saves a caption with no slides), persistRewrite, schedulePosts, deletePost.",
     "src/app/api/posts/route.ts": "POST creates a post from an approved wizard draft, through draftColumns.",
     "src/app/api/cron/generate/route.ts": "The nightly batch inserts generated drafts, through the same draftColumns.",
-    "src/features/publishing/lib/publish-post.ts": "claimPost takes a post for publishing and markPublished/markFailed record the outcome. Three operations in one file BY DESIGN — they are the states of one lifecycle, and the registry cannot see a fourth added here.",
-    "src/app/api/posts/[id]/publish/route.ts": "Publish-now sets the post publishing before handing off, so the manual path takes the same claim the cron does.",
-    "src/features/calendar/actions/post-recovery.ts": "rearmFailedPost — the user putting a failed post back in the queue. The only place attempts are reset.",
+    "src/app/api/posts/[id]/publish/route.ts": "Publish-now stamps the slot on a post published straight from the unscheduled tray — scheduled_at plus the status statusForSlot pairs with it — because the cron's backstop window only selects rows that have one. It writes nothing else: the claim, the attempt counter and the outcome are the publication's, in publication-store.ts.",
+    "src/features/calendar/actions/post-recovery.ts": "rearmFailedPublication — the user putting a failed destination back in the queue. It writes the post's SLOT (scheduled_at with the status statusForSlot pairs with it) and nothing else; the attempt counter it used to reset belongs to the publication now, in rearmPublication.",
     "src/app/api/cron/visuals/route.ts": "The visuals lane's own attempt counter and status, which is separate from the publish counter on purpose.",
     "src/lib/visual/post-color.ts": "claimScheme — a compare-and-swap on visual_ground/visual_accent so two lanes generating one carousel cannot split its colours."
   },

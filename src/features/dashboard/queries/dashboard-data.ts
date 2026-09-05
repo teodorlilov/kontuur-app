@@ -97,7 +97,6 @@ export async function fetchDashboardData(
   const toPublish = (row: PostSummary) => ({
     id: row.id,
     clientName: nameFor(row.client_id),
-    platform: row.platform,
     scheduledAt: row.scheduled_at,
   })
 
@@ -114,7 +113,6 @@ export async function fetchDashboardData(
     pendingPosts: queue.map((row) => ({
       id: row.id,
       caption: row.caption,
-      platform: row.platform,
       pillar: row.pillar ?? '',
       createdAt: row.created_at,
       clientName: nameFor(row.client_id),

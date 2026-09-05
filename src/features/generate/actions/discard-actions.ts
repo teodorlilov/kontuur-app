@@ -22,7 +22,7 @@ export async function logDiscardedDraft(input: DiscardedDraftInput): Promise<Act
   const owned = await verifyClientOwnership(supabase, parsed.data.clientId, agencyId)
   if (!owned) return { ok: false, error: 'Not found' }
 
-  // The row itself is built and written in one place — `deletePost` records the same eight columns
+  // The row itself is built and written in one place — `deletePost` records the same columns
   // for a discard from the review queue, and the two assembled them separately.
   const written = await recordDiscardedDraft({
     clientId: parsed.data.clientId,
@@ -30,7 +30,6 @@ export async function logDiscardedDraft(input: DiscardedDraftInput): Promise<Act
     pillar: parsed.data.pillar,
     sourceUrl: parsed.data.sourceUrl,
     sourceType: parsed.data.sourceType,
-    platform: parsed.data.platform,
     discardedFrom: 'wizard',
     // No reason: the wizard never asks for one, and `distill-style-memo` reads only rows that
     // carry one. Sending a placeholder would put wizard discards in that pool.

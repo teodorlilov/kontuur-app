@@ -8,7 +8,6 @@ export interface RewriteContext {
   slidesJson?: SlideText[]
   aiTells: string[]
   qualityIssues?: string[]
-  platform: string
   sourceExcerpt?: string | null
   sourceUrl?: string | null
   rewriteReason: 'quality' | 'language' | 'source_grounding' | 'manual'
@@ -20,7 +19,6 @@ export interface RewriteCaptionInput {
   aiTells: string[]
   qualityIssues?: string[]
   client: ClientData
-  platform: string
 }
 
 export interface RewriteCarouselInput {
@@ -29,7 +27,6 @@ export interface RewriteCarouselInput {
   aiTells: string[]
   qualityIssues?: string[]
   client: ClientData
-  platform: string
 }
 
 export interface RewriteCarouselResult {

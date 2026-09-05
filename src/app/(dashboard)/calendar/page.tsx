@@ -3,8 +3,14 @@ import { requireSessionUser } from '@/lib/auth/session'
 import { getCachedAgency, getCachedAgencyClients } from '@/lib/queries/cache'
 import { getMondayISO } from '@/utils/date-helpers'
 import { getCalendarWindow, mondayOfKey } from '@/features/calendar/lib/calendar-window'
-import { CALENDAR_POST_COLUMNS, type CalendarPostColumns } from '@/lib/queries/select-columns'
+import {
+  POST_COLUMNS,
+  PUBLICATION_EMBED,
+  type PostColumns,
+  type PublicationEmbedColumns,
+} from '@/lib/queries/select-columns'
 import type { PostStatus } from '@/lib/validation'
+import { toPublicationSummary } from '@/lib/posts/publish-state'
 import type { Tables } from '@/types/database'
 import { fetchImagesByPost } from '@/lib/posts/fetch-post-images'
 import { parseBestTimes } from '@/lib/suggested-times/schemas'
@@ -55,39 +61,54 @@ export default async function CalendarPage({ searchParams }: CalendarPageProps) 
     social_connections: Array<{ platform: string; account_id: string | null }> | null
   }
 
-  const [{ data: clientRows }, { data: postRows }] = await Promise.all([
-    supabase
-      .from('clients')
-      .select(
-        'id, name, contact_email, brand_profiles(best_time_json, best_time_updated_at), social_connections(platform, account_id)'
-      )
-      .eq('agency_id', agencyId),
-    clientIds.length > 0
-      ? supabase
-          .from('posts')
-          .select(
-            `${CALENDAR_POST_COLUMNS}, post_approval_tokens(status, client_note, created_at, responded_at, expires_at)`
-          )
-          .in('client_id', clientIds)
-          .in('status', [
-            'approved',
-            'scheduled',
-            'publishing',
-            'published',
-            'failed',
-          ] satisfies readonly PostStatus[])
-          // A post is in the window by when it goes out or when it went out.
-          // Dateless rows (approved but unslotted, on-demand publishes that
-          // failed before stamping) always ride along — they are the tray the
-          // calendar exists to drain, and a date filter would hide them.
-          .or(
-            `and(scheduled_at.gte.${window.from},scheduled_at.lt.${window.to}),` +
-              `and(published_at.gte.${window.from},published_at.lt.${window.to}),` +
-              `and(scheduled_at.is.null,published_at.is.null)`
-          )
-          .order('created_at', { ascending: false })
-      : Promise.resolve({ data: [] as unknown[] }),
-  ])
+  const [{ data: clientRows, error: clientError }, { data: postRows, error: postError }] =
+    await Promise.all([
+      supabase
+        .from('clients')
+        .select(
+          'id, name, contact_email, brand_profiles(best_time_json, best_time_updated_at), social_connections(platform, account_id)'
+        )
+        .eq('agency_id', agencyId),
+      clientIds.length > 0
+        ? supabase
+            .from('posts')
+            .select(
+              `${POST_COLUMNS}, ${PUBLICATION_EMBED}, post_approval_tokens(status, client_note, created_at, responded_at, expires_at)`
+            )
+            .in('client_id', clientIds)
+            // Editorial statuses only: a post that has gone out, or tried to, is still
+            // 'scheduled' here — where it got to is its publications' business, and they ride
+            // along on the embed.
+            .in('status', ['approved', 'scheduled'] satisfies readonly PostStatus[])
+            // A post is in the window by when it goes out. Dateless rows (approved but
+            // unslotted) always ride along — they are the tray the calendar exists to drain,
+            // and a date filter would hide them.
+            //
+            // The old second arm matched on posts.published_at, which no longer exists: an
+            // on-demand publish stamps scheduled_at at the moment it starts (see the publish
+            // route), so those rows are caught by the first arm now.
+            .or(
+              `and(scheduled_at.gte.${window.from},scheduled_at.lt.${window.to}),` +
+                `scheduled_at.is.null`
+            )
+            .order('created_at', { ascending: false })
+        : // `error: null` so the tuple keeps one shape — the guard below reads it off both arms.
+          Promise.resolve({ data: [] as unknown[], error: null }),
+    ])
+
+  /**
+   * Both errors were discarded, so any PostgREST failure rendered as a perfectly normal, empty
+   * calendar — the same shape as an agency with nothing scheduled. That is precisely how the
+   * coverage grid's broken query hid: a page that draws nothing looks like real data.
+   *
+   * Logged at the boundary and re-thrown, because there is no honest empty state to fall back
+   * to here. An error page says something is wrong; an empty calendar says the opposite.
+   */
+  const loadError = clientError ?? postError
+  if (loadError) {
+    console.error('[calendar] page query failed:', loadError.message)
+    throw new Error('Could not load the calendar')
+  }
 
   const clientList = (clientRows as ClientRow[] | null) ?? []
   // posts_per_week comes from the cached roster rather than a second query — it is
@@ -123,11 +144,12 @@ export default async function CalendarPage({ searchParams }: CalendarPageProps) 
     'status' | 'client_note' | 'created_at' | 'responded_at' | 'expires_at'
   >
 
-  // `CalendarPostColumns`, not a local Pick: this page used to restate 15 of the 23
+  // `PostColumns`, not a local Pick: this page used to restate 15 of the 23
   // columns POST_COLUMNS selects, so six arrived on every load typed as nothing — and
   // its list had already drifted from /review's equivalent.
-  type PostQueryRow = CalendarPostColumns & {
+  type PostQueryRow = PostColumns & {
     post_approval_tokens: ApprovalTokenRow[]
+    post_publications: PublicationEmbedColumns[]
   }
 
   /**
@@ -158,7 +180,12 @@ export default async function CalendarPage({ searchParams }: CalendarPageProps) 
     // not excess-property-check a spread, so dropping it from `CalendarPost` alone left the
     // raw blob riding along in `rest` on every post — typed as absent, shipped anyway, read
     // by nothing. The type change removed the zod chunk; only this removes the payload.
-    const { post_approval_tokens: _tokens, validation_json: rawValidation, ...rest } = p
+    const {
+      post_approval_tokens: _tokens,
+      post_publications: publicationRows,
+      validation_json: rawValidation,
+      ...rest
+    } = p
     return {
       ...rest,
       slides_json: p.slides_json as CalendarPost['slides_json'],
@@ -168,6 +195,9 @@ export default async function CalendarPage({ searchParams }: CalendarPageProps) 
       // exactly what the card already did when its own parse returned null.
       validation: toValidationData(rawValidation),
       client_name: clientNameMap.get(p.client_id) ?? 'Unknown',
+      // Renamed on the way out, once: the card speaks camelCase and the table does not, and
+      // leaving the raw shape through would put that translation in every consumer.
+      publications: publicationRows.map(toPublicationSummary),
       images: imagesByPost.get(p.id) ?? [],
       approval_status: token?.status ?? null,
       approval_client_note: token?.client_note ?? null,

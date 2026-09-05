@@ -14,7 +14,6 @@ export type DraftFieldId =
   | 'palette'
   | 'style'
   | 'schedule'
-  | 'platform'
 
 /** When posts are generated. `day` is a `WEEKDAY_OPTIONS` value; `time` is 24h `HH:mm`. */
 export interface DraftSchedule {
@@ -43,8 +42,6 @@ export interface DraftProfile {
   /** Palette and brand style travel together — they are one stored object. */
   identity: VisualIdentity
   schedule: DraftSchedule
-  /** Empty until the user picks one; nothing is preselected. */
-  platform: string
   /** Not a row on the sheet, but it drives compliance downstream, so it must survive the draft. */
   isHealthNiche: boolean
 }

@@ -2,28 +2,23 @@ import { describe, it, expect } from 'vitest'
 import { generateStreamSchema, priorityPostSchema } from '../schemas'
 
 /**
- * These pin the wire contract that keeps posts.platform canonical: the enum in
- * priorityPostSchema is the only thing standing between a hand-made request and
- * the display-case CHECK on the column (20260809).
+ * These pin the wire contract for a brief. It used to be about keeping `posts.platform`
+ * canonical — the enum here was the only thing between a hand-made request and the
+ * display-case CHECK on that column. Neither the column nor the field exists: a brief
+ * describes what to write, and where it goes is settled when the post is scheduled.
  */
 describe('priorityPostSchema', () => {
   const brief = { title: 'Autumn offer' }
 
-  it("defaults platform to '' — inherit the run platform", () => {
+  it('defaults the optional fields to empty', () => {
     const parsed = priorityPostSchema.parse(brief)
-    expect(parsed.platform).toBe('')
     expect(parsed.brief).toBe('')
     expect(parsed.targetDate).toBe('')
   })
 
-  it("keeps '' and accepts canonical platform names", () => {
-    expect(priorityPostSchema.parse({ ...brief, platform: '' }).platform).toBe('')
-    expect(priorityPostSchema.parse({ ...brief, platform: 'Instagram' }).platform).toBe('Instagram')
-  })
-
-  it('rejects a non-canonical spelling', () => {
-    expect(priorityPostSchema.safeParse({ ...brief, platform: 'instagram' }).success).toBe(false)
-    expect(priorityPostSchema.safeParse({ ...brief, platform: 'Threads' }).success).toBe(false)
+  it('drops a platform rather than accepting one', () => {
+    const parsed = priorityPostSchema.parse({ ...brief, platform: 'Instagram' })
+    expect(parsed).not.toHaveProperty('platform')
   })
 
   it('requires a title', () => {
@@ -58,7 +53,6 @@ describe('generateStreamSchema', () => {
   }
   const body = {
     clientId: 'client-1',
-    platform: 'Instagram',
     postType: 'single',
     targetPostCount: 2,
     preloadedClientData: clientData,
@@ -67,19 +61,14 @@ describe('generateStreamSchema', () => {
   it('accepts briefs of the real shape and applies their defaults', () => {
     const parsed = generateStreamSchema.parse({
       ...body,
-      priorityPosts: [{ title: 'The idea', brief: 'notes', platform: 'Facebook' }],
+      priorityPosts: [{ title: 'The idea', brief: 'notes' }],
     })
-    expect(parsed.priorityPosts?.[0]?.platform).toBe('Facebook')
+    expect(parsed.priorityPosts?.[0]?.brief).toBe('notes')
     expect(parsed.priorityPosts?.[0]?.targetDate).toBe('')
   })
 
-  it('rejects a brief with a bad platform, and a bad run platform', () => {
-    expect(
-      generateStreamSchema.safeParse({
-        ...body,
-        priorityPosts: [{ title: 'x', platform: 'instagram' }],
-      }).success
-    ).toBe(false)
-    expect(generateStreamSchema.safeParse({ ...body, platform: 'instagram' }).success).toBe(false)
+  it('takes no run platform — a run is not aimed at a network', () => {
+    const parsed = generateStreamSchema.parse({ ...body, platform: 'Instagram' })
+    expect(parsed).not.toHaveProperty('platform')
   })
 })

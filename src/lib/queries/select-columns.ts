@@ -15,6 +15,7 @@ import type {
   IGAudienceSnapshotsRow,
   IGCommentRow,
   IGPostMetricsRow,
+  PostPublicationRow,
   PostRow,
   SocialConnectionRow,
   UserRow,
@@ -59,14 +60,12 @@ export const POST_COLUMN_KEYS = [
   'id',
   'client_id',
   'caption',
-  'platform',
   'post_type',
   'slides_json',
   'validation_json',
   'status',
   'priority',
   'scheduled_at',
-  'published_at',
   'quality_score_avg',
   'was_rewritten',
   'rewrite_count',
@@ -97,29 +96,72 @@ export const POST_COLUMNS = POST_COLUMN_KEYS.join(', ') as Join<typeof POST_COLU
  */
 export type PostColumns = Pick<PostRow, (typeof POST_COLUMN_KEYS)[number]>
 
-/**
- * The calendar's projection: the post columns, plus why a publish failed.
+/*
+ * The calendar had its own projection until this change. It differed by exactly two columns,
+ * `publish_error` and `publish_attempts`, and both moved onto `post_publications` when a post
+ * gained more than one destination — a failure belongs to the destination that had it, not to
+ * the content. That left `CALENDAR_POST_COLUMN_KEYS` a verbatim spread of `POST_COLUMN_KEYS`
+ * and `CalendarPostColumns` type-identical to `PostColumns`: one projection under two names.
  *
- * `POST_COLUMNS` is deliberately not widened. Its six other readers have no use for
- * these two, and it is read for every post they hold — a failure reason is a string of
- * unbounded length on a query the dashboard runs on every load.
- *
- * Extended from the same array rather than written out again, so a column added above
- * reaches this list too. `publish_claimed_at` is not here: the scheduler writes it and
- * nothing displays it, so selecting it would be fetching a lock for a human to look at.
+ * It was kept for a while on the argument that the calendar is the reader most likely to need
+ * a column the others do not. That is a future need, and carrying a duplicate for it is what
+ * CLAUDE.md's "abstract only what is needed now" rules out — re-splitting is two lines on the
+ * day it is actually needed. The calendar selects `POST_COLUMNS` with `PUBLICATION_EMBED`.
  */
-export const CALENDAR_POST_COLUMN_KEYS = [
-  ...POST_COLUMN_KEYS,
+
+/**
+ * A post's destinations, embedded.
+ *
+ * Every surface that used to read `posts.status` for 'published'/'failed' reads these
+ * instead, because that is where the answer moved. Named once so the calendar, the review
+ * queue and the dashboard cannot embed three different subsets and disagree about what a
+ * post's publish state is.
+ */
+/**
+ * Everything a publish attempt reads from a destination.
+ *
+ * Lived in `publication-store.ts` as a hand-typed 11-column string beside a `Pick` listing the
+ * same eleven — one column list written twice, in a feature, while this file already owned the
+ * other projection of the same table (`PUBLICATION_EMBED` below). Same shape as every other
+ * projection here now: one key array, joined for the query and `Pick`ed for the type, so a
+ * column cannot reach one and miss the other.
+ *
+ * The lifecycle narrowing stays with the store — `PublicationStatus` lives in
+ * `lib/posts/publish-state.ts`, which imports from this file, and pulling it in here would
+ * close the loop.
+ */
+export const PUBLICATION_KEYS = [
+  'id',
+  'post_id',
+  'platform',
+  'account_id',
+  'status',
+  'external_post_id',
+  'publish_ref',
+  'published_at',
   'publish_error',
   'publish_attempts',
-] as const satisfies readonly (keyof PostRow)[]
+  'publish_claimed_at',
+] as const satisfies readonly (keyof PostPublicationRow)[]
 
-export const CALENDAR_POST_COLUMNS = CALENDAR_POST_COLUMN_KEYS.join(', ') as Join<
-  typeof CALENDAR_POST_COLUMN_KEYS,
+export const PUBLICATION_COLUMNS = PUBLICATION_KEYS.join(', ') as Join<
+  typeof PUBLICATION_KEYS,
   ', '
 >
 
-export type CalendarPostColumns = Pick<PostRow, (typeof CALENDAR_POST_COLUMN_KEYS)[number]>
+export type PublicationColumns = Pick<PostPublicationRow, (typeof PUBLICATION_KEYS)[number]>
+
+export const PUBLICATION_EMBED =
+  'post_publications(id, platform, status, published_at, publish_error)'
+
+/**
+ * The embed as a type. Derived, not restated — `row-mirrors.test.ts` correctly called the
+ * hand-written version a copy of the table, which is how a projection and its type drift.
+ */
+export type PublicationEmbedColumns = Pick<
+  PostPublicationRow,
+  'id' | 'platform' | 'status' | 'published_at' | 'publish_error'
+>
 
 // clients
 export const CLIENT_COLUMNS =
@@ -367,15 +409,17 @@ export const IG_POST_METRIC_COLUMNS = IG_POST_METRIC_KEYS.join(', ') as Join<
 export type IGPostMetricColumns = Pick<IGPostMetricsRow, (typeof IG_POST_METRIC_KEYS)[number]>
 
 /**
- * posts, as the analytics union reads it: Kontuur's own published ledger fills
- * the trend's publish pins when Instagram no longer reports a post (deleted
- * after publish) or the nightly sync has not seen it yet.
+ * posts, as the analytics union reads it: Kontuur's own published ledger fills the trend's
+ * publish pins when Instagram no longer reports a post (deleted after publish) or the
+ * nightly sync has not seen it yet.
+ *
+ * The media id and the publish time are no longer here — they belong to the destination
+ * that produced them, so the pin query embeds `PUBLICATION_EMBED` and reads them from
+ * there. A post published to two networks has two of each.
  */
 const PUBLISHED_POST_PIN_KEYS = [
   'id',
-  'ig_media_id',
   'caption',
-  'published_at',
   'post_type',
 ] as const satisfies readonly (keyof PostRow)[]
 
@@ -384,25 +428,35 @@ export const PUBLISHED_POST_PIN_COLUMNS = PUBLISHED_POST_PIN_KEYS.join(', ') as 
   ', '
 >
 
-export type PublishedPostPinColumns = Pick<PostRow, (typeof PUBLISHED_POST_PIN_KEYS)[number]>
+type PublishedPostPinColumns = Pick<PostRow, (typeof PUBLISHED_POST_PIN_KEYS)[number]>
 
 /**
- * posts, as the comments queue reads it: enough to render the post a comment sits
- * under, beside the comment.
+ * A published destination with the post it carried — what the pin query actually returns.
  *
- * A fourth posts projection rather than a reused one, because none of the three
- * above fits and widening any of them would cost every one of their callers.
- * PUBLISHED_POST_PIN has `ig_media_id` but no `pillar`; POST_COLUMNS has `pillar`
- * but no `ig_media_id`; PENDING_PREVIEW has neither. The overlap is real and the
- * gap is one column each way.
+ * The query reads `post_publications`, not `posts`: "published", "when" and "which media"
+ * are all facts about a destination now, and only the caption and post type come from the
+ * content. Filtering posts by a status they no longer carry is what this replaces.
+ */
+export type PublishedPostPin = Pick<PostPublicationRow, 'external_post_id' | 'published_at'> & {
+  posts: PublishedPostPinColumns
+}
+
+/**
+ * posts, as the comments queue reads it: enough to render the post a comment sits under,
+ * beside the comment.
+ *
+ * A fourth posts projection rather than a reused one, because none of the three above fits
+ * and widening any of them would cost every one of their callers.
+ *
+ * No media id: a comment already carries the `post_id` its sync resolved, so the queue
+ * joins on that rather than matching ids back through the post. No publish time either —
+ * that is the destination's, and the queue embeds `PUBLICATION_EMBED` for it.
  */
 const COMMENTED_POST_KEYS = [
   'id',
   'client_id',
-  'ig_media_id',
   'caption',
   'pillar',
-  'published_at',
 ] as const satisfies readonly (keyof PostRow)[]
 
 export const COMMENTED_POST_COLUMNS = COMMENTED_POST_KEYS.join(', ') as Join<
@@ -491,7 +545,7 @@ export const POST_IMAGE_STORAGE_COLUMNS = 'id, storage_path'
 // clause, and `mapIdeaRow` discarded both. They were bytes over the wire on every
 // idea, on a page that loads all of them.
 export const CLIENT_IDEA_COLUMNS =
-  'id, client_id, idea_text, extra_notes, platform, target_date, status, generated_post_id, submitted_at, read_at'
+  'id, client_id, idea_text, extra_notes, target_date, status, generated_post_id, submitted_at, read_at'
 
 // notifications
 export const NOTIFICATION_COLUMNS =
@@ -501,14 +555,12 @@ export const NOTIFICATION_COLUMNS =
 
 /** The PostSummary projection: upcoming publishes for the clients roster and the
  *  dashboard's next-up card, and failed ones for its publish list. */
-export const UPCOMING_POST_COLUMNS =
-  'id, client_id, platform, scheduled_at, clients!inner(agency_id)'
+export const UPCOMING_POST_COLUMNS = 'id, client_id, scheduled_at, clients!inner(agency_id)'
 
 /** One row of the dashboard's review-queue preview. */
 const PENDING_PREVIEW_KEYS = [
   'id',
   'caption',
-  'platform',
   'pillar',
   'created_at',
   'client_id',
@@ -528,7 +580,7 @@ export type PendingPreviewColumns = Pick<PostRow, (typeof PENDING_PREVIEW_KEYS)[
 
 /** A post whose client asked for changes, with the token carrying the note. */
 export const CHANGE_REQUEST_COLUMNS =
-  'id, client_id, caption, platform, post_type, slides_json, scheduled_at, ' +
+  'id, client_id, caption, post_type, slides_json, scheduled_at, ' +
   'clients!inner(agency_id), post_approval_tokens!inner(status, client_note, responded_at, batch_id)'
 
 /** Token rows used to work out a post's place within its approval batch. */

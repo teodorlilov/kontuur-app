@@ -3,7 +3,7 @@ import type { IGAudienceSnapshotColumns } from '@/lib/queries/select-columns'
 import type {
   IGAccountMetricColumns,
   IGPostMetricColumns,
-  PublishedPostPinColumns,
+  PublishedPostPin,
 } from '@/lib/queries/select-columns'
 import { toDateKey, zonedTimeToInstant } from '@/utils/date-helpers'
 import { parseTimestamp } from '@/utils/format'
@@ -504,7 +504,7 @@ const SYNC_GRACE_MS = 60 * 60 * 1000
 
 function buildPosts(
   postRows: IGPostMetricColumns[],
-  publishedPosts: PublishedPostPinColumns[],
+  publishedPosts: PublishedPostPin[],
   lastSyncAt: string | null,
   timezone: string
 ): {
@@ -542,20 +542,21 @@ function buildPosts(
   // metrics table already covers defers to that richer row.
   const knownMedia = new Set(postRows.map((row) => row.ig_media_id))
   const knownPostIds = new Set(postRows.map((row) => row.post_id))
-  for (const post of publishedPosts) {
-    if (!post.published_at) continue
-    if (post.ig_media_id && knownMedia.has(post.ig_media_id)) continue
+  for (const publication of publishedPosts) {
+    const post = publication.posts
+    if (!publication.published_at) continue
+    if (publication.external_post_id && knownMedia.has(publication.external_post_id)) continue
     if (knownPostIds.has(post.id)) continue
     const syncSawIt =
       lastSyncAt !== null &&
-      parseTimestamp(lastSyncAt).getTime() - parseTimestamp(post.published_at).getTime() >
+      parseTimestamp(lastSyncAt).getTime() - parseTimestamp(publication.published_at).getTime() >
         SYNC_GRACE_MS
     posts.push({
-      igMediaId: post.ig_media_id ?? `post-${post.id}`,
+      igMediaId: publication.external_post_id ?? `post-${post.id}`,
       postId: post.id,
       caption: post.caption,
-      postedAt: post.published_at,
-      postedDayKey: dayKeyOf(post.published_at, timezone),
+      postedAt: publication.published_at,
+      postedDayKey: dayKeyOf(publication.published_at, timezone),
       mediaType: APP_MEDIA_TYPE[post.post_type ?? ''] ?? 'IMAGE',
       mediaProductType: null,
       permalink: null,
@@ -702,7 +703,7 @@ export interface BuildReportInput {
    * CURRENTLY connected account (posts.ig_account_id stamp); rows published
    * to any other account never reach this builder.
    */
-  publishedPosts: PublishedPostPinColumns[]
+  publishedPosts: PublishedPostPin[]
   currentSnapshot: AudienceSnapshotInput | null
   previousSnapshot: AudienceSnapshotInput | null
   /** The agency's clock — publish hours and online hours both render in it. */

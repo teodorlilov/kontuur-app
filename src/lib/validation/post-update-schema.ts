@@ -1,8 +1,8 @@
 import { z } from 'zod'
-import { isUserSettablePostStatus, isValidPostPlatform } from '@/lib/validation'
+import { isUserSettablePostStatus } from '@/lib/validation'
 
 /**
- * What a user may write to a post's WORKFLOW state — status, slot, platform, provenance, judgement.
+ * What a user may write to a post's WORKFLOW state — status and slot.
  *
  * It was two schemas, then it was one covering too much. `updatePost` and a since-deleted
  * `PUT /api/posts/[id]` each restated the same eleven fields as `if (x !== undefined)`, and had
@@ -20,10 +20,11 @@ import { isUserSettablePostStatus, isValidPostPlatform } from '@/lib/validation'
  * things it must say ("a settable status", "an instant, or null to unschedule") are
  * runtime facts that a TypeScript shape cannot check on data arriving as JSON.
  *
- * `status` and `platform` defer to the two exported gates rather than re-deriving their
- * enums. `isValidPostPlatform` checks `PLATFORMS` — five display-case names — not the
- * two-member connection vocabulary in `POST_PLATFORMS`, and a `z.enum(POST_PLATFORMS)`
- * here would have started rejecting `'Instagram'` on the one column that stores it.
+ * `status` defers to the exported gate rather than re-deriving its enum.
+ *
+ * `platform` was here until Facebook: a post was written FOR a network, and this was the
+ * gate on that column. A post no longer has one — where it goes is decided per destination
+ * when it is scheduled, and lives in `post_publications`. There is nothing left to validate.
  */
 export const updatePostSchema = z
   .object({
@@ -35,7 +36,6 @@ export const updatePostSchema = z
      * is a wall-clock date with no zone and the ambiguity Phase 1 exists to remove.
      */
     scheduled_at: z.iso.datetime({ offset: true }).nullable(),
-    platform: z.string().refine(isValidPostPlatform),
   })
   .partial()
 
@@ -61,7 +61,7 @@ export type UpdatePostInput = z.infer<typeof updatePostSchema>
  * column, so `updatePost` must not be able to reach it, and a type is what says that at the
  * call site rather than in a comment.
  */
-export type PostFieldUpdate = Pick<UpdatePostInput, 'status' | 'platform'>
+export type PostFieldUpdate = Pick<UpdatePostInput, 'status'>
 
 /**
  * The two columns that carry a post's COPY, split out so one function owns them.

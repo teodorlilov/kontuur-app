@@ -1,5 +1,4 @@
 import { z } from 'zod'
-import { PLATFORMS } from '@/utils/constants'
 import { IDEAS_PAGE_SIZE } from '@/features/ideas/lib/idea-filters'
 
 /**
@@ -37,7 +36,6 @@ const uuid = z.uuid()
 export const ideaBriefSchema = z.object({
   ideaText: z.string().trim().min(1).max(IDEA_TEXT_MAX),
   extraNotes: z.string().max(EXTRA_NOTES_MAX).optional(),
-  platform: z.literal('').or(z.enum(PLATFORMS)).optional(),
   targetDate: z.literal('').or(z.iso.date()).optional(),
 })
 
@@ -90,7 +88,6 @@ export function submitIdeasErrorMessage(error: z.ZodError): string {
   if (field === 'extraNotes' && issue.code === 'too_big') {
     return `Notes can be up to ${EXTRA_NOTES_MAX.toLocaleString('en-US')} characters`
   }
-  if (field === 'platform') return 'Choose a platform from the list, or leave it empty'
   if (field === 'targetDate') return 'The target date must be a real date'
   return 'At least one idea brief is required'
 }

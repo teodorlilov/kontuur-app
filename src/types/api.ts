@@ -2,7 +2,8 @@
 // this file — going through it would make the two circular.
 import type { Tables } from './database'
 import type { SlideText } from './slide'
-import type { CalendarPostColumns, UserColumns } from '@/lib/queries/select-columns'
+import type { PostColumns, UserColumns } from '@/lib/queries/select-columns'
+import type { PublicationSummary } from '@/lib/posts/publish-state'
 // Imported rather than only re-exported at the foot of the file: `ValidationData` below is
 // built from these, and a bare `export … from` re-export does not bring a name into scope here.
 import type {
@@ -48,7 +49,6 @@ export interface PriorityPost {
   title: string
   brief: string
   targetDate: string
-  platform: string
 }
 
 /** A slide as it is stored: its text, plus the position metadata the writer stamps on. */
@@ -93,7 +93,6 @@ export interface ClientIdea {
   clientNiche: string | null
   ideaText: string
   extraNotes: string | null
-  platform: string | null
   targetDate: string | null
   status: IdeaStatus
   generatedPostId: string | null
@@ -106,7 +105,7 @@ export interface ClientIdea {
 /** A post as the public approval page reads it, plus the note the client left. */
 export type ApprovalPostData = Pick<
   PostRow,
-  'id' | 'caption' | 'platform' | 'post_type' | 'scheduled_at' | 'pillar'
+  'id' | 'caption' | 'post_type' | 'scheduled_at' | 'pillar'
 > & {
   slides_json: unknown
   client_note: string | null
@@ -181,10 +180,10 @@ export interface CommentGroup {
 // ---- Calendar ----
 
 /**
- * A calendar row: everything a `CALENDAR_POST_COLUMNS` select returns, plus the joined
+ * A calendar row: everything a `POST_COLUMNS` select returns, plus the joined
  * name, images and approval state the calendar resolves alongside them.
  *
- * Derived from `CalendarPostColumns` rather than restating its own `Pick`. The
+ * Derived from `PostColumns` rather than restating its own `Pick`. The
  * hand-written version listed 15 of the 23 columns the query already fetched, so
  * `topic_summary`, `published_at` and four others arrived over the wire on every load
  * and were invisible to the type system — and it disagreed with the equivalent list
@@ -193,8 +192,17 @@ export interface CommentGroup {
  * The two `Omit`ed columns are narrowed below: the raw ones are `Json`, and every
  * surface parses them into its own shape rather than trusting the column.
  */
-export type CalendarPost = Omit<CalendarPostColumns, 'slides_json' | 'validation_json'> & {
+export type CalendarPost = Omit<PostColumns, 'slides_json' | 'validation_json'> & {
   client_name: string
+  /**
+   * Where this post went, one entry per destination.
+   *
+   * The calendar used to read `posts.status` for 'published' and `publish_error` for why a
+   * publish failed. Both moved here when a post gained more than one destination — a post
+   * live on Instagram and failed on Facebook has two answers, and one column could only
+   * ever hold one of them. `publishStateOf` reduces these to the single word a cell shows.
+   */
+  publications: PublicationSummary[]
   /** Parsed on the way in, unlike the raw column. */
   slides_json: CarouselSlide[] | null
   /**
@@ -242,7 +250,6 @@ export interface DashboardChangeRequest {
   clientId: string
   clientName: string
   caption: string | null
-  platform: string
   postType: string
   slidesJson: CarouselSlide[] | null
   scheduledAt: string | null

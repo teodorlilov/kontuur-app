@@ -36,7 +36,6 @@ export type DraftRowKind =
   | 'palette'
   | 'style'
   | 'schedule'
-  | 'platform'
 
 export interface DraftRowSpec {
   id: DraftFieldId
@@ -103,13 +102,6 @@ export const DRAFT_ROWS: readonly DraftRowSpec[] = [
   { id: 'palette', group: 'look', label: 'Brand palette', kind: 'palette' },
 
   { id: 'schedule', group: 'publishing', label: 'Schedule', kind: 'schedule' },
-  {
-    id: 'platform',
-    group: 'publishing',
-    label: 'Platform',
-    kind: 'platform',
-    question: 'Nothing on the site says where these posts should go.',
-  },
 
   { id: 'style', group: 'system', label: 'Visual system', kind: 'style' },
 ] as const

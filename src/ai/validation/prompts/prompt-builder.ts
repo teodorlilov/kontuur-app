@@ -16,7 +16,6 @@ interface ValidateQualityInput {
   caption: string
   slides?: SlideText[]
   client?: ClientData
-  platform?: string
   theme?: string
   targetPillar?: string
   sourceContext?: { excerpt: string; url?: string | null }
@@ -25,7 +24,6 @@ interface ValidateQualityInput {
 interface ValidateQualityBatchInput {
   captions: string[]
   client?: ClientData
-  platform?: string
   theme?: string
   targetPillar?: string
   sourceContext?: { excerpt: string; url?: string | null }
@@ -102,8 +100,8 @@ If no source material is provided, return flagged_claims as an empty array and c
 
 // ---- System prompt builder ----
 
-/** Run-invariant per client+platform so concurrent validation calls share one cached prefix. */
-function buildValidationSystemPrompt(client?: ClientData, platform?: string): string {
+/** Run-invariant per client so concurrent validation calls share one cached prefix. */
+function buildValidationSystemPrompt(client?: ClientData): string {
   const language = client?.languageConfig?.language ?? 'English'
 
   const sections: string[] = [
@@ -111,7 +109,7 @@ function buildValidationSystemPrompt(client?: ClientData, platform?: string): st
   ]
 
   if (client) {
-    sections.push(buildClientProfile(client, platform ?? 'Instagram'))
+    sections.push(buildClientProfile(client))
   }
 
   sections.push(buildAiTells(language))
@@ -354,7 +352,6 @@ export async function validateQuality(input: ValidateQualityInput): Promise<LlmQ
     const [result] = await validateQualityBatch({
       captions: [input.caption],
       client: input.client,
-      platform: input.platform,
       theme: input.theme,
       targetPillar: input.targetPillar,
       sourceContext: input.sourceContext,
@@ -364,7 +361,7 @@ export async function validateQuality(input: ValidateQualityInput): Promise<LlmQ
   }
 
   const message = await callAnthropic({
-    systemPrompt: buildValidationSystemPrompt(input.client, input.platform),
+    systemPrompt: buildValidationSystemPrompt(input.client),
     userMessage: buildValidationUserPrompt(input, isCarousel),
     maxTokens: QUALITY_MAX_TOKENS_PER_ITEM * 2, // carousel returns corrected_slides too
     outputSchema: QUALITY_OUTPUT_SCHEMA,
@@ -389,7 +386,7 @@ export async function validateQualityBatch(
   input: ValidateQualityBatchInput
 ): Promise<Array<LlmQualityResponse | null>> {
   const message = await callAnthropic({
-    systemPrompt: buildValidationSystemPrompt(input.client, input.platform),
+    systemPrompt: buildValidationSystemPrompt(input.client),
     userMessage: buildValidationBatchUserPrompt(input),
     maxTokens: Math.min(
       QUALITY_MAX_TOKENS_PER_ITEM * input.captions.length,

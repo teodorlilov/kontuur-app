@@ -24,7 +24,24 @@ const { mocks } = vi.hoisted(() => ({
     fetchOwnedPost: vi.fn(),
     revalidateTag: vi.fn(),
     revalidatePath: vi.fn(),
+    assignDestinations: vi.fn(),
+    withdrawPendingPublications: vi.fn(),
   },
+}))
+
+/**
+ * Giving a post a slot is what gives it destinations, so scheduling now reaches the
+ * publication store. Mocked at the boundary: these assertions are about the ownership and
+ * failure reporting contract, and a real admin client would need credentials to prove it.
+ */
+vi.mock('@/lib/supabase/admin', () => ({
+  createAdminSupabaseClient: () => ({}),
+}))
+vi.mock('@/features/publishing/lib/destinations', () => ({
+  assignDestinations: mocks.assignDestinations,
+}))
+vi.mock('@/features/publishing/lib/publication-store', () => ({
+  withdrawPendingPublications: mocks.withdrawPendingPublications,
 }))
 
 vi.mock('@/lib/auth/helpers', () => ({
@@ -41,10 +58,18 @@ vi.mock('next/cache', () => ({
 import { schedulePost, schedulePosts } from '../post-actions'
 
 /** A Supabase double: the caption read, then the UPDATE whose outcome the test is about. */
-function fakeSupabase(updateError: { message: string } | null) {
+function fakeSupabase(
+  updateError: { message: string } | null,
+  readError: { message: string } | null = null
+) {
   return {
     from: vi.fn(() => ({
-      select: () => ({ in: async () => ({ data: [{ id: POST_ID, caption: 'fine' }] }) }),
+      select: () => ({
+        in: async () => ({
+          data: readError ? null : [{ id: POST_ID, caption: 'fine', post_type: 'single' }],
+          error: readError,
+        }),
+      }),
       update: () => ({ in: async () => ({ error: updateError }) }),
     })),
   }
@@ -58,6 +83,9 @@ beforeEach(() => {
     agencyId: AGENCY_ID,
   })
   mocks.verifyPostsOwnership.mockResolvedValue(new Set([POST_ID]))
+  // Non-empty: the default is a post that resolved somewhere to publish.
+  mocks.assignDestinations.mockResolvedValue([{ id: 'pub-1', platform: 'instagram' }])
+  mocks.withdrawPendingPublications.mockResolvedValue(undefined)
 })
 
 describe('schedulePost', () => {
@@ -85,7 +113,7 @@ describe('schedulePost', () => {
   })
 
   it('succeeds when the post moved', async () => {
-    expect(await schedulePost(POST_ID, null)).toEqual({ ok: true, data: undefined })
+    expect(await schedulePost(POST_ID, null)).toEqual({ ok: true, data: { nowhereToGo: false } })
   })
 })
 
@@ -109,6 +137,75 @@ describe('schedulePosts', () => {
       { postId: other, scheduledAt: null },
     ])
 
-    expect(result).toEqual({ ok: true, data: { succeeded: 1, total: 2 } })
+    expect(result).toEqual({ ok: true, data: { succeeded: 1, total: 2, nowhereToGo: 0 } })
+  })
+})
+
+/**
+ * Giving a post a slot is what gives it destinations, so the half of this action that writes
+ * `post_publications` has its own failure modes — and every one of them used to end in the same
+ * place: the posts row scheduled, no destination written, and `ok: true` returned. A post in that
+ * state is invisible to the publish cron forever, because the cron reads publications.
+ */
+describe('schedulePosts — the destinations half', () => {
+  it('fails rather than scheduling blind when the read behind it errors', async () => {
+    // That one read supplies the caption gate AND the client/post_type each publication is built
+    // from. Its error was discarded, so a transient failure skipped validation, created nothing,
+    // and still reported success.
+    mocks.resolveActionAuth.mockResolvedValue({
+      ok: true,
+      supabase: fakeSupabase(null, { message: 'statement timeout' }),
+      agencyId: AGENCY_ID,
+    })
+
+    const result = await schedulePosts([
+      { postId: POST_ID, scheduledAt: '2026-09-08T09:00:00.000Z' },
+    ])
+
+    expect(result.ok).toBe(false)
+    expect(mocks.assignDestinations).not.toHaveBeenCalled()
+  })
+
+  it('reports a schedule that resolves to nowhere WITHOUT calling it a failure', async () => {
+    // No connected account that can take this post. Writing no rows was accepted in silence, so
+    // the calendar showed it queued and it never went anywhere.
+    mocks.assignDestinations.mockResolvedValue([])
+
+    const result = await schedulePosts([
+      { postId: POST_ID, scheduledAt: '2026-09-08T09:00:00.000Z' },
+    ])
+
+    // Asked, and answered with nothing — which is the answer that has to reach the user.
+    // The posts UPDATE has already committed by this point, so `ok: false` would be a lie about
+    // a write that happened — and every optimistic caller rolls its UI back on a falsy result,
+    // putting the card back and announcing the post was never scheduled. The count rides the
+    // success payload instead.
+    expect(mocks.assignDestinations).toHaveBeenCalledTimes(1)
+    expect(result).toEqual({ ok: true, data: { succeeded: 1, total: 1, nowhereToGo: 1 } })
+  })
+
+  it('does not let a destination write throw out of the action', async () => {
+    // The throw escaped after the posts UPDATE had committed: the rest of the batch was abandoned
+    // and the caller got a rejected promise over rows that were already scheduled.
+    mocks.assignDestinations.mockRejectedValue(new Error('publications upsert failed'))
+
+    await expect(
+      schedulePosts([{ postId: POST_ID, scheduledAt: '2026-09-08T09:00:00.000Z' }])
+    ).resolves.toEqual({ ok: true, data: { succeeded: 1, total: 1, nowhereToGo: 1 } })
+  })
+
+  it('writes no destinations for a post whose row never moved', async () => {
+    // The loop re-walked every group regardless of which UPDATE succeeded, so a failed group still
+    // had publications written against a slot its post never took.
+    mocks.resolveActionAuth.mockResolvedValue({
+      ok: true,
+      supabase: fakeSupabase({ message: 'deadlock detected' }),
+      agencyId: AGENCY_ID,
+    })
+
+    await schedulePosts([{ postId: POST_ID, scheduledAt: '2026-09-08T09:00:00.000Z' }])
+
+    expect(mocks.assignDestinations).not.toHaveBeenCalled()
+    expect(mocks.withdrawPendingPublications).not.toHaveBeenCalled()
   })
 })

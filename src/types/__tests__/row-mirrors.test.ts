@@ -57,8 +57,6 @@ const EXEMPT: Record<string, string> = {
   // `z.infer<typeof updatePostSchema>` in lib/validation/post-update-schema.ts, which
   // this scanner does not see at all — a schema declares no field names in a shape it
   // could read. The reason the exemption gave still holds and is recorded there.
-  'features/publishing/lib/publish-post.ts:PublishStatusPatch':
-    'A partial update payload: every field is optional because each caller patches a different subset (markPublished sets four, markFailed three). The optionality means "may be omitted from this patch", not "may be null in the column".',
   'lib/meta/insights.ts:IGDayTotals':
     'The Graph API\'s day-totals response shape, not a table projection — ig_account_metrics was MODELED ON this API return, so the overlap runs the other way. Its nullability means "Meta served nothing for this range" (the probe\'s silent-empty contract), which the column types cannot express.',
   'features/sources/actions/source-actions.ts:UpdateSourceInput':
@@ -81,7 +79,7 @@ const EXEMPT: Record<string, string> = {
   'ai/intelligence/generate-briefing.ts:BriefingResult':
     "Name overlap, not a projection: this is the parsed JSON body of an Anthropic response, and no query returns it. The columns were modeled on the model's output, so the resemblance runs the other way — deriving it would make a prompt contract depend on a table, and would force `?? []` guards at the write for a state the parser cannot produce.",
   'lib/visual/queries.ts:ExtractionPatch':
-    'A write contract, not a row: every field but `status` is optional so a status-only "pending" write never references identity/report, and `status` is narrowed to its four literals. Same reason as PublishStatusPatch and UpdateSourceInput.',
+    'A write contract, not a row: every field but `status` is optional so a status-only "pending" write never references identity/report, and `status` is narrowed to its four literals. Same reason as UpdateSourceInput. (PublishStatusPatch made the same argument until publishing moved to post_publications, where `PublicationPatch` is derived from the row instead — a partial of a derived type, which this scanner is happy with and which cannot drift.)',
 }
 
 /**

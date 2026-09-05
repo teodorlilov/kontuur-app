@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type {
   IGAccountMetricColumns,
   IGPostMetricColumns,
-  PublishedPostPinColumns,
+  PublishedPostPin,
 } from '@/lib/queries/select-columns'
 import {
   buildAnalyticsReport,
@@ -71,14 +71,34 @@ function postRow(overrides: Partial<IGPostMetricColumns>): IGPostMetricColumns {
   }
 }
 
-function publishedPost(overrides: Partial<PublishedPostPinColumns>): PublishedPostPinColumns {
-  return {
+/**
+ * A published destination with the post it carried.
+ *
+ * The pin used to be a `posts` row with `ig_media_id` and `published_at` on it. Both moved
+ * onto `post_publications` — a media id and a publish time belong to the destination that
+ * produced them — so the fixture takes them at the top level and nests what is left.
+ */
+function publishedPost(
+  overrides: Partial<{
+    id: string
+    external_post_id: string | null
+    caption: string | null
+    published_at: string | null
+    post_type: string
+  }>
+): PublishedPostPin {
+  const { id, caption, post_type, ...publication } = {
     id: 'p1',
-    ig_media_id: null,
+    external_post_id: null,
     caption: null,
     published_at: null,
     post_type: 'single',
     ...overrides,
+  }
+  return {
+    external_post_id: publication.external_post_id,
+    published_at: publication.published_at,
+    posts: { id, caption, post_type },
   }
 }
 
@@ -223,7 +243,7 @@ describe('buildAnalyticsReport', () => {
         // Published well before the last sync yet absent from metrics: removed.
         publishedPost({
           id: 'gone',
-          ig_media_id: '404',
+          external_post_id: '404',
           caption: 'Deleted later',
           // Naive UTC timestamp, exactly as posts.published_at stores it.
           published_at: '2026-08-16T18:57:17.192',
@@ -232,7 +252,11 @@ describe('buildAnalyticsReport', () => {
         // Published after the last sync: metrics simply pending.
         publishedPost({ id: 'fresh', caption: 'Fresh', published_at: '2026-08-18T09:00:00' }),
         // Already synced under the same media id: the metrics row wins.
-        publishedPost({ id: 'dup', ig_media_id: 'm-live', published_at: '2026-08-15T10:00:00' }),
+        publishedPost({
+          id: 'dup',
+          external_post_id: 'm-live',
+          published_at: '2026-08-15T10:00:00',
+        }),
       ],
       lastSyncAt: '2026-08-18T03:30:00Z',
     })
@@ -267,7 +291,7 @@ describe('buildAnalyticsReport', () => {
       publishedPosts: [
         publishedPost({
           id: 'early-ledger',
-          ig_media_id: 'early',
+          external_post_id: 'early',
           published_at: '2026-08-14T22:30:00',
         }),
       ],

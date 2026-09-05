@@ -4,6 +4,8 @@ import { cache } from 'react'
 import { unstable_cache } from 'next/cache'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import { SCHEDULED_STATUSES, type PendingRow } from '@/lib/queries/cache'
+import { PUBLICATION_EMBED, type PublicationEmbedColumns } from '@/lib/queries/select-columns'
+import { isAwaitingPublish, toPublicationSummary } from '@/lib/posts/publish-state'
 import { getWeekRange } from '@/utils/date-helpers'
 import { hasLiveChannel, type RosterConnectionRow } from '@/features/clients/lib/roster'
 
@@ -21,9 +23,9 @@ const fetchScheduledCount = unstable_cache(
     const supabase = createAdminSupabaseClient()
     const { from, to } = getWeekRange(weekStartISO, timeZone)
 
-    const { count, error } = await supabase
+    const { data, error } = await supabase
       .from('posts')
-      .select('id, clients!inner(agency_id)', { count: 'exact', head: true })
+      .select(`id, ${PUBLICATION_EMBED}, clients!inner(agency_id)`)
       .eq('clients.agency_id', agencyId)
       .in('status', SCHEDULED_STATUSES)
       // Bounded at both ends: .gte alone counted every future post ever scheduled,
@@ -35,7 +37,21 @@ const fetchScheduledCount = unstable_cache(
       console.error('[dashboard] scheduled this week count failed:', error.message)
       return null
     }
-    return count ?? 0
+
+    /**
+     * Counted in memory rather than by `head: true`, because the question is no longer one the
+     * status column can answer. `posts.status` stays 'scheduled' after a post has gone out or
+     * permanently failed, so the count included both — a figure labelled "scheduled this week"
+     * that never went down as the week's posts actually published.
+     *
+     * Through `isAwaitingPublish`, which the coverage grid on the same card also calls. That
+     * shared function is what makes `SCHEDULED_STATUSES`' promise true: the status list was
+     * already shared, but this half of the criterion had been written out twice.
+     */
+    const rows = (data ?? []) as unknown as Array<{ post_publications: PublicationEmbedColumns[] }>
+    return rows.filter(({ post_publications }) =>
+      isAwaitingPublish((post_publications ?? []).map(toPublicationSummary))
+    ).length
   },
   ['dashboard-scheduled-count'],
   { revalidate: 60, tags: ['client-post-stats'] }

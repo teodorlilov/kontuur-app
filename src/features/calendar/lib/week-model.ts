@@ -1,9 +1,9 @@
 import { getWeekDayKeys, getWeekRange, isoToDateTimeFields, toDateKey } from '@/utils/date-helpers'
 import { WEEKDAY_LABELS } from '@/utils/constants'
 import type { CalendarPost } from '@/types/api'
-import type { PostStatus } from '@/lib/validation'
 import type { BestTimePlatform } from '@/lib/suggested-times/schemas'
 import { suggestWeekSlots } from '@/lib/suggested-times/slot-picker'
+import { publishStateOf, type PublicationSummary } from '@/lib/posts/publish-state'
 
 /**
  * What the grid draws, derived from what the page loaded.
@@ -99,10 +99,17 @@ const STATE_RANK: Record<CoverageState, number> = {
   failed: 5,
 }
 
-/** How a post's status reads as a day state. */
-function stateOfPost(status: PostStatus): CoverageState {
-  if (status === 'failed') return 'failed'
-  if (status === 'published') return 'published'
+/**
+ * How a post reads as a day state.
+ *
+ * Driven by its destinations, not its status: the status stops at 'scheduled' now, and
+ * whether the day went well is what its publications did. 'partly' counts as published —
+ * something went out that day, which is what the grid is claiming.
+ */
+function stateOfPost(publications: readonly PublicationSummary[]): CoverageState {
+  const state = publishStateOf(publications)
+  if (state === 'failed') return 'failed'
+  if (state === 'published' || state === 'partly') return 'published'
   return 'scheduled'
 }
 
@@ -126,7 +133,7 @@ function strongerOf(a: CoverageState, b: CoverageState): CoverageState {
  */
 export function strongestState(posts: CalendarPost[]): CoverageState {
   return posts.reduce<CoverageState>(
-    (strongest, post) => strongerOf(strongest, stateOfPost(post.status as PostStatus)),
+    (strongest, post) => strongerOf(strongest, stateOfPost(post.publications)),
     'none'
   )
 }
@@ -189,7 +196,7 @@ export function buildClientWeek(input: {
       (strongest, item) => {
         const next: CoverageState =
           item.kind === 'post'
-            ? stateOfPost(item.post.status as PostStatus)
+            ? stateOfPost(item.post.publications)
             : item.missed
               ? 'missed'
               : 'open'
@@ -293,7 +300,6 @@ export type LaneItem =
 export interface LaneClient {
   id: string
   name: string
-  platform: string | null
   bestTimes: BestTimePlatform[] | null
 }
 
@@ -338,7 +344,6 @@ export function buildWeekLanes(input: {
     )
 
     for (const at of suggestWeekSlots({
-      platform: client.platform,
       bestTimes: client.bestTimes,
       weekStartISO,
       timeZone,

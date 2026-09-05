@@ -1,10 +1,6 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
-import {
-  fetchClientData,
-  getAgencyNiche,
-  extractPlatformFromMix,
-} from '@/lib/clients/fetch-client-data'
+import { fetchClientData, getAgencyNiche } from '@/lib/clients/fetch-client-data'
 import { countPendingPostsByClients, fetchEngineContext } from '@/lib/queries/db'
 import { runGenerationBatch } from '@/ai/generation/generation-orchestrator'
 import { toTheme } from '@/ai/generation/to-theme'
@@ -146,8 +142,6 @@ export async function GET(request: NextRequest) {
       const { exemplars, styleMemo } = await fetchEngineContext(supabase, clientId)
       const client = { ...clientResult.data, exemplars, styleMemo }
 
-      const mixJson = (brandProfile?.weekly_mix_json ?? {}) as Record<string, unknown>
-      const platform = extractPlatformFromMix(mixJson)
       const postType = (brandProfile?.default_post_type ?? 'single') as PostType
       const slideCount = brandProfile?.default_carousel_slides ?? DEFAULT_CAROUSEL_SLIDES
 
@@ -160,7 +154,6 @@ export async function GET(request: NextRequest) {
       const total = (schedule as { frequency_value: number }).frequency_value || 1
       const claim = await startGenerationRun(supabase, {
         clientId,
-        platform,
         targetCount: total,
         kind: 'cron',
         slotKey: scheduledAt,
@@ -202,7 +195,6 @@ export async function GET(request: NextRequest) {
       const generationStartedAt = Date.now()
       const generationResults = await runGenerationBatch({
         client,
-        platform,
         postType,
         slideCount,
         themes,

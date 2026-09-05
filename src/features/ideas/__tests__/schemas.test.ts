@@ -11,19 +11,20 @@ const brief = { ideaText: 'Post about the new packaging rules' }
  */
 describe('ideaBriefSchema', () => {
   it("treats '' as not-chosen for the optional fields", () => {
-    // The form ships every field on every brief, empty until typed. A plain
-    // z.enum(PLATFORMS).optional() rejects that, which would fail the submit for
-    // anyone who skipped the platform buttons — i.e. the default path.
-    const parsed = ideaBriefSchema.safeParse({ ...brief, platform: '', targetDate: '' })
+    // The form ships every field on every brief, empty until typed, so an empty string
+    // has to parse — otherwise the submit fails for anyone who skipped a field, which
+    // is the default path.
+    const parsed = ideaBriefSchema.safeParse({ ...brief, targetDate: '' })
     expect(parsed.success).toBe(true)
   })
 
-  it('rejects a platform outside PLATFORMS', () => {
-    // The column now carries a CHECK against the same list (20260817), so anything
-    // this lets through is a failed insert rather than a bad row.
-    expect(ideaBriefSchema.safeParse({ ...brief, platform: 'instagram' }).success).toBe(false)
-    expect(ideaBriefSchema.safeParse({ ...brief, platform: 'Threads' }).success).toBe(false)
-    expect(ideaBriefSchema.safeParse({ ...brief, platform: 'Instagram' }).success).toBe(true)
+  it('takes no platform — the client cannot choose a network here', () => {
+    // The form asked for one and `client_ideas.platform` stored it, under a CHECK
+    // against the display-case list (20260817). It rode into generation on the brief
+    // the idea became, and briefs no longer carry a network: where a post goes is
+    // decided when it is scheduled. Sent anyway, it is dropped rather than stored.
+    const parsed = ideaBriefSchema.parse({ ...brief, platform: 'Instagram' })
+    expect(parsed).not.toHaveProperty('platform')
   })
 
   it('accepts only a calendar date for targetDate', () => {

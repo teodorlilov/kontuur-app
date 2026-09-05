@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { MAX_CAROUSEL_SLIDES, MIN_CAROUSEL_SLIDES, PLATFORMS } from '@/utils/constants'
+import { MAX_CAROUSEL_SLIDES, MIN_CAROUSEL_SLIDES } from '@/utils/constants'
 import { colorSchemeSchema } from '@/lib/visual/identity-schema'
 import type { PriorityPost } from '@/types/api'
 
@@ -10,7 +10,6 @@ export const discardedDraftSchema = z.object({
   pillar: z.string().max(200).nullable(),
   sourceUrl: z.string().max(2000).nullable(),
   sourceType: z.string().max(40).nullable(),
-  platform: z.string().max(40).nullable(),
 })
 
 export type DiscardedDraftInput = z.infer<typeof discardedDraftSchema>
@@ -84,23 +83,24 @@ const clientDataSchema = z.object({
 /**
  * One user-authored brief on the wire. `''` means "not chosen" for the optional
  * fields, matching the public idea form's convention — the editor ships every
- * field, empty until typed. `platform: ''` inherits the run platform; a value
- * overrides it for that one post. The enum is load-bearing: it is what
- * guarantees only canonical display-case values ever reach `posts.platform`,
- * whose CHECK (20260809) rejects anything else.
+ * field, empty until typed.
+ *
+ * A brief used to carry a platform, which is how one post in a run could be written
+ * for a different network than the rest. Copy is no longer written for a network at
+ * all — where a post goes is decided when it is scheduled — so the field is gone
+ * rather than defaulted.
  */
 export const priorityPostSchema = z.object({
   title: z.string().trim().min(1).max(200),
   brief: z.string().max(2000).default(''),
   targetDate: z.literal('').or(z.iso.date()).default(''),
-  platform: z.literal('').or(z.enum(PLATFORMS)).default(''),
 })
 
 // Drift guard, forward direction (the stored-validation-schema idiom).
 // PriorityPost stays hand-written in types/api.ts — importing this schema there
 // would point types/ at a feature and invite a cycle — and the backward
-// direction cannot hold on purpose: the schema narrows `platform` to the enum
-// while the type carries `string`, exactly like `targetDate`.
+// direction cannot hold on purpose: the schema narrows `targetDate` to an ISO date
+// while the type carries `string`.
 type SchemaPriorityPost = z.infer<typeof priorityPostSchema>
 const _priorityPostForward: PriorityPost = null as unknown as SchemaPriorityPost
 void _priorityPostForward
@@ -108,8 +108,6 @@ void _priorityPostForward
 /** Body of POST /api/ai/generate-stream — the wizard's batch run. */
 export const generateStreamSchema = z.object({
   clientId: z.string().min(1),
-  // The run default every theme without its own platform falls back to.
-  platform: z.enum(PLATFORMS),
   postType: z.enum(['single', 'carousel']),
   // Bounded by the same constants the picker offers. It was `.min(1)` and unbounded
   // above, so a hand-made request could ask the writer for a 500-slide carousel —

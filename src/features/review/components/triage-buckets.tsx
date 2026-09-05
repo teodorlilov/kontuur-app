@@ -244,7 +244,7 @@ export function TriageBuckets({
                     {post.pillar}
                   </span>
                 )}
-                <span>{[post.platform, post.post_type].filter(Boolean).join(' · ')}</span>
+                <span>{post.post_type}</span>
                 <AgeChip ageDays={ageDays} />
               </div>
               <button

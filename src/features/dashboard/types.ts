@@ -16,7 +16,6 @@ export interface PendingPostPreview {
   id: string
   /** Nullable, like the column. The row type claimed otherwise and the preview line trusted it. */
   caption: string | null
-  platform: string
   pillar: string
   createdAt: string
   clientName: string
@@ -38,7 +37,6 @@ export interface DashboardMetrics {
 export interface UpcomingPublish {
   id: string
   clientName: string
-  platform: string
   scheduledAt: string
 }
 
@@ -46,7 +44,6 @@ export interface UpcomingPublish {
 export interface FailedPublish {
   id: string
   clientName: string
-  platform: string
   scheduledAt: string | null
 }
 

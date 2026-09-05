@@ -2,7 +2,6 @@
 
 import { ActionLink } from '@/components/ui/action-link'
 import { Button } from '@/components/ui/button'
-import { StatusPill } from '@/components/ui/status-pill'
 import { IdeaDueChip } from './idea-due-chip'
 import { IDEA_GRID, IDEA_GRID_DROP } from './grid'
 import { formatRelativeTime } from '@/utils/format'
@@ -79,10 +78,6 @@ export function IdeaRow({
             <span className="mt-0.5 block truncate text-caption text-text3">{idea.extraNotes}</span>
           )}
         </span>
-      </td>
-
-      <td className={IDEA_GRID_DROP}>
-        {idea.platform && <StatusPill tone="ok">{idea.platform}</StatusPill>}
       </td>
 
       <td className={IDEA_GRID_DROP}>

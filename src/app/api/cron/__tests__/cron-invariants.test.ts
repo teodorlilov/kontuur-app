@@ -114,28 +114,30 @@ describe('the publish queue can always be re-entered', () => {
    * because no query reads it. Requiring `from('posts')` alongside is what separates a
    * write from a mention.
    */
-  function postsWriters(pattern: RegExp): string[] {
+  function publicationWriters(pattern: RegExp): string[] {
     return filesUnder(SRC, (name) => name.endsWith('.ts') || name.endsWith('.tsx'))
       .filter((file) => {
         const src = readFileSync(file, 'utf8')
-        return src.includes(".from('posts')") && pattern.test(src)
+        return src.includes(".from('post_publications')") && pattern.test(src)
       })
       .map((file) => path.relative(SRC, file))
       .sort()
   }
 
-  it('publish_attempts is written in exactly two places', () => {
-    expect(postsWriters(/publish_attempts:\s/)).toEqual([
-      path.join('features', 'calendar', 'actions', 'post-recovery.ts'),
-      path.join('features', 'publishing', 'lib', 'publish-post.ts'),
+  it('publish_attempts is written in exactly one place', () => {
+    // It moved off `posts` onto `post_publications` when a post gained more than one
+    // destination — two networks retry independently, so one counter could not serve both.
+    // With a store owning the table, the two writers this used to permit became one.
+    expect(publicationWriters(/publish_attempts:\s/)).toEqual([
+      path.join('features', 'publishing', 'lib', 'publication-store.ts'),
     ])
   })
 
-  it('exactly one of them resets it to zero', () => {
-    // The half that actually matters. Every other writer adds to the count; if a
-    // second file starts zeroing it, MAX_ATTEMPTS stops being a ceiling.
-    expect(postsWriters(/publish_attempts:\s*0\b/)).toEqual([
-      path.join('features', 'calendar', 'actions', 'post-recovery.ts'),
+  it('that one place is also the only thing that resets it to zero', () => {
+    // The half that actually matters. Every other path adds to the count; if a second file
+    // starts zeroing it, MAX_ATTEMPTS stops being a ceiling.
+    expect(publicationWriters(/publish_attempts:\s*0\b/)).toEqual([
+      path.join('features', 'publishing', 'lib', 'publication-store.ts'),
     ])
   })
 })

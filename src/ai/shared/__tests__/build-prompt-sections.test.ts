@@ -40,21 +40,18 @@ function makeClient(overrides: Partial<ClientData> = {}): ClientData {
 // empty — when no goal is set, or every existing client's prefix changes for nothing.
 describe('post goal in the prompts', () => {
   it('carries the goal into the generation brief', () => {
-    const brief = buildClientBrief(makeClient({ socialGoals: 'Book an appointment' }), 'Instagram')
+    const brief = buildClientBrief(makeClient({ socialGoals: 'Book an appointment' }))
     expect(brief).toContain('Goal: Book an appointment')
   })
 
   it('carries the goal into the validation profile', () => {
-    const profile = buildClientProfile(
-      makeClient({ socialGoals: 'Book an appointment' }),
-      'Instagram'
-    )
+    const profile = buildClientProfile(makeClient({ socialGoals: 'Book an appointment' }))
     expect(profile).toContain('Post goal: Book an appointment')
   })
 
   it('emits no line at all when no goal is set', () => {
-    expect(buildClientBrief(makeClient(), 'Instagram')).not.toContain('Goal:')
-    expect(buildClientProfile(makeClient(), 'Instagram')).not.toContain('Post goal:')
+    expect(buildClientBrief(makeClient())).not.toContain('Goal:')
+    expect(buildClientProfile(makeClient())).not.toContain('Post goal:')
   })
 
   it('leaves the rest of the prompt byte-identical when no goal is set', () => {
@@ -63,9 +60,9 @@ describe('post goal in the prompts', () => {
     const withoutGoal = makeClient()
     const withGoal = makeClient({ socialGoals: 'Book an appointment' })
 
-    expect(
-      buildClientProfile(withGoal, 'Instagram').replace('\nPost goal: Book an appointment', '')
-    ).toBe(buildClientProfile(withoutGoal, 'Instagram'))
+    expect(buildClientProfile(withGoal).replace('\nPost goal: Book an appointment', '')).toBe(
+      buildClientProfile(withoutGoal)
+    )
   })
 })
 

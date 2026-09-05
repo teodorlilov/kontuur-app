@@ -3,7 +3,6 @@
 import { Card } from '@/components/ui/card'
 import { Spinner } from '@/components/ui/spinner'
 import { ClientPicker, type PickerClient } from './client-picker'
-import { PlatformGroup } from './platform-group'
 import { FormatCards } from './format-cards'
 import { CountSteppers } from './count-steppers'
 import { BriefList } from './brief-list'
@@ -17,7 +16,6 @@ interface SetupViewProps {
   clientId: string
   clientMeta: string
   clientLoading: boolean
-  platform: string
   postType: PostType
   slideCount: number
   postCount: number
@@ -26,7 +24,6 @@ interface SetupViewProps {
   sourceIdea?: ClientIdea
   generating: boolean
   onClientChange: (id: string) => void
-  onPlatformChange: (platform: string) => void
   onPostTypeChange: (type: PostType) => void
   onSlideCountChange: (count: number) => void
   onPostCountChange: (count: number) => void
@@ -44,7 +41,6 @@ export function SetupView(props: SetupViewProps) {
   const postsPerWeek = selectedClient?.posts_per_week ?? DEFAULT_RUN_SIZE
 
   const metaLine = [
-    props.platform,
     props.postType === 'carousel' ? `Carousel, ${props.slideCount} slides` : 'Single image',
     selectedClient?.name,
   ]
@@ -76,20 +72,9 @@ export function SetupView(props: SetupViewProps) {
           )}
         </SetupGroup>
 
-        <SetupGroup title="Platform">
-          <PlatformGroup
-            platform={props.platform}
-            publishState={props.runPlan.publishState}
-            clientName={selectedClient?.name ?? 'this client'}
-            clientId={props.clientId}
-            onChange={props.onPlatformChange}
-          />
-        </SetupGroup>
-
         <SetupGroup title="Format">
           <FormatCards
             value={props.postType}
-            platform={props.platform}
             slideCount={props.slideCount}
             onChange={props.onPostTypeChange}
           />
@@ -117,7 +102,6 @@ export function SetupView(props: SetupViewProps) {
             briefs={props.briefs}
             onChange={props.onBriefsChange}
             lockedCount={props.lockedBriefCount ?? 0}
-            postType={props.postType}
           />
         </SetupGroup>
       </Card>

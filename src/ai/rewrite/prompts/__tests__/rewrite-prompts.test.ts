@@ -52,7 +52,6 @@ describe('rewriteCaption', () => {
       caption: 'Открийте силата на разходката за контрол на кръвната захар.',
       aiTells: ['Generic enthusiasm', 'Formulaic structure'],
       client: makeClient(),
-      platform: 'instagram',
     })
     expect(result).toBe('Ето как 30 минути разходка след хранене променят кръвната ви захар.')
   })
@@ -66,7 +65,6 @@ describe('rewriteCaption', () => {
       caption: original,
       aiTells: ['Generic opener'],
       client: makeClient(),
-      platform: 'instagram',
     })
     expect(result).toBe(original)
   })
@@ -77,7 +75,6 @@ describe('rewriteCaption', () => {
       caption: 'Test post',
       aiTells: ['Triple adjective stacking', 'Formulaic CTA'],
       client: makeClient(),
-      platform: 'instagram',
     })
 
     const callArgs = callAnthropic.mock.calls[0]![0]
@@ -102,7 +99,6 @@ describe('rewriteCaption', () => {
           languageNotes: '',
         },
       }),
-      platform: 'instagram',
     })
 
     const callArgs = callAnthropic.mock.calls[0]![0]
@@ -118,7 +114,6 @@ describe('rewriteCaption', () => {
       caption: 'Original',
       aiTells: [],
       client: makeClient(),
-      platform: 'instagram',
     })
     expect(result).toBe('Rewritten text with spaces')
   })
@@ -143,7 +138,6 @@ describe('rewriteCarousel', () => {
       ],
       aiTells: ['Generic headlines'],
       client: makeClient(),
-      platform: 'instagram',
     })
     expect(result.main_caption).toBe('Rewritten carousel caption')
     expect(result.slides).toHaveLength(2)
@@ -161,7 +155,6 @@ describe('rewriteCarousel', () => {
       ],
       aiTells: [],
       client: makeClient(),
-      platform: 'instagram',
     })
 
     const callArgs = callAnthropic.mock.calls[0]![0]
@@ -179,7 +172,6 @@ describe('rewriteCarousel', () => {
       slides: [{ headline: 'H', body: 'B' }],
       aiTells: ['Perfectly balanced structure', 'Abstract benefits'],
       client: makeClient(),
-      platform: 'instagram',
     })
 
     const callArgs = callAnthropic.mock.calls[0]![0]
@@ -199,7 +191,6 @@ describe('rewriteCarousel', () => {
       ],
       aiTells: [],
       client: makeClient(),
-      platform: 'instagram',
     })
 
     const callArgs = callAnthropic.mock.calls[0]![0]

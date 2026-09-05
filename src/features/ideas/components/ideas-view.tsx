@@ -364,9 +364,6 @@ export function IdeasView({
                     Idea
                   </th>
                   <th scope="col" className={cn(HEADER_CELL, IDEA_GRID_DROP)}>
-                    Platform
-                  </th>
-                  <th scope="col" className={cn(HEADER_CELL, IDEA_GRID_DROP)}>
                     Target
                   </th>
                   <th scope="col" className={HEADER_CELL}>

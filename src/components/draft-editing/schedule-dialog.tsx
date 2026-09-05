@@ -20,6 +20,7 @@ import {
   toDateKey,
 } from '@/utils/date-helpers'
 import { WeekStrip } from './week-strip'
+import { entryFor } from '@/lib/suggested-times/slot-picker'
 import type { MeasuredBestTimes } from '@/lib/suggested-times/schemas'
 
 type ScheduleChoice = 'next' | 'best' | 'pick' | 'none'
@@ -37,7 +38,6 @@ interface ScheduleWeekContext {
 
 interface ScheduleDialogProps {
   open: boolean
-  platform: string | null
   /** The client's measured times and when they were measured — one value, never two props. */
   bestTime: MeasuredBestTimes | null
   /** Blocks confirm while a blocking approve runs. The queue omits it — its approve is optimistic. */
@@ -67,12 +67,16 @@ interface ScheduleDialogProps {
 /**
  * Approve is also the moment the post gets (or declines) a slot, so the two
  * decisions share one dialog: the week's shape with a recommended open slot
- * when the caller supplies it, the platform's best time, a manual pick, or no
- * slot at all.
+ * when the caller supplies it, the client's measured best time, a manual pick,
+ * or no slot at all.
+ *
+ * Which measurement to show used to arrive as a `platform` prop, read off the post —
+ * a post was written for one network. It no longer is, so the answer comes from what
+ * was actually measured, through `suggestionPlatform`: the same rule the calendar's
+ * suggested slots already use, rather than a second one that could disagree with it.
  */
 export function ScheduleDialog({
   open,
-  platform,
   bestTime,
   approving = false,
   weekContext,
@@ -82,15 +86,13 @@ export function ScheduleDialog({
   onClose,
 }: ScheduleDialogProps) {
   const best = useMemo(() => {
-    if (!platform || !bestTime) return null
-    const entry = bestTime.platforms.find(
-      (b) => b.platform.toLowerCase() === platform.toLowerCase()
-    )
+    // `entryFor` is the calendar's own rule for which measurement to draw, guards included.
+    const entry = bestTime && entryFor(bestTime.platforms)
     const day = entry?.best_days[0]
     const window = entry?.best_time_windows[0]
     if (!entry || !day || !window) return null
-    return { day, time: window.time, measuredAt: bestTime.measuredAt }
-  }, [platform, bestTime])
+    return { day, time: window.time, platform: entry.platform, measuredAt: bestTime.measuredAt }
+  }, [bestTime])
 
   const [choice, setChoice] = useState<ScheduleChoice>('none')
   const [pickedDate, setPickedDate] = useState('')
@@ -167,13 +169,16 @@ export function ScheduleDialog({
                * Freshness leads because it is the part that changes what someone does — this is the
                * moment they publish against these hours, and a reading from June looks identical to
                * one from last night without a date. The source follows it: at the point of acting
-               * on a recommendation, knowing it came from real Instagram data rather than from us
-               * is worth four words.
+               * on a recommendation, knowing it came from the network's own data rather than
+               * from us is worth four words.
+               *
+               * The network is read off the measurement, not written in: shared code that names
+               * one would credit Instagram for a reading taken somewhere else.
                */
               sub={
                 best.measuredAt
-                  ? `Last updated ${formatDate(new Date(best.measuredAt))} · from Instagram`
-                  : 'Based on your Instagram activity'
+                  ? `Last updated ${formatDate(new Date(best.measuredAt))} · from ${best.platform}`
+                  : `Based on your ${best.platform} activity`
               }
               onSelect={() => setChoice('best')}
             />

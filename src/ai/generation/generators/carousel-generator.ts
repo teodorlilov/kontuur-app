@@ -56,7 +56,7 @@ export async function generateCarousel(
   input: CarouselInput,
   onToken?: (text: string) => void
 ): Promise<CarouselResult> {
-  const systemPrompt = buildGenerateSystemPrompt(input.client, input.platform, 'carousel')
+  const systemPrompt = buildGenerateSystemPrompt(input.client, 'carousel')
   const userMessage = buildGenerateUserCarouselPrompt(input)
   const outputSchema = buildCarouselOutputSchema(input.slideCount)
 
@@ -107,7 +107,7 @@ export async function reviseCarousel(
   })
 
   const message = await callAnthropic({
-    systemPrompt: buildGenerateSystemPrompt(input.client, input.platform, 'carousel'),
+    systemPrompt: buildGenerateSystemPrompt(input.client, 'carousel'),
     userMessage: buildRevisionPrompt(notes),
     conversationHistory: [
       { role: 'user', content: buildGenerateUserCarouselPrompt(input) },

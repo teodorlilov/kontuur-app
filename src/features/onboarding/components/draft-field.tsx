@@ -12,7 +12,6 @@ import { LanguageEdit, LanguageRead } from './rows/language-row'
 import { MixRead } from '@/components/ui/pillar-mix'
 import { MixEdit } from './rows/mix-row'
 import { PaletteEdit, PaletteRead } from './rows/palette-row'
-import { PlatformEdit, PlatformRead } from './rows/platform-row'
 import { ScheduleEdit, ScheduleRead } from './rows/schedule-row'
 
 interface DraftFieldProps {
@@ -37,8 +36,6 @@ export function DraftFieldRead({ spec, draft, paletteStatus }: Omit<DraftFieldPr
       return <PaletteRead palette={draft.identity.palette} status={paletteStatus} />
     case 'schedule':
       return <ScheduleRead schedule={draft.schedule} />
-    case 'platform':
-      return <PlatformRead platform={draft.platform} />
     case 'language':
       return <LanguageRead draft={draft} />
     case 'style':
@@ -67,10 +64,6 @@ export function DraftFieldEdit({ spec, draft, onChange, paletteStatus }: DraftFi
     case 'schedule':
       return (
         <ScheduleEdit schedule={draft.schedule} onChange={(schedule) => onChange({ schedule })} />
-      )
-    case 'platform':
-      return (
-        <PlatformEdit platform={draft.platform} onChange={(platform) => onChange({ platform })} />
       )
     case 'style':
       return (

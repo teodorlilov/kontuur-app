@@ -52,7 +52,6 @@ export async function startGenerationRun(
   supabase: SupabaseClient,
   input: {
     clientId: string
-    platform: string
     targetCount: number
     kind: GenerationRunKind
     slotKey?: Date
@@ -62,7 +61,6 @@ export async function startGenerationRun(
     .from('generation_runs')
     .insert({
       client_id: input.clientId,
-      platform: input.platform,
       target_count: input.targetCount,
       kind: input.kind,
       status: 'running',

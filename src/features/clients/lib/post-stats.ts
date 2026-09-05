@@ -1,4 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
+import type { Database } from '@/types/database'
 
 /** The four post counts and the last generation time the client settings page reports. */
 interface ClientPostStats {
@@ -9,14 +10,17 @@ interface ClientPostStats {
   lastGeneratedAt: string | null
 }
 
-/** Row shape of the `client_edit_stats` aggregate, fixed by 20260801_add_client_edit_stats_rpc.sql. */
-interface ClientEditStatsRow {
-  pending_count: number
-  published_count: number
-  scheduled_count: number
-  approved_unpublished_count: number
-  last_generated_at: string | null
-}
+/**
+ * Row shape of the `client_edit_stats` aggregate, derived now that the generated types carry it.
+ *
+ * `last_generated_at` is corrected on the way through: it is `MAX(created_at)`, which is NULL for
+ * a client with no posts, and the generator types every aggregate as non-null because SQL does not
+ * tell it otherwise. Taking the generated shape at its word would put a null behind a `string`.
+ */
+type ClientEditStatsRow = Omit<
+  Database['public']['Functions']['client_edit_stats']['Returns'][number],
+  'last_generated_at'
+> & { last_generated_at: string | null }
 
 const EMPTY: ClientPostStats = {
   pendingCount: 0,
@@ -39,15 +43,7 @@ export async function fetchClientPostStats(
   supabase: SupabaseClient,
   clientId: string
 ): Promise<ClientPostStats> {
-  // WHY as: src/types/database.ts predates this function and regenerating it needs a working
-  // SUPABASE_ACCESS_TOKEN, which the CLI currently rejects. The row shape is pinned by the
-  // migration and verified against the live function. Drop both casts once types are regenerated.
-  const { data, error } = await supabase.rpc(
-    'client_edit_stats' as never,
-    {
-      p_client_id: clientId,
-    } as never
-  )
+  const { data, error } = await supabase.rpc('client_edit_stats', { p_client_id: clientId })
 
   if (error) {
     console.error(`[clients:postStats] aggregate failed for ${clientId}:`, error.message)

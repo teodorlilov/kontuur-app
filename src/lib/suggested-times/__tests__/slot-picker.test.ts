@@ -35,7 +35,6 @@ const bestTimes: BestTimePlatform[] = [
 
 function pick(overrides: Partial<Parameters<typeof pickNextOpenSlot>[0]> = {}) {
   return pickNextOpenSlot({
-    platform: 'Instagram',
     bestTimes,
     postsPerWeek: 3,
     occupiedSlots: [],
@@ -80,10 +79,9 @@ describe('pickNextOpenSlot', () => {
     expect(pick({ bestTimes: tuesdayTimes })).toBe(formatScheduledAt('2026-08-04', '18:00', TZ))
   })
 
-  it('returns null without best-time data for the platform', () => {
+  it('returns null without best-time data', () => {
     expect(pick({ bestTimes: null })).toBeNull()
-    expect(pick({ platform: 'LinkedIn' })).toBeNull()
-    expect(pick({ platform: null })).toBeNull()
+    expect(pick({ bestTimes: [] })).toBeNull()
   })
 })
 
@@ -99,7 +97,6 @@ describe('the three-week candidate span', () => {
 
   it('still finds a slot when the next occurrence is occupied', () => {
     const result = pickNextOpenSlot({
-      platform: 'Instagram',
       bestTimes: mondayOnly,
       postsPerWeek: 0,
       // Monday 10 Aug taken, so the answer has to come from the week after.
@@ -112,7 +109,6 @@ describe('the three-week candidate span', () => {
 
   it('offers the nearest future occurrence when nothing is taken', () => {
     const result = pickNextOpenSlot({
-      platform: 'Instagram',
       bestTimes: mondayOnly,
       postsPerWeek: 0,
       occupiedSlots: [],
@@ -128,7 +124,6 @@ describe('suggestWeekSlots', () => {
     // Thursday 6 and Friday 7 August 2026.
     expect(
       suggestWeekSlots({
-        platform: 'Instagram',
         bestTimes,
         weekStartISO: '2026-08-03',
         timeZone: TZ,
@@ -141,7 +136,6 @@ describe('suggestWeekSlots', () => {
 
   it('reads the times as wall-clock in the agency zone', () => {
     const [first] = suggestWeekSlots({
-      platform: 'Instagram',
       bestTimes,
       weekStartISO: '2026-08-03',
       timeZone: TZ,
@@ -153,30 +147,20 @@ describe('suggestWeekSlots', () => {
   it('degrades to nothing rather than guessing', () => {
     expect(
       suggestWeekSlots({
-        platform: 'Instagram',
         bestTimes: null,
         weekStartISO: '2026-08-03',
         timeZone: TZ,
       })
     ).toEqual([])
-    expect(
-      suggestWeekSlots({ platform: null, bestTimes, weekStartISO: '2026-08-03', timeZone: TZ })
-    ).toEqual([])
-    expect(
-      suggestWeekSlots({
-        platform: 'LinkedIn',
-        bestTimes,
-        weekStartISO: '2026-08-03',
-        timeZone: TZ,
-      })
-    ).toEqual([])
+    expect(suggestWeekSlots({ bestTimes: [], weekStartISO: '2026-08-03', timeZone: TZ })).toEqual(
+      []
+    )
   })
 
   it('ignores an entry whose days or windows are empty', () => {
     const hollow: BestTimePlatform[] = [{ ...bestTimes[0]!, best_days: [] }]
     expect(
       suggestWeekSlots({
-        platform: 'Instagram',
         bestTimes: hollow,
         weekStartISO: '2026-08-03',
         timeZone: TZ,
@@ -216,10 +200,10 @@ describe('suggestionPlatform', () => {
     expect(suggestionPlatform([entry('Facebook')])).toBe('Facebook')
   })
 
-  it('resolves to a platform suggestWeekSlots can actually use', () => {
+  it('is the entry suggestWeekSlots actually draws from', () => {
     const facebook = [entry('Facebook')]
+    expect(suggestionPlatform(facebook)).toBe('Facebook')
     const slots = suggestWeekSlots({
-      platform: suggestionPlatform(facebook),
       bestTimes: facebook,
       weekStartISO: '2026-08-03',
       timeZone: TZ,
@@ -250,7 +234,6 @@ describe('from the stored column to the week grid', () => {
 
   it('yields a slot per best day per window', () => {
     const slots = suggestWeekSlots({
-      platform: 'Instagram',
       bestTimes: parseBestTimes(STORED),
       weekStartISO: '2026-08-17',
       timeZone: 'Europe/Sofia',
@@ -269,7 +252,6 @@ describe('from the stored column to the week grid', () => {
     }
     expect(
       suggestWeekSlots({
-        platform: 'Instagram',
         bestTimes: parseBestTimes(ranged),
         weekStartISO: '2026-08-17',
         timeZone: 'Europe/Sofia',

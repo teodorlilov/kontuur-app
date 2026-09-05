@@ -4,17 +4,15 @@ import { useState } from 'react'
 import { Plus, MessageSquare } from 'lucide-react'
 import { cn } from '@/utils/cn'
 import { Button } from '@/components/ui/button'
-import { ChipGroup, Chip } from '@/components/ui/form'
 import {
   CONTROL_SURFACE,
   CONTROL_FOCUS,
   CONTROL_TEXT,
   LABEL_CLASS,
 } from '@/components/ui/form/control-classes'
-import { PLATFORMS } from '@/utils/constants'
-import type { PostType, PriorityPost } from '@/types/api'
+import type { PriorityPost } from '@/types/api'
 
-const EMPTY_BRIEF: PriorityPost = { title: '', brief: '', targetDate: '', platform: '' }
+const EMPTY_BRIEF: PriorityPost = { title: '', brief: '', targetDate: '' }
 
 /** Which brief the editor is open on. `index: null` is the one being added. */
 interface EditorState {
@@ -30,8 +28,6 @@ interface BriefListProps {
    * They render without a Remove control; everything after them behaves normally.
    */
   lockedCount?: number
-  /** Carousel runs write one platform, so the per-brief override hides there. */
-  postType: PostType
 }
 
 /**
@@ -47,7 +43,7 @@ interface BriefListProps {
  * and this is the only point where a human can say. The edit shapes this run; the
  * client's submitted idea is not rewritten by it.
  */
-export function BriefList({ briefs, onChange, lockedCount = 0, postType }: BriefListProps) {
+export function BriefList({ briefs, onChange, lockedCount = 0 }: BriefListProps) {
   const [editor, setEditor] = useState<EditorState | null>(null)
 
   function commit() {
@@ -67,7 +63,6 @@ export function BriefList({ briefs, onChange, lockedCount = 0, postType }: Brief
           <BriefEditor
             key={index}
             state={editor}
-            postType={postType}
             onChange={setEditor}
             onCancel={() => setEditor(null)}
             onSave={commit}
@@ -87,7 +82,6 @@ export function BriefList({ briefs, onChange, lockedCount = 0, postType }: Brief
       {editor?.index === null ? (
         <BriefEditor
           state={editor}
-          postType={postType}
           onChange={setEditor}
           onCancel={() => setEditor(null)}
           onSave={commit}
@@ -134,7 +128,7 @@ function BriefRow({
   onEdit: () => void
   onRemove: () => void
 }) {
-  const details = [brief.platform, brief.targetDate && `due ${brief.targetDate}`, brief.brief]
+  const details = [brief.targetDate && `due ${brief.targetDate}`, brief.brief]
     .filter(Boolean)
     .join(' · ')
 
@@ -163,14 +157,12 @@ function BriefRow({
 /** The brief form, shared by adding one and correcting one. */
 function BriefEditor({
   state,
-  postType,
   onChange,
   onCancel,
   onSave,
   saveLabel,
 }: {
   state: EditorState
-  postType: PostType
   onChange: (next: EditorState) => void
   onCancel: () => void
   onSave: () => void
@@ -200,32 +192,6 @@ function BriefEditor({
           className={cn(CONTROL_SURFACE, CONTROL_FOCUS, CONTROL_TEXT, 'resize-none px-3 py-2')}
         />
       </label>
-      {/* Hidden for carousels: postType is run-level and carousel ⇒ Instagram is
-          the app's own rule, so a per-brief override would promise a mix the run
-          cannot deliver. */}
-      {postType !== 'carousel' && (
-        <div className="flex flex-col gap-1.5">
-          <span className={LABEL_CLASS.default}>Platform — optional</span>
-          <ChipGroup label="Platform for this post">
-            {PLATFORMS.map((p) => (
-              <Chip
-                key={p}
-                pressed={p === state.value.platform}
-                // Toggle semantics from the public idea form: clicking the pressed
-                // chip clears back to '' — inherit the run platform.
-                onClick={() => set({ platform: p === state.value.platform ? '' : p })}
-              >
-                {p}
-              </Chip>
-            ))}
-          </ChipGroup>
-          <span className="text-caption text-text2">
-            {state.value.platform
-              ? `Overrides the run platform for this post.`
-              : 'Uses the run platform unless you pick one.'}
-          </span>
-        </div>
-      )}
       <div className="flex flex-wrap items-end gap-3">
         <label className="flex flex-col gap-1.5">
           <span className={LABEL_CLASS.default}>Target date — optional</span>

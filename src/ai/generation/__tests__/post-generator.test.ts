@@ -35,7 +35,6 @@ function makeInput(count = 1): SinglePostInput {
       // Only prompt-relevant fields populated; cast documents the gap
     } as unknown as ClientData,
     theme: 'recovery tips',
-    platform: 'Instagram',
     count,
   }
 }

@@ -13,10 +13,11 @@ import { insertCanvasDocs } from '@/lib/canvas/doc-store'
 import { POST_COLUMNS } from '@/lib/queries/select-columns'
 import { recordPostTopics } from '@/lib/queries/post-history'
 import { draftColumns } from '@/lib/generation/draft-columns'
-import { isValidPostPlatform } from '@/lib/validation'
 import { colorSchemeSchema } from '@/lib/visual/identity-schema'
 import type { CanvasDoc } from '@/types/canvas'
 import { statusForSlot } from '@/lib/posts/status-for-slot'
+import { assignDestinations } from '@/features/publishing/lib/destinations'
+import type { PostType } from '@/types/api'
 
 /** List the agency's posts, filterable by status, client and scheduled window. */
 export async function GET(request: Request) {
@@ -98,7 +99,6 @@ export async function GET(request: Request) {
 const createPostSchema = z.object({
   client_id: z.string().min(1),
   caption: z.string().nullable().optional(),
-  platform: z.string().optional(),
   post_type: z.string().optional(),
   slides_json: z.unknown().optional(),
   validation_json: z.unknown().optional(),
@@ -162,6 +162,8 @@ const ATTACH_WARNINGS = {
   images: 'Post approved, but its visuals could not be attached — regenerate them in the calendar.',
   canvasDocs:
     'Post approved, but its editable canvas could not be saved — the editor will reseed on first open.',
+  noDestination:
+    'Post approved and scheduled, but this client has no connected account that can publish it — connect one and re-schedule it.',
 } as const
 
 /** Attach wizard-draft visuals to a freshly created post. Only paths under the client's drafts prefix
@@ -285,14 +287,6 @@ export async function POST(request: Request) {
 
   if (!client) return NextResponse.json({ error: 'Client not found' }, { status: 404 })
 
-  // The only unguarded write to posts.platform, and its default was the lone source
-  // of lowercase 'instagram' in a column the rest of the app spells 'Instagram'.
-  // Same check as PUT and updatePost, so all three writers agree on one vocabulary.
-  const platform = body.platform ?? 'Instagram'
-  if (!isValidPostPlatform(platform)) {
-    return NextResponse.json({ error: `Invalid platform: ${platform}` }, { status: 400 })
-  }
-
   // Attribution guard: never persist a source id that belongs to another client
   let clientSourceId = body.client_source_id ?? null
   if (clientSourceId) {
@@ -314,14 +308,12 @@ export async function POST(request: Request) {
 
   // Draft facts go through the shared builder so a column added there cannot be
   // silently dropped by this route. What stays inline is what this route owns:
-  // workflow status, scheduling, rewrite bookkeeping, and the two guarded fields —
-  // the canonicalized platform is passed in, and the ownership-checked source id
-  // overrides the builder's pass-through.
+  // workflow status, scheduling, rewrite bookkeeping, and the ownership-checked
+  // source id, which overrides the builder's pass-through.
   const insertRow = {
     ...draftColumns({
       client_id: body.client_id,
       caption: body.caption ?? null,
-      platform,
       post_type: body.post_type ?? 'single',
       slides_json: body.slides_json,
       validation_json: body.validation_json,
@@ -366,6 +358,43 @@ export async function POST(request: Request) {
   const warnings: string[] = []
   if (!imagesAttached) warnings.push(ATTACH_WARNINGS.images)
   if (!docsAttached) warnings.push(ATTACH_WARNINGS.canvasDocs)
+
+  /**
+   * A slot without destinations is a post that can never publish.
+   *
+   * This route is the third writer of the (status, scheduled_at) pair and was the only one that
+   * wrote it without recording where the post was going — so a draft approved straight into a
+   * slot from the wizard, which is how most posts are created, sat in the calendar looking
+   * scheduled while the cron (rooted on `post_publications`) could not see it at all.
+   *
+   * Not an error: the post committed and the reviewer's work is safe. It rides the same
+   * partial-success channel as a visual that would not attach, because it is the same kind of
+   * fact — the thing was made, and something that should have come with it did not.
+   */
+  if (insertRow.scheduled_at) {
+    /**
+     * Caught, because the post row has already committed. `assignDestinations` throws on any
+     * database error, and an uncaught throw here answers 500 for a post that WAS created — the
+     * wizard reports "Failed to approve" and the obvious retry creates a second one. A partial
+     * success is what actually happened, and `warnings` is how this route says that.
+     */
+    try {
+      const admin = createAdminSupabaseClient()
+      const destinations = await assignDestinations(
+        admin,
+        post.id,
+        body.client_id,
+        insertRow.post_type as PostType
+      )
+      if (destinations.length === 0) {
+        console.error(`[posts] ${post.id} scheduled with no publishable destination`)
+        warnings.push(ATTACH_WARNINGS.noDestination)
+      }
+    } catch (err) {
+      console.error(`[posts] destinations failed for ${post.id}:`, err)
+      warnings.push(ATTACH_WARNINGS.noDestination)
+    }
+  }
 
   // Record in post history to avoid duplicate themes in future generations.
   if (body.topic_summary) {

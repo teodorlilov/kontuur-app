@@ -7,7 +7,9 @@ import {
   AGENCY_COLUMNS,
   CLIENT_LIST_COLUMNS,
   CLIENT_ROSTER_COLUMNS,
+  PUBLICATION_EMBED,
   UPCOMING_POST_COLUMNS,
+  type PublicationEmbedColumns,
 } from '@/lib/queries/select-columns'
 import type { PostRow } from '@/types'
 import { fetchLanguageRulesByLanguage } from '@/lib/queries/db'
@@ -22,6 +24,7 @@ import type { PendingApprovalRow, RosterClientRow } from '@/features/clients/lib
 // has to count that population rather than a second guess at it.
 import { AWAITING_DECISION } from '@/features/ideas/lib/idea-filters'
 import type { PostSummary } from '@/types/post'
+import { isAwaitingPublish, publishStateOf, toPublicationSummary } from '@/lib/posts/publish-state'
 
 type Agency = Database['public']['Tables']['agencies']['Row']
 type Client = Database['public']['Tables']['clients']['Row']
@@ -165,15 +168,34 @@ export type DayState = 'published' | 'scheduled' | 'open'
  * dashboard's "scheduled this week" count and this coverage grid can never
  * measure different things while sitting on the same card.
  */
-export const SCHEDULED_STATUSES = [
-  'approved',
-  'scheduled',
-  'publishing',
-] as const satisfies readonly PostStatus[]
+export const SCHEDULED_STATUSES = ['approved', 'scheduled'] as const satisfies readonly PostStatus[]
 
-const SCHEDULED_STATUS_SET = new Set<string>(SCHEDULED_STATUSES)
+/**
+ * A post with what its destinations have done about it — exactly what `UPCOMING_POST_COLUMNS`
+ * plus `PUBLICATION_EMBED` returns.
+ *
+ * Both readers in this file ask for it: the coverage grid's due half and the upcoming list. Each
+ * had spelled the shape out for itself, one as a fresh `Pick` of the three columns and one inline
+ * 190 lines below, so one type existed twice in one file.
+ *
+ * Status is filtered in SQL at both sites, so it is not carried — and the editorial status could
+ * not answer whether the slot is still live anyway: `posts.status` stays 'scheduled' whatever the
+ * destinations do.
+ */
+type PostWithPublications = PostSummary & {
+  post_publications: PublicationEmbedColumns[]
+}
 
-type CoverageRow = Pick<PostRow, 'client_id' | 'status' | 'scheduled_at' | 'published_at'>
+/**
+ * A post one of whose destinations went live this week, with the moments it did.
+ *
+ * `published_at` is no longer a post column: each destination went live at its own moment,
+ * so the grid asks the publications. A post counts as published on a day if ANY destination
+ * went out then — which is the honest reading of "did something go out that day".
+ */
+type PublishedPostRow = Pick<PostRow, 'id' | 'client_id'> & {
+  post_publications: Array<{ published_at: string }>
+}
 
 /**
  * Returns each client's week as seven day states, Monday first.
@@ -191,19 +213,43 @@ const _fetchClientWeekCoverage = unstable_cache(
     const supabase = createAdminSupabaseClient()
     const { from, to } = getWeekRange(weekStartISO, timeZone)
 
-    // A post counts for this week by when it is due, or by when it actually went
-    // out (posts published on demand carry no scheduled_at).
-    const { data, error } = await supabase
-      .from('posts')
-      .select('client_id, status, scheduled_at, published_at, clients!inner(agency_id)')
-      .eq('clients.agency_id', agencyId)
-      .or(
-        `and(scheduled_at.gte.${from},scheduled_at.lt.${to}),` +
-          `and(published_at.gte.${from},published_at.lt.${to})`
-      )
+    /**
+     * A post counts for this week by when it is DUE, or by when it actually WENT OUT — a post
+     * published on demand carries no `scheduled_at` at all, so neither half alone is the week.
+     *
+     * Two queries rather than one. This was a single `.or()` reaching through the embed, and
+     * PostgREST rejected it outright at runtime: a logic tree cannot mix a parent column with an
+     * embedded resource's column, so the whole grid errored and every client rendered as empty.
+     * The two halves are genuinely different questions — one about `posts`, one about
+     * `post_publications` — and asking them separately is what the repo already does wherever an
+     * OR cannot be expressed.
+     *
+     * Both are bounded at BOTH ends. The published half was `.gte(from)` with no upper bound,
+     * which dragged in every future publication for the TS side to discard.
+     */
+    const [due, published] = await Promise.all([
+      supabase
+        .from('posts')
+        .select(`id, client_id, scheduled_at, ${PUBLICATION_EMBED}, clients!inner(agency_id)`)
+        .eq('clients.agency_id', agencyId)
+        .in('status', SCHEDULED_STATUSES)
+        .gte('scheduled_at', from)
+        .lt('scheduled_at', to),
+      // `!inner` is load-bearing twice: it restricts the posts to those that actually published
+      // in the window, and it trims each row's embed to the publications that did. On a plain
+      // embed these filters would neither drop a parent nor empty its array.
+      supabase
+        .from('posts')
+        .select('id, client_id, post_publications!inner(published_at), clients!inner(agency_id)')
+        .eq('clients.agency_id', agencyId)
+        .eq('post_publications.status', 'published')
+        .gte('post_publications.published_at', from)
+        .lt('post_publications.published_at', to),
+    ])
 
     // Without this the dashboard would quietly render every client's week as
     // empty, which reads as real data rather than as a failure.
+    const error = due.error ?? published.error
     if (error) {
       console.error('[cache] client week coverage query failed:', error.message)
       return {}
@@ -211,24 +257,49 @@ const _fetchClientWeekCoverage = unstable_cache(
 
     const dayKeys = getWeekDayKeys(weekStartISO)
     const coverage: Record<string, DayState[]> = {}
+    const weekOf = (clientId: string) =>
+      (coverage[clientId] ??= Array<DayState>(DAYS_PER_WEEK).fill('open'))
 
-    for (const row of (data as CoverageRow[] | null) ?? []) {
-      const stamp = row.scheduled_at ?? row.published_at
-      if (!stamp) continue
+    /**
+     * Bucket in the same zone the range was built from, or a post near midnight lands in a
+     * column the query never covered.
+     *
+     * -1 is checked but should now be unreachable. It WAS reachable: `scheduled_at` was
+     * `timestamp WITHOUT time zone`, so Postgres compared it with the zone dropped off both
+     * bounds while this bucketed the same value in the agency's zone, and a post within an
+     * offset of a week edge could satisfy one and not the other. 20260843 gave the column its
+     * zone, so the SQL window and this bucketing now describe the same instants.
+     */
+    const dayOf = (stamp: string) => dayKeys.indexOf(toDateKey(new Date(stamp), timeZone))
 
-      // Bucket in the same zone the range was built from, or a post near
-      // midnight lands in a column the query never covered.
-      const dayIndex = dayKeys.indexOf(toDateKey(new Date(stamp), timeZone))
-      if (dayIndex === -1) continue
-
-      const week = (coverage[row.client_id] ??= Array<DayState>(DAYS_PER_WEEK).fill('open'))
-
-      // Published wins the slot — it is the stronger signal for the day.
-      if (row.status === 'published') {
-        week[dayIndex] = 'published'
-      } else if (SCHEDULED_STATUS_SET.has(row.status) && week[dayIndex] === 'open') {
-        week[dayIndex] = 'scheduled'
+    // Published first, and it is claimed by the destination's own moment rather than the post's.
+    for (const row of (published.data as unknown as PublishedPostRow[] | null) ?? []) {
+      for (const publication of row.post_publications) {
+        const dayIndex = dayOf(publication.published_at)
+        if (dayIndex !== -1) weekOf(row.client_id)[dayIndex] = 'published'
       }
+    }
+
+    for (const row of (due.data as unknown as PostWithPublications[] | null) ?? []) {
+      if (!row.scheduled_at) continue
+      /**
+       * A slot only counts as still-to-come while its destinations agree.
+       *
+       * Judged from the post's own publications rather than from the week's published set,
+       * which can only see publishes that landed INSIDE this week: a post published early, in
+       * the week before its slot, was still being drawn as scheduled — promising a publish
+       * already made. And a post whose destinations have permanently failed was drawn as a
+       * covered day for a publish that is never coming; before the lifecycles split, 'failed'
+       * was outside this query's status list and the day correctly read open.
+       *
+       * 'publishing' stays scheduled on purpose — it is mid-send, which is still a slot
+       * something is about to come out of.
+       */
+      if (!isAwaitingPublish((row.post_publications ?? []).map(toPublicationSummary))) continue
+      const dayIndex = dayOf(row.scheduled_at)
+      if (dayIndex === -1) continue
+      const week = weekOf(row.client_id)
+      if (week[dayIndex] === 'open') week[dayIndex] = 'scheduled'
     }
 
     return coverage
@@ -291,7 +362,7 @@ const _fetchUpcomingByClient = unstable_cache(
     const supabase = createAdminSupabaseClient()
     const { data, error } = await supabase
       .from('posts')
-      .select(UPCOMING_POST_COLUMNS)
+      .select(`${UPCOMING_POST_COLUMNS}, ${PUBLICATION_EMBED}`)
       .in('status', SCHEDULED_STATUSES)
       .eq('clients.agency_id', agencyId)
       // "Now" is evaluated at cache-fill time, not per request — harmless over a
@@ -304,7 +375,28 @@ const _fetchUpcomingByClient = unstable_cache(
       return []
     }
     // WHY as: the clients!inner join is a filter only; its column is not read.
-    return (data ?? []) as unknown as PostSummary[]
+    const rows = (data ?? []) as unknown as PostWithPublications[]
+
+    /**
+     * Still to go out, judged by the destinations rather than by `posts.status`.
+     *
+     * The status filter above cannot answer this on its own any more. `posts.status` stops at
+     * 'scheduled' and the publish path never advances it, so a post published EARLY from the
+     * calendar keeps its future slot and its 'scheduled' status — and was still being reported
+     * as an upcoming publish, on the dashboard's "going out next" card and in the roster's
+     * queue count, for as long as its original slot stayed in the future.
+     *
+     * 'unpublished' rather than a hand-written status test, so this can never disagree with the
+     * calendar about what a post's publish state is. A failed destination is deliberately not
+     * upcoming either: the dashboard surfaces those on their own card, and counting them twice
+     * would overstate the queue.
+     */
+    return rows
+      .filter(
+        ({ post_publications }) =>
+          publishStateOf((post_publications ?? []).map(toPublicationSummary)) === 'unpublished'
+      )
+      .map(({ post_publications: _publications, ...post }) => post)
   },
   ['client-upcoming'],
   { revalidate: 60, tags: ['client-post-stats'] }

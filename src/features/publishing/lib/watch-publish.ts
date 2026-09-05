@@ -5,6 +5,9 @@
  * dying silently in a row they are no longer looking at.
  */
 
+import { publishStateOf, toPublicationSummary } from '@/lib/posts/publish-state'
+import type { PublicationEmbedColumns } from '@/lib/queries/select-columns'
+
 const POLL_INTERVAL_MS = 3_000
 /**
  * Server-side polling gives up ~40s after the response and hands the container
@@ -20,7 +23,15 @@ export interface PublishWatchCallbacks {
   onStillProcessing: () => void
 }
 
-/** Poll one post's status until it leaves 'publishing', within the watch budget. */
+/**
+ * Poll one post's DESTINATIONS until they settle, within the watch budget.
+ *
+ * This read `posts.status` for 'published'/'failed' and `posts.publish_error`. Neither survives:
+ * the publish path stopped writing `posts`, and that column was dropped. So `status` sat at
+ * 'scheduled' throughout a perfectly healthy publish — which the second test below read as "the
+ * attempt bounced back to the ladder" and reported as a failure. Every deferred publish raised a
+ * false failure toast three seconds in, whatever actually happened.
+ */
 export function watchPublishOutcome(postId: string, callbacks: PublishWatchCallbacks): void {
   const deadline = Date.now() + WATCH_BUDGET_MS
 
@@ -29,17 +40,23 @@ export function watchPublishOutcome(postId: string, callbacks: PublishWatchCallb
       const res = await fetch(`/api/posts/${postId}`)
       if (res.ok) {
         const { post } = (await res.json()) as {
-          post: { status: string; publish_error: string | null }
+          post: { post_publications: PublicationEmbedColumns[] | null }
         }
-        if (post.status === 'published') {
+        const publications = (post.post_publications ?? []).map(toPublicationSummary)
+        if (publishStateOf(publications) === 'published') {
           callbacks.onPublished()
           return
         }
-        if (post.status === 'failed' || post.status === 'scheduled') {
-          // 'scheduled' here means the attempt failed and went back to the
-          // retry ladder — for the person who pressed the button, that is a
-          // failure to report, not a silence.
-          callbacks.onFailed(post.publish_error ?? 'Publishing failed')
+        // Any destination carrying an error, whatever its status. A non-final failure re-arms
+        // the row to 'scheduled' and keeps the message (markPublicationFailed), so the state
+        // alone cannot tell a bounce from a publish that has not started — and for the person
+        // who pressed the button a bounce is a failure to report, not a silence. Deliberately
+        // not `firstFailureReason`, which answers the calendar's question: what finally killed
+        // this destination. Checked after 'published' so a stale message from an earlier
+        // attempt cannot outrank the success that followed it.
+        const errored = publications.find((publication) => publication.publishError)
+        if (errored) {
+          callbacks.onFailed(errored.publishError ?? 'Publishing failed')
           return
         }
       }

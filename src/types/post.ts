@@ -1,12 +1,12 @@
 import type { PostRow } from '@/types'
 
 /**
- * A post reduced to when and where it publishes — the shape behind
- * UPCOMING_POST_COLUMNS, read by the clients roster and both dashboard publish
- * lists. Derived from the generated row type rather than restated, so a column
- * that changes nullability fails the build instead of drifting silently.
+ * A post reduced to when it publishes — the shape behind UPCOMING_POST_COLUMNS, read by
+ * the clients roster and both dashboard publish lists. Derived from the generated row type
+ * rather than restated, so a column that changes nullability fails the build instead of
+ * drifting silently.
  */
-export type PostSummary = Pick<PostRow, 'id' | 'client_id' | 'platform' | 'scheduled_at'>
+export type PostSummary = Pick<PostRow, 'id' | 'client_id' | 'scheduled_at'>
 
 /**
  * A post as the wizard and review surfaces carry it.
@@ -20,7 +20,6 @@ export type PostData = Pick<
   | 'id'
   | 'client_id'
   | 'caption'
-  | 'platform'
   | 'post_type'
   | 'status'
   | 'priority'
@@ -49,9 +48,5 @@ export type PostData = Pick<
       | 'pillar'
       | 'source_excerpt'
       | 'client_source_id'
-      | 'ig_creation_id'
-      | 'ig_media_id'
-      | 'publish_error'
-      | 'publish_attempts'
     >
   >

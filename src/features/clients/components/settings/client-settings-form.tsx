@@ -69,7 +69,7 @@ const PANEL_COPY: Record<SettingsTab, { title: string; description: string }> = 
   },
   schedule: {
     title: 'When posts get made',
-    description: 'Platform, format and autonomous generation.',
+    description: 'Format and autonomous generation.',
   },
   accounts: {
     title: 'Where posts publish',
@@ -308,10 +308,6 @@ export function ClientSettingsForm(props: ClientSettingsFormProps) {
 
   const connectionCount = connections.length
   const isConnected = connectionCount > 0
-  const connectedPlatforms = useMemo(
-    () => new Set(connections.map((c) => c.platform.toLowerCase())),
-    [connections]
-  )
   const goToAccounts = useCallback(() => selectTab('accounts'), [selectTab])
 
   const tabs: Array<TabItem<SettingsTab>> = SETTINGS_TABS.map((tab) =>
@@ -448,7 +444,6 @@ export function ClientSettingsForm(props: ClientSettingsFormProps) {
           <ScheduleTab
             brand={drafts.brand}
             schedule={drafts.schedule}
-            connectedPlatforms={connectedPlatforms}
             onBrandChange={patchBrand}
             onScheduleChange={patchSchedule}
           />

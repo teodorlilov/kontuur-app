@@ -1,5 +1,6 @@
 'use server'
 
+import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import 'server-only'
 import { revalidateTag } from 'next/cache'
 import { validateInstagramCaption } from '@/lib/meta/networks/instagram-caption'
@@ -16,6 +17,9 @@ import {
 import { DISCARD_REASONS } from '@/lib/validation'
 import type { ActionResult } from './types'
 import { statusForSlot } from '@/lib/posts/status-for-slot'
+import { assignDestinations } from '@/features/publishing/lib/destinations'
+import { withdrawPendingPublications } from '@/features/publishing/lib/publication-store'
+import type { PostType } from '@/types/api'
 import { removeStoragePrefix } from '@/lib/storage/remove-prefix'
 import { POST_IMAGES_BUCKET } from '@/utils/constants'
 
@@ -186,7 +190,7 @@ export async function deletePost(
   try {
     const { data: row } = await supabase
       .from('posts')
-      .select('client_id, client_source_id, pillar, source_url, source_type, platform, status')
+      .select('client_id, client_source_id, pillar, source_url, source_type, status')
       .eq('id', postId)
       .single()
     if (row?.client_id && row.status === 'pending_review') {
@@ -196,7 +200,6 @@ export async function deletePost(
         pillar: row.pillar ?? null,
         sourceUrl: row.source_url ?? null,
         sourceType: row.source_type ?? null,
-        platform: row.platform ?? null,
         discardedFrom: 'review',
         reason: parsedOptions.data?.reason ?? null,
       })
@@ -231,7 +234,7 @@ export async function deletePost(
 export async function schedulePost(
   postId: string,
   scheduledAt: string | null
-): Promise<ActionResult> {
+): Promise<ActionResult<{ nowhereToGo: boolean }>> {
   const result = await schedulePosts([{ postId, scheduledAt }])
   if (!result.ok) return result
   // A batch reports `ok` with a count, because "three of four landed" is a real outcome it has to
@@ -239,7 +242,7 @@ export async function schedulePost(
   // `ok` regardless is what made this unsafe for an optimistic caller — the dashboard's approve
   // removes the row and offers an Undo that would then write over a post never approved.
   return result.data.succeeded === 1
-    ? { ok: true, data: undefined }
+    ? { ok: true, data: { nowhereToGo: result.data.nowhereToGo > 0 } }
     : { ok: false, error: 'Could not update that post' }
 }
 
@@ -262,7 +265,7 @@ export async function schedulePost(
  */
 export async function schedulePosts(
   items: Array<{ postId: string; scheduledAt: string | null }>
-): Promise<ActionResult<{ succeeded: number; total: number }>> {
+): Promise<ActionResult<{ succeeded: number; total: number; nowhereToGo: number }>> {
   // Validated before auth, matching the other writers here: a malformed payload is the caller's
   // own bug and says nothing about the post, so there is nothing to leak by answering it first.
   for (const item of items) {
@@ -283,10 +286,24 @@ export async function schedulePosts(
   // Caption limits are checked at schedule time so the problem surfaces in the
   // calendar, not as a burned publish attempt days later. Instagram-bound posts
   // only — and today every schedulable post is Instagram-bound.
-  const { data: captionRows } = await supabase
+  const { data: captionRows, error: readError } = await supabase
     .from('posts')
-    .select('id, caption')
+    .select('id, caption, client_id, post_type')
     .in('id', [...verifiedIds])
+  // The error was discarded. This one read feeds BOTH the caption gate and the client/post_type
+  // every publication is built from, so losing it silently skipped validation and then created no
+  // destinations at all — while the posts UPDATE below still ran and the action still reported
+  // success. A post scheduled with nowhere to go is invisible to the cron forever.
+  if (readError) {
+    console.error('[posts] schedule read failed:', readError.message)
+    return { ok: false, error: 'Could not read those posts' }
+  }
+  const postTypeById = new Map(
+    (captionRows ?? []).map((row) => [
+      row.id,
+      { client_id: row.client_id, post_type: (row.post_type ?? 'single') as PostType },
+    ])
+  )
   const captionBlocked = new Map<string, string>()
   for (const row of captionRows ?? []) {
     const problem = validateInstagramCaption(row.caption ?? '')
@@ -308,13 +325,60 @@ export async function schedulePosts(
 
   let succeeded = 0
   const failures: string[] = []
+  // Which rows actually moved. The destination loop below used to re-walk `byTime` regardless,
+  // so a group whose UPDATE failed still had its publications created or withdrawn — destinations
+  // written against a slot the post never took.
+  const moved = new Set<string>()
   for (const [scheduledAt, ids] of byTime) {
     const { error } = await supabase
       .from('posts')
       .update({ status: statusForSlot(scheduledAt), scheduled_at: scheduledAt })
       .in('id', ids)
     if (error) failures.push(error.message)
-    else succeeded += ids.length
+    else {
+      succeeded += ids.length
+      for (const id of ids) moved.add(id)
+    }
+  }
+
+  /**
+   * Giving a post a slot is what gives it destinations — and without them the cron would
+   * never see it, because the scheduler reads publications, not posts. A post could sit in
+   * the calendar looking queued forever.
+   *
+   * Unscheduling withdraws them again, for the same reason: a destination with no slot is
+   * not waiting for anything. Only ones that have not gone out are withdrawn, so pulling a
+   * published post off the calendar cannot erase the record that it went out.
+   */
+  const admin = createAdminSupabaseClient()
+  const nowhereToGo: string[] = []
+  for (const [scheduledAt, ids] of byTime) {
+    for (const postId of ids) {
+      const post = postTypeById.get(postId)
+      if (!post || !moved.has(postId)) continue
+      /**
+       * Caught per post. All three of these throw on a database error, and nothing caught them —
+       * the throw escaped the action AFTER the posts UPDATE had committed, so the rest of the
+       * batch was abandoned, `revalidateTag` never ran, and the caller saw a rejected promise
+       * while the rows were already scheduled.
+       */
+      try {
+        if (!scheduledAt) {
+          await withdrawPendingPublications(admin, postId)
+          continue
+        }
+        // Zero destinations is not nothing to do — it is a post that can never publish. It was
+        // accepted in silence: no rows written, and the cron reads publications, so the post sat
+        // in the calendar looking queued forever.
+        const created = await assignDestinations(admin, postId, post.client_id, post.post_type)
+        if (created.length === 0) nowhereToGo.push(postId)
+      } catch (err) {
+        // Same end state as resolving to nowhere — a slot with no destinations — so it is
+        // counted the same way. `failures` still carries the cause for the log.
+        nowhereToGo.push(postId)
+        failures.push(err instanceof Error ? err.message : `destination write failed for ${postId}`)
+      }
+    }
   }
 
   revalidateTag('client-post-stats', 'max')
@@ -326,8 +390,20 @@ export async function schedulePosts(
   // Nothing landing is a failure, not a partial success. `verifyPostsOwnership` drops unowned ids
   // silently and a failed UPDATE only reaches `failures`, so a wholly unsuccessful run used to
   // return `ok: true` with `succeeded: 0` — indistinguishable, to a caller, from having worked.
+  if (nowhereToGo.length > 0) {
+    console.error(`[posts] scheduled with no publishable destination: ${nowhereToGo.join(', ')}`)
+  }
   if (succeeded === 0 && items.length > 0) {
     return { ok: false, error: failures[0] ?? 'Could not update those posts' }
   }
-  return { ok: true, data: { succeeded, total: items.length } }
+  /**
+   * A post that resolved to nowhere is still SCHEDULED — the row committed several lines above.
+   *
+   * This returned `ok: false` for that case, which was a lie about a write that had already
+   * happened: every optimistic caller rolls its UI back on a falsy result, so the calendar put
+   * the card back where it was and the review queue announced the post was "back in the queue"
+   * while the database said otherwise. The count rides the success payload instead, so a caller
+   * can warn about it without being told the schedule failed.
+   */
+  return { ok: true, data: { succeeded, total: items.length, nowhereToGo: nowhereToGo.length } }
 }

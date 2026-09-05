@@ -3,7 +3,6 @@
 import { ActionLink } from '@/components/ui/action-link'
 import { Button } from '@/components/ui/button'
 import { Modal } from '@/components/ui/modal'
-import { StatusPill } from '@/components/ui/status-pill'
 import { IdeaDueChip } from './idea-due-chip'
 import { formatRelativeTime } from '@/utils/format'
 import type { ClientIdea } from '@/types/api'
@@ -73,14 +72,6 @@ export function IdeaDetailDialog({
           {idea.extraNotes && <p className="text-caption text-text2">{idea.extraNotes}</p>}
 
           <dl className="grid grid-cols-[88px_minmax(0,1fr)] items-center gap-x-3.5 gap-y-2">
-            {idea.platform && (
-              <>
-                <dt className="text-label font-semibold uppercase text-text3">Platform</dt>
-                <dd>
-                  <StatusPill tone="ok">{idea.platform}</StatusPill>
-                </dd>
-              </>
-            )}
             {idea.targetDate && (
               <>
                 <dt className="text-label font-semibold uppercase text-text3">Target</dt>

@@ -51,7 +51,7 @@ export async function POST(request: Request) {
     body = generateStreamSchema.parse(await request.json()) as unknown as GenerateStreamRequestBody
   } catch {
     return NextResponse.json(
-      { error: 'clientId, platform, postType and preloadedClientData are required' },
+      { error: 'clientId, postType and preloadedClientData are required' },
       { status: 400 }
     )
   }
@@ -83,7 +83,6 @@ export async function POST(request: Request) {
   // No slot key: a run a human asked for is never deduped against a schedule.
   const { runId } = await startGenerationRun(supabase, {
     clientId: body.clientId,
-    platform: body.platform,
     targetCount,
     kind: 'manual',
   })
@@ -159,8 +158,6 @@ export async function POST(request: Request) {
             isPriority: true,
             brief: briefTexts[i],
             targetDate: pp.targetDate,
-            // '' inherits the run platform — only a real override rides the theme.
-            ...(pp.platform ? { platform: pp.platform } : {}),
           }
         })
         const researchThemes: Theme[] = topics
@@ -170,7 +167,6 @@ export async function POST(request: Request) {
 
         await runGenerationBatch({
           client,
-          platform: body.platform,
           postType: body.postType,
           slideCount: body.slideCount || client.defaultCarouselSlides || DEFAULT_CAROUSEL_SLIDES,
           themes,

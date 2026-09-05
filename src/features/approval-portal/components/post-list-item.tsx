@@ -52,17 +52,12 @@ export function PostListItem({ post, index, status, isActive, onClick }: PostLis
     >
       {isActive && <ActiveBar />}
 
-      {/* Row 1: number · date · platform.
+      {/* Row 1: number · date.
           tracking-normal throughout: cancels the Label role's built-in 0.16em, which
-          is set for eyebrows — these are values (an index, a date, a platform). */}
+          is set for eyebrows — these are values (an index, a date). */}
       <div className="mb-1 flex items-center justify-between">
         <span className="text-label font-medium tracking-normal text-text2">#{index}</span>
         {date && <span className="text-label tracking-normal text-text2">{date}</span>}
-        {post.platform && (
-          <span className="rounded-[3px] bg-spring/12 px-[7px] py-px text-label font-medium tracking-normal text-spring-text">
-            {post.platform}
-          </span>
-        )}
       </div>
 
       {/* Row 2: pillar + type */}

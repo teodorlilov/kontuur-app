@@ -82,10 +82,12 @@ function post(id: string): CalendarPost {
     platform: 'Instagram',
     post_type: 'single',
     status: 'scheduled',
+    // Nothing has gone out: publish state lives on the destinations now.
+    publications: [],
     scheduled_at: SCHEDULED_AT,
     slides_json: null,
     // Only the fields these surfaces read; the cast documents the gap.
-  } as CalendarPost
+  } as unknown as CalendarPost
 }
 
 const CLIENTS = [{ id: 'client-1', name: 'Acme Clinic', contact_email: 'a@b.test' }]

@@ -31,7 +31,6 @@ export function buildEmptyDraft(): DraftProfile {
     pillars: [],
     identity: buildDefaultIdentity(),
     schedule: { ...DEFAULT_SCHEDULE },
-    platform: '',
     isHealthNiche: false,
   }
 }
@@ -108,10 +107,10 @@ export function buildDraftFromAnalysis(analysis: UrlAnalysisResponse): DraftResu
     unanswered.push('mix')
   }
 
-  // Neither of these has a detected_* field, and neither could have one: nothing on a website
-  // states what a post should make someone do, or which account it should publish to. Guessing
-  // either would put a decision in the client's mouth, so both are always the user's call.
-  unanswered.push('goal', 'platform')
+  // No detected_* field, and there could not be one: nothing on a website states what a post
+  // should make someone do. Guessing would put a decision in the client's mouth, so this is
+  // always the user's call.
+  unanswered.push('goal')
 
   draft.isHealthNiche = analysis.detected_is_health_niche
 

@@ -1,5 +1,3 @@
-import { PLATFORMS } from '@/utils/constants'
-
 /**
  * Every status posts.status can hold, in lifecycle order.
  *
@@ -10,37 +8,49 @@ import { PLATFORMS } from '@/utils/constants'
  * Not to be confused with post_approval_tokens.status ('pending', 'approved',
  * 'changes_requested', 'resolved'), which is a different column on a different table.
  */
-export const POST_STATUSES = [
-  'draft',
-  'pending_review',
-  'approved',
-  'scheduled',
-  'publishing',
-  'published',
-  'failed',
-] as const
+export const POST_STATUSES = ['draft', 'pending_review', 'approved', 'scheduled'] as const
 
 export type PostStatus = (typeof POST_STATUSES)[number]
 
 /**
- * Statuses a user may set through generic post updates. Pipeline-owned statuses
- * ('publishing', 'published', 'failed') are excluded — those must only be set by
- * the publish flow, otherwise stats and the scheduler can be corrupted.
+ * A post's status is now purely EDITORIAL — it ends at 'scheduled'.
+ *
+ * 'publishing', 'published' and 'failed' used to live here too, and moved onto
+ * `post_publications.status` when a post gained more than one destination. They could not
+ * stay: a post live on Instagram and failed on Facebook has two answers, and one column can
+ * only hold one of them. `publishStateOf` reduces the destinations to a single word for the
+ * surfaces that show one.
+ *
+ * This also retires `USER_SETTABLE_POST_STATUSES`, which existed to exclude exactly those
+ * three from generic updates. With the publishing lifecycle out of this column there is
+ * nothing left to exclude — every status here is one a user may legitimately set.
  */
-export const USER_SETTABLE_POST_STATUSES = [
-  'draft',
-  'pending_review',
-  'approved',
-  'scheduled',
-] as const satisfies readonly PostStatus[]
 
 /**
  * The *connection* vocabulary: how social_connections.platform and the Meta OAuth
- * flow spell things. Not the same list as PLATFORMS in utils/constants, which is the
- * *post* vocabulary (five selectable names in display case) — posts.platform uses that
- * one. The two describe different tables and must not be derived from each other.
+ * flow spell things.
+ *
+ * It used to be defined against a second list — PLATFORMS, five selectable display-case
+ * names that `posts.platform` stored. That column and that list are both gone: a post is
+ * not written for a network, so the only platform vocabulary left is this one.
  */
 export const POST_PLATFORMS = ['instagram'] as const
+
+export type PostPlatform = (typeof POST_PLATFORMS)[number]
+
+/**
+ * The connection's network, canonically spelled — or null when the row is not one we
+ * publish to.
+ *
+ * Canva rows share `social_connections` and reach every list of a client's connections,
+ * so "has a connection" and "has somewhere to publish" are different questions. This is
+ * what tells them apart, for the roster's channel chips and the wizard's run panel alike.
+ *
+ * Tolerates display case so a hand-fixed or legacy row still matches.
+ */
+export function toPublishingPlatform(platform: string | null | undefined): PostPlatform | null {
+  return POST_PLATFORMS.find((p) => p === platform?.toLowerCase()) ?? null
+}
 
 /** Discard-reason values — must mirror the discarded_drafts.reason check constraint (migration 20260805). */
 export const DISCARD_REASONS = [
@@ -53,25 +63,16 @@ export const DISCARD_REASONS = [
 
 export type DiscardReason = (typeof DISCARD_REASONS)[number]
 
-export function isUserSettablePostStatus(value: string): boolean {
-  return (USER_SETTABLE_POST_STATUSES as readonly string[]).includes(value)
-}
-
 /**
- * The one gate for posts.platform. PLATFORMS is the single source of truth: the value
- * originates there (a selector choice, stored as a weekly_mix_json key and read back by
- * extractPlatformFromMix), so an exact match is the right test — anything else is not a
- * value the product can produce.
+ * Every post status is user-settable now that the publishing lifecycle has left this
+ * column, so this is simply "is this a post status".
  *
- * Exact, not case-insensitive. Accepting 'instagram' here is what let a second spelling
- * into the column, and the calendar's `platform === 'Instagram'` test then silently
- * failed for those rows. Callers store the value as-is; passing this check *is* canonical.
- *
- * All five names pass, not just the publishable two — Kontuur writes for LinkedIn/X/TikTok
- * and only declines to publish there (see LIVE_PLATFORMS).
+ * Kept under its old name and callers: renaming it would be a rename for its own sake, and
+ * the question it answers at each call site — may this value be written to posts.status —
+ * has not changed, only its answer has widened.
  */
-export function isValidPostPlatform(value: string): boolean {
-  return (PLATFORMS as readonly string[]).includes(value)
+export function isUserSettablePostStatus(value: string): boolean {
+  return (POST_STATUSES as readonly string[]).includes(value)
 }
 
 export function validatePassword(password: string): string | null {

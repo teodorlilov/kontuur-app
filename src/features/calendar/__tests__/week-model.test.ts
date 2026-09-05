@@ -13,7 +13,7 @@ import type { CalendarPost } from '@/types/api'
 
 /** Only the two fields groupPostsByDate reads; the rest of CalendarPost is irrelevant here. */
 function post(id: string, scheduledAt: string): CalendarPost {
-  return { id, scheduled_at: scheduledAt } as CalendarPost
+  return { id, scheduled_at: scheduledAt, publications: [] } as unknown as CalendarPost
 }
 
 describe('groupPostsByDate', () => {
@@ -72,7 +72,13 @@ describe('postsInWeek', () => {
   })
 
   it('skips unscheduled posts', () => {
-    expect(postsInWeek([{ id: 'a', scheduled_at: null } as CalendarPost], week, TZ)).toEqual([])
+    expect(
+      postsInWeek(
+        [{ id: 'a', scheduled_at: null, publications: [] } as unknown as CalendarPost],
+        week,
+        TZ
+      )
+    ).toEqual([])
   })
 
   it('resolves the boundary in the agency zone, not UTC', () => {
@@ -88,7 +94,12 @@ describe('countClientsBehind', () => {
   const TZ = 'Europe/Sofia'
 
   function placed(clientId: string, at: string): CalendarPost {
-    return { id: `${clientId}-${at}`, client_id: clientId, scheduled_at: at } as CalendarPost
+    return {
+      id: `${clientId}-${at}`,
+      client_id: clientId,
+      scheduled_at: at,
+      publications: [],
+    } as unknown as CalendarPost
   }
 
   it('counts a client with nothing placed against a target', () => {
@@ -124,8 +135,22 @@ describe('countClientsBehind', () => {
 describe('buildClientWeek', () => {
   const week = '2026-08-03' // Mon 3 – Sun 9 Aug 2026
 
+  /**
+   * A post whose single destination is in the given state.
+   *
+   * The day state used to come from `posts.status`; it comes from the publications now, so
+   * a fixture has to carry one to say anything about what a day looks like.
+   */
   function withStatus(id: string, clientId: string, at: string, status: string): CalendarPost {
-    return { id, client_id: clientId, scheduled_at: at, status } as CalendarPost
+    return {
+      id,
+      client_id: clientId,
+      scheduled_at: at,
+      status: 'scheduled',
+      publications: [
+        { id: `${id}-ig`, platform: 'instagram', status, publishedAt: at, publishError: null },
+      ],
+    } as unknown as CalendarPost
   }
 
   it('reports a client with nothing placed as dark', () => {
@@ -241,24 +266,28 @@ describe('strongestState', () => {
     // Both orderings, because the reduction runs over whatever order the query
     // returned — a ranking sensitive to that would shade the same day two ways.
     const day = [
-      { id: 'a', status: first },
-      { id: 'b', status: second },
-    ] as CalendarPost[]
+      { id: 'a', publications: [{ id: 'a-ig', platform: 'instagram', status: first }] },
+      { id: 'b', publications: [{ id: 'b-ig', platform: 'instagram', status: second }] },
+    ] as unknown as CalendarPost[]
     expect(strongestState(day)).toBe('failed')
   })
 
   it('reads a published day as published, not merely scheduled', () => {
     const day = [
-      { id: 'a', status: 'scheduled' },
-      { id: 'b', status: 'published' },
-    ] as CalendarPost[]
+      { id: 'a', publications: [{ id: 'a-ig', platform: 'instagram', status: 'scheduled' }] },
+      { id: 'b', publications: [{ id: 'b-ig', platform: 'instagram', status: 'published' }] },
+    ] as unknown as CalendarPost[]
     expect(strongestState(day)).toBe('published')
   })
 
   it('reads everything still in flight as scheduled', () => {
     // `publishing` is proceeding, not a problem — the month must not render a post
     // mid-send as anything louder than one waiting to go.
-    expect(strongestState([{ id: 'a', status: 'publishing' }] as CalendarPost[])).toBe('scheduled')
+    expect(
+      strongestState([
+        { id: 'a', publications: [{ id: 'a-ig', platform: 'instagram', status: 'publishing' }] },
+      ] as unknown as CalendarPost[])
+    ).toBe('scheduled')
   })
 })
 

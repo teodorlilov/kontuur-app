@@ -57,6 +57,9 @@ export const instagramAdapter: NetworkAdapter = {
   platform: 'instagram',
   label: 'Instagram',
 
+  /** Both: a single image is one container, a carousel is a parent over children. */
+  accepts: () => true,
+
   preflight(payload: PostPayload): PreflightBlocker | null {
     if (payload.media.length === 0) return { message: 'No images attached', final: false }
     if (payload.media.length > MAX_CAROUSEL_IMAGES) {

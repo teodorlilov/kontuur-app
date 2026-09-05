@@ -8,6 +8,11 @@ import { LaneItem, type LaneGround } from './lane-item'
 import { PostStatusChip, POST_STATUS_CHIP } from '@/features/calendar/lib/post-status-chip'
 import type { PostStatus } from '@/lib/validation'
 import type { CalendarPost } from '@/types/api'
+import {
+  firstFailureReason,
+  postDisplayState,
+  type PostDisplayState,
+} from '@/lib/posts/publish-state'
 
 /**
  * One scheduled post in a day lane.
@@ -26,10 +31,10 @@ import type { CalendarPost } from '@/types/api'
  * whose post it is before the monogram is read.
  */
 
-/** Status decides only whether identity gets to speak: a record and a failure outrank it. */
-function groundFor(status: PostStatus): LaneGround {
-  if (status === 'published') return 'wash'
-  if (status === 'failed') return 'danger'
+/** State decides only whether identity gets to speak: a record and a failure outrank it. */
+function groundFor(state: PostDisplayState): LaneGround {
+  if (state === 'published' || state === 'partly') return 'wash'
+  if (state === 'failed') return 'danger'
   return 'identity'
 }
 export const PostCard = memo(function PostCard({
@@ -48,8 +53,8 @@ export const PostCard = memo(function PostCard({
   onDragStateChange?: (postId: string | null) => void
 }) {
   const { time } = isoToDateTimeFields(post.scheduled_at!, timeZone)
-  const status = post.status as PostStatus
-  const isPublished = status === 'published'
+  const status = postDisplayState(post.status as PostStatus, post.publications)
+  const isPublished = status === 'published' || status === 'partly'
   const isFailed = status === 'failed'
 
   const title = post.topic_summary ?? post.caption ?? post.pillar ?? 'Untitled post'
@@ -91,9 +96,13 @@ export const PostCard = memo(function PostCard({
       </span>
       {/* Why it failed, on the card itself. A lane of identical "Failed" chips says the
           week went wrong without saying whether it was one expired token or five posts
-          with no images — the difference between one fix and five. */}
-      {isFailed && post.publish_error && (
-        <span className="line-clamp-2 text-micro text-danger">{post.publish_error}</span>
+          with no images — the difference between one fix and five.
+          Read off the destination that failed, since a post can fail on one network and
+          be live on another. */}
+      {isFailed && firstFailureReason(post.publications) && (
+        <span className="line-clamp-2 text-micro text-danger">
+          {firstFailureReason(post.publications)}
+        </span>
       )}
 
       <span className="flex flex-wrap items-center gap-1">

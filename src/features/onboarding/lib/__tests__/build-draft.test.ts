@@ -42,13 +42,14 @@ describe('buildDraftFromAnalysis', () => {
     expect(new Set(draft.pillars.map((p) => p.id)).size).toBe(draft.pillars.length)
   })
 
-  it('always asks the two questions no website can answer', () => {
+  it('always asks the question no website can answer', () => {
+    // It was two. The other was which account to publish to, and the sheet stored the
+    // answer as the client's one network — a question the product no longer asks anyone,
+    // because destinations are picked per post when it is scheduled.
     const { draft, unanswered, provenance } = buildDraftFromAnalysis(analysis())
     expect(draft.goal).toBe('')
-    expect(draft.platform).toBe('')
-    expect(unanswered).toEqual(expect.arrayContaining(['goal', 'platform']))
+    expect(unanswered).toEqual(expect.arrayContaining(['goal']))
     expect(provenance.goal).toBeUndefined()
-    expect(provenance.platform).toBeUndefined()
   })
 
   it('carries the health-niche flag even though it has no row', () => {
@@ -87,11 +88,6 @@ describe('buildDraftFromAnalysis', () => {
     expect(draft.schedule).toEqual({ day: 'monday', time: '09:00', count: '3' })
     expect(provenance.schedule?.source).toBe('a starting cadence')
     expect(provenance.schedule?.confidence).toBe('low')
-  })
-
-  it('preselects no platform — picking one for the user is not a draft', () => {
-    const { draft } = buildDraftFromAnalysis(analysis())
-    expect(draft.platform).toBe('')
   })
 })
 

@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import { PLATFORMS } from '@/utils/constants'
 import {
   CONTROL_FOCUS,
   CONTROL_SURFACE,
@@ -33,7 +32,6 @@ function createBrief(): DraftBrief {
     id: crypto.randomUUID(),
     ideaText: '',
     extraNotes: '',
-    platform: '',
     targetDate: '',
   }
 }
@@ -222,28 +220,6 @@ function BriefCard({
             maxLength={EXTRA_NOTES_MAX}
             className={TEXTAREA_CLASS}
           />
-        </FieldGroup>
-
-        <FieldGroup label="Platform">
-          <div className="flex gap-1.5 flex-wrap">
-            {PLATFORMS.map((p) => (
-              <button
-                key={p}
-                type="button"
-                onClick={() => onUpdate('platform', brief.platform === p ? '' : p)}
-                className={cn(
-                  'text-caption px-3 py-[5px] rounded-[6px] font-medium cursor-pointer',
-                  FOCUS_RING,
-                  brief.platform === p
-                    ? 'border-[1.5px] border-forest-deep bg-forest-deep text-ink-inv'
-                    : 'border border-ink/14 bg-surface text-text2'
-                )}
-                style={{ transition: 'all 0.15s' }}
-              >
-                {p}
-              </button>
-            ))}
-          </div>
         </FieldGroup>
 
         <FieldGroup label="Target date">

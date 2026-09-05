@@ -1,9 +1,12 @@
 'use server'
 
+import { createAdminSupabaseClient } from '@/lib/supabase/admin'
+import { statusForSlot } from '@/lib/posts/status-for-slot'
 import 'server-only'
 import { revalidateTag } from 'next/cache'
 import { z } from 'zod'
 import { resolveActionAuth, fetchOwnedPost } from '@/lib/auth/helpers'
+import { rearmPublication } from '@/features/publishing/lib/publication-store'
 import type { ActionResult } from '@/lib/actions/types'
 
 const rearmSchema = z.object({
@@ -12,26 +15,23 @@ const rearmSchema = z.object({
 })
 
 /**
- * Return a failed post to the publish queue.
+ * Return a failed destination to the publish queue.
  *
- * Two independent things stopped this being possible, and both had to be answered:
+ * `publish_attempts` is never reset anywhere else, while the scheduler filters
+ * `.lt('publish_attempts', 3)`. A destination flipped back to `scheduled` with three
+ * attempts on it would sit in the calendar looking queued and never be picked up — a
+ * silent failure worse than the visible one it replaced. `rearmPublication` is the only
+ * place that reset happens, which is what keeps it from competing with the ladder.
  *
- * 1. `'failed'` is absent from `USER_SETTABLE_POST_STATUSES`, so `updatePost` refuses
- *    to move a post out of it. That list is not widened here — it exists so the
- *    pipeline owns `publishing`/`published`/`failed`, and a user who can set them by
- *    hand can corrupt the scheduler's view of what is still to send.
- * 2. `publish_attempts` is never reset anywhere, while `publishDuePosts` filters
- *    `.lt('publish_attempts', 3)`. A post flipped back to `scheduled` with three
- *    attempts on it would sit in the calendar looking queued and never be picked up —
- *    a silent failure worse than the visible one it replaced.
+ * Re-arming targets a DESTINATION, not the post: a post that reached Instagram and failed
+ * on Facebook has one thing to retry, and resetting the post would either resend what is
+ * already live or leave the real failure untouched.
  *
- * So this clears the error, the attempt count and any stale claim in **one write**,
- * guarded on the row still being `failed`: two people re-arming the same post, or a
- * re-arm racing the cron's own retry, must not resurrect a post that has since
- * published.
+ * The slot moves on the post because when it goes out is a property of the content — every
+ * destination waiting on it moves together.
  */
-export async function rearmFailedPost(
-  postId: string,
+export async function rearmFailedPublication(
+  publicationId: string,
   input: { scheduledAt: string }
 ): Promise<ActionResult> {
   const parsed = rearmSchema.safeParse(input)
@@ -41,27 +41,41 @@ export async function rearmFailedPost(
   if (!auth.ok) return { ok: false, error: auth.error }
   const { supabase, agencyId } = auth
 
-  const post = await fetchOwnedPost(supabase, postId, agencyId)
+  const admin = createAdminSupabaseClient()
+  const { data: row } = await admin
+    .from('post_publications')
+    .select('post_id')
+    .eq('id', publicationId)
+    .maybeSingle()
+  const publication = row as { post_id: string } | null
+  if (!publication) return { ok: false, error: 'Not found' }
+
+  // Ownership is proved against the POST, which is the thing that belongs to a client.
+  const post = await fetchOwnedPost(supabase, publication.post_id, agencyId)
   if (!post) return { ok: false, error: 'Post not found' }
 
-  const { data, error } = await supabase
+  /**
+   * The slot moves FIRST, and the destination is re-armed against it.
+   *
+   * The other order put the publication back in the queue while its post still carried the
+   * old, already-past slot — so a failed slot write left the cron free to retry immediately, at
+   * the wrong time, while the user was being told the retry had failed. This way a failed
+   * re-arm leaves the post with a new slot and its destination still 'failed': nothing
+   * publishes, and the button is still there to press.
+   */
+  const { error: slotError } = await supabase
     .from('posts')
     .update({
-      status: 'scheduled',
       scheduled_at: parsed.data.scheduledAt,
-      publish_error: null,
-      publish_attempts: 0,
-      // The scheduler treats a claim as a lease. Leaving a dead one behind would make
-      // the row look claimed until it went stale on its own.
-      publish_claimed_at: null,
+      // Paired, never written alone — the calendar lanes split on exactly this couple.
+      status: statusForSlot(parsed.data.scheduledAt),
     })
-    .eq('id', postId)
-    .eq('status', 'failed')
-    .select('id')
+    .eq('id', publication.post_id)
+  if (slotError) return { ok: false, error: slotError.message }
 
-  if (error) return { ok: false, error: error.message }
-  // Zero rows means the guard above rejected it, not that the write was lost.
-  if (!data || data.length === 0) return { ok: false, error: 'This post is no longer failed' }
+  const { rearmed, error } = await rearmPublication(admin, publicationId)
+  if (error) return { ok: false, error }
+  if (!rearmed) return { ok: false, error: 'This post is no longer failed' }
 
   revalidateTag('client-post-stats', 'max')
   return { ok: true, data: undefined }

@@ -1,5 +1,5 @@
 import { daysUntilExpiry, isTokenExpired, isTokenExpiring } from '@/lib/meta/token-expiry'
-import { POST_PLATFORMS } from '@/lib/validation'
+import { POST_PLATFORMS, toPublishingPlatform, type PostPlatform } from '@/lib/validation'
 import { extractInitials } from '@/utils/format'
 import type { PostSummary } from '@/types/post'
 import type { ClientRow, SocialConnectionRow } from '@/types'
@@ -12,8 +12,6 @@ import type { ClientRow, SocialConnectionRow } from '@/types'
  * sorted in SQL: the page fetches the agency's client set once and does the rest
  * in memory. That also makes the chip counts and the summary band free.
  */
-
-export type PostPlatform = (typeof POST_PLATFORMS)[number]
 
 /** How a single channel is doing. */
 export type ChannelState = 'connected' | 'expiring' | 'missing'
@@ -113,22 +111,13 @@ interface RosterSummary {
 // ─── Derivation ──────────────────────────────────────────────────────────────
 
 /**
- * The connect flow writes lowercase, but tolerate display case so a hand-fixed or
- * legacy social_connections row still matches its chip.
- */
-function normalisePlatform(platform: string | null): PostPlatform | null {
-  const match = POST_PLATFORMS.find((p) => p === platform?.toLowerCase())
-  return match ?? null
-}
-
-/**
  * One chip per supported platform, always — an absent channel renders as a
  * dashed "missing" chip rather than vanishing, so the column stays legible
  * across rows. Canva rows share this table and are filtered out here.
  */
 function buildChannels(rows: RosterConnectionRow[], now: Date): RosterChannel[] {
   return POST_PLATFORMS.map((platform) => {
-    const row = rows.find((r) => normalisePlatform(r.platform) === platform)
+    const row = rows.find((r) => toPublishingPlatform(r.platform) === platform)
     if (!row) {
       return { platform, state: 'missing' as const, accountName: null, expiresInDays: null }
     }

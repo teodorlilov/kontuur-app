@@ -14,15 +14,22 @@ export const PUBLISH_PREVIEW_LIMIT = 3
  *
  * Newest first: a stale failure matters less than one from last night. Unlike the upcoming list,
  * this has no cached equivalent elsewhere — the roster has no reason to care about failures.
+ *
+ * Asked of the DESTINATIONS. This was `.eq('status', 'failed')` on `posts`, and 'failed' is no
+ * longer one of that column's values — the publish path stopped writing `posts` when a post
+ * gained more than one destination. The filter matched nothing rather than erroring, so the
+ * "Needs a human" card sat permanently empty and every publish failure was invisible on the
+ * dashboard. One row per POST, not per failed destination: `!inner` restricts the parents and
+ * aggregates the embed, so a post that failed on two networks is still one thing to go and fix.
  */
 const fetchFailed = unstable_cache(
   async (agencyId: string): Promise<PostSummary[]> => {
     const supabase = createAdminSupabaseClient()
     const { data, error } = await supabase
       .from('posts')
-      .select(UPCOMING_POST_COLUMNS)
+      .select(`${UPCOMING_POST_COLUMNS}, post_publications!inner(status)`)
       .eq('clients.agency_id', agencyId)
-      .eq('status', 'failed')
+      .eq('post_publications.status', 'failed')
       .order('scheduled_at', { ascending: false })
       .limit(PUBLISH_PREVIEW_LIMIT)
 

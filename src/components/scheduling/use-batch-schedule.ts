@@ -7,7 +7,7 @@ import { formatScheduledAt } from '@/utils/date-helpers'
 import type { PostRow } from '@/types'
 
 /** The post fields the batch-schedule modal renders and the hook writes. */
-export type BatchPost = Pick<PostRow, 'id' | 'caption' | 'platform'> & {
+export type BatchPost = Pick<PostRow, 'id' | 'caption'> & {
   /** clients.name through the join — not a posts column. */
   client_name: string
 }

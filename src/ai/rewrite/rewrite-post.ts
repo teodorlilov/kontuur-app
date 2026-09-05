@@ -18,7 +18,6 @@ export async function performRewrite(ctx: RewriteContext) {
       aiTells: ctx.aiTells,
       qualityIssues: ctx.qualityIssues,
       client: ctx.client,
-      platform: ctx.platform,
     })
     newCaption = result.main_caption
     // Merge rewritten headline/body onto originals to preserve slide_number, slide_role, etc.
@@ -31,7 +30,6 @@ export async function performRewrite(ctx: RewriteContext) {
       aiTells: ctx.aiTells,
       qualityIssues: ctx.qualityIssues,
       client: ctx.client,
-      platform: ctx.platform,
     })
   }
 
@@ -42,7 +40,6 @@ export async function performRewrite(ctx: RewriteContext) {
     slides: isCarousel ? (newSlidesJson as SlideText[]) : undefined,
     client: ctx.client,
     label: `rewrite-${ctx.postType}`,
-    platform: ctx.platform,
     sourceContext: ctx.sourceExcerpt
       ? { excerpt: ctx.sourceExcerpt, url: ctx.sourceUrl }
       : undefined,

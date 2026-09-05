@@ -19,9 +19,9 @@ export async function GET(request: Request) {
   try {
     const result = await publishDuePosts()
     // Loud, because the reclaim will republish these once their claim goes stale.
-    for (const post of result.unreconciled) {
+    for (const publication of result.unreconciled) {
       console.error(
-        `[publish] UNRECONCILED post ${post.postId} is live on Instagram as media ${post.mediaId ?? 'unknown'} but its row still reads 'publishing' — fix the row before the claim expires`
+        `[publish] UNRECONCILED publication ${publication.publicationId} is live as ${publication.externalPostId ?? 'unknown'} but its row still reads 'publishing' — fix the row before the claim expires`
       )
     }
     for (const message of result.writeErrors) console.warn(`[publish] ${message}`)

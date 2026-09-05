@@ -5,14 +5,14 @@ import { unstable_cache } from 'next/cache'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import { BATCH_POSITION_COLUMNS, CHANGE_REQUEST_COLUMNS } from '@/lib/queries/select-columns'
-import type { CarouselSlide } from '@/types/api'
+import type { CarouselSlide, DashboardChangeRequest } from '@/types/api'
 import type { PostRow } from '@/types'
 
 const CHANGE_REQUEST_LIMIT = 5
 
 type ChangeRequestRow = Pick<
   PostRow,
-  'id' | 'client_id' | 'caption' | 'platform' | 'post_type' | 'scheduled_at'
+  'id' | 'client_id' | 'caption' | 'post_type' | 'scheduled_at'
 > & {
   slides_json: unknown
   post_approval_tokens: Array<{
@@ -23,19 +23,15 @@ type ChangeRequestRow = Pick<
   }>
 }
 
-/** A post the client asked changes on, with everything but its client name resolved. */
-interface ChangeRequest {
-  id: string
-  clientId: string
-  caption: string | null
-  platform: string
-  postType: string
-  slidesJson: CarouselSlide[] | null
-  scheduledAt: string | null
-  clientNote: string | null
-  respondedAt: string | null
-  postNumber: number
-}
+/**
+ * A post the client asked changes on, with everything but its client name resolved.
+ *
+ * Derived, because it was the same ten fields written out twice — this change had to drop
+ * `platform` from both in lockstep to keep them in step, which is the drift the rule exists to
+ * stop. The name is the only difference, and it is added a stage later once the client roster
+ * is in hand.
+ */
+type ChangeRequest = Omit<DashboardChangeRequest, 'clientName'>
 
 /**
  * Maps each post to its 1-indexed place within the approval batch it was sent in.
@@ -118,7 +114,6 @@ const fetchChangeRequests = unstable_cache(
         id: row.id,
         clientId: row.client_id,
         caption: row.caption,
-        platform: row.platform,
         postType: row.post_type,
         slidesJson: row.slides_json as CarouselSlide[] | null,
         scheduledAt: row.scheduled_at,

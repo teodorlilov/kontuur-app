@@ -36,10 +36,7 @@ export function QueueInsightSections({ triaged, now }: { triaged: TriagedPost; n
         <h3 className="text-label font-semibold uppercase text-text2">Post info</h3>
         <div className="mt-3 flex flex-col gap-1.5">
           <InfoRow label="Client" value={post.client_name} />
-          <InfoRow
-            label="Platform"
-            value={[post.platform, post.post_type].filter(Boolean).join(' · ')}
-          />
+          <InfoRow label="Format" value={post.post_type} />
           <InfoRow
             label="Generated"
             value={formatRelativeTime(new Date(post.created_at), now)}

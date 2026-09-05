@@ -40,7 +40,6 @@ import type { BestTimePlatform } from '@/lib/suggested-times/schemas'
  */
 
 export interface SlotPickerInput {
-  platform: string | null
   bestTimes: BestTimePlatform[] | null
   /** The client's weekly target; 0 = no cap. */
   postsPerWeek: number
@@ -70,6 +69,11 @@ export interface SlotPickerInput {
  * falls back to what the client does have rather than to a platform they do not use.
  * Null when nothing is stored, which degrades to no slots at all: the plan's rule is that
  * absent data becomes absence, never a guess.
+ *
+ * Callers used to pass the answer in beside the times it is derived from. Three of them
+ * did, and one of the three read it off the post being scheduled — which stopped being a
+ * fact about a post the moment a post could go to two networks. Two arguments where one
+ * determines the other is one too many, so the resolution happens here.
  */
 export function suggestionPlatform(bestTimes: BestTimePlatform[] | null): string | null {
   if (!bestTimes || bestTimes.length === 0) return null
@@ -77,11 +81,15 @@ export function suggestionPlatform(bestTimes: BestTimePlatform[] | null): string
   return (instagram ?? bestTimes[0]!).platform
 }
 
-/** The platform's entry, or null when nothing usable is stored for it. */
-function entryFor(
-  platform: string | null,
-  bestTimes: BestTimePlatform[] | null
-): BestTimePlatform | null {
+/**
+ * The suggestion platform's entry, or null when nothing usable is stored for it.
+ *
+ * Exported for the schedule dialog, which asks the same question — resolve the platform, find
+ * its entry, require a first day and a first window — and had written all four steps out again,
+ * matching the platform by exact string where this compares case-insensitively.
+ */
+export function entryFor(bestTimes: BestTimePlatform[] | null): BestTimePlatform | null {
+  const platform = suggestionPlatform(bestTimes)
   if (!platform || !bestTimes) return null
   const entry = bestTimes.find((b) => b.platform.toLowerCase() === platform.toLowerCase())
   if (!entry || entry.best_days.length === 0 || entry.best_time_windows.length === 0) return null
@@ -96,13 +104,12 @@ function entryFor(
  * than to guessing about a guess.
  */
 export function suggestWeekSlots(input: {
-  platform: string | null
   bestTimes: BestTimePlatform[] | null
   weekStartISO: string
   /** The agency zone — see the note on `SlotPickerInput`. */
   timeZone: string
 }): string[] {
-  const entry = entryFor(input.platform, input.bestTimes)
+  const entry = entryFor(input.bestTimes)
   if (!entry) return []
 
   const wanted = new Set(entry.best_days.map((day) => day.toLowerCase()))
@@ -132,7 +139,7 @@ export function suggestWeekSlots(input: {
  */
 export function pickNextOpenSlot(input: SlotPickerInput): string | null {
   const { postsPerWeek, occupiedSlots, now, timeZone } = input
-  if (!entryFor(input.platform, input.bestTimes)) return null
+  if (!entryFor(input.bestTimes)) return null
 
   const occupiedDays = new Set(occupiedSlots.map((iso) => toDateKey(new Date(iso), timeZone)))
   const countByWeek = new Map<string, number>()
@@ -147,7 +154,6 @@ export function pickNextOpenSlot(input: SlotPickerInput): string | null {
   const thisWeek = getMondayISO(now, timeZone)
   const candidates = [0, 1, 2].flatMap((weekOffset) =>
     suggestWeekSlots({
-      platform: input.platform,
       bestTimes: input.bestTimes,
       weekStartISO: shiftDateKey(thisWeek, weekOffset * DAYS_PER_WEEK),
       timeZone,

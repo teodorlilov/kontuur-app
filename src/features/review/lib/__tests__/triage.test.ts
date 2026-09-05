@@ -23,7 +23,6 @@ function post(overrides: Partial<QueuePost> = {}): QueuePost {
     id: 'p1',
     client_id: 'c1',
     caption: 'caption',
-    platform: 'Instagram',
     post_type: 'single',
     slides_json: null,
     validation_json: null,

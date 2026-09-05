@@ -1,3 +1,5 @@
+import type { PostType } from '@/types/api'
+
 /**
  * What a social network can do, as the publish path sees it.
  *
@@ -29,6 +31,15 @@ export interface NetworkAdapter {
    * published" ends up describing a Facebook failure.
    */
   readonly label: string
+
+  /**
+   * Which kinds of post this network takes.
+   *
+   * The capability rule lives on the network, not in a constant beside it. A list of
+   * "publishable platforms" kept elsewhere would be a second source of truth that has to
+   * stay in agreement with the adapters — and the one that goes stale is always the list.
+   */
+  accepts(postType: PostType): boolean
 
   /**
    * Why this content cannot go to this network, checked before anything is

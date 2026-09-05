@@ -28,12 +28,6 @@ function formatWeekRange(posts: ApprovalPostData[]): string {
   return `${dates[0]!.toLocaleDateString('en-US', opts)} – ${dates[dates.length - 1]!.toLocaleDateString('en-US', opts)}`
 }
 
-/** Derive the dominant platform from posts (most common). */
-function derivePlatform(posts: ApprovalPostData[]): string {
-  const platforms = posts.map((p) => p.platform).filter(Boolean)
-  return platforms[0] ?? 'Social'
-}
-
 /** Count posts with a given status. */
 function countByStatus(
   statuses: Map<string, ApprovalPostStatus>,
@@ -279,7 +273,6 @@ export default function ApprovalPage() {
         agencyName={data.agencyName}
         clientName={data.clientName}
         dateRange={formatWeekRange(posts)}
-        platform={derivePlatform(posts)}
         totalCount={posts.length}
         pendingCount={countByStatus(postStatuses, 'pending')}
         approvedCount={countByStatus(postStatuses, 'approved')}

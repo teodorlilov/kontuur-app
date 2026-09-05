@@ -8,7 +8,6 @@ import { watchPublishOutcome } from '@/features/publishing/lib/watch-publish'
 import { getPillarColor } from '@/components/ui/colors/identity-colors'
 import { formatRelativeTime, parseTimestamp } from '@/utils/format'
 import { formatScheduledAt, isoToDateTimeFields, toDateKey } from '@/utils/date-helpers'
-import { PLATFORMS } from '@/utils/constants'
 import { CarouselSlides } from '@/components/posts/carousel-slides'
 import { QualityScores } from '@/components/posts/quality-scores'
 import { SCORE_BAND_VARS, scoreBand, scoreTextColor } from '@/components/ui/colors/score-colors'
@@ -23,6 +22,14 @@ import { useGenerateVisuals } from '@/components/posts/use-generate-visuals'
 import { missingImagePositions } from '@/lib/posts/image-list'
 import { extractAllFlaggedSlides } from '@/utils/extract-flagged-slides'
 import type { CalendarPost, CarouselSlide, PostImage, ValidationData } from '@/types/api'
+import {
+  postDisplayState,
+  publishStateOf,
+  firstFailureReason,
+  type PostDisplayState,
+} from '@/lib/posts/publish-state'
+import { POST_STATUS_CHIP } from '@/features/calendar/lib/post-status-chip'
+import type { PostStatus } from '@/lib/validation'
 
 interface ContentUpdates {
   caption?: string
@@ -47,7 +54,7 @@ interface ScheduleCardProps {
   onClose: () => void
   onPrev: () => void
   onNext: () => void
-  onSchedule: (postId: string, scheduledAt: string, platform: string) => Promise<void>
+  onSchedule: (postId: string, scheduledAt: string) => Promise<void>
   onUnschedule: (postId: string) => void
   onSkip: (postId: string) => void
   onDelete: (postId: string) => void
@@ -60,7 +67,8 @@ interface ScheduleCardProps {
   onExitEditMode?: () => void
   onSaveContent?: (postId: string, updates: ContentUpdates) => Promise<boolean>
   onSaveAndResend?: (postId: string, updates: ContentUpdates) => Promise<void>
-  onPublished?: (postId: string) => void
+  /** `platforms` are the networks the route reached — see markPostPublished. */
+  onPublished?: (postId: string, platforms: string[]) => void
   onImageUpserted: (postId: string, image: PostImage) => void
   onImageDeleted: (postId: string, imageId: string) => void
 }
@@ -130,7 +138,6 @@ export const ScheduleCard = memo(function ScheduleCard({
 }: ScheduleCardProps) {
   const [date, setDate] = useState('')
   const [time, setTime] = useState('09:00')
-  const [platform, setPlatform] = useState('')
   const [draftCaption, setDraftCaption] = useState('')
   const [draftSlides, setDraftSlides] = useState<CarouselSlide[]>([])
   const [savingContent, setSavingContent] = useState(false)
@@ -162,7 +169,6 @@ export const ScheduleCard = memo(function ScheduleCard({
       setDate('')
       setTime('09:00')
     }
-    setPlatform(post?.platform ?? 'Instagram')
     setDraftCaption(post?.caption ?? '')
     setDraftSlides(Array.isArray(post?.slides_json) ? (post.slides_json as CarouselSlide[]) : [])
     setPublishError(null)
@@ -170,15 +176,7 @@ export const ScheduleCard = memo(function ScheduleCard({
     // spinner left true by the previous post would render every following post
     // mid-publish forever.
     setPublishing(false)
-  }, [
-    post?.id,
-    post?.platform,
-    post?.scheduled_at,
-    post?.caption,
-    post?.slides_json,
-    timeZone,
-    slotPrefill,
-  ])
+  }, [post?.id, post?.scheduled_at, post?.caption, post?.slides_json, timeZone, slotPrefill])
 
   // Delegate merging to the calendar state hook (functional updates) — computing the merged array
   // here from a captured `post` snapshot loses images when concurrent generations complete.
@@ -223,8 +221,27 @@ export const ScheduleCard = memo(function ScheduleCard({
   const currentPost = post
   const images = currentPost.images ?? []
   const isScheduled = currentPost.status === 'scheduled'
-  const isPublished = currentPost.status === 'published'
-  const isFailed = currentPost.status === 'failed'
+  // Through the shared reducer, not the post's own column: `posts.status` ends at
+  // 'scheduled' and whether a post went out is a fact about its destinations.
+  const displayState = postDisplayState(currentPost.status as PostStatus, currentPost.publications)
+  /**
+   * What the destinations did, in the words `POST_STATUS_CHIP` already uses.
+   *
+   * This was a ladder of four hand-written labels beside that map — a second status vocabulary
+   * in the same feature that `post-card.tsx` reads from the map, so the two disagreed about the
+   * same post. It had no arm for 'partly' at all, which read as "Scheduled": a post live on one
+   * network and failed on another, described as not yet sent.
+   *
+   * `postDisplayState` returns the post's OWN status while nothing has gone out, so a value that
+   * differs from it is a publish state — no second list of which those are to keep in step.
+   * Editorial states stay collapsed to one word: on this card the useful distinction is whether
+   * the post is on the calendar, not which review step it sits at.
+   */
+  const publishLabel =
+    displayState === currentPost.status ? null : POST_STATUS_CHIP[displayState].label
+
+  const isPublished = displayState === 'published'
+  const isFailed = displayState === 'failed'
   /** A sent approval nobody can act on any more — the link's own deadline has passed. */
   const approvalLapsed =
     currentPost.approval_status === 'pending' &&
@@ -238,7 +255,7 @@ export const ScheduleCard = memo(function ScheduleCard({
   const missingPositions = missingImagePositions(images, totalImageSlots, generatingPositions)
   const slotsWithoutImage = totalImageSlots - images.length
   // No point generating visuals for content that is already (or currently being) published.
-  const canGenerateVisuals = !isPublished && currentPost.status !== 'publishing'
+  const canGenerateVisuals = !isPublished && displayState !== 'publishing'
   const pillarColor = currentPost.pillar ? getPillarColor(currentPost.pillar) : null
   const score = currentPost.quality_score_avg
   const validation = currentPost.validation
@@ -253,7 +270,7 @@ export const ScheduleCard = memo(function ScheduleCard({
       onRearm(currentPost.id, scheduledAt)
       return
     }
-    void onSchedule(currentPost.id, scheduledAt, platform)
+    void onSchedule(currentPost.id, scheduledAt)
   }
 
   function handleCopyCaption() {
@@ -267,7 +284,10 @@ export const ScheduleCard = memo(function ScheduleCard({
     setPublishError(null)
     try {
       const res = await fetch(`/api/posts/${currentPost.id}/publish`, { method: 'POST' })
-      const data = await res.json()
+      const data = (await res.json()) as { error?: string; platforms?: string[] }
+      // The networks the route reached. A post published from the tray has no publications in
+      // this copy of the state, so without them the card cannot mark itself published.
+      const platforms = data.platforms ?? []
       if (res.status === 202) {
         // Deferred publish: the container exists and the server finishes out of
         // band. Close now, and let the watcher report the real outcome — even
@@ -277,7 +297,7 @@ export const ScheduleCard = memo(function ScheduleCard({
         watchPublishOutcome(postId, {
           onPublished: () => {
             toast.success('Published to Instagram')
-            onPublished?.(postId)
+            onPublished?.(postId, platforms)
           },
           onFailed: (reason) => {
             toast.error(`Instagram publish failed: ${reason}`, { duration: 12_000 })
@@ -288,7 +308,7 @@ export const ScheduleCard = memo(function ScheduleCard({
         })
         onClose()
       } else if (res.ok) {
-        onPublished?.(currentPost.id)
+        onPublished?.(currentPost.id, platforms)
         onClose()
       } else {
         setPublishError(data.error ?? 'Publish failed')
@@ -426,15 +446,7 @@ export const ScheduleCard = memo(function ScheduleCard({
                       : 'var(--text2)'
               }
             >
-              {isPublished
-                ? 'Published'
-                : isFailed
-                  ? 'Failed'
-                  : currentPost.status === 'publishing'
-                    ? 'Publishing'
-                    : isScheduled
-                      ? 'Scheduled'
-                      : 'Unscheduled'}
+              {publishLabel ?? (isScheduled ? 'Scheduled' : 'Unscheduled')}
             </TagPill>
             {/* Priority is attention, so Amber — it was a terracotta wash under
                 green ink, because --color-terracotta aliased to --spring. */}
@@ -446,11 +458,6 @@ export const ScheduleCard = memo(function ScheduleCard({
             {currentPost.pillar && pillarColor && (
               <TagPill bg={pillarColor.bg} color={pillarColor.text} dot={pillarColor.hex}>
                 {currentPost.pillar}
-              </TagPill>
-            )}
-            {currentPost.platform && (
-              <TagPill bg="rgba(44,111,165,0.10)" color="var(--forest)">
-                {currentPost.platform}
               </TagPill>
             )}
             <TagPill bg="rgba(15,21,18,0.06)" color="var(--text2)">
@@ -644,10 +651,8 @@ export const ScheduleCard = memo(function ScheduleCard({
               <ScheduleForm
                 date={date}
                 time={time}
-                platform={platform}
                 onDateChange={setDate}
                 onTimeChange={setTime}
-                onPlatformChange={setPlatform}
                 timeZone={timeZone}
               />
             )}
@@ -673,7 +678,7 @@ export const ScheduleCard = memo(function ScheduleCard({
           <NormalFooter
             date={date}
             isScheduled={isScheduled}
-            isPublished={isPublished}
+            displayState={displayState}
             isScheduling={isScheduling}
             currentPost={currentPost}
             images={images}
@@ -758,22 +763,25 @@ function TagPill({
   )
 }
 
-/** Date/time/platform scheduling form. */
+/**
+ * Date/time scheduling form.
+ *
+ * It also picked a platform, because a post was written for one and scheduling was when
+ * that choice was confirmed. Where a post goes is resolved from the client's connections
+ * when it is scheduled — a chip group here would be a second answer to a question the
+ * server already answers.
+ */
 function ScheduleForm({
   date,
   time,
-  platform,
   onDateChange,
   onTimeChange,
-  onPlatformChange,
   timeZone,
 }: {
   date: string
   time: string
-  platform: string
   onDateChange: (v: string) => void
   onTimeChange: (v: string) => void
-  onPlatformChange: (v: string) => void
   timeZone: string
 }) {
   // The floor is today in the *agency's* zone. It was `toISOString().slice(0,10)` — UTC
@@ -798,31 +806,6 @@ function ScheduleForm({
           value={time}
           onChange={onTimeChange}
         />
-      </div>
-      <div className="flex flex-col gap-1">
-        {/* tracking-normal cancels the Label role's built-in 0.16em. */}
-        <span className="text-label font-medium tracking-normal text-text2">Platform</span>
-        <div className="flex flex-wrap gap-[5px]">
-          {PLATFORMS.map((p) => (
-            // tracking-normal cancels the Label role's built-in 0.16em.
-            <button
-              key={p}
-              type="button"
-              onClick={() => onPlatformChange(p)}
-              className={cn(
-                'cursor-pointer rounded-[5px] px-2.5 py-[5px] text-label font-medium tracking-normal',
-                platform === p
-                  ? 'border-none bg-forest text-ink-inv'
-                  : 'border border-line2 bg-surface text-text2'
-              )}
-              // `all 0.15s` rides the default `ease`; Tailwind's transition-*
-              // would swap in its own curve.
-              style={{ transition: 'all 0.15s' }}
-            >
-              {p}
-            </button>
-          ))}
-        </div>
       </div>
     </div>
   )
@@ -945,7 +928,7 @@ function QualitySidebar({
 function NormalFooter({
   date,
   isScheduled,
-  isPublished,
+  displayState,
   isScheduling,
   currentPost,
   images,
@@ -961,7 +944,8 @@ function NormalFooter({
 }: {
   date: string
   isScheduled: boolean
-  isPublished: boolean
+  /** Reduced from the post's destinations, not its status — see postDisplayState. */
+  displayState: PostDisplayState
   isScheduling: boolean
   currentPost: CalendarPost
   images: PostImage[]
@@ -983,17 +967,20 @@ function NormalFooter({
         loading={isScheduling}
         className="flex-1"
       >
-        {currentPost.status === 'failed'
+        {displayState === 'failed'
           ? 'Retry publish'
           : isScheduled
             ? 'Update schedule'
             : 'Schedule to calendar'}
       </Button>
-      {isScheduled ? (
+      {/* Not offered once something has gone out. Unscheduling clears the slot and puts the post
+          back to 'approved', which drops it out of both calendar lanes — so pressing this on a
+          live post hid it from the calendar while it stayed published on the network. */}
+      {isScheduled && publishStateOf(currentPost.publications) === 'unpublished' ? (
         <Button variant="secondary" onClick={() => onUnschedule(currentPost.id)}>
           Unschedule
         </Button>
-      ) : (
+      ) : isScheduled ? null : (
         <Button variant="secondary" onClick={() => onSkip(currentPost.id)}>
           Skip for now
         </Button>
@@ -1008,14 +995,15 @@ function NormalFooter({
           <Mail className="size-3" /> Send for approval
         </Button>
       )}
-      {images.length > 0 &&
-        !isPublished &&
-        currentPost.status !== 'publishing' &&
-        currentPost.platform === 'Instagram' && (
-          <Button onClick={onPublishNow} disabled={publishing} loading={publishing}>
-            Publish to Instagram
-          </Button>
-        )}
+      {/* No platform test: which networks can take this post is resolved from the client's
+          connections when the button is pressed, and the route says so if there are none.
+          The gate that stood here was `platform === 'Instagram'`, which a card cannot know
+          the answer to any more and which only ever agreed with the adapters by luck. */}
+      {images.length > 0 && displayState !== 'published' && displayState !== 'publishing' && (
+        <Button onClick={onPublishNow} disabled={publishing} loading={publishing}>
+          Publish now
+        </Button>
+      )}
       <Button variant="danger" onClick={() => onDelete(currentPost.id)}>
         Delete post
       </Button>
@@ -1027,9 +1015,9 @@ function NormalFooter({
           {publishError}
         </div>
       )}
-      {!publishError && currentPost.status === 'failed' && currentPost.publish_error && (
+      {!publishError && firstFailureReason(currentPost.publications) && (
         <div className="w-full rounded-[6px] bg-danger-bg px-2.5 py-2 text-micro text-danger">
-          Last attempt failed: {currentPost.publish_error}
+          Last attempt failed: {firstFailureReason(currentPost.publications)}
         </div>
       )}
     </div>

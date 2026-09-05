@@ -8,15 +8,16 @@ import {
   // Aliased: this hook exports its own `schedulePost`, which is the optimistic UI wrapper around
   // the action of the same name. Same operation, two layers.
   schedulePost as persistSchedule,
-  updatePost,
 } from '@/lib/actions/post-actions'
-import { rearmFailedPost } from '@/features/calendar/actions/post-recovery'
+import { rearmFailedPublication } from '@/features/calendar/actions/post-recovery'
 import { reconcilePosts } from '@/features/calendar/lib/reconcile-posts'
 import { moveScheduledToDay, shiftScheduledByDays } from '@/features/calendar/lib/move-post'
 import { upsertImageAtPosition } from '@/lib/posts/image-list'
 import type { ActionResult } from '@/lib/actions/types'
 import type { CalendarPost, PostImage } from '@/types/api'
 import type { PostStatus } from '@/lib/validation'
+import { failedPublications, publishStateOf } from '@/lib/posts/publish-state'
+import { statusForSlot } from '@/lib/posts/status-for-slot'
 
 /** Where a moved post came from and went, so the caller can offer to put it back. */
 type MoveResult = { from: string; to: string } | null
@@ -29,13 +30,12 @@ const CLEARED_APPROVAL = {
 
 /** Statuses that occupy a calendar slot. Typed `readonly string[]` rather than the
  *  narrowed literal union so `.includes()` still accepts a plain status string; the
- *  `satisfies` is what checks the members against the vocabulary. */
-const ON_CALENDAR_STATUSES: readonly string[] = [
-  'scheduled',
-  'publishing',
-  'published',
-  'failed',
-] satisfies readonly PostStatus[]
+ *  `satisfies` is what checks the members against the vocabulary.
+ *
+ *  'publishing', 'published' and 'failed' used to be listed here too. A post that has gone
+ *  out is still 'scheduled' — it holds its slot for the same reason it always did, and what
+ *  became of it lives on its publications. */
+const ON_CALENDAR_STATUSES: readonly string[] = ['scheduled'] satisfies readonly PostStatus[]
 
 export function useCalendar(initialPosts: CalendarPost[], timeZone: string) {
   const [posts, setPosts] = useState(initialPosts)
@@ -102,7 +102,8 @@ export function useCalendar(initialPosts: CalendarPost[], timeZone: string) {
   const runPostMutation = useCallback(
     async (opts: {
       postId: string
-      run: () => Promise<ActionResult>
+      /** Any successful shape — the wrapper only reads `ok` and `error`. */
+      run: () => Promise<ActionResult<unknown>>
       patch: (post: CalendarPost) => CalendarPost
       /** Omitted when the caller raises its own — a move offers Undo, not a sentence. */
       successMessage?: string
@@ -144,23 +145,18 @@ export function useCalendar(initialPosts: CalendarPost[], timeZone: string) {
     async (
       postId: string,
       scheduledAt: string,
-      platform?: string,
       contentUpdates?: { caption?: string; slides_json?: unknown }
     ) => {
       await runPostMutation({
         postId,
-        // Three writes because this is three operations wearing one button: save what was typed,
-        // put the post in a slot, and (rarely) change its platform. Each goes to the function that
-        // owns those columns. They ran as one `updatePost` before, which is how caption and
-        // scheduled_at came to share a schema.
+        // Two writes because this is two operations wearing one button: save what was typed,
+        // and put the post in a slot. Each goes to the function that owns those columns. They
+        // ran as one `updatePost` before, which is how caption and scheduled_at came to share
+        // a schema.
         run: async () => {
           if (contentUpdates?.caption !== undefined || contentUpdates?.slides_json !== undefined) {
             const copy = await savePostCopy(postId, contentUpdates)
             if (!copy.ok) return copy
-          }
-          if (platform) {
-            const moved = await updatePost(postId, { platform })
-            if (!moved.ok) return moved
           }
           return persistSchedule(postId, scheduledAt)
         },
@@ -168,7 +164,6 @@ export function useCalendar(initialPosts: CalendarPost[], timeZone: string) {
           ...p,
           status: 'scheduled',
           scheduled_at: scheduledAt,
-          platform: platform ?? p.platform,
           ...(contentUpdates?.caption !== undefined && { caption: contentUpdates.caption }),
           ...(contentUpdates?.slides_json !== undefined && {
             slides_json: contentUpdates.slides_json as CalendarPost['slides_json'],
@@ -236,27 +231,45 @@ export function useCalendar(initialPosts: CalendarPost[], timeZone: string) {
   )
 
   /**
-   * Put a failed post back in the publish queue.
+   * Put a failed destination back in the publish queue.
    *
-   * Not `schedulePost`: `updatePost` refuses to move a post out of `'failed'`, and even
-   * if it did, `publish_attempts` would still be at the scheduler's limit and the post
-   * would sit there looking queued forever. See `rearmFailedPost` for both halves.
+   * Targets the DESTINATION, not the post: a post live on Instagram and failed on Facebook
+   * has one thing to retry, and re-arming the post would either resend what is already out
+   * or leave the real failure untouched. With one failed destination — the common case —
+   * that is the one it picks.
+   *
+   * `publish_attempts` is reset by `rearmPublication` and nowhere else, because the
+   * scheduler filters on it: a destination flipped back to `scheduled` while still at the
+   * limit would sit in the calendar looking queued and never be picked up.
    */
   const rearmPost = useCallback(
-    async (postId: string, scheduledAt: string): Promise<boolean> =>
-      runPostMutation({
+    async (postId: string, scheduledAt: string): Promise<boolean> => {
+      const post = postsRef.current.find((p) => p.id === postId)
+      const failed = failedPublications(post?.publications ?? [])[0]
+      if (!failed) {
+        toast.error('Nothing to retry on this post')
+        return false
+      }
+      return runPostMutation({
         postId,
-        run: () => rearmFailedPost(postId, { scheduledAt }),
+        run: () => rearmFailedPublication(failed.id, { scheduledAt }),
         patch: (p) => ({
           ...p,
-          status: 'scheduled',
           scheduled_at: scheduledAt,
-          publish_error: null,
-          publish_attempts: 0,
+          // Paired, never written alone — and the server writes the same pair through
+          // statusForSlot. Patching the instant on its own left a post that had no slot yet
+          // as 'approved' with a scheduled_at, the one couple that renders in neither lane.
+          status: statusForSlot(scheduledAt),
+          publications: p.publications.map((pub) =>
+            pub.id === failed.id
+              ? { ...pub, status: 'scheduled' as const, publishError: null }
+              : pub
+          ),
         }),
         successMessage: 'Back in the publish queue',
         failureMessage: 'Could not retry this post',
-      }),
+      })
+    },
     [runPostMutation]
   )
 
@@ -283,11 +296,18 @@ export function useCalendar(initialPosts: CalendarPost[], timeZone: string) {
     ): Promise<MoveResult> => {
       const post = postsRef.current.find((p) => p.id === postId)
       if (!post?.scheduled_at) return null
-      if (post.status !== 'scheduled') {
+      /**
+       * Whether this post has gone out is its destinations' answer. The guard read
+       * `post.status !== 'scheduled'`, and every post the calendar shows now has exactly that
+       * status — so a live post could be dragged to a new slot, and the 'failed' branch below
+       * was unreachable, taking the one message that tells someone what to do with it.
+       */
+      const state = publishStateOf(post.publications)
+      if (state !== 'unpublished') {
         toast.error(
-          post.status === 'failed'
+          state === 'failed'
             ? 'Retry this post to put it back in the queue.'
-            : 'Only scheduled posts can be moved.'
+            : 'Only posts that have not gone out can be moved.'
         )
         return null
       }
@@ -385,15 +405,53 @@ export function useCalendar(initialPosts: CalendarPost[], timeZone: string) {
     )
   }, [])
 
-  /** Mark a post as published in local state (called after successful manual publish). */
-  const markPostPublished = useCallback((postId: string) => {
+  /**
+   * Mark a post as published in local state (called after a successful manual publish).
+   *
+   * The destinations move, not the post. This patched `status: 'published'` — a value the
+   * column no longer holds — and since the calendar's lane filter is now exactly `'scheduled'`,
+   * the card was filtered out of the grid the instant its publish succeeded: the post appeared
+   * to vanish at the moment it worked. The slot is stamped alongside it for a post published
+   * straight from the tray, mirroring what the route writes server-side.
+   */
+  const markPostPublished = useCallback((postId: string, platforms: string[] = []) => {
     const now = new Date().toISOString()
     setPosts((prev) =>
-      prev.map((p) =>
-        p.id === postId ? { ...p, status: 'published', scheduled_at: p.scheduled_at ?? now } : p
-      )
+      prev.map((p) => {
+        if (p.id !== postId) return p
+        /**
+         * A post published straight from the unscheduled tray has NO publications yet — the
+         * route creates them in the same request. Mapping over the existing array therefore
+         * changed nothing for the one case this function exists to cover, and the card went on
+         * showing "Scheduled", with Unschedule still offered, over media that was live.
+         *
+         * The route reports which networks it sent to, and they stand in until the server's own
+         * rows arrive. Ids are local: nothing reads them before the next load, and the state
+         * every surface derives comes from `status`.
+         */
+        const existing = p.publications.map((publication) => ({
+          ...publication,
+          status: 'published' as const,
+          publishedAt: publication.publishedAt ?? now,
+        }))
+        const invented = platforms
+          .filter((platform) => !p.publications.some((pub) => pub.platform === platform))
+          .map((platform) => ({
+            id: `optimistic:${postId}:${platform}`,
+            platform,
+            status: 'published' as const,
+            publishedAt: now,
+            publishError: null,
+          }))
+        return {
+          ...p,
+          scheduled_at: p.scheduled_at ?? now,
+          status: p.scheduled_at ? p.status : statusForSlot(now),
+          publications: [...existing, ...invented],
+        }
+      })
     )
-    toast.success('Post published to Instagram')
+    toast.success('Post published')
   }, [])
 
   return {

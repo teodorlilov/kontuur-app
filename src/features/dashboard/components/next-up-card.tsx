@@ -16,13 +16,11 @@ interface NextUpCardProps {
 /** One publish, as the cron will attempt it. */
 function PublishRow({
   clientName,
-  platform,
   slot,
   isToday,
   tone = 'default',
 }: {
   clientName: string
-  platform: string
   slot: string
   isToday?: boolean
   tone?: 'default' | 'danger'
@@ -34,7 +32,6 @@ function PublishRow({
             measures 1.35:1 and is simply not there. See The Small Present Rule. */}
         {isToday && <span aria-hidden className="size-[5px] shrink-0 rounded-full bg-spring" />}
         <span className="truncate text-body font-medium text-ink">{clientName}</span>
-        <span className="shrink-0 text-caption capitalize text-text2">{platform}</span>
       </span>
       <span
         className={cn(
@@ -79,7 +76,6 @@ export function NextUpCard({
             <PublishRow
               key={post.id}
               clientName={post.clientName}
-              platform={post.platform}
               tone="danger"
               slot={
                 post.scheduledAt
@@ -111,7 +107,6 @@ export function NextUpCard({
               <PublishRow
                 key={post.id}
                 clientName={post.clientName}
-                platform={post.platform}
                 slot={label}
                 isToday={isToday}
               />

@@ -70,7 +70,6 @@ export function GenerateFlow({
   const [clientId, setClientId] = useState(
     initialIdea?.clientId ?? initialClientId ?? initialClients[0]?.id ?? ''
   )
-  const [platform, setPlatform] = useState(initialIdea?.platform ?? 'Instagram')
   const [postType, setPostType] = useState<PostType>(
     initialClientData?.defaultPostType === 'carousel' ? 'carousel' : 'single'
   )
@@ -83,9 +82,6 @@ export function GenerateFlow({
             title: initialIdea.ideaText,
             brief: initialIdea.extraNotes ?? '',
             targetDate: initialIdea.targetDate ?? '',
-            // The client's ask rides the brief, so the run platform stays free
-            // for the researched posts alongside — the whole-flow lock is gone.
-            platform: initialIdea.platform ?? '',
           },
         ]
       : []
@@ -151,9 +147,8 @@ export function GenerateFlow({
         targetPostCount,
         sources: clientSources,
         connections: clientConnections,
-        platform,
       }),
-    [preloadedClientData, targetPostCount, clientSources, clientConnections, platform]
+    [preloadedClientData, targetPostCount, clientSources, clientConnections]
   )
 
   // Abort any in-flight stream when the flow unmounts.
@@ -203,11 +198,6 @@ export function GenerateFlow({
     }
   }
 
-  function handlePlatformChange(nextPlatform: string) {
-    setPlatform(nextPlatform)
-    if (nextPlatform !== 'Instagram' && postType === 'carousel') setPostType('single')
-  }
-
   async function startGeneration() {
     abortControllerRef.current?.abort()
     const controller = new AbortController()
@@ -227,7 +217,6 @@ export function GenerateFlow({
     try {
       const payload = {
         clientId,
-        platform,
         postType,
         slideCount,
         priorityPosts,
@@ -337,7 +326,6 @@ export function GenerateFlow({
         pillar: removed.post.pillar ?? null,
         sourceUrl: removed.post.source_url ?? null,
         sourceType: removed.post.source_type ?? null,
-        platform: removed.post.platform ?? null,
       })
     }
     // Nothing to undo on the idea: it stays `new` for the whole run and only moves on
@@ -425,7 +413,6 @@ export function GenerateFlow({
             clientId={clientId}
             clientMeta={clientMeta}
             clientLoading={clientLoading}
-            platform={platform}
             postType={postType}
             slideCount={slideCount}
             postCount={targetPostCount}
@@ -435,7 +422,6 @@ export function GenerateFlow({
             sourceIdea={sourceIdea}
             generating={isGenerating}
             onClientChange={(id) => void handleClientChange(id)}
-            onPlatformChange={handlePlatformChange}
             onPostTypeChange={setPostType}
             onSlideCountChange={setSlideCount}
             onPostCountChange={setTargetPostCount}
@@ -467,7 +453,6 @@ export function GenerateFlow({
             timeZone={timeZone}
             runContext={{
               clientName,
-              platform,
               postType,
               slideCount,
               targetPostCount: plannedPostCount,

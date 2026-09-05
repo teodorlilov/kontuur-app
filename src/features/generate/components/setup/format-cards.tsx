@@ -6,7 +6,6 @@ import type { PostType } from '@/types/api'
 
 interface FormatCardsProps {
   value: PostType
-  platform: string
   slideCount: number
   onChange: (value: PostType) => void
 }
@@ -16,8 +15,10 @@ interface FormatCardsProps {
  * Wash, never lime: the header band already carries this view's lime answer,
  * and a format card is a surface, not a standing place.
  */
-export function FormatCards({ value, platform, slideCount, onChange }: FormatCardsProps) {
-  const carouselAvailable = platform === 'Instagram'
+export function FormatCards({ value, slideCount, onChange }: FormatCardsProps) {
+  // Every format is writable. Which networks take a carousel is decided by the adapters
+  // when the post is scheduled, not by the wizard before the copy exists.
+  const carouselAvailable = true
 
   const options: Array<{
     type: PostType

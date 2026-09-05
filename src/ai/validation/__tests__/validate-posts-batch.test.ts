@@ -66,7 +66,6 @@ describe('validatePostsBatch', () => {
     const results = await validatePostsBatch({
       captions: ['post one', 'post two'],
       client: makeClient(),
-      platform: 'Instagram',
       label: 'test',
     })
 
@@ -85,7 +84,6 @@ describe('validatePostsBatch', () => {
     await validatePostsBatch({
       captions: ['a', 'b', 'c'],
       client: makeClient(),
-      platform: 'Instagram',
       label: 'test',
     })
 
@@ -98,7 +96,6 @@ describe('validatePostsBatch', () => {
     await validatePostsBatch({
       captions: ['a', 'b'],
       client: makeClient(),
-      platform: 'Instagram',
       label: 'test',
     })
 
@@ -114,7 +111,6 @@ describe('validatePostsBatch', () => {
     await validatePostsBatch({
       captions: ['a', 'b', 'c', 'd', 'e'],
       client: makeClient(),
-      platform: 'Instagram',
       label: 'test',
     })
 
@@ -131,7 +127,6 @@ describe('validatePostsBatch', () => {
     await validatePostsBatch({
       captions: ['a'],
       client,
-      platform: 'Instagram',
       label: 'test',
     })
 
@@ -146,7 +141,6 @@ describe('validatePostsBatch', () => {
     const results = await validatePostsBatch({
       captions: ['a', 'b'],
       client: makeClient(),
-      platform: 'Instagram',
       label: 'test',
     })
 
@@ -162,7 +156,6 @@ describe('validatePostsBatch', () => {
     const results = await validatePostsBatch({
       captions: ['a'],
       client: makeClient(),
-      platform: 'Instagram',
       label: 'test',
     })
 
@@ -187,7 +180,6 @@ describe('validatePostsBatch', () => {
     const results = await validatePostsBatch({
       captions: ['a'],
       client: makeClient(),
-      platform: 'Instagram',
       label: 'test',
     })
 
@@ -213,7 +205,6 @@ describe('validatePostsBatch', () => {
     const results = await validatePostsBatch({
       captions: ['a'],
       client: makeClient(),
-      platform: 'Instagram',
       label: 'test',
     })
 

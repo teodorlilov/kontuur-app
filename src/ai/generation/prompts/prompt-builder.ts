@@ -63,25 +63,21 @@ ${memo.map((rule) => `- ${rule}`).join('\n')}`
 
 /**
  * System prompt for single-post and carousel generation.
- * Run-invariant per client+platform+format so concurrent calls share one cached
- * prefix. Format is part of the key because the quality bar phrases its hook and
+ * Run-invariant per client+format so concurrent calls share one cached prefix.
+ * Format is part of the key because the quality bar phrases its hook and
  * CTA rules per format — carousel instructions in a single-post prompt taught
  * the writer to emit slide structure as caption text. Exemplars and the learned
  * memo are per-client data fetched once per run, so they keep the prefix stable.
  */
-export function buildGenerateSystemPrompt(
-  client: ClientData,
-  platform: string,
-  format: PostType
-): string {
+export function buildGenerateSystemPrompt(client: ClientData, format: PostType): string {
   const sections = [
     `You are a social media copywriter writing for ${sanitizePromptField(client.name)}.
 
 ${DEFENSIVE_DATA_CLAUSE}`,
-    buildClientBrief(client, platform),
+    buildClientBrief(client),
     buildLanguageRules(client.languageConfig),
     buildNativeWritingRules(client.languageConfig),
-    buildPlatformLimits(platform),
+    buildPlatformLimits(),
     buildQualityBar(format),
     client.isHealthNiche ? buildHealthRules() : '',
     // Last on purpose: everything above is instructions the tests pin;

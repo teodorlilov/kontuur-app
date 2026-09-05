@@ -86,6 +86,21 @@ true.
 | Write a day of account metrics | `upsertAccountMetricDays` | [features/analytics/lib/account-metrics-store.ts](../src/features/analytics/lib/account-metrics-store.ts) |
 | Write a media's row | `upsertPostMetricRows` | [features/analytics/lib/post-metrics-store.ts](../src/features/analytics/lib/post-metrics-store.ts) |
 
+### Publishing
+
+A post is content; a **publication** is that content on one network. Everything about an
+attempt — its lock, its retry budget, its reference, its outcome — belongs to the
+publication, which is why none of these operations touch `posts`.
+
+| Operation | Function | File |
+| --- | --- | --- |
+| Record where a post is going | `createPublications` | [features/publishing/lib/publication-store.ts](../src/features/publishing/lib/publication-store.ts) |
+| Take a destination for a publish attempt | `claimPublication` | [features/publishing/lib/publication-store.ts](../src/features/publishing/lib/publication-store.ts) |
+| Persist a resumable reference mid-publish | `setPublishRef` | [features/publishing/lib/publication-store.ts](../src/features/publishing/lib/publication-store.ts) |
+| Record a destination as published | `markPublicationPublished` | [features/publishing/lib/publication-store.ts](../src/features/publishing/lib/publication-store.ts) |
+| Record a destination as failed | `markPublicationFailed` | [features/publishing/lib/publication-store.ts](../src/features/publishing/lib/publication-store.ts) |
+| Put a failed destination back in the queue | `rearmPublication` | [features/publishing/lib/publication-store.ts](../src/features/publishing/lib/publication-store.ts) |
+
 ### Comments
 
 `purgeAccountAnalytics` above erases `ig_comments` too — it is the one table in that purge holding
@@ -115,7 +130,7 @@ Meta's data-deletion callback that erases third parties.
 
 | Operation | Function | File |
 | --- | --- | --- |
-| Change a post's status or platform | `updatePost` | [lib/actions/post-actions.ts](../src/lib/actions/post-actions.ts) |
+| Change a post's status | `updatePost` | [lib/actions/post-actions.ts](../src/lib/actions/post-actions.ts) |
 | Create a post from an approved wizard draft | `POST` | [app/api/posts/route.ts](../src/app/api/posts/route.ts) |
 | Delete a post and sweep its files | `deletePost` | [lib/actions/post-actions.ts](../src/lib/actions/post-actions.ts) |
 | Derive status from a slot | `statusForSlot` | [lib/posts/status-for-slot.ts](../src/lib/posts/status-for-slot.ts) |
@@ -126,11 +141,25 @@ Meta's data-deletion callback that erases third parties.
 
 ### Publishing
 
+A post is content; a **publication** is one attempt to put that content on one network. Every
+operation below is about a destination, not about a post — which is why none of them writes
+`posts`. The one exception is the slot itself, listed under Posts.
+
 | Operation | Function | File |
 | --- | --- | --- |
-| Mark a post failed | `markFailed` | [features/publishing/lib/publish-post.ts](../src/features/publishing/lib/publish-post.ts) |
-| Publish a post to Instagram | `publishOnePost` | [features/publishing/lib/publish-post.ts](../src/features/publishing/lib/publish-post.ts) |
-| Retry a failed post | `rearmFailedPost` | [features/calendar/actions/post-recovery.ts](../src/features/calendar/actions/post-recovery.ts) |
+| Record where a post is going | `assignDestinations` | [features/publishing/lib/destinations.ts](../src/features/publishing/lib/destinations.ts) |
+| Ask where a post COULD go | `resolveDestinations` | [features/publishing/lib/destinations.ts](../src/features/publishing/lib/destinations.ts) |
+| Write the destination rows | `createPublications` | [features/publishing/lib/publication-store.ts](../src/features/publishing/lib/publication-store.ts) |
+| Drop the destinations of an unscheduled post | `withdrawPendingPublications` | [features/publishing/lib/publication-store.ts](../src/features/publishing/lib/publication-store.ts) |
+| Take a destination for an attempt | `claimPublication` | [features/publishing/lib/publication-store.ts](../src/features/publishing/lib/publication-store.ts) |
+| Persist the reference a network handed back | `setPublishRef` | [features/publishing/lib/publication-store.ts](../src/features/publishing/lib/publication-store.ts) |
+| Record a destination published | `markPublicationPublished` | [features/publishing/lib/publication-store.ts](../src/features/publishing/lib/publication-store.ts) |
+| Record a destination failed | `markPublicationFailed` | [features/publishing/lib/publication-store.ts](../src/features/publishing/lib/publication-store.ts) |
+| Put a failed destination back in the queue | `rearmPublication` | [features/publishing/lib/publication-store.ts](../src/features/publishing/lib/publication-store.ts) |
+| Publish one destination, ladder and all | `publishOnePublication` | [features/publishing/lib/publish-post.ts](../src/features/publishing/lib/publish-post.ts) |
+| Finish a deferred publish | `resumePendingPublication` | [features/publishing/lib/publish-post.ts](../src/features/publishing/lib/publish-post.ts) |
+| Fail a destination and notify | `failPublication` | [features/publishing/lib/publish-post.ts](../src/features/publishing/lib/publish-post.ts) |
+| Retry a failed destination | `rearmFailedPublication` | [features/calendar/actions/post-recovery.ts](../src/features/calendar/actions/post-recovery.ts) |
 
 ### Approval
 
@@ -191,9 +220,11 @@ nobody "fixes" them:
   without the user, and retiring one the platform has killed are three moments in a connection's
   life, across two providers with different grant endpoints and opposite failure policies. Same
   column, different operations.
-- **`posts.status`** — `schedulePosts` derives it from the slot, `publishOnePost` moves it through
-  the publish lifecycle, `updatePost` handles the one transition a slot cannot express
-  (`pending_review`, i.e. undo).
+- **`posts.status`** — `schedulePosts` derives it from the slot and the publish-now route stamps
+  the same pair when it gives a tray post one; `updatePost` handles the one transition a slot
+  cannot express (`pending_review`, i.e. undo). `publishOnePost` was listed here as moving the
+  column through the publish lifecycle. It no longer touches `posts` at all — that lifecycle is
+  `post_publications.status`, one row per destination.
 - **`client_sources.pillar_ids`** — `updateSource` is the user scoping a source;
   `removeDeletedPillarIds` is a cascade of a pillar deletion.
 - **Deleting a client vs. Meta-mandated erasure** — `deleteClient` leans on the database cascade

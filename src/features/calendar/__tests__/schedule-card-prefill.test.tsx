@@ -50,6 +50,8 @@ function makePost(over: Partial<CalendarPost> = {}): CalendarPost {
     platform: 'Instagram',
     post_type: 'single',
     status: 'pending',
+    // Nothing has gone out: publish state lives on the destinations now.
+    publications: [],
     scheduled_at: '2026-09-01T06:00:00.000Z',
     slides_json: null,
     // Only the fields this card reads are populated; the cast documents the gap.

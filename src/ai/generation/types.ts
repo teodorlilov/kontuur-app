@@ -22,7 +22,6 @@ interface GenerationInput {
 
 // ---- Single post ----
 export interface SinglePostInput extends GenerationInput {
-  platform: string
   count: number
 }
 
@@ -36,14 +35,12 @@ export interface CarouselResult {
 
 export interface CarouselInput extends GenerationInput {
   slideCount: number
-  platform: string
 }
 
 // ---- Draft post record (typed replacement for Record<string, unknown>) ----
 export interface DraftPost {
   id: string
   client_id: string
-  platform: string
   post_type: PostType
   caption: string
   status: 'draft'
@@ -97,18 +94,11 @@ export interface EnrichedTheme extends Theme {
   isPriority?: boolean
   brief?: string
   targetDate?: string
-  /**
-   * Absent = the run's platform; set only by priority briefs whose author chose
-   * one. Research topics and the cron never set it — `platformFor` resolves the
-   * fallback at every consumption point.
-   */
-  platform?: string
   similarPastThemes?: string[]
 }
 
 export interface GenerationRunContext {
   client: ClientData
-  platform: string
   postType: PostType
   slideCount?: number
   themes: Theme[]

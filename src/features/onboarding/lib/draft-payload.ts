@@ -25,8 +25,6 @@ export function hasValue(draft: DraftProfile, field: DraftFieldId): boolean {
       return draft.avoid.trim() !== ''
     case 'mix':
       return draft.pillars.some((pillar) => pillar.pillar.trim() !== '')
-    case 'platform':
-      return draft.platform !== ''
     // Schedule, palette and style always hold a value — they start from documented defaults
     // rather than from nothing. Spelled out rather than left to a `default:` so that adding a
     // field to DraftFieldId is a compile error here instead of silently counting as answered.
@@ -103,9 +101,6 @@ export function buildCreateInput(
       avoid_topics: draft.avoid.trim() || null,
       language_formality: draft.languageFormality || 'neutral',
       is_health_niche: draft.isHealthNiche,
-      // Only written once a platform is chosen: an empty map is closer to the truth than
-      // guessing Instagram on the client's behalf.
-      ...(draft.platform ? { weekly_mix_json: { [draft.platform]: 1 } } : {}),
     },
     posting_schedule: {
       is_active: true,

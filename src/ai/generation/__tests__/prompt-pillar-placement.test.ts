@@ -44,21 +44,20 @@ function makeInput(targetPillar?: string): SinglePostInput {
     client: makeClient(),
     theme: 'recovery tips',
     targetPillar,
-    platform: 'Instagram',
     count: 1,
   }
 }
 
 describe('pillar placement (cache-prefix stability)', () => {
   it('system prompt never contains the pillar line', () => {
-    const system = buildGenerateSystemPrompt(makeClient(), 'Instagram', 'single')
+    const system = buildGenerateSystemPrompt(makeClient(), 'single')
     expect(system).not.toContain('This post targets pillar')
   })
 
   it('system prompt is identical across themes with different pillars', () => {
     // The pillar is a per-theme input — the system prompt must not vary with it
-    const a = buildGenerateSystemPrompt(makeClient(), 'Instagram', 'single')
-    const b = buildGenerateSystemPrompt(makeClient(), 'Instagram', 'single')
+    const a = buildGenerateSystemPrompt(makeClient(), 'single')
+    const b = buildGenerateSystemPrompt(makeClient(), 'single')
     expect(a).toBe(b)
   })
 
@@ -79,12 +78,12 @@ describe('pillar placement (cache-prefix stability)', () => {
 // exemplar text after the VOICE marker is client copy and may say anything.
 describe('format separation', () => {
   it('the single instruction sections never mention slides or carousels', () => {
-    const system = buildGenerateSystemPrompt(makeClient(), 'Instagram', 'single')
+    const system = buildGenerateSystemPrompt(makeClient(), 'single')
     expect(instructionSections(system).toLowerCase()).not.toMatch(/slide|carousel/)
   })
 
   it('the carousel system prompt carries the last-slide CTA rule', () => {
-    const system = buildGenerateSystemPrompt(makeClient(), 'Instagram', 'carousel')
+    const system = buildGenerateSystemPrompt(makeClient(), 'carousel')
     expect(system).toContain("LAST slide's BODY")
   })
 
@@ -109,14 +108,14 @@ describe('voice exemplars', () => {
   }
 
   it('client copy may say "carousel" without breaking the instruction invariant', () => {
-    const system = buildGenerateSystemPrompt(clientWithExemplars(), 'Instagram', 'single')
+    const system = buildGenerateSystemPrompt(clientWithExemplars(), 'single')
     expect(system).toContain('carousel of new arrivals')
     expect(instructionSections(system).toLowerCase()).not.toMatch(/slide|carousel/)
   })
 
   it('each format sees only its own exemplars', () => {
-    const single = buildGenerateSystemPrompt(clientWithExemplars(), 'Instagram', 'single')
-    const carousel = buildGenerateSystemPrompt(clientWithExemplars(), 'Instagram', 'carousel')
+    const single = buildGenerateSystemPrompt(clientWithExemplars(), 'single')
+    const carousel = buildGenerateSystemPrompt(clientWithExemplars(), 'carousel')
     expect(single).toContain('new arrivals')
     expect(single).not.toContain('Five tips')
     expect(carousel).toContain('Five tips')
@@ -124,7 +123,7 @@ describe('voice exemplars', () => {
   })
 
   it('no approved posts → no VOICE section at all', () => {
-    const system = buildGenerateSystemPrompt(makeClient(), 'Instagram', 'single')
+    const system = buildGenerateSystemPrompt(makeClient(), 'single')
     expect(system).not.toContain(VOICE_SECTION_MARKER)
   })
 
@@ -132,8 +131,8 @@ describe('voice exemplars', () => {
   // two builds must be byte-identical — a run-varying exemplar set would
   // silently fork the cached prefix on every theme.
   it('system prompt with exemplars is run-invariant', () => {
-    const a = buildGenerateSystemPrompt(clientWithExemplars(), 'Instagram', 'single')
-    const b = buildGenerateSystemPrompt(clientWithExemplars(), 'Instagram', 'single')
+    const a = buildGenerateSystemPrompt(clientWithExemplars(), 'single')
+    const b = buildGenerateSystemPrompt(clientWithExemplars(), 'single')
     expect(a).toBe(b)
   })
 })

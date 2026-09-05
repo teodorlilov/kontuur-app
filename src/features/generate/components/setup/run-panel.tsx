@@ -64,8 +64,6 @@ export function RunPanel({
           value={
             publishState.kind === 'connected' ? (
               'Connected'
-            ) : publishState.kind === 'manual' ? (
-              'Manual — copy out'
             ) : (
               <Link
                 href={`/clients/${clientId}/edit?tab=accounts`}

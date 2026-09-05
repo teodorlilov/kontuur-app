@@ -136,8 +136,3 @@ export async function getAgencyNiche(
   }
   return freq.size === 0 ? undefined : [...freq.entries()].sort((a, b) => b[1] - a[1])[0]?.[0]
 }
-
-/** Extracts the platform name from weekly_mix_json (e.g. { "Instagram": 1 } → "Instagram"). */
-export function extractPlatformFromMix(mix: Record<string, unknown>): string {
-  return Object.keys(mix).find((k) => !['carousel', 'single'].includes(k)) ?? 'Instagram'
-}

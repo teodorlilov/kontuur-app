@@ -27,10 +27,7 @@ function CardHeader({ cr }: { cr: DashboardChangeRequest }) {
       <span className="text-caption text-text3">· Post #{cr.postNumber}</span>
       {scheduledLabel && <span className="text-caption text-text3">· {scheduledLabel}</span>}
 
-      <span className="ml-1 rounded-xs bg-wash px-2 py-0.5 text-micro font-medium text-forest">
-        {cr.platform}
-      </span>
-      <span className="rounded-xs bg-sunken px-2 py-0.5 text-micro font-medium text-text2">
+      <span className="ml-1 rounded-xs bg-sunken px-2 py-0.5 text-micro font-medium text-text2">
         {buildPostTypeLabel(cr.postType, slideCount)}
       </span>
 

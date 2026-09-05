@@ -12,7 +12,7 @@ import {
   PUBLISHED_POST_PIN_COLUMNS,
   type IGAccountMetricColumns,
   type IGPostMetricColumns,
-  type PublishedPostPinColumns,
+  type PublishedPostPin,
 } from '@/lib/queries/select-columns'
 import { shiftDateKey, zonedTimeToInstant } from '@/utils/date-helpers'
 import { buildAnalyticsReport, type AnalyticsReportData } from './build-report'
@@ -104,16 +104,21 @@ const _fetchAnalyticsReport = unstable_cache(
         .eq('ig_account_id', accountId)
         .gte('posted_at', postedFromPrev)
         .lt('posted_at', postedTo),
-      // Kontuur's own ledger: pins posts the sync cannot see — removed from
-      // Instagram after publishing, or published since the last sync ran.
-      // posts.platform is canonical display case; compare case-insensitively.
+      // Kontuur's own ledger: pins posts the sync cannot see — removed from Instagram
+      // after publishing, or published since the last sync ran.
+      //
+      // Reads publications, not posts: "published to Instagram, at this time, as this
+      // media" is one destination's fact. The old form filtered posts on a status and a
+      // platform they no longer carry, and needed a case-insensitive compare because the
+      // two tables spell a platform differently — a publication already speaks the
+      // connection's lowercase vocabulary, so that mismatch is gone with it.
       admin
-        .from('posts')
-        .select(PUBLISHED_POST_PIN_COLUMNS)
-        .eq('client_id', clientId)
+        .from('post_publications')
+        .select(`external_post_id, published_at, posts!inner(${PUBLISHED_POST_PIN_COLUMNS})`)
+        .eq('platform', 'instagram')
+        .eq('account_id', accountId)
         .eq('status', 'published')
-        .ilike('platform', 'instagram')
-        .eq('ig_account_id', accountId)
+        .eq('posts.client_id', clientId)
         .gte('published_at', postedFrom)
         .lt('published_at', postedTo),
       admin
@@ -143,7 +148,7 @@ const _fetchAnalyticsReport = unstable_cache(
     // WHY as: this shared admin client is untyped, so projections do not infer.
     const accountRows = (accountRes.data ?? []) as unknown as IGAccountMetricColumns[]
     const postRows = (postRes.data ?? []) as unknown as IGPostMetricColumns[]
-    const publishedPosts = (publishedRes.data ?? []) as unknown as PublishedPostPinColumns[]
+    const publishedPosts = (publishedRes.data ?? []) as unknown as PublishedPostPin[]
     let snapshots = (snapshotRes.data ?? []) as unknown as IGAudienceSnapshotColumns[]
     // No snapshot covers this window (weekly capture may postdate an older
     // period): fall back to the account's LATEST snapshot. The view labels it
