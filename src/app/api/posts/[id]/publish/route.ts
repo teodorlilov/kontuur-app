@@ -64,18 +64,40 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
     if (pending.length === 0)
       return NextResponse.json({ error: 'Already published' }, { status: 400 })
 
-    // One destination at a time, each with its own credentials: a client publishing to two
-    // networks must not send one network's post with the other's token.
-    const outcomes = []
-    for (const publication of pending) {
-      const adapter = resolveNetwork(publication.platform)
-      if (!adapter) continue
-      const connection = await fetchConnection(admin, post.client_id, adapter.platform)
-      const result = await publishOnePublication(admin, publication, post, connection, {
-        skipPoll: true,
+    /**
+     * Every destination at once.
+     *
+     * Each still resolves its OWN credentials — a client publishing to two networks must never
+     * send one network's post with the other's token — and each claims its own publication row,
+     * so nothing is shared but the admin client. Running them in sequence bought none of that
+     * and cost the whole of one network's round trip: measured, Facebook takes ~7.5s to publish
+     * while Instagram takes 26-43s, so whichever happened to go first delayed the other by its
+     * entire duration. The person is waiting on the slowest network, not on their sum.
+     *
+     * `allSettled`, not `all`: one destination throwing must not discard the outcome of a
+     * destination that already succeeded. A rejection here is a bug rather than a publish
+     * failure — `publishOnePublication` reports those as outcomes — so it is logged and the
+     * remaining destinations still answer.
+     */
+    const settled = await Promise.allSettled(
+      pending.map(async (publication) => {
+        const adapter = resolveNetwork(publication.platform)
+        if (!adapter) return null
+        const connection = await fetchConnection(admin, post.client_id, adapter.platform)
+        const result = await publishOnePublication(admin, publication, post, connection, {
+          skipPoll: true,
+        })
+        return { publication, adapter, outcome: result }
       })
-      outcomes.push({ publication, adapter, outcome: result })
-    }
+    )
+
+    const outcomes = settled.flatMap((entry) => {
+      if (entry.status === 'rejected') {
+        console.error(`[publish] destination threw for post ${postId}:`, entry.reason)
+        return []
+      }
+      return entry.value ? [entry.value] : []
+    })
 
     /**
      * One answer for the whole press, in the order a person cares about: anything still in
@@ -88,7 +110,7 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
       outcomes.find((o) => o.outcome.kind === 'published') ??
       outcomes[0]
     if (!first) throw new Error(`no destination was attempted for post ${postId}`)
-    const { publication, adapter, outcome } = first
+    const { adapter, outcome } = first
 
     /**
      * A never-scheduled post gets its slot stamped as soon as the publish is underway — the
@@ -118,15 +140,35 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
     // nothing to mark as published without being told.
     const platforms = outcomes.map((o) => o.publication.platform)
 
+    /**
+     * EVERY destination still in flight is finished after the response, not just the one the
+     * reply describes.
+     *
+     * Both adapters return `pending` under `skipPoll`, so a post going to two networks leaves
+     * two publications mid-flight — and this resumed only `first`. The other waited for the
+     * cron's resume arm, which needs a 90s claim grace on a five-minute tick, while the
+     * browser stops watching after 60s: the second network reported "still processing" on
+     * essentially every two-destination publish. Worse, when the pending one was not `first`
+     * — a destination that published outright sorts ahead of it — nothing was scheduled at
+     * all. For Facebook that means a post created with `published:false` and never flipped
+     * live until the cron noticed.
+     *
+     * `resumePendingPublication` no-ops on a row that is not `publishing` with a reference, so
+     * scheduling one per destination cannot double-publish.
+     */
+    for (const pending of outcomes) {
+      if (pending.outcome.kind !== 'pending') continue
+      const id = pending.publication.id
+      after(() => resumePendingPublication(admin, id, 40_000))
+    }
+
     switch (outcome.kind) {
       case 'published': {
         if (outcome.writeError) console.error(`[publish] ${outcome.writeError}`)
         return NextResponse.json({ ok: true, externalPostId: outcome.externalPostId, platforms })
       }
       case 'pending':
-        // Finish out of band: this invocation keeps waiting after the response and completes
-        // the publish; the client watches the post's status.
-        after(() => resumePendingPublication(admin, publication.id, 40_000))
+        // Scheduled above, for every destination. The client watches the post's status.
         return NextResponse.json(
           { ok: true, pending: true, message: `Publishing to ${adapter.label}…`, platforms },
           { status: 202 }

@@ -51,11 +51,11 @@ export default async function EditClientPage({
    * the server component because that is where data is fetched — an effect in the modal would be
    * a client-side waterfall for something this page can resolve before it renders.
    *
-   * Failure degrades to an empty list; the chooser says so rather than the page falling over on
-   * a Graph call that is one step of a flow the user can restart.
+   * The RESULT is passed through, not the list inside it. Collapsing a failure to `[]` makes a
+   * dead token read as "you administer no Pages", which is the wrong thing to go and fix. A
+   * failure does not take the page down either — this is one step of a flow the user can restart.
    */
-  const facebookPages =
-    choosePage === '1' ? await listFacebookPages().then((r) => (r.ok ? r.data : [])) : null
+  const facebookPages = choosePage === '1' ? await listFacebookPages() : null
 
   const [
     visualIdentity,

@@ -6,6 +6,190 @@ Write probe: **skipped**.
 This is observed behaviour, not documentation — steps 4-6 of the Facebook plan are written
 against what is below.
 
+## Publishing a photo post — probed live 2026-09-05
+
+Run against the connected Page with its Page token, using the SAME encoding
+`src/lib/meta/graph-client.ts` uses: `Authorization: Bearer` header, `Content-Type:
+application/json`, JSON body. Both posts were deleted immediately and the Page was verified
+clean afterwards.
+
+`POST /{page-id}/photos` — body `{"url": "<public https>", "published": false}` → **200**
+
+```json
+{ "id": "122168909192960180" }
+```
+
+`POST /{page-id}/feed` — body
+`{"message": "…", "attached_media": [{"media_fbid": "…"}, {"media_fbid": "…"}]}` → **200**
+
+```json
+{ "id": "723701000827665_122168909288960180", "post_supports_client_mutation_id": true }
+```
+
+`DELETE /{post-id}` → **200** `{"success":true}`
+
+**`attached_media` takes a JSON array.** The documentation spells it
+`attached_media[0]={"media_fbid":"…"}` — a form encoding — and the shared client sends JSON. The
+array form works, which is the single fact this probe existed to establish; guessing it wrong
+fails at the moment nobody is watching.
+
+**Publishing is two-phase, and it has to be.** A `/feed` call that publishes outright cannot be
+retried: Graph's client retries a timed-out request and the ladder grants two more attempts, so
+one lost response puts the same post on the Page up to three times. The split below is the same
+one Instagram's container flow uses.
+
+`POST /{page-id}/feed` — body `{"message": "…", "attached_media": […], "published": false}`
+→ **200**, and the post is created but NOT live:
+
+```json
+{ "id": "723701000827665_122168928356960180", "post_supports_client_mutation_id": true }
+```
+
+`GET /{post-id}?fields=is_published,message` → `{"is_published": false, …}`
+
+`POST /{post-id}` — body `{"is_published": true}` → **200** `{"success":true}`, and the post
+reads back `is_published: true` with a real `permalink_url`.
+
+**The same call a SECOND time → 200 `{"success":true}` again.** No duplicate, no error. That
+idempotence is what makes the retry safe and is the reason this shape works at all.
+
+**`page_story_id` is NOT an "is it published" signal — the documentation is wrong.** The Photo
+node's reference says it "applies only to published photos"; probed, an unpublished photo that
+belonged to no post at all already carried
+`page_story_id: 723701000827665_122168928314960180`, derived from the photo's own id. An
+idempotency guard built on it would have believed every photo was already published.
+
+**The id is `<page-id>_<post-id>`** and is what `post_publications.external_post_id` stores.
+
+**One image goes through the same path as several.** Probed both ways; a single photo attached
+to a `/feed` post behaves identically, so there is no separate single-image code path.
+
+**Order is preserved, and this is not documented.** Four distinct photos attached in a known
+sequence read back through `?fields=attachments{subattachments{target}}` in exactly that order:
+
+```
+attached: 122168921648…, 122168921696…, 122168921744…, 122168921798…
+read back: 122168921648…, 122168921696…, 122168921744…, 122168921798…
+```
+
+Meta's reference shows sequential indices in its example but states no ordering guarantee, so a
+carousel reaching Facebook in slide order depends on this observation alone.
+
+**Ten attachments are accepted** — `POST /feed` with ten `attached_media` entries returned 200.
+No maximum is documented anywhere: not on the Page Photos reference (the only page documenting
+`attached_media`), not on the Page Feed reference, not in the Pages API guide, and Meta's own
+community carries the question unanswered. Ten is therefore the largest count VERIFIED, not a
+documented ceiling, and that is what `MAX_ATTACHED_PHOTOS` records.
+
+**The docs describe a different encoding than the one that works.** They spell `attached_media`
+as indexed form parameters (`attached_media[0]={"media_fbid":"…"}`, form-urlencoded). The JSON
+array above is what was actually accepted, twice, against the live Page.
+
+**A photo consumed by a post cannot be deleted on its own** — `DELETE /{photo-id}` answers
+`(#100) Unsupported delete request … subcode 33`. Deleting the POST removes them, which is what
+the cleanup relied on and the Page verified afterwards. An unpublished photo whose feed call
+never happened is invisible on the Page and expires Meta-side.
+
+## `/me/accounts` is not a reliable Page list — 2026-09-05
+
+Probed live during the first real connect, after a Page had been ticked in Facebook's asset
+picker and consent completed. All three calls used the same stored long-lived user token.
+
+`GET /me/accounts` → **200**
+
+```json
+{ "data": [] }
+```
+
+`GET /me/permissions` → **200** — `pages_show_list`, `pages_read_engagement`,
+`pages_manage_posts`, `pages_manage_engagement` all `"granted"`.
+
+`GET /debug_token?input_token=<user>&access_token=<app-id>|<app-secret>` → **200**
+
+```json
+{ "data": { "type": "USER", "is_valid": true, "expires_at": 0,
+  "granular_scopes": [
+    { "scope": "pages_show_list",        "target_ids": ["723701000827665"] },
+    { "scope": "pages_read_engagement",  "target_ids": ["723701000827665"] },
+    { "scope": "pages_manage_posts",     "target_ids": ["723701000827665"] },
+    { "scope": "pages_manage_engagement","target_ids": ["723701000827665"] },
+    { "scope": "pages_manage_metadata",  "target_ids": ["659554973897366"] },
+    { "scope": "business_management",    "target_ids": ["1010642534376034"] },
+    { "scope": "instagram_basic" },
+    { "scope": "instagram_manage_insights" } ] } }
+```
+
+So the permission is granted, the asset is named, and the list is empty. Nothing errors.
+
+**Two shapes, two meanings.** `instagram_basic` carries no `target_ids` and Instagram works on
+this same token, which is what establishes that an ABSENT `target_ids` means "every asset" —
+the shape "opt in to all current and future Pages" produces. An absent SCOPE means not granted.
+Empty and absent are different answers, so the parser must not default one to the other.
+
+`pages_manage_metadata → 659554973897366` is a leftover from an earlier consent that ticked a
+different Page. Grants accumulate per asset; they are not replaced wholesale on re-consent.
+
+### The Page is fully reachable by id
+
+`GET /723701000827665?fields=id,name,category,is_published,link,access_token,has_transitioned_to_new_page_experience`
+→ **200**
+
+```json
+{ "id": "723701000827665", "name": "About Social Media", "category": "Social Media Agency",
+  "is_published": true, "access_token": "<redacted>",
+  "has_transitioned_to_new_page_experience": true }
+```
+
+That Page token debugs as `type: "PAGE"`, `expires_at: 0`, and both
+`GET /{page}/feed` and `GET /{page}/published_posts` returned real posts with it. So the
+connection works end to end; only the enumeration was broken.
+
+`GET /{page}/roles` → **400**, *"A Page access token is required for this call for the new Pages
+experience."* — the New Pages Experience is where the classic Page-role model, and the
+`/me/accounts` edge built on it, stops answering.
+
+`GET /me/businesses?fields=id,name,permitted_roles` → the user's own portfolio only
+(`1010642534376034` "Paired Sox", `ADMIN`), whose `owned_pages` holds `659554973897366` and
+whose `client_pages` is empty.
+
+`GET /723701000827665?fields=business` → **403**, *"(#200) Requires business_management
+permission to manage the object"* — asked alone, because one invalid field name fails the whole
+call and `owner_business` is not a field on this node.
+
+### Why the list was empty: two different reasons at once
+
+Meta's v17.0 changelog, still in force at v25.0:
+
+> The `GET /{user-id}/accounts` endpoint no longer returns Facebook pages that have been linked
+> to a Meta business account, unless the app user has granted the `business_management`
+> permission to the app **and has a role on the linked business account**.
+
+Both Pages are excluded, and not for the same reason:
+
+- **About Social Media** is linked to a business account. `business_management` IS granted, but
+  only for `1010642534376034` — and the 403 above proves that is not the business this Page is
+  linked to, which `/me/businesses` confirms by not listing any other. Second half of the
+  condition unmet, so the edge drops it. `pages_show_list` still covers it, so it reads by id
+  and its Page token publishes.
+- **Paired Socks** has no `pages_show_list` grant at all — only the stale
+  `pages_manage_metadata` above. Not listable, and not readable either: reading it by id returns
+  *"Object does not exist, cannot be loaded due to missing permission"*.
+
+So a Page can be missing from `/me/accounts` while being fully usable, and another can be
+missing while being entirely unusable. The edge does not distinguish them; the grant does.
+
+**Business enumeration was considered and rejected.** Unioning `/{business-id}/owned_pages` and
+`/client_pages` is the usual workaround, and here it would return the wrong Page: it needs
+`business_management` on the portfolio, which this token has only for "Paired Sox" — surfacing
+Paired Socks, the one Page that cannot be connected, while still missing the one that can. The
+grant answers the question directly and needs no portfolio access.
+
+**What the code does about it:** `fetchFacebookPages` reads `granular_scopes` and merges what it
+names with whatever `/me/accounts` offers, then recovers any Page the edge omitted by reading it
+by id. Publish capability comes from `pages_manage_posts` coverage — what the person granted the
+app — falling back to `/me/accounts` `tasks` only when the grant record is unreadable. Pinned by
+`src/lib/meta/__tests__/facebook-auth.test.ts`.
+
 ### Pages this user administers
 
 `GET /me/accounts` → **200**

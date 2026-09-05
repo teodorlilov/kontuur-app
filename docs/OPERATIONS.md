@@ -136,6 +136,7 @@ Meta's data-deletion callback that erases third parties.
 | Change a post's status | `updatePost` | [lib/actions/post-actions.ts](../src/lib/actions/post-actions.ts) |
 | Create a post from an approved wizard draft | `POST` | [app/api/posts/route.ts](../src/app/api/posts/route.ts) |
 | Delete a post and sweep its files | `deletePost` | [lib/actions/post-actions.ts](../src/lib/actions/post-actions.ts) |
+| Use a published post again, as a new draft | `duplicatePostAsDraft` | [lib/actions/post-actions.ts](../src/lib/actions/post-actions.ts) |
 | Derive status from a slot | `statusForSlot` | [lib/posts/status-for-slot.ts](../src/lib/posts/status-for-slot.ts) |
 | Keep an AI rewrite | `persistRewrite` | [lib/actions/post-actions.ts](../src/lib/actions/post-actions.ts) |
 | Publish a post now, from the calendar | `POST` | [app/api/posts/[id]/publish/route.ts](../src/app/api/posts/[id]/publish/route.ts) |

@@ -28,8 +28,7 @@ function page(over: Partial<FacebookPage> = {}): FacebookPage {
     name: 'Paired Socks',
     accessToken: 'page-token',
     category: 'Clothing store',
-    // The task set /me/accounts really returns — see docs/META-FB-PROBE.md.
-    tasks: ['MANAGE', 'CREATE_CONTENT', 'MODERATE'],
+    canPublish: true,
     ...over,
   }
 }
@@ -41,7 +40,13 @@ beforeEach(() => {
 
 describe('FacebookPageChooser', () => {
   it('connects the Page that was picked', async () => {
-    render(<FacebookPageChooser clientId="client-1" pages={[page()]} onClose={vi.fn()} />)
+    render(
+      <FacebookPageChooser
+        clientId="client-1"
+        pages={{ ok: true, data: [page()] }}
+        onClose={vi.fn()}
+      />
+    )
 
     await userEvent.click(screen.getByRole('button', { name: /^connect$/i }))
 
@@ -54,7 +59,7 @@ describe('FacebookPageChooser', () => {
     render(
       <FacebookPageChooser
         clientId="client-1"
-        pages={[page(), page({ id: '2', name: 'Second Page' })]}
+        pages={{ ok: true, data: [page(), page({ id: '2', name: 'Second Page' })] }}
         onClose={vi.fn()}
       />
     )
@@ -67,22 +72,41 @@ describe('FacebookPageChooser', () => {
 
   it('shows a Page it cannot publish to, and refuses it', async () => {
     // Hidden, this reads as "my Page is missing" — a worse thing to debug than a Page that says
-    // why it cannot be used. `tasks` is what Graph reports the person may do with it.
+    // why it cannot be used. The grant, not the person's Page role, is what decides.
     render(
       <FacebookPageChooser
         clientId="client-1"
-        pages={[page({ tasks: ['MANAGE', 'ANALYZE'] })]}
+        pages={{ ok: true, data: [page({ canPublish: false })] }}
         onClose={vi.fn()}
       />
     )
 
-    expect(screen.getByText(/cannot create content/i)).toBeInTheDocument()
+    expect(screen.getByText(/not given permission to post/i)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /^connect$/i })).toBeDisabled()
   })
 
-  it('says so when the account administers no Pages at all', () => {
-    render(<FacebookPageChooser clientId="client-1" pages={[]} onClose={vi.fn()} />)
+  it('says no Page was granted, rather than that none exists', () => {
+    // The list comes from the grant now, so a ticked Page reaches this screen even when
+    // /me/accounts stays silent about it. Empty therefore means nothing was ticked — telling
+    // someone they administer no Pages sends them off to create one they already have.
+    render(
+      <FacebookPageChooser clientId="client-1" pages={{ ok: true, data: [] }} onClose={vi.fn()} />
+    )
 
-    expect(screen.getByText(/no pages came back/i)).toBeInTheDocument()
+    expect(screen.getByText(/did not give kontuur access to any page/i)).toBeInTheDocument()
+  })
+
+  it('shows why the list could not be read, rather than an empty one', () => {
+    // A dead token and an empty Page list are different problems. Collapsing the first into the
+    // second is what this screen did, and it is the wrong thing to go and fix.
+    render(
+      <FacebookPageChooser
+        clientId="client-1"
+        pages={{ ok: false, error: 'Could not read your Facebook Pages' }}
+        onClose={vi.fn()}
+      />
+    )
+
+    expect(screen.getByText(/could not read your facebook pages/i)).toBeInTheDocument()
   })
 })

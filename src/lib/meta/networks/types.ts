@@ -63,6 +63,16 @@ export interface NetworkAdapter {
   resume(input: ResumeInput): Promise<NetworkPublishResult>
 
   /**
+   * Where a person can see the published post, from the id the network gave us.
+   *
+   * Optional because not every network need offer one, and it is a LOOKUP rather than a stored
+   * field on purpose: a post deleted on the network must read as gone, not as a link that
+   * quietly 404s. It throws when the network no longer has it, and the caller decides what to
+   * say — an adapter reports, it does not judge.
+   */
+  permalink?(account: NetworkAccount, externalPostId: string): Promise<string | null>
+
+  /**
    * Publishes left in the current window, when the network caps them.
    *
    * Optional because the cap is not a universal idea — Instagram meters API

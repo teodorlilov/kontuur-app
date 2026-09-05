@@ -1,5 +1,6 @@
 import 'server-only'
 
+import { facebookAdapter } from './facebook'
 import { instagramAdapter } from './instagram'
 import type { NetworkAdapter } from './types'
 
@@ -15,6 +16,7 @@ import type { NetworkAdapter } from './types'
  */
 const ADAPTERS: Record<string, NetworkAdapter> = {
   [instagramAdapter.platform]: instagramAdapter,
+  [facebookAdapter.platform]: facebookAdapter,
 }
 
 /** The adapter for a platform, or null when we cannot publish there. */

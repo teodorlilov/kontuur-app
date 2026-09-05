@@ -5,6 +5,9 @@ import { X, ChevronLeft, ChevronRight, Copy, Mail } from 'lucide-react'
 import { cn } from '@/utils/cn'
 import { toast } from '@/components/ui/toast'
 import { watchPublishOutcome } from '@/features/publishing/lib/watch-publish'
+import { fetchLiveLinks, type LiveLink } from '@/features/publishing/lib/live-links'
+import { duplicatePostAsDraft } from '@/lib/actions/post-actions'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { getPillarColor } from '@/components/ui/colors/identity-colors'
 import { formatRelativeTime, parseTimestamp } from '@/utils/format'
 import { formatScheduledAt, isoToDateTimeFields, toDateKey } from '@/utils/date-helpers'
@@ -12,7 +15,7 @@ import { CarouselSlides } from '@/components/posts/carousel-slides'
 import { QualityScores } from '@/components/posts/quality-scores'
 import { SCORE_BAND_VARS, scoreBand, scoreTextColor } from '@/components/ui/colors/score-colors'
 import { ClientResponseCard } from '@/features/calendar/components/client-response-card'
-import { Button } from '@/components/ui/button'
+import { Button, buttonClasses } from '@/components/ui/button'
 import { CanvasEditor } from '@/features/canvas-editor/components/canvas-editor'
 import { slideCopyAt } from '@/lib/posts/slide-copy'
 import type { EditorSlide } from '@/features/canvas-editor/types'
@@ -29,6 +32,7 @@ import {
   type PostDisplayState,
 } from '@/lib/posts/publish-state'
 import { POST_STATUS_CHIP } from '@/features/calendar/lib/post-status-chip'
+import { namePlatforms } from '@/lib/validation'
 import type { PostStatus } from '@/lib/validation'
 
 interface ContentUpdates {
@@ -143,6 +147,9 @@ export const ScheduleCard = memo(function ScheduleCard({
   const [savingContent, setSavingContent] = useState(false)
   const [publishing, setPublishing] = useState(false)
   const [publishError, setPublishError] = useState<string | null>(null)
+  const [liveLinks, setLiveLinks] = useState<LiveLink[] | null>(null)
+  const [duplicating, setDuplicating] = useState(false)
+  const [confirmingDelete, setConfirmingDelete] = useState(false)
   const canvaConnected = useCanvaStatus()
 
   // Reset / pre-fill when post changes.
@@ -215,6 +222,34 @@ export const ScheduleCard = memo(function ScheduleCard({
   )
   const [editingPosition, setEditingPosition] = useState<number | null>(null)
 
+  /**
+   * Whether anything actually reached a network. The whole footer turns on this: a post that
+   * has gone out cannot be rescheduled or sent for approval, because neither does anything to
+   * what is already public.
+   */
+  const openPostId = isOpen && post ? post.id : null
+  const hasPublished = (post?.publications ?? []).some(
+    (publication) => publication.status === 'published'
+  )
+
+  /**
+   * Resolved when a published post is opened, never stored.
+   *
+   * Keyed on the post id so paging through the deck with the arrows re-asks rather than showing
+   * the previous post's links, and cleared first so a stale link cannot flash under a new post.
+   */
+  useEffect(() => {
+    setLiveLinks(null)
+    if (!openPostId || !hasPublished) return
+    let cancelled = false
+    void fetchLiveLinks(openPostId).then((links) => {
+      if (!cancelled) setLiveLinks(links)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [openPostId, hasPublished])
+
   if (!isOpen || !post) return null
 
   // Capture for use in closures after null check
@@ -273,6 +308,22 @@ export const ScheduleCard = memo(function ScheduleCard({
     void onSchedule(currentPost.id, scheduledAt, currentPost.destinations)
   }
 
+  async function handleDuplicate() {
+    setDuplicating(true)
+    try {
+      const result = await duplicatePostAsDraft(currentPost.id)
+      // All or nothing: a copy that could not take the visuals is not delivered at all, so
+      // there is no partial outcome for this message to describe.
+      if (!result.ok) throw new Error(result.error)
+      toast.success('Copied to review')
+      onClose()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not copy that post')
+    } finally {
+      setDuplicating(false)
+    }
+  }
+
   function handleCopyCaption() {
     if (!currentPost.caption) return
     void navigator.clipboard.writeText(currentPost.caption)
@@ -293,17 +344,29 @@ export const ScheduleCard = memo(function ScheduleCard({
         // band. Close now, and let the watcher report the real outcome — even
         // after this dialog is gone.
         const postId = currentPost.id
-        toast.info('Publishing to Instagram…')
+        // Every one of these named Instagram outright, so a post going to a Facebook Page was
+        // announced as published to Instagram. The route already says where it went.
+        const going = namePlatforms(platforms)
+        toast.info(`Publishing to ${going}…`)
         watchPublishOutcome(postId, {
-          onPublished: () => {
-            toast.success('Published to Instagram')
-            onPublished?.(postId, platforms)
+          // Each destination as it lands, rather than nothing until the slowest finishes: a
+          // Facebook Page is live in about seven seconds where an Instagram carousel takes
+          // half a minute, and every one of these messages used to say "Instagram" regardless.
+          onSettled: (platform, outcome, reason) => {
+            const name = namePlatforms([platform])
+            if (outcome === 'published') toast.success(`Published to ${name}`)
+            else toast.error(`${name} publish failed: ${reason}`, { duration: 12_000 })
           },
-          onFailed: (reason) => {
-            toast.error(`Instagram publish failed: ${reason}`, { duration: 12_000 })
+          onDone: ({ published }) => {
+            // Refresh the card for anything that went out. A post live on one network and
+            // failed on another is 'partly', which the card renders from its publications —
+            // so it is told about the successes even when a sibling destination failed.
+            if (published.length > 0) onPublished?.(postId, published)
           },
-          onStillProcessing: () => {
-            toast.info('Instagram is still processing — publishing completes automatically')
+          onStillProcessing: (stillGoing) => {
+            toast.info(
+              `${namePlatforms(stillGoing)} is still processing — publishing completes automatically`
+            )
           },
         })
         onClose()
@@ -685,17 +748,43 @@ export const ScheduleCard = memo(function ScheduleCard({
             publishing={publishing}
             publishError={publishError}
             approvalSending={approvalSending}
+            hasPublished={hasPublished}
+            liveLinks={liveLinks}
+            duplicating={duplicating}
             onSchedule={handleSchedule}
             onUnschedule={onUnschedule}
             onSkip={onSkip}
             onSendApproval={onSendApproval}
-            onDelete={onDelete}
+            onDuplicate={() => {
+              void handleDuplicate()
+            }}
+            onDelete={() => {
+              // A published post is a record its comments and performance hang off, so its
+              // deletion is a decision rather than a click.
+              if (hasPublished) setConfirmingDelete(true)
+              else onDelete(currentPost.id)
+            }}
             onPublishNow={() => {
               void handlePublishNow()
             }}
           />
         )}
       </div>
+      <ConfirmDialog
+        open={confirmingDelete}
+        title="Delete this published post?"
+        confirmLabel="Delete the record"
+        onConfirm={() => {
+          setConfirmingDelete(false)
+          onDelete(currentPost.id)
+        }}
+        onClose={() => setConfirmingDelete(false)}
+      >
+        This removes Kontuur&rsquo;s record of the post, including where it went and how it
+        performed. The post itself stays live on{' '}
+        {namePlatforms(currentPost.publications.map((publication) => publication.platform))} — this
+        does not take it down.
+      </ConfirmDialog>
       {canEditPosition && editingPosition !== null && (
         <CanvasEditor
           target={{ kind: 'post', postId: currentPost.id }}
@@ -935,10 +1024,14 @@ function NormalFooter({
   publishing,
   publishError,
   approvalSending,
+  hasPublished,
+  liveLinks,
+  duplicating,
   onSchedule,
   onUnschedule,
   onSkip,
   onSendApproval,
+  onDuplicate,
   onDelete,
   onPublishNow,
 }: {
@@ -952,48 +1045,90 @@ function NormalFooter({
   publishing: boolean
   publishError: string | null
   approvalSending?: boolean
+  /** Anything reached a network. What a published post offers is a different set entirely. */
+  hasPublished: boolean
+  /** Null while still being resolved; an entry with a null url is a post the network lost. */
+  liveLinks: LiveLink[] | null
+  duplicating: boolean
   onSchedule: () => void
   onUnschedule: (id: string) => void
   onSkip: (id: string) => void
   onSendApproval?: (id: string) => void
-  onDelete: (id: string) => void
+  onDuplicate: () => void
+  onDelete: () => void
   onPublishNow: () => void
 }) {
   return (
     <div className="flex shrink-0 flex-wrap gap-2 border-t border-ink/[0.07] px-6 py-3.5">
-      <Button
-        onClick={onSchedule}
-        disabled={!date || isScheduling}
-        loading={isScheduling}
-        className="flex-1"
-      >
-        {displayState === 'failed'
-          ? 'Retry publish'
-          : isScheduled
-            ? 'Update schedule'
-            : 'Schedule to calendar'}
-      </Button>
-      {/* Not offered once something has gone out. Unscheduling clears the slot and puts the post
-          back to 'approved', which drops it out of both calendar lanes — so pressing this on a
-          live post hid it from the calendar while it stayed published on the network. */}
-      {isScheduled && publishStateOf(currentPost.publications) === 'unpublished' ? (
-        <Button variant="secondary" onClick={() => onUnschedule(currentPost.id)}>
-          Unschedule
-        </Button>
-      ) : isScheduled ? null : (
-        <Button variant="secondary" onClick={() => onSkip(currentPost.id)}>
-          Skip for now
+      {/* Rescheduling a live post moved its slot and changed nothing on the network, so the
+          calendar would show it on a day it did not publish. Neither does sending it for
+          approval mean anything once the client's followers have already seen it. */}
+      {!hasPublished && (
+        <Button
+          onClick={onSchedule}
+          disabled={!date || isScheduling}
+          loading={isScheduling}
+          className="flex-1"
+        >
+          {displayState === 'failed'
+            ? 'Retry publish'
+            : isScheduled
+              ? 'Update schedule'
+              : 'Schedule to calendar'}
         </Button>
       )}
-      {isScheduled && onSendApproval && (
-        <Button
-          variant="secondary"
-          onClick={() => onSendApproval(currentPost.id)}
-          disabled={approvalSending}
-          loading={approvalSending}
-        >
-          <Mail className="size-3" /> Send for approval
-        </Button>
+      {hasPublished ? (
+        <>
+          {/* Real links, not buttons: an outbound destination wants cmd-click and the tab
+              strip. Resolved from the network when this card opened, so one that answers null
+              is a post that is no longer there. */}
+          {liveLinks
+            ?.filter((link) => link.url)
+            .map((link) => (
+              <a
+                key={link.platform}
+                href={link.url ?? undefined}
+                target="_blank"
+                rel="noreferrer"
+                className={buttonClasses({ variant: 'secondary' })}
+              >
+                View on {namePlatforms([link.platform])}
+              </a>
+            ))}
+          {liveLinks && liveLinks.length > 0 && liveLinks.every((link) => !link.url) && (
+            <span className="self-center text-caption text-text3">
+              No longer on {namePlatforms(liveLinks.map((link) => link.platform))}
+            </span>
+          )}
+          <Button variant="secondary" onClick={onDuplicate} loading={duplicating}>
+            Use again
+          </Button>
+        </>
+      ) : (
+        <>
+          {/* Unscheduling clears the slot and puts the post back to 'approved', which drops it
+              out of both calendar lanes — so pressing it on a live post hid it from the
+              calendar while it stayed published on the network. */}
+          {isScheduled && publishStateOf(currentPost.publications) === 'unpublished' ? (
+            <Button variant="secondary" onClick={() => onUnschedule(currentPost.id)}>
+              Unschedule
+            </Button>
+          ) : isScheduled ? null : (
+            <Button variant="secondary" onClick={() => onSkip(currentPost.id)}>
+              Skip for now
+            </Button>
+          )}
+          {isScheduled && onSendApproval && (
+            <Button
+              variant="secondary"
+              onClick={() => onSendApproval(currentPost.id)}
+              disabled={approvalSending}
+              loading={approvalSending}
+            >
+              <Mail className="size-3" /> Send for approval
+            </Button>
+          )}
+        </>
       )}
       {/* No platform test: which networks can take this post is resolved from the client's
           connections when the button is pressed, and the route says so if there are none.
@@ -1004,7 +1139,7 @@ function NormalFooter({
           Publish now
         </Button>
       )}
-      <Button variant="danger" onClick={() => onDelete(currentPost.id)}>
+      <Button variant="danger" onClick={onDelete}>
         Delete post
       </Button>
       {/* This attempt's error, then the stored reason from the last one. Both, and in

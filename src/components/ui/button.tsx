@@ -25,6 +25,33 @@ const SIZE_CLASSES: Record<NonNullable<ButtonProps['size']>, string> = {
   lg: 'px-6 py-3.5 text-title rounded-md',
 }
 
+/**
+ * A button's look, without a button.
+ *
+ * For the cases that must be a real `<a>` — an outbound link belongs in the tab strip, wants
+ * middle-click and cmd-click, and is not a button pretending. Exported so those keep ONE set of
+ * classes with `Button` rather than a copy that drifts.
+ */
+export function buttonClasses({
+  variant = 'primary',
+  size = 'md',
+  className,
+}: Pick<ButtonProps, 'variant' | 'size' | 'className'> = {}): string {
+  return cn(
+    // leading-none deliberately overrides the size token's paired line-height: a button
+    // centres its label against its own padding, so inherited leading would just add slack
+    // inside a fixed height.
+    'inline-flex items-center justify-center gap-2 whitespace-nowrap font-sans font-medium leading-none',
+    'transition-[background-color,border-color,color,transform,box-shadow] duration-150 ease-contour',
+    FOCUS_RING,
+    'active:translate-y-0 active:scale-[0.98] active:shadow-none',
+    'disabled:pointer-events-none disabled:opacity-50',
+    VARIANT_CLASSES[variant],
+    SIZE_CLASSES[size],
+    className
+  )
+}
+
 export function Button({
   variant = 'primary',
   size = 'md',
@@ -36,19 +63,7 @@ export function Button({
 }: ButtonProps) {
   return (
     <button
-      className={cn(
-        // leading-none deliberately overrides the size token's paired
-        // line-height: a button centres its label against its own padding, so
-        // inherited leading would just add slack inside a fixed height.
-        'inline-flex items-center justify-center gap-2 whitespace-nowrap font-sans font-medium leading-none',
-        'transition-[background-color,border-color,color,transform,box-shadow] duration-150 ease-contour',
-        FOCUS_RING,
-        'active:translate-y-0 active:scale-[0.98] active:shadow-none',
-        'disabled:pointer-events-none disabled:opacity-50',
-        VARIANT_CLASSES[variant],
-        SIZE_CLASSES[size],
-        className
-      )}
+      className={buttonClasses({ variant, size, className })}
       disabled={disabled || loading}
       {...props}
     >

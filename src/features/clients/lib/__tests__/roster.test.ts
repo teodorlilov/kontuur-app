@@ -124,16 +124,21 @@ describe('computeRosterEntry — null expiry', () => {
 })
 
 describe('computeRosterEntry — channels', () => {
-  it('renders one chip per supported platform even when absent', () => {
+  it('renders one chip per publishable platform even when absent', () => {
+    // Every network the publish pipeline can reach, so a missing connection is visible as a gap
+    // rather than by omission. This asserted Instagram alone while Facebook was publishable —
+    // a client connected to a Page had that connection hidden from the roster entirely.
     const result = entry({ social_connections: [] })
-    expect(result.channels.map((c) => c.platform)).toEqual(['instagram'])
-    expect(result.channels.find((c) => c.platform === 'instagram')?.state).toBe('missing')
+    expect(result.channels.map((c) => c.platform)).toEqual(['instagram', 'facebook'])
+    expect(result.channels.every((c) => c.state === 'missing')).toBe(true)
   })
 
   it('never renders Canva as a social channel', () => {
     const rows = [connection(), connection({ platform: 'canva' })]
     const result = entry({ social_connections: rows })
-    expect(result.channels).toHaveLength(1)
+    // Canva shares `social_connections` and is not somewhere a post can go, so it is absent
+    // while both publishable networks are present.
+    expect(result.channels.map((c) => c.platform)).toEqual(['instagram', 'facebook'])
     expect(result.channels.some((c) => (c.platform as string) === 'canva')).toBe(false)
   })
 

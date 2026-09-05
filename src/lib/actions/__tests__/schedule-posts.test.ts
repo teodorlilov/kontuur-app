@@ -60,13 +60,14 @@ import { schedulePost, schedulePosts } from '../post-actions'
 /** A Supabase double: the caption read, then the UPDATE whose outcome the test is about. */
 function fakeSupabase(
   updateError: { message: string } | null,
-  readError: { message: string } | null = null
+  readError: { message: string } | null = null,
+  caption = 'fine'
 ) {
   return {
     from: vi.fn(() => ({
       select: () => ({
         in: async () => ({
-          data: readError ? null : [{ id: POST_ID, caption: 'fine', post_type: 'single' }],
+          data: readError ? null : [{ id: POST_ID, caption, post_type: 'single' }],
           error: readError,
         }),
       }),
@@ -74,6 +75,9 @@ function fakeSupabase(
     })),
   }
 }
+
+/** Past Instagram's 2,200-character ceiling; well inside Facebook's 63,206. */
+const TOO_LONG_FOR_INSTAGRAM = 'x'.repeat(2_500)
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -86,6 +90,36 @@ beforeEach(() => {
   // Non-empty: the default is a post that resolved somewhere to publish.
   mocks.assignDestinations.mockResolvedValue([{ id: 'pub-1', platform: 'instagram' }])
   mocks.withdrawPendingPublications.mockResolvedValue(undefined)
+})
+
+describe('the caption gate is per destination', () => {
+  // Instagram allows 2,200 caption characters and Facebook 63,206. The gate applied Instagram's
+  // rule to every post on the stated grounds that "today every schedulable post is
+  // Instagram-bound" — true until Facebook joined POST_PLATFORMS, after which it refused posts
+  // that were perfectly valid on the only network they were going to.
+  beforeEach(() => {
+    mocks.resolveActionAuth.mockResolvedValue({
+      ok: true,
+      supabase: fakeSupabase(null, null, TOO_LONG_FOR_INSTAGRAM),
+      agencyId: AGENCY_ID,
+    })
+  })
+
+  it('refuses an over-long caption when Instagram is a destination', async () => {
+    const result = await schedulePosts([
+      { postId: POST_ID, scheduledAt: '2026-09-08T09:00:00.000Z', platforms: ['instagram'] },
+    ])
+
+    expect(result.ok).toBe(false)
+  })
+
+  it('allows the same caption when the post is only going to Facebook', async () => {
+    const result = await schedulePosts([
+      { postId: POST_ID, scheduledAt: '2026-09-08T09:00:00.000Z', platforms: ['facebook'] },
+    ])
+
+    expect(result.ok).toBe(true)
+  })
 })
 
 describe('schedulePost', () => {

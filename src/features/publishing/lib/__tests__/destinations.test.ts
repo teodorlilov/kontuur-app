@@ -41,7 +41,18 @@ describe('capableDestinations', () => {
   })
 
   it('drops a network nothing has taught us to publish to', () => {
-    expect(capableDestinations(['facebook', 'linkedin'], 'single')).toEqual([])
+    expect(capableDestinations(['linkedin', 'tiktok'], 'single')).toEqual([])
+  })
+
+  it('offers Facebook both kinds of post', () => {
+    // A carousel reaches Facebook as a multi-photo post, in slide order. Both networks take
+    // both, which is why capability stays the adapter's to state rather than a table here.
+    for (const postType of ['single', 'carousel'] as const) {
+      expect(capableDestinations(['instagram', 'facebook'], postType)).toEqual([
+        'instagram',
+        'facebook',
+      ])
+    }
   })
 
   it('answers from the adapter, so capability is never a list kept beside it', () => {

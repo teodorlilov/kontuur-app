@@ -34,9 +34,36 @@ export type PostStatus = (typeof POST_STATUSES)[number]
  * names that `posts.platform` stored. That column and that list are both gone: a post is
  * not written for a network, so the only platform vocabulary left is this one.
  */
-export const POST_PLATFORMS = ['instagram'] as const
+export const POST_PLATFORMS = ['instagram', 'facebook'] as const
 
 export type PostPlatform = (typeof POST_PLATFORMS)[number]
+
+/**
+ * How each network is named to a person.
+ *
+ * The adapters' `label` reads this rather than spelling its own, so a network is named the same
+ * on a toast, a chip and a failure notification. The adapters are server-only and half these
+ * callers are components, which is why the spelling lives here and not on the contract.
+ */
+export const PLATFORM_NAMES: Record<PostPlatform, string> = {
+  instagram: 'Instagram',
+  facebook: 'Facebook',
+}
+
+/**
+ * Name a set of destinations the way a sentence would: "Instagram", "Instagram and Facebook".
+ *
+ * Publishing is per-destination now, so every message about it is about a LIST — and the
+ * publish toasts each hard-coded "Instagram" instead, which told someone publishing to a
+ * Facebook Page that their post went to Instagram.
+ */
+export function namePlatforms(platforms: readonly string[]): string {
+  const names = platforms.flatMap((platform) => {
+    const known = toPublishingPlatform(platform)
+    return known ? [PLATFORM_NAMES[known]] : []
+  })
+  return new Intl.ListFormat('en', { type: 'conjunction' }).format(names)
+}
 
 /**
  * The connection's network, canonically spelled — or null when the row is not one we

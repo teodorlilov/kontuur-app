@@ -1,6 +1,7 @@
 import 'server-only'
 
 import { createSemaphore } from '@/lib/concurrency'
+import { PLATFORM_NAMES } from '@/lib/validation'
 import { altTextFromCaption, validateInstagramCaption } from './instagram-caption'
 import { IG_GRAPH_BASE } from '../constants'
 import { graphGet, graphPost } from '../graph-client'
@@ -8,6 +9,7 @@ import {
   igContainerResponseSchema,
   igContainerStatusSchema,
   igPublishingLimitSchema,
+  igPermalinkSchema,
   igRecentMediaSchema,
 } from '../schemas'
 import type {
@@ -55,7 +57,7 @@ type ContainerStatusCode = 'EXPIRED' | 'ERROR' | 'FINISHED' | 'IN_PROGRESS' | 'P
 
 export const instagramAdapter: NetworkAdapter = {
   platform: 'instagram',
-  label: 'Instagram',
+  label: PLATFORM_NAMES.instagram,
 
   /** Both: a single image is one container, a carousel is a parent over children. */
   accepts: () => true,
@@ -148,6 +150,16 @@ export const instagramAdapter: NetworkAdapter = {
 
     // ERROR / EXPIRED: this container is dead, so the reference is worthless.
     return { kind: 'rejected', reason: `Instagram container ${status}` }
+  },
+
+  async permalink(account: NetworkAccount, externalPostId: string): Promise<string | null> {
+    const data = await graphGet(
+      igPermalinkSchema,
+      `${IG_GRAPH_BASE}/${externalPostId}`,
+      account.accessToken,
+      { fields: 'permalink' }
+    )
+    return data.permalink ?? null
   },
 
   async quotaRemaining(account: NetworkAccount): Promise<number> {

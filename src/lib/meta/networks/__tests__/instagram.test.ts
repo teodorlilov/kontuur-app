@@ -44,8 +44,8 @@ describe('resolveNetwork', () => {
   it('returns null for a network with no adapter', () => {
     // This is the entire "can we publish there" rule. A null here is what makes
     // the publish path fail the post instead of guessing.
-    expect(resolveNetwork('facebook')).toBeNull()
     expect(resolveNetwork('linkedin')).toBeNull()
+    expect(resolveNetwork('tiktok')).toBeNull()
   })
 })
 

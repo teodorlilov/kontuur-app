@@ -1,18 +1,16 @@
 import type { RosterChannel } from '@/features/clients/lib/roster'
+import { PLATFORM_NAMES } from '@/lib/validation'
 import { cn } from '@/utils/cn'
 
 /**
  * Two-letter marks rather than brand glyphs: the column is 116px and the states
- * matter more than the logos. Only Instagram appears, because it is the only
- * platform the publish pipeline supports — a chip for anything else would
- * promise a connection the product cannot make.
+ * matter more than the logos. One chip per network the publish pipeline can
+ * reach — a chip for anything else would promise a connection the product
+ * cannot make.
  */
-const PLATFORM_LABELS: Record<RosterChannel['platform'], string> = {
+const PLATFORM_MARKS: Record<RosterChannel['platform'], string> = {
   instagram: 'IG',
-}
-
-const PLATFORM_NAMES: Record<RosterChannel['platform'], string> = {
-  instagram: 'Instagram',
+  facebook: 'FB',
 }
 
 const STATE_CLASSES: Record<RosterChannel['state'], string> = {
@@ -48,7 +46,7 @@ export function ChannelChips({ channels }: { channels: RosterChannel[] }) {
               STATE_CLASSES[channel.state]
             )}
           >
-            <span aria-hidden="true">{PLATFORM_LABELS[channel.platform]}</span>
+            <span aria-hidden="true">{PLATFORM_MARKS[channel.platform]}</span>
             <span className="sr-only">{describe(channel)}</span>
           </span>
         </li>

@@ -51,7 +51,23 @@ export async function disconnectConnection(connectionId: string): Promise<Action
  * the admin client, filtered by the signed-in user's own id and the platform. Both filters are
  * load-bearing: without the user filter this would read whichever token came back first.
  */
-export async function listFacebookPages(): Promise<ActionResult<FacebookPage[]>> {
+/**
+ * A Page as the chooser shows it. NO TOKEN.
+ *
+ * `FacebookPage` carries the Page access token, and this list crosses to a `'use client'`
+ * component — where every prop is serialized into the RSC payload and readable in the browser.
+ * A Page token never expires, so leaking one is not a session, it is permanent publish access
+ * to a client's Page. The token stays server-side and `connectFacebookPage` reads its own.
+ */
+export interface ChoosablePage {
+  id: string
+  name: string
+  category: string | null
+  canPublish: boolean
+}
+
+/** The Pages this user granted, with their tokens. Server-side only — see `ChoosablePage`. */
+async function fetchGrantedPages(): Promise<ActionResult<FacebookPage[]>> {
   const auth = await resolveActionAuth()
   if (!auth.ok) return { ok: false, error: auth.error }
 
@@ -75,13 +91,21 @@ export async function listFacebookPages(): Promise<ActionResult<FacebookPage[]>>
   }
 }
 
-/**
- * Connect one Page to one client — the second half of the Facebook flow.
- *
- * The Page token is taken from the live list, never from the browser: a page id is a request,
- * and honouring a token sent alongside it would let a caller attach any credential they liked
- * to a client they own.
- */
+/** The Pages to choose between, stripped of their tokens before they reach the browser. */
+export async function listFacebookPages(): Promise<ActionResult<ChoosablePage[]>> {
+  const granted = await fetchGrantedPages()
+  if (!granted.ok) return granted
+  return {
+    ok: true,
+    data: granted.data.map(({ id, name, category, canPublish }) => ({
+      id,
+      name,
+      category,
+      canPublish,
+    })),
+  }
+}
+
 export async function connectFacebookPage(clientId: string, pageId: string): Promise<ActionResult> {
   const parsedClient = parseActionId(clientId, 'clientId')
   if (!parsedClient.ok) return parsedClient.result
@@ -94,7 +118,8 @@ export async function connectFacebookPage(clientId: string, pageId: string): Pro
   const owned = await verifyClientOwnership(auth.supabase, clientId, auth.agencyId)
   if (!owned) return { ok: false, error: 'Not found' }
 
-  const pages = await listFacebookPages()
+  // Its own read, because `listFacebookPages` deliberately drops the token the store needs.
+  const pages = await fetchGrantedPages()
   if (!pages.ok) return pages
   const page = pages.data.find((candidate) => candidate.id === parsedPage.data)
   if (!page) return { ok: false, error: 'That Page is no longer available' }

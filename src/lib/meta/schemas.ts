@@ -213,12 +213,14 @@ export const fbUserSchema = z.looseObject({
 })
 
 /**
- * One Page from `/me/accounts`.
+ * One Page, from `/me/accounts` or read directly as `/{page-id}`.
  *
- * The Page token rides in the list itself — there is no second call to fetch it, and no expiry
- * field anywhere in the response, which is what lets a Page connection store a null
- * `token_expires_at`. `tasks` is what the person may do with the Page; `CREATE_CONTENT` is the
- * one publishing needs.
+ * Both return the same shape, which is what lets a Page missing from the list be recovered by
+ * id: the Page token rides in the response itself, with no expiry field anywhere, which is what
+ * lets a Page connection store a null `token_expires_at`.
+ *
+ * `tasks` is what the PERSON may do with the Page and only `/me/accounts` returns it. What the
+ * APP may do is a different question, answered by `fbDebugTokenSchema` below.
  */
 export const fbPageSchema = z.looseObject({
   id: z.string(),
@@ -230,4 +232,63 @@ export const fbPageSchema = z.looseObject({
 
 export const fbPagesResponseSchema = z.looseObject({
   data: z.array(fbPageSchema),
+})
+
+/**
+ * `POST /{page-id}/photos` and `POST /{page-id}/feed` both answer with just an id.
+ *
+ * The photo id is the handle a feed post attaches; the feed id is `<page-id>_<post-id>` and is
+ * what `post_publications.external_post_id` stores. Neither response carries a status, because
+ * neither call is asynchronous — probed live, recorded in `docs/META-FB-PROBE.md`.
+ */
+export const fbCreatedObjectSchema = z.looseObject({
+  id: z.string(),
+})
+
+/** `GET /{media-id}?fields=permalink` — where a person can see an Instagram post. */
+export const igPermalinkSchema = z.looseObject({
+  permalink: z.string().optional(),
+})
+
+/** `GET /{post-id}?fields=permalink_url` — the same question on a Facebook Page. */
+export const fbPermalinkSchema = z.looseObject({
+  permalink_url: z.string().optional(),
+})
+
+/**
+ * `POST /{post-id}` with `is_published` — Facebook's publish step answers only `success`.
+ *
+ * No id comes back because the caller already holds it: the post was created in the previous
+ * phase and this call only flips it live. Probed against a live Page, INCLUDING the second
+ * call on an already-published post, which answers `{"success":true}` again rather than
+ * erroring or creating anything — that idempotence is what makes the retry safe.
+ */
+export const fbPublishAckSchema = z.looseObject({
+  success: z.boolean().optional(),
+})
+
+/**
+ * `/debug_token` — the record of what this token was actually granted, per asset.
+ *
+ * `scopes` says a permission was granted at all; `granular_scopes` says which Pages it covers.
+ * Those are different questions and Facebook answers them differently: a token can report
+ * `pages_show_list` as granted while covering exactly one Page, or none.
+ *
+ * An ABSENT `target_ids` means the scope covers every asset — the shape Instagram's scopes have
+ * on this same token, and the shape "opt in to all current and future Pages" produces. An
+ * absent SCOPE means it was not granted at all. Empty and absent are not the same answer, which
+ * is why the parsed field stays optional rather than defaulting to `[]`.
+ */
+export const fbDebugTokenSchema = z.looseObject({
+  data: z.looseObject({
+    is_valid: z.boolean().optional(),
+    granular_scopes: z
+      .array(
+        z.looseObject({
+          scope: z.string(),
+          target_ids: z.array(z.string()).optional(),
+        })
+      )
+      .optional(),
+  }),
 })

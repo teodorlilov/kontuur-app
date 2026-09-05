@@ -1,7 +1,3 @@
-import 'server-only'
-
-import { FB_AUTHORIZE_URL, IG_AUTHORIZE_URL } from '@/lib/meta/constants'
-
 /**
  * The networks the connect flow can start, and what starting one takes.
  *
@@ -14,6 +10,10 @@ import { FB_AUTHORIZE_URL, IG_AUTHORIZE_URL } from '@/lib/meta/constants'
  * registry: `facebook_user` is a token this app holds and never publishes to, and Canva
  * connects without being a network at all.
  */
+import 'server-only'
+
+import { FB_AUTHORIZE_URL, IG_AUTHORIZE_URL } from '@/lib/meta/constants'
+
 /**
  * The platform of the user-scoped Facebook token, which is not a network anyone publishes to.
  *
@@ -36,6 +36,16 @@ interface OAuthNetwork {
   /** Comma-joined, as both dialogs expect. */
   scopes: string
   appIdEnv: 'META_INSTAGRAM_APP_ID' | 'META_APP_ID'
+  /**
+   * Extra parameters the dialog needs, beyond the four every OAuth flow sends.
+   *
+   * Facebook needs `auth_type=rerequest`. Without it a returning user is offered "continue with
+   * your previous settings", and the Pages they picked LAST time silently apply — including none
+   * at all. That state is indistinguishable from success: `pages_show_list` reads as granted
+   * while `/me/accounts` returns an empty list, and the person is left staring at a chooser with
+   * nothing in it having just told Facebook to continue. Rerequest shows the picker every time.
+   */
+  extraParams?: Record<string, string>
 }
 
 const NETWORKS: Record<OAuthPlatform, OAuthNetwork> = {
@@ -70,6 +80,7 @@ const NETWORKS: Record<OAuthPlatform, OAuthNetwork> = {
       'pages_manage_engagement',
     ].join(','),
     appIdEnv: 'META_APP_ID',
+    extraParams: { auth_type: 'rerequest' },
   },
 }
 
@@ -89,5 +100,8 @@ export function authorizeUrlFor(
   url.searchParams.set('response_type', 'code')
   url.searchParams.set('scope', network.scopes)
   url.searchParams.set('state', state)
+  for (const [key, value] of Object.entries(network.extraParams ?? {})) {
+    url.searchParams.set(key, value)
+  }
   return url.toString()
 }

@@ -31,7 +31,8 @@ import { StatusPill } from '@/components/ui/status-pill'
 import { cn } from '@/utils/cn'
 import type { ContentInsights } from '@/features/clients/lib/insights'
 import type { ClientIdea, MetaConnection, UrlAnalysisResponse } from '@/types/api'
-import type { FacebookPage } from '@/lib/meta/facebook-auth'
+import type { ChoosablePage } from '@/features/clients/actions/connection-actions'
+import type { ActionResult } from '@/lib/actions/types'
 import type { ClientRow, BrandProfileRow, PostingScheduleRow } from '@/types'
 import type { VisualIdentity } from '@/types/visual'
 import { BasicInfoTab } from './basic-info-tab'
@@ -118,7 +119,7 @@ interface ClientSettingsFormProps {
   /** Drives the connection pill and the accounts tab. Resolved server-side so the title never flickers. */
   connections: MetaConnection[]
   /** Non-null only when the Facebook callback sent the user back to pick a Page. */
-  facebookPages: FacebookPage[] | null
+  facebookPages: ActionResult<ChoosablePage[]> | null
   ideaToken: string | null
   ideaNewCount: number
   ideaUsedCount: number

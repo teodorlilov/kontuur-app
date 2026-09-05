@@ -11,7 +11,8 @@ import { isTokenExpired } from '@/lib/meta/token-expiry'
 import { cn } from '@/utils/cn'
 import { PLATFORM_ACCOUNTS, type PlatformAccount } from '@/features/clients/lib/platform-accounts'
 import type { MetaConnection } from '@/types/api'
-import type { FacebookPage } from '@/lib/meta/facebook-auth'
+import type { ChoosablePage } from '@/features/clients/actions/connection-actions'
+import type { ActionResult } from '@/lib/actions/types'
 import { FacebookPageChooser } from './facebook-page-chooser'
 
 interface ConnectedAccountsTabProps {
@@ -24,7 +25,7 @@ interface ConnectedAccountsTabProps {
    * Non-null IS the signal to open the chooser: the Facebook callback redirects here with
    * `?choose_page=1` and the page resolves the list, so the tab never fetches.
    */
-  facebookPages: FacebookPage[] | null
+  facebookPages: ActionResult<ChoosablePage[]> | null
 }
 
 /** Where posts publish: the Instagram OAuth link, plus roadmap platforms. */

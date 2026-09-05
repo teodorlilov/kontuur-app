@@ -15,12 +15,16 @@ import {
   type PostFieldUpdate,
 } from '@/lib/validation/post-update-schema'
 import { DISCARD_REASONS } from '@/lib/validation'
+import { draftColumns } from '@/lib/generation/draft-columns'
 import type { ActionResult } from './types'
+import { parseActionId } from './parse-input'
 import { statusForSlot } from '@/lib/posts/status-for-slot'
 import { assignDestinations } from '@/features/publishing/lib/destinations'
 import { withdrawPendingPublications } from '@/features/publishing/lib/publication-store'
 import type { PostType } from '@/types/api'
 import { removeStoragePrefix } from '@/lib/storage/remove-prefix'
+import type { PostImageRow } from '@/types'
+import { copyPostImageObject, postImagePrefix, putPostImages } from '@/features/assets/lib/storage'
 import { POST_IMAGES_BUCKET } from '@/utils/constants'
 
 const deletePostOptionsSchema = z.object({ reason: z.enum(DISCARD_REASONS).optional() }).optional()
@@ -166,6 +170,163 @@ export async function persistRewrite(
   return { ok: true, data: { rewriteCount } }
 }
 
+/**
+ * Use a published post again, as a NEW draft.
+ *
+ * The published post is never touched. It is a historical record — its publications carry the
+ * ids the network knows it by, and comments and performance hang off those — so editing it to
+ * run again would make our record disagree with what is public and take that history with it.
+ * "Use again" therefore means a new row with its own lifecycle, which is what a person asking
+ * to reuse a post actually wants: the content, running through review and scheduling afresh.
+ *
+ * Written through `draftColumns`, the one place a draft becomes a write, so a duplicate carries
+ * exactly what the cron and the wizard write and cannot drift from them.
+ *
+ * The visuals come with it. They cannot come by reference — `deletePost` sweeps the whole
+ * `{clientId}/{postId}/` prefix, so two posts pointing at one object would mean deleting either
+ * strips the other — so each file is COPIED under the new post's prefix and the new rows point
+ * at the copies. Both posts then own their files and both sweeps stay correct.
+ *
+ * ALL OR NOTHING. A copy that fails means a source object is missing, which makes the ORIGINAL
+ * post the broken one — so the duplicate is undone rather than delivered a slide short. Undoing
+ * is exact: the new post's row and prefix are its own, so removing them touches nothing else.
+ */
+export async function duplicatePostAsDraft(postId: string): Promise<ActionResult<{ id: string }>> {
+  // Parsed before auth, as the other writers here do. The action-validation guard is FILE-scoped
+  // — this file already parses elsewhere, so it would have passed either way — and a non-uuid
+  // reaching `.eq()` makes Postgres reject the comparison, reporting a database error where it
+  // means "that is not an id".
+  const parsed = parseActionId(postId, 'postId')
+  if (!parsed.ok) return parsed.result
+
+  const auth = await resolveActionAuth()
+  if (!auth.ok) return { ok: false, error: auth.error }
+  const { supabase, agencyId } = auth
+
+  if (!(await fetchOwnedPost(supabase, postId, agencyId))) {
+    return { ok: false, error: 'Post not found' }
+  }
+
+  const { data, error } = await supabase
+    .from('posts')
+    .select(
+      'client_id, caption, post_type, slides_json, validation_json, quality_score_avg, topic_summary, source_url, source_title, source_type, source_excerpt, client_source_id, pillar'
+    )
+    .eq('id', postId)
+    .single()
+  if (error || !data) return { ok: false, error: 'Could not read that post' }
+
+  const { data: created, error: insertError } = await supabase
+    .from('posts')
+    .insert({
+      ...draftColumns(data),
+      // Back to the start of the editorial lifecycle, with no slot: a duplicate is something
+      // to review and schedule, not something already on the calendar.
+      status: 'pending_review',
+      scheduled_at: null,
+    })
+    .select('id')
+    .single()
+  if (insertError || !created) {
+    console.error(`[posts] duplicate of ${postId} failed:`, insertError?.message)
+    return { ok: false, error: 'Could not create the copy' }
+  }
+
+  const copyFailure = await copyImagesOnto(data.client_id, postId, created.id)
+  if (copyFailure) {
+    // Undo, so a failed copy leaves nothing behind. The row cascades its images away and the
+    // prefix is this post's alone, so the sweep cannot reach the original's files.
+    const { error: undoError } = await supabase.from('posts').delete().eq('id', created.id)
+    await removeStoragePrefix(POST_IMAGES_BUCKET, postImagePrefix(data.client_id, created.id))
+    if (undoError) {
+      // The one failure here that reaches a person: they are told nothing was created while a
+      // draft they did not ask for sits in the review queue.
+      console.error(`[posts] rollback of duplicate ${created.id} failed:`, undoError.message)
+      return { ok: false, error: `${copyFailure} — and a partial copy was left in review` }
+    }
+    return { ok: false, error: copyFailure }
+  }
+
+  revalidateTag('client-post-stats', 'max')
+  return { ok: true, data: { id: created.id } }
+}
+
+/**
+ * Give the duplicate its own copies of the original's images.
+ *
+ * Admin client throughout because the WRITE needs it: `putPostImages` and the storage copy both
+ * run service-role. The read is done on the same client rather than the user-scoped one so this
+ * is one client, not two. (`post_images` gained `post_images_agency_isolation` in migration
+ * 20260832, so a user-scoped read would now work — it is simply not what the writes use.)
+ *
+ * Written through `putPostImages`, the one `post_images` write in the codebase, so a duplicate's
+ * rows are built the same way every other attached image is.
+ *
+ * Returns the reason it could not be done, or null when every image arrived.
+ */
+async function copyImagesOnto(
+  clientId: string,
+  fromPostId: string,
+  toPostId: string
+): Promise<string | null> {
+  const admin = createAdminSupabaseClient()
+  const { data, error } = await admin
+    .from('post_images')
+    .select('position, storage_path, file_name, file_size, content_type')
+    .eq('post_id', fromPostId)
+    .order('position')
+  if (error) {
+    console.error(`[posts] could not read images of ${fromPostId}:`, error.message)
+    return 'Could not read this post’s visuals'
+  }
+
+  // WHY as: a narrowed select does not infer through the untyped admin client. Derived from
+  // the generated row so the five columns cannot drift from the table — row-mirrors' rule.
+  type SourceImage = Pick<
+    PostImageRow,
+    'position' | 'storage_path' | 'file_name' | 'file_size' | 'content_type'
+  >
+  const source = (data ?? []) as SourceImage[]
+  if (source.length === 0) return null
+
+  const copies = await Promise.all(
+    source.map(async (image) => ({
+      image,
+      copied: await copyPostImageObject(image.storage_path, clientId, toPostId, image.position),
+    }))
+  )
+
+  const usable = copies.flatMap(({ image, copied }) => (copied ? [{ image, copied }] : []))
+  const missing = copies.filter(({ copied }) => !copied)
+  if (missing.length > 0) {
+    // The stored path leads nowhere, which means the ORIGINAL is missing that file too.
+    console.error(
+      `[posts] duplicate of ${fromPostId} aborted: ${missing.length} unreadable image(s)`,
+      missing.map(({ image }) => image.storage_path)
+    )
+    return 'Some of this post’s visuals are missing from storage, so it cannot be copied'
+  }
+
+  try {
+    await putPostImages(
+      admin,
+      usable.map(({ image, copied }) => ({
+        postId: toPostId,
+        position: image.position,
+        publicUrl: copied.publicUrl,
+        storagePath: copied.storagePath,
+        ...(image.file_name ? { fileName: image.file_name } : {}),
+        ...(image.file_size !== null ? { fileSize: image.file_size } : {}),
+        ...(image.content_type ? { contentType: image.content_type } : {}),
+      }))
+    )
+  } catch (err) {
+    console.error(`[posts] could not attach copied images to ${toPostId}:`, err)
+    return 'Could not attach the copied visuals'
+  }
+  return null
+}
+
 /** Delete a post by ID, recording its outcome (and the reviewer's reason) as a review discard first. */
 export async function deletePost(
   postId: string,
@@ -218,7 +379,10 @@ export async function deletePost(
   //
   // After the rows, never before: sweeping first would strip a live post's images if the delete
   // then failed. Best-effort by contract — the post is gone either way.
-  const swept = await removeStoragePrefix(POST_IMAGES_BUCKET, `${post.client_id}/${postId}`)
+  const swept = await removeStoragePrefix(
+    POST_IMAGES_BUCKET,
+    postImagePrefix(post.client_id, postId)
+  )
   if (swept > 0) console.warn(`[posts] deleted ${postId}: swept ${swept} stored file(s)`)
 
   revalidateTag('client-post-stats', 'max')
@@ -294,9 +458,19 @@ export async function schedulePosts(
   const allIds = items.map((i) => i.postId)
   const verifiedIds = await verifyPostsOwnership(supabase, allIds, agencyId)
 
-  // Caption limits are checked at schedule time so the problem surfaces in the
-  // calendar, not as a burned publish attempt days later. Instagram-bound posts
-  // only — and today every schedulable post is Instagram-bound.
+  /**
+   * Caption limits are checked at schedule time so the problem surfaces in the calendar, not as
+   * a burned publish attempt days later.
+   *
+   * Instagram-bound posts only, and that is now a real filter rather than an observation: this
+   * read "today every schedulable post is Instagram-bound", which stopped being true when
+   * Facebook joined POST_PLATFORMS. Instagram allows 2,200 caption characters and Facebook
+   * 63,206, so applying Instagram's rule to every destination would refuse a post that is
+   * perfectly valid on the only network it was actually going to.
+   */
+  const instagramBound = new Set(
+    items.filter((item) => item.platforms.includes('instagram')).map((item) => item.postId)
+  )
   const { data: captionRows, error: readError } = await supabase
     .from('posts')
     .select('id, caption, client_id, post_type')
@@ -317,6 +491,7 @@ export async function schedulePosts(
   )
   const captionBlocked = new Map<string, string>()
   for (const row of captionRows ?? []) {
+    if (!instagramBound.has(row.id)) continue
     const problem = validateInstagramCaption(row.caption ?? '')
     if (problem) captionBlocked.set(row.id, problem)
   }

@@ -40,6 +40,17 @@ export function publicPostImageUrl(storagePath: string): string {
   return admin.storage.from(BUCKET).getPublicUrl(storagePath).data.publicUrl
 }
 
+/**
+ * Where a post's images live.
+ *
+ * Three writers put files under this prefix and two sweeps delete by it (`deletePost`, and the
+ * duplicate's rollback). Spelled out at five call sites, one of them drifting means a sweep
+ * that misses files or deletes the wrong ones, so it is spelled once.
+ */
+export function postImagePrefix(clientId: string, postId: string): string {
+  return `${clientId}/${postId}`
+}
+
 /** Upload a post image to the public post-images bucket. */
 export async function uploadPostImage(
   file: Buffer,
@@ -50,7 +61,7 @@ export async function uploadPostImage(
 ): Promise<UploadResult> {
   return uploadToBucket(
     BUCKET,
-    `${clientId}/${postId}/${Date.now()}-${fileName}`,
+    `${postImagePrefix(clientId, postId)}/${Date.now()}-${fileName}`,
     file,
     contentType
   )
@@ -217,6 +228,56 @@ export async function putPostImages(
   return (data ?? []) as PostImageRow[]
 }
 
+/**
+ * Copy a stored image under another post's prefix, leaving the original where it is.
+ *
+ * Reusing a post must carry its visuals, and it cannot carry them by REFERENCE: `deletePost`
+ * sweeps the whole `{clientId}/{postId}/` prefix, so two posts sharing one object would mean
+ * deleting either strips the other. The copy gives the new post files of its own, which is what
+ * makes both sweeps correct.
+ *
+ * The destination is keyed on POSITION, not on a timestamp. `uq_post_images_post_position`
+ * already makes position unique within a post, so this cannot collide — whereas the timestamp
+ * scheme the move helper uses is written one call at a time, and these run concurrently: every
+ * copy in a carousel stamps the same millisecond, so two source files sharing a basename would
+ * land on one path and the second would fail as already existing.
+ *
+ * Returns null rather than throwing, so the caller can say which visual failed and undo the
+ * whole copy rather than leave a duplicate missing a slide.
+ */
+export async function copyPostImageObject(
+  fromPath: string,
+  clientId: string,
+  postId: string,
+  position: number
+): Promise<UploadResult | null> {
+  return relocate(
+    'copy',
+    fromPath,
+    `${postImagePrefix(clientId, postId)}/${position}-${fromPath.split('/').pop()}`
+  )
+}
+
+/**
+ * The shared half of copy and move: run the storage op, report the new location, and report a
+ * failure rather than throwing. Only the destination rule differs between the two.
+ */
+async function relocate(
+  op: 'copy' | 'move',
+  fromPath: string,
+  toPath: string
+): Promise<UploadResult | null> {
+  const admin = createAdminSupabaseClient()
+  const bucket = admin.storage.from(BUCKET)
+  const { error } =
+    op === 'copy' ? await bucket.copy(fromPath, toPath) : await bucket.move(fromPath, toPath)
+  if (error) {
+    console.error(`Failed to ${op} ${fromPath} to ${toPath}:`, error.message)
+    return null
+  }
+  return { publicUrl: bucket.getPublicUrl(toPath).data.publicUrl, storagePath: toPath }
+}
+
 /** Move a storage object into a post's folder (drafts → post relocation on approve).
  *  Returns the new location, or null on failure (logged; the caller keeps the old path). */
 export async function movePostImageObject(
@@ -224,13 +285,9 @@ export async function movePostImageObject(
   clientId: string,
   postId: string
 ): Promise<UploadResult | null> {
-  const admin = createAdminSupabaseClient()
-  const toPath = `${clientId}/${postId}/${Date.now()}-${fromPath.split('/').pop()}`
-  const { error } = await admin.storage.from(BUCKET).move(fromPath, toPath)
-  if (error) {
-    console.error(`Failed to move ${fromPath} to ${toPath}:`, error.message)
-    return null
-  }
-  const { data } = admin.storage.from(BUCKET).getPublicUrl(toPath)
-  return { publicUrl: data.publicUrl, storagePath: toPath }
+  return relocate(
+    'move',
+    fromPath,
+    `${postImagePrefix(clientId, postId)}/${Date.now()}-${fromPath.split('/').pop()}`
+  )
 }
