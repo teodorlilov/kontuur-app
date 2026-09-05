@@ -1,6 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { revalidateTag } from 'next/cache'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
+import { storeConnection } from '@/lib/meta/connection-store'
+import {
+  exchangeFacebookCode,
+  exchangeFacebookForLongLived,
+  fetchFacebookUser,
+} from '@/lib/meta/facebook-auth'
+import { FACEBOOK_USER_PLATFORM } from '@/lib/meta/oauth-networks'
+import type { SupabaseClient } from '@supabase/supabase-js'
 import { resolveAuth } from '@/lib/auth/resolve-auth'
 import { verifyClientOwnership } from '@/lib/auth/helpers'
 import { fetchIgConnectionState } from '@/lib/queries/db'
@@ -114,19 +122,14 @@ async function connectInstagram(
 
   const accountId = igUser.id ?? igUserId
 
-  const { error } = await admin.from('social_connections').upsert(
-    {
-      client_id: clientId,
-      platform: 'instagram',
-      account_id: accountId,
-      account_name: igUser.username ?? igUser.name ?? igUserId,
-      access_token: longLivedToken,
-      token_expires_at: expiresAt.toISOString(),
-    },
-    { onConflict: 'client_id,platform' }
-  )
-
-  if (error) throw new Error(`Failed to save Instagram connection: ${error.message}`)
+  await storeConnection(admin, {
+    clientId,
+    platform: 'instagram',
+    accountId,
+    accountName: igUser.username ?? igUser.name ?? igUserId,
+    accessToken: longLivedToken,
+    tokenExpiresAt: expiresAt.toISOString(),
+  })
 
   return accountId
 }
@@ -170,6 +173,49 @@ async function purgeSupersededAccount(
 // ---- Route handler ----
 
 /** Instagram OAuth return leg: exchange the code for a long-lived token and store the connection. */
+/**
+ * Facebook's half: consent yields a USER token, not a connected account.
+ *
+ * Instagram's consent names the account it connects, so one exchange finishes the job. A person
+ * may administer several Pages, so this stores the long-lived user token and hands off to the
+ * chooser — the Page itself is connected there, by `connectFacebookPage`.
+ *
+ * The row is user-scoped: `client_id` NULL, `user_id` set, platform `facebook_user`. That is the
+ * shape Canva already uses here, and the NULL client_id puts it outside RLS, so it is
+ * admin-client only and every read of it keeps its platform filter. It is not a publishing
+ * connection and resolves to no adapter, so `resolveDestinations` and the roster's channel chips
+ * both ignore it without needing to know it exists.
+ */
+async function connectFacebookUser(
+  code: string,
+  redirectUri: string,
+  userId: string,
+  clientId: string,
+  admin: SupabaseClient
+): Promise<NextResponse> {
+  const shortLived = await exchangeFacebookCode(code, redirectUri)
+  const longLived = await exchangeFacebookForLongLived(shortLived)
+  const user = await fetchFacebookUser(longLived)
+
+  await storeConnection(admin, {
+    clientId: null,
+    userId,
+    platform: FACEBOOK_USER_PLATFORM,
+    accountId: user.id,
+    accountName: user.name,
+    accessToken: longLived,
+    // Facebook does not date a long-lived user token, and `token-expiry.ts` already reads null
+    // as "never expires" — a guessed date would start warning about a token that is fine.
+    tokenExpiresAt: null,
+  })
+
+  // Back to the client whose settings started this, with the chooser open: the flow is only
+  // half done until a Page is picked.
+  return NextResponse.redirect(
+    `${process.env.NEXT_PUBLIC_APP_URL}/clients/${clientId}/edit?tab=accounts&choose_page=1`
+  )
+}
+
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
   const code = searchParams.get('code')
@@ -218,7 +264,10 @@ export async function GET(request: NextRequest) {
   const admin = createAdminSupabaseClient()
 
   try {
-    // Instagram Business Login flow — the only platform the connect route issues state for
+    if (decoded.platform === 'facebook') {
+      return await connectFacebookUser(code, redirectUri, auth.userId, clientId, admin)
+    }
+
     const shortLived = await exchangeInstagramCode(code, redirectUri)
     const longLived = await exchangeInstagramForLongLived(shortLived.access_token)
 

@@ -1,4 +1,5 @@
 import { createHmac, timingSafeEqual } from 'crypto'
+import { isOAuthPlatform, type OAuthPlatform } from '@/lib/meta/oauth-networks'
 
 /**
  * HMAC-signed OAuth state for the Meta connect/callback flow.
@@ -8,11 +9,14 @@ import { createHmac, timingSafeEqual } from 'crypto'
 
 const STATE_TTL_MS = 15 * 60 * 1000
 
-// `platform` stays in the payload for shape stability, but Instagram is the only
-// platform the connect route issues state for.
+/**
+ * `platform` says which network's consent this state was issued for, and the callback dispatches
+ * on it. It was pinned to the literal 'instagram' — which meant a second network could not be
+ * added without editing the type, the guard below and the connect route in step.
+ */
 interface OAuthStatePayload {
   clientId: string
-  platform: 'instagram'
+  platform: OAuthPlatform
 }
 
 function stateSecret(): string {
@@ -53,7 +57,9 @@ export function decodeOAuthState(state: string): OAuthStatePayload | null {
       exp?: number
     }
     if (!decoded.clientId || !decoded.exp || Date.now() > decoded.exp) return null
-    if (decoded.platform !== 'instagram') return null
+    // A platform this app does not connect must fail rather than fall through to a flow that
+    // was never issued for it.
+    if (!decoded.platform || !isOAuthPlatform(decoded.platform)) return null
     return { clientId: decoded.clientId, platform: decoded.platform }
   } catch {
     return null

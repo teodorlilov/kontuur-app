@@ -11,16 +11,30 @@ import { isTokenExpired } from '@/lib/meta/token-expiry'
 import { cn } from '@/utils/cn'
 import { PLATFORM_ACCOUNTS, type PlatformAccount } from '@/features/clients/lib/platform-accounts'
 import type { MetaConnection } from '@/types/api'
+import type { FacebookPage } from '@/lib/meta/facebook-auth'
+import { FacebookPageChooser } from './facebook-page-chooser'
 
 interface ConnectedAccountsTabProps {
   clientId: string
   /** Resolved server-side by the page, which already needs them for the header pill. */
   connections: MetaConnection[]
+  /**
+   * The Pages to choose from, or null on an ordinary visit.
+   *
+   * Non-null IS the signal to open the chooser: the Facebook callback redirects here with
+   * `?choose_page=1` and the page resolves the list, so the tab never fetches.
+   */
+  facebookPages: FacebookPage[] | null
 }
 
 /** Where posts publish: the Instagram OAuth link, plus roadmap platforms. */
-export function ConnectedAccountsTab({ clientId, connections }: ConnectedAccountsTabProps) {
+export function ConnectedAccountsTab({
+  clientId,
+  connections,
+  facebookPages,
+}: ConnectedAccountsTabProps) {
   const router = useRouter()
+  const [chooserDismissed, setChooserDismissed] = useState(false)
   const [disconnecting, setDisconnecting] = useState<string | null>(null)
   // Optimistic removal only. Derived from props rather than mirrored into state, so a server
   // refresh is always the source of truth and there is no prop/state sync to get wrong.
@@ -59,6 +73,14 @@ export function ConnectedAccountsTab({ clientId, connections }: ConnectedAccount
           )
         })}
       </div>
+
+      {facebookPages && !chooserDismissed && (
+        <FacebookPageChooser
+          clientId={clientId}
+          pages={facebookPages}
+          onClose={() => setChooserDismissed(true)}
+        />
+      )}
 
       <p className="mt-[18px] rounded-panel bg-wash px-4 py-3.5 text-caption leading-relaxed text-text2">
         Connected accounts enable real-time analytics and let approved posts publish directly.

@@ -25,5 +25,12 @@ export const PLATFORM_ACCOUNTS: readonly PlatformAccount[] = [
     note: 'Business or Creator account required',
     supported: true,
   },
+  {
+    id: 'facebook',
+    label: 'Facebook',
+    initials: 'FB',
+    note: 'A Page you administer',
+    supported: true,
+  },
   { id: 'linkedin', label: 'LinkedIn', initials: 'LI', note: 'Company pages', supported: false },
 ]

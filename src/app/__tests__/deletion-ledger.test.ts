@@ -90,7 +90,19 @@ describe('deleted symbols stay unreferenced', () => {
     'fetchFacebookMetrics',
     'FacebookMetrics',
     'pivotFBInsights',
-    'fbPagesResponseSchema',
+    /**
+     * `fbPagesResponseSchema` came OFF this list on 2026-09-05, deliberately.
+     *
+     * The name is back because the thing it names is back: reading the Pages a user
+     * administers. What was deleted was not the schema but the shape around it — a second
+     * parallel branch at every layer, with its own OAuth path, its own pivots and a 232-line
+     * metrics file. The new one is a leaf of `facebook-auth.ts` behind the shared
+     * `NetworkAdapter` contract, and it is written against a recorded response
+     * (docs/META-FB-PROBE.md) rather than the documentation the old one guessed from.
+     *
+     * `FACEBOOK_PAGE_SCOPES` stays deleted: scopes are declared once, per network, in
+     * `oauth-networks.ts` — a constant beside them is the second source of truth that list was.
+     */
     'FACEBOOK_PAGE_SCOPES',
     'capitalizePlatform',
     // Analytics repair (2026-08): the per-day pivot fiction. The API serves range

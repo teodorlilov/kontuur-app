@@ -104,7 +104,6 @@
     "src/lib/visual/post-color.ts": "claimScheme — a compare-and-swap on visual_ground/visual_accent so two lanes generating one carousel cannot split its colours."
   },
   "social_connections": {
-    "src/app/api/meta/callback/route.ts": "connectInstagram stores the connection the OAuth flow just produced.",
     "src/features/publishing/lib/refresh-tokens.ts": "Two of the five Meta-side credential operations: rotate an expiring token without the user, and retire one Meta has declared dead (access_token = null) so publish reports 'needs reconnecting' instead of hammering Graph. Both update by id and neither touches account identity.",
     "src/features/clients/actions/connection-actions.ts": "The user disconnecting Instagram.",
     "src/features/analytics/lib/sync-metrics.ts": "recordSyncHealth stamps last_sync_at / last_sync_error, and is their only writer. It never touches a token. It updates by (client_id, platform), which is exactly one row: social_connections_client_id_platform_key makes that pair UNIQUE — the same index the meta callback's onConflict relies on.",
@@ -112,7 +111,8 @@
     "src/app/api/canva/callback/route.ts": "Stores the Canva connection from its OAuth flow.",
     "src/app/api/canva/canva-auth.ts": "Refreshes the Canva token. Separate provider, separate lifetime, separate refresh endpoint.",
     "src/features/settings/actions/canva-actions.ts": "The user disconnecting Canva. Uses the service-role client BY NECESSITY: the only policy on this table is keyed on client_id, and a Canva row is owned by a user so its client_id is NULL — a user-scoped delete would match nothing and report success. Ownership is proven in TypeScript instead; see the comment at the call site.",
-    "src/features/settings/actions/team-actions.ts": "removeTeamMember takes the departing member's personal integrations with them. Distinct from disconnectCanvaConnection (that is the owner choosing to unlink); this is the workspace removing someone. Added 2026-08-31 because social_connections.user_id is NO ACTION, so removing a member who held a Canva connection raised 23503 and surfaced as a message the admin could not act on."
+    "src/features/settings/actions/team-actions.ts": "removeTeamMember takes the departing member's personal integrations with them. Distinct from disconnectCanvaConnection (that is the owner choosing to unlink); this is the workspace removing someone. Added 2026-08-31 because social_connections.user_id is NO ACTION, so removing a member who held a Canva connection raised 23503 and surfaced as a message the admin could not act on.",
+    "src/lib/meta/connection-store.ts": "storeConnection — the ONE writer of \"store the connection an OAuth flow just produced\". Three flows produce one: Instagram Business Login, the Facebook user token that lists a person's Pages, and the Page they then pick. They differ in what they connect, not in how it is recorded, so they share the write rather than carrying three upserts with three conflict targets. Client-scoped rows conflict on (client_id, platform); user-scoped ones on (user_id, platform), with a NULL client_id that also puts them outside RLS — so every read of those keeps its platform filter."
   },
   "users": {
     "src/lib/auth/create-user-record.ts": "The user row is created with the account, with the email guard — that column is a lookup key and a blank one is an account nobody can recover.",

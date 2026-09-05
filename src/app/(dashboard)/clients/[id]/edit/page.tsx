@@ -19,6 +19,7 @@ import {
 } from '@/features/ideas/lib/ideas'
 import { fetchVisualIdentity } from '@/lib/visual/queries'
 import { fetchStyleMemoDisplay } from '@/lib/learning/style-memo'
+import { listFacebookPages } from '@/features/clients/actions/connection-actions'
 
 /** Pillar rows are capped so one prolific client can't pull an unbounded result set. */
 const PILLAR_SAMPLE_SIZE = 500
@@ -27,13 +28,34 @@ const SCORE_SAMPLE_SIZE = 20
 /** How many recent ideas the Idea link tab previews. */
 const IDEA_PREVIEW_LIMIT = 3
 
-export default async function EditClientPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function EditClientPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>
+  searchParams: Promise<{ choose_page?: string }>
+}) {
   const { id } = await params
+  const { choose_page: choosePage } = await searchParams
   const { agencyId } = await requireSessionUser()
   const supabase = await createServerSupabaseClient()
 
   const client = await fetchClientById(supabase, id, agencyId)
   if (!client) notFound()
+
+  /**
+   * The Pages to choose from, loaded here rather than in the tab.
+   *
+   * Facebook consent yields a token that LISTS Pages instead of naming one, so the callback
+   * sends the user back with `?choose_page=1` and the choice happens on this screen. Fetched in
+   * the server component because that is where data is fetched — an effect in the modal would be
+   * a client-side waterfall for something this page can resolve before it renders.
+   *
+   * Failure degrades to an empty list; the chooser says so rather than the page falling over on
+   * a Graph call that is one step of a flow the user can restart.
+   */
+  const facebookPages =
+    choosePage === '1' ? await listFacebookPages().then((r) => (r.ok ? r.data : [])) : null
 
   const [
     visualIdentity,
@@ -114,6 +136,7 @@ export default async function EditClientPage({ params }: { params: Promise<{ id:
       lastGeneratedAt={postStats.lastGeneratedAt}
       visualIdentity={visualIdentity}
       connections={connections}
+      facebookPages={facebookPages}
       ideaToken={ideaToken}
       ideaNewCount={ideaCounts.newCount}
       ideaUsedCount={ideaCounts.usedCount}

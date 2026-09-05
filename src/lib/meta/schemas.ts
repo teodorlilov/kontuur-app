@@ -196,3 +196,38 @@ export const igCommentCreatedSchema = z.looseObject({ id: z.string() })
 export const igSuccessSchema = z.looseObject({ success: z.boolean().optional() })
 
 export type IgComment = z.infer<typeof igCommentSchema>
+
+// ---- Facebook Login and Pages ----
+// Shapes recorded in docs/META-FB-PROBE.md against a real Page, not taken from the docs.
+
+/** Both Facebook token exchanges answer with this: the code swap and the long-lived upgrade. */
+export const fbTokenSchema = z.looseObject({
+  access_token: z.string(),
+  /** Absent on a long-lived user token, which Facebook does not date. */
+  expires_in: z.number().optional(),
+})
+
+export const fbUserSchema = z.looseObject({
+  id: z.string(),
+  name: z.string().optional(),
+})
+
+/**
+ * One Page from `/me/accounts`.
+ *
+ * The Page token rides in the list itself — there is no second call to fetch it, and no expiry
+ * field anywhere in the response, which is what lets a Page connection store a null
+ * `token_expires_at`. `tasks` is what the person may do with the Page; `CREATE_CONTENT` is the
+ * one publishing needs.
+ */
+export const fbPageSchema = z.looseObject({
+  id: z.string(),
+  name: z.string(),
+  access_token: z.string(),
+  category: z.string().optional(),
+  tasks: z.array(z.string()).optional(),
+})
+
+export const fbPagesResponseSchema = z.looseObject({
+  data: z.array(fbPageSchema),
+})
