@@ -8,10 +8,10 @@ import {
   IG_ACCOUNT_METRIC_COLUMNS,
   IG_AUDIENCE_SNAPSHOT_COLUMNS,
   type IGAudienceSnapshotColumns,
-  IG_POST_METRIC_COLUMNS,
+  PLATFORM_POST_METRIC_COLUMNS,
   PUBLISHED_POST_PIN_COLUMNS,
   type IGAccountMetricColumns,
-  type IGPostMetricColumns,
+  type PlatformPostMetricColumns,
   type PublishedPostPin,
 } from '@/lib/queries/select-columns'
 import { shiftDateKey, zonedTimeToInstant } from '@/utils/date-helpers'
@@ -98,8 +98,8 @@ const _fetchAnalyticsReport = unstable_cache(
         .lte('metric_date', end)
         .order('metric_date'),
       admin
-        .from('ig_post_metrics')
-        .select(IG_POST_METRIC_COLUMNS)
+        .from('platform_post_metrics')
+        .select(PLATFORM_POST_METRIC_COLUMNS)
         .eq('client_id', clientId)
         .eq('ig_account_id', accountId)
         .gte('posted_at', postedFromPrev)
@@ -147,7 +147,7 @@ const _fetchAnalyticsReport = unstable_cache(
 
     // WHY as: this shared admin client is untyped, so projections do not infer.
     const accountRows = (accountRes.data ?? []) as unknown as IGAccountMetricColumns[]
-    const postRows = (postRes.data ?? []) as unknown as IGPostMetricColumns[]
+    const postRows = (postRes.data ?? []) as unknown as PlatformPostMetricColumns[]
     const publishedPosts = (publishedRes.data ?? []) as unknown as PublishedPostPin[]
     let snapshots = (snapshotRes.data ?? []) as unknown as IGAudienceSnapshotColumns[]
     // No snapshot covers this window (weekly capture may postdate an older

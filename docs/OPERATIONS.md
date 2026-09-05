@@ -106,7 +106,7 @@ publication, which is why none of these operations touch `posts`.
 
 ### Comments
 
-`purgeAccountAnalytics` above erases `ig_comments` too — it is the one table in that purge holding
+`purgeAccountAnalytics` above erases `platform_comments` too — it is the one table in that purge holding
 data about people who are neither the agency nor its client, which makes that line the part of
 Meta's data-deletion callback that erases third parties.
 

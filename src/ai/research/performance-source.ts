@@ -1,6 +1,9 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { PerformanceItem } from './types'
-import { IG_POST_METRIC_COLUMNS, type IGPostMetricColumns } from '@/lib/queries/select-columns'
+import {
+  PLATFORM_POST_METRIC_COLUMNS,
+  type PlatformPostMetricColumns,
+} from '@/lib/queries/select-columns'
 import { fetchIgConnectionState } from '@/lib/queries/db'
 import { MS_PER_DAY } from '@/utils/constants'
 
@@ -8,7 +11,7 @@ const PERFORMANCE_LOOKBACK_DAYS = 60
 const PERFORMANCE_TOP_N = 5
 const CAPTION_MAX_CHARS = 300
 
-function buildEngagementSummary(post: IGPostMetricColumns): string {
+function buildEngagementSummary(post: PlatformPostMetricColumns): string {
   const parts = [`${post.like_count ?? 0} likes`, `${post.comments_count ?? 0} comments`]
   if (post.saved) parts.push(`${post.saved} saves`)
   if (post.shares) parts.push(`${post.shares} shares`)
@@ -18,7 +21,7 @@ function buildEngagementSummary(post: IGPostMetricColumns): string {
 /**
  * The client's own top-performing recent Instagram posts as research input —
  * audience-proven angles the pipeline proposes follow-ups to. Reads the
- * nightly-synced ig_post_metrics rows (one indexed query) instead of fanning
+ * nightly-synced platform_post_metrics rows (one indexed query) instead of fanning
  * out to the Graph API from the hourly generate cron; any failure returns []
  * so the performance source can never block a research run.
  */
@@ -35,17 +38,17 @@ export async function fetchPerformanceItems(
 
     const since = new Date(Date.now() - PERFORMANCE_LOOKBACK_DAYS * MS_PER_DAY).toISOString()
     const { data, error } = await supabase
-      .from('ig_post_metrics')
-      .select(IG_POST_METRIC_COLUMNS)
+      .from('platform_post_metrics')
+      .select(PLATFORM_POST_METRIC_COLUMNS)
       .eq('client_id', clientId)
       .eq('ig_account_id', accountId)
       .gte('posted_at', since)
       .not('caption', 'is', null)
       .order('total_interactions', { ascending: false, nullsFirst: false })
       .limit(PERFORMANCE_TOP_N)
-    if (error) throw new Error(`ig_post_metrics read failed: ${error.message}`)
+    if (error) throw new Error(`platform_post_metrics read failed: ${error.message}`)
     // WHY as: the shared SupabaseClient param is untyped, so the projection does not infer.
-    const rows = (data ?? []) as unknown as IGPostMetricColumns[]
+    const rows = (data ?? []) as unknown as PlatformPostMetricColumns[]
 
     const withCaptions = rows.filter((row) => !!row.caption?.trim())
     if (withCaptions.length === 0) return []

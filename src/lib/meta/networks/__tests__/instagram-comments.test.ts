@@ -17,8 +17,10 @@ import { describe, expect, it, vi, beforeEach } from 'vitest'
 const fetchMock = vi.fn()
 vi.stubGlobal('fetch', fetchMock)
 
-const { fetchMediaComments, replyToComment, setCommentHidden, deleteComment } =
-  await import('../comments')
+const { instagramComments } = await import('../instagram-comments')
+
+/** The credentials every adapter call takes; the account id is unused by this edge. */
+const ACCOUNT = { accountId: 'ig-account', accessToken: 'tok' }
 
 function ok(body: unknown) {
   return {
@@ -39,11 +41,15 @@ function lastCall(): { url: URL; init: RequestInit } {
   return { url: target instanceof URL ? target : new URL(String(target)), init }
 }
 
-describe('fetchMediaComments', () => {
+describe('fetchComments', () => {
   it('reports withheld when the post has comments and the edge returns none', async () => {
     fetchMock.mockResolvedValue(ok({ data: [] }))
 
-    const result = await fetchMediaComments('media-1', 'tok', 2)
+    const result = await instagramComments.fetchComments({
+      account: ACCOUNT,
+      externalPostId: 'media-1',
+      expectedCount: 2,
+    })
 
     // The whole point: 200 + empty + a non-zero count is a PERMISSIONS state, not an empty post.
     expect(result.withheld).toBe(true)
@@ -53,13 +59,25 @@ describe('fetchMediaComments', () => {
   it('does not report withheld for a post that genuinely has no comments', async () => {
     fetchMock.mockResolvedValue(ok({ data: [] }))
 
-    expect((await fetchMediaComments('media-1', 'tok', 0)).withheld).toBe(false)
+    expect(
+      (
+        await instagramComments.fetchComments({
+          account: ACCOUNT,
+          externalPostId: 'media-1',
+          expectedCount: 0,
+        })
+      ).withheld
+    ).toBe(false)
   })
 
   it('does not report withheld once comments come back', async () => {
     fetchMock.mockResolvedValue(ok({ data: [{ id: 'c1', text: 'hi', username: 'someone' }] }))
 
-    const result = await fetchMediaComments('media-1', 'tok', 2)
+    const result = await instagramComments.fetchComments({
+      account: ACCOUNT,
+      externalPostId: 'media-1',
+      expectedCount: 2,
+    })
 
     expect(result.withheld).toBe(false)
     expect(result.comments[0]?.text).toBe('hi')
@@ -68,22 +86,57 @@ describe('fetchMediaComments', () => {
   it('does not report withheld on a later page — an empty page is the end of the list', async () => {
     fetchMock.mockResolvedValue(ok({ data: [] }))
 
-    expect((await fetchMediaComments('media-1', 'tok', 2, 'cursor-abc')).withheld).toBe(false)
+    expect(
+      (
+        await instagramComments.fetchComments({
+          account: ACCOUNT,
+          externalPostId: 'media-1',
+          expectedCount: 2,
+          after: 'cursor-abc',
+        })
+      ).withheld
+    ).toBe(false)
   })
 
   it('parses a comment whose text and author were withheld', async () => {
     // Instagram can return the id alone. A schema requiring text would turn that into a crash.
     fetchMock.mockResolvedValue(ok({ data: [{ id: 'c1' }] }))
 
-    const result = await fetchMediaComments('media-1', 'tok', 1)
+    const result = await instagramComments.fetchComments({
+      account: ACCOUNT,
+      externalPostId: 'media-1',
+      expectedCount: 1,
+    })
 
-    expect(result.comments).toEqual([{ id: 'c1' }])
+    // Mapped into the queue's vocabulary with every absent field null — not dropped, and not
+    // left as Instagram's own shape, which is what the queue would then have to understand.
+    expect(result.comments).toEqual([
+      {
+        id: 'c1',
+        parentId: null,
+        authorName: null,
+        text: null,
+        hidden: false,
+        // Instagram offers no per-comment flag, so hiding is always allowed on its own media.
+        canHide: true,
+        likeCount: null,
+        commentedAt: null,
+      },
+    ])
   })
 
   it('carries the paging cursor', async () => {
     fetchMock.mockResolvedValue(ok({ data: [], paging: { cursors: { after: 'next-page' } } }))
 
-    expect((await fetchMediaComments('media-1', 'tok', 0)).nextCursor).toBe('next-page')
+    expect(
+      (
+        await instagramComments.fetchComments({
+          account: ACCOUNT,
+          externalPostId: 'media-1',
+          expectedCount: 0,
+        })
+      ).nextCursor
+    ).toBe('next-page')
   })
 })
 
@@ -91,7 +144,11 @@ describe('moderation', () => {
   it('replies on the comment, not the media — otherwise it is a new top-level comment', async () => {
     fetchMock.mockResolvedValue(ok({ id: 'reply-1' }))
 
-    const id = await replyToComment('comment-1', 'tok', 'thanks!')
+    const id = await instagramComments.reply({
+      account: ACCOUNT,
+      commentId: 'comment-1',
+      message: 'thanks!',
+    })
 
     expect(id).toBe('reply-1')
     expect(lastCall().url.pathname).toMatch(/\/comment-1\/replies$/)
@@ -101,7 +158,7 @@ describe('moderation', () => {
   it('hides through a query parameter, which is where Instagram reads it', async () => {
     fetchMock.mockResolvedValue(ok({ success: true }))
 
-    await setCommentHidden('comment-1', 'tok', true)
+    await instagramComments.setHidden({ account: ACCOUNT, commentId: 'comment-1', hidden: true })
 
     expect(lastCall().url.searchParams.get('hide')).toBe('true')
   })
@@ -109,7 +166,7 @@ describe('moderation', () => {
   it('unhides with the same call', async () => {
     fetchMock.mockResolvedValue(ok({ success: true }))
 
-    await setCommentHidden('comment-1', 'tok', false)
+    await instagramComments.setHidden({ account: ACCOUNT, commentId: 'comment-1', hidden: false })
 
     expect(lastCall().url.searchParams.get('hide')).toBe('false')
   })
@@ -117,7 +174,7 @@ describe('moderation', () => {
   it('deletes with DELETE', async () => {
     fetchMock.mockResolvedValue(ok({ success: true }))
 
-    await deleteComment('comment-1', 'tok')
+    await instagramComments.remove({ account: ACCOUNT, commentId: 'comment-1' })
 
     expect(lastCall().init.method).toBe('DELETE')
     expect(lastCall().url.pathname).toMatch(/\/comment-1$/)

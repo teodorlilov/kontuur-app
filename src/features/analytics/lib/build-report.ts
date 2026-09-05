@@ -2,7 +2,7 @@ import { z } from 'zod'
 import type { IGAudienceSnapshotColumns } from '@/lib/queries/select-columns'
 import type {
   IGAccountMetricColumns,
-  IGPostMetricColumns,
+  PlatformPostMetricColumns,
   PublishedPostPin,
 } from '@/lib/queries/select-columns'
 import { toDateKey, zonedTimeToInstant } from '@/utils/date-helpers'
@@ -503,7 +503,7 @@ function dayKeyOf(iso: string | null, timezone: string): string | null {
 const SYNC_GRACE_MS = 60 * 60 * 1000
 
 function buildPosts(
-  postRows: IGPostMetricColumns[],
+  postRows: PlatformPostMetricColumns[],
   publishedPosts: PublishedPostPin[],
   lastSyncAt: string | null,
   timezone: string
@@ -515,7 +515,7 @@ function buildPosts(
     postRows.map((row) => row.reach).filter((reach): reach is number => reach !== null)
   )
   const posts: ReportPostRow[] = postRows.map((row) => ({
-    igMediaId: row.ig_media_id,
+    igMediaId: row.external_post_id,
     postId: row.post_id,
     caption: row.caption,
     postedAt: row.posted_at,
@@ -540,7 +540,7 @@ function buildPosts(
   // Kontuur's own ledger fills what the sync cannot see: posts Instagram no
   // longer reports (deleted after publish) or has not synced yet. A post the
   // metrics table already covers defers to that richer row.
-  const knownMedia = new Set(postRows.map((row) => row.ig_media_id))
+  const knownMedia = new Set(postRows.map((row) => row.external_post_id))
   const knownPostIds = new Set(postRows.map((row) => row.post_id))
   for (const publication of publishedPosts) {
     const post = publication.posts
@@ -696,7 +696,7 @@ export interface BuildReportInput {
   /** Rows spanning prevStart..end — the builder splits them. */
   accountRows: IGAccountMetricColumns[]
   /** Posts published inside the current period, as the sync captured them. */
-  postRows: IGPostMetricColumns[]
+  postRows: PlatformPostMetricColumns[]
   /**
    * Kontuur's own published ledger for the same window — fills what the sync
    * cannot see. The read layer has already scoped these to the client's
@@ -806,7 +806,7 @@ export function buildAnalyticsReport(input: BuildReportInput): AnalyticsReportDa
     if (!date || date > period.prevEnd) continue
     const list = previousPostsByDate.get(date) ?? []
     list.push({
-      igMediaId: row.ig_media_id,
+      igMediaId: row.external_post_id,
       caption: row.caption,
       mediaType: row.media_type,
       reach: row.reach,

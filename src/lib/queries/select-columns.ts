@@ -13,8 +13,8 @@ import type {
   ClientSourceRow,
   IGAccountMetricsRow,
   IGAudienceSnapshotsRow,
-  IGCommentRow,
-  IGPostMetricsRow,
+  PlatformCommentRow,
+  PlatformPostMetricsRow,
   PostPublicationRow,
   PostRow,
   SocialConnectionRow,
@@ -308,7 +308,7 @@ export const SOCIAL_CONNECTION_COLUMNS =
  * to cover this would put a live token on every connections list.
  */
 export const SOCIAL_CONNECTION_AUTH_COLUMNS =
-  'account_id, account_name, access_token, token_expires_at'
+  'platform, account_id, account_name, access_token, token_expires_at'
 
 /**
  * The AUTH_COLUMNS projection, as a type. Two callers hand-wrote this shape
@@ -317,12 +317,15 @@ export const SOCIAL_CONNECTION_AUTH_COLUMNS =
  */
 export type SocialConnectionAuthColumns = Pick<
   SocialConnectionRow,
-  'account_id' | 'account_name' | 'access_token' | 'token_expires_at'
+  'platform' | 'account_id' | 'account_name' | 'access_token' | 'token_expires_at'
 >
 
 /** The metrics cron's roster read — AUTH_COLUMNS plus the client to file rows under. */
 const SOCIAL_CONNECTION_SYNC_KEYS = [
   'client_id',
+  // Which network's connection this is. A client can hold several, and a sync that did not
+  // read this could only ever have been written for one of them.
+  'platform',
   'account_id',
   'access_token',
 ] as const satisfies readonly (keyof SocialConnectionRow)[]
@@ -380,9 +383,9 @@ export type IGAccountMetricColumns = Pick<
   (typeof IG_ACCOUNT_METRIC_KEYS)[number]
 >
 
-// ig_post_metrics — the posts table + the research performance source.
-export const IG_POST_METRIC_KEYS = [
-  'ig_media_id',
+// platform_post_metrics — the posts table + the research performance source.
+export const PLATFORM_POST_METRIC_KEYS = [
+  'external_post_id',
   'post_id',
   'media_type',
   'media_product_type',
@@ -399,14 +402,17 @@ export const IG_POST_METRIC_KEYS = [
   'total_interactions',
   'follows',
   'profile_visits',
-] as const satisfies readonly (keyof IGPostMetricsRow)[]
+] as const satisfies readonly (keyof PlatformPostMetricsRow)[]
 
-export const IG_POST_METRIC_COLUMNS = IG_POST_METRIC_KEYS.join(', ') as Join<
-  typeof IG_POST_METRIC_KEYS,
+export const PLATFORM_POST_METRIC_COLUMNS = PLATFORM_POST_METRIC_KEYS.join(', ') as Join<
+  typeof PLATFORM_POST_METRIC_KEYS,
   ', '
 >
 
-export type IGPostMetricColumns = Pick<IGPostMetricsRow, (typeof IG_POST_METRIC_KEYS)[number]>
+export type PlatformPostMetricColumns = Pick<
+  PlatformPostMetricsRow,
+  (typeof PLATFORM_POST_METRIC_KEYS)[number]
+>
 
 /**
  * posts, as the analytics union reads it: Kontuur's own published ledger fills the trend's
@@ -466,16 +472,17 @@ export const COMMENTED_POST_COLUMNS = COMMENTED_POST_KEYS.join(', ') as Join<
 
 export type CommentedPostColumns = Pick<PostRow, (typeof COMMENTED_POST_KEYS)[number]>
 
-// ig_comments
+// platform_comments
 /**
  * The queue's read. Everything except `synced_at`, which records when we last heard
- * from Instagram and is bookkeeping the surface has no use for.
+ * from the network and is bookkeeping the surface has no use for.
  */
-const IG_COMMENT_KEYS = [
+const PLATFORM_COMMENT_KEYS = [
   'id',
   'client_id',
-  'ig_account_id',
-  'ig_media_id',
+  'platform',
+  'platform_account_id',
+  'external_post_id',
   'post_id',
   'parent_id',
   'author_username',
@@ -483,11 +490,17 @@ const IG_COMMENT_KEYS = [
   'hidden',
   'like_count',
   'commented_at',
-] as const satisfies readonly (keyof IGCommentRow)[]
+] as const satisfies readonly (keyof PlatformCommentRow)[]
 
-export const IG_COMMENT_COLUMNS = IG_COMMENT_KEYS.join(', ') as Join<typeof IG_COMMENT_KEYS, ', '>
+export const PLATFORM_COMMENT_COLUMNS = PLATFORM_COMMENT_KEYS.join(', ') as Join<
+  typeof PLATFORM_COMMENT_KEYS,
+  ', '
+>
 
-export type IGCommentColumns = Pick<IGCommentRow, (typeof IG_COMMENT_KEYS)[number]>
+export type PlatformCommentColumns = Pick<
+  PlatformCommentRow,
+  (typeof PLATFORM_COMMENT_KEYS)[number]
+>
 
 // ig_audience_snapshots
 const IG_AUDIENCE_SNAPSHOT_KEYS = [

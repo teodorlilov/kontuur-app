@@ -5,6 +5,7 @@ import { ImageOff } from 'lucide-react'
 import { cn } from '@/utils/cn'
 import { formatRelativeTime, parseTimestamp } from '@/utils/format'
 import { postOrigin, postTitle } from '../lib/post-label'
+import { namePlatforms } from '@/lib/validation'
 import type { CommentGroup, QueuedComment } from '@/types/api'
 
 /**
@@ -61,6 +62,9 @@ export function PostGroup({
           <p className="mt-px truncate text-micro text-text2">
             {[
               group.clientName,
+              // Which network, beside whose account: two clients' worth of comments in one list
+              // gave no way to tell a Page conversation from an Instagram one.
+              namePlatforms([group.platform]),
               group.publishedAt &&
                 `published ${formatRelativeTime(parseTimestamp(group.publishedAt), now)}`,
               postOrigin(group),

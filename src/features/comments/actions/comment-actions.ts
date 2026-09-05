@@ -11,11 +11,8 @@ import {
   type SocialConnectionAuthColumns,
 } from '@/lib/queries/select-columns'
 import { isTokenExpired } from '@/lib/meta/token-expiry'
-import {
-  deleteComment as deleteIgComment,
-  replyToComment as replyToIgComment,
-  setCommentHidden as setIgCommentHidden,
-} from '@/lib/meta/comments'
+import { COMMENTABLE_PLATFORMS, resolveComments } from '@/lib/meta/networks'
+import type { CommentsAdapter } from '@/lib/meta/networks/types'
 import { GraphApiError } from '@/lib/meta/graph-errors'
 import {
   deleteCommentInputSchema,
@@ -25,12 +22,12 @@ import {
   type ReplyToCommentInput,
   type SetCommentHiddenInput,
 } from '../schemas'
-import { IG_COMMENTS_TAG } from '../queries/comment-queue'
+import { PLATFORM_COMMENTS_TAG } from '../queries/comment-queue'
 
 /**
  * Moderating a comment: reply, hide, delete.
  *
- * Each does the Graph call and then writes the same change to `ig_comments`, so the
+ * Each does the Graph call and then writes the same change to `platform_comments`, so the
  * queue is right immediately rather than at the next cron. The write is not a cache
  * — it is the same fact the sync would have brought back in half an hour, recorded
  * early by the party that caused it.
@@ -38,6 +35,8 @@ import { IG_COMMENTS_TAG } from '../queries/comment-queue'
 
 interface CommentScope {
   clientId: string
+  /** Whose comment it is. Everything below acts through this network's adapter. */
+  adapter: CommentsAdapter
   mediaId: string
   accountId: string
   accountName: string | null
@@ -66,8 +65,8 @@ async function resolveComment(
 
   const admin = createAdminSupabaseClient()
   const { data, error } = await admin
-    .from('ig_comments')
-    .select('client_id, ig_account_id, ig_media_id')
+    .from('platform_comments')
+    .select('client_id, platform, platform_account_id, external_post_id')
     .eq('id', commentId)
     .maybeSingle()
   if (error) return { ok: false, error: 'Could not read that comment' }
@@ -77,18 +76,26 @@ async function resolveComment(
   const owned = await verifyClientOwnership(auth.supabase, row.client_id, auth.agencyId)
   if (!owned) return { ok: false, error: 'Not found' }
 
+  // The comment's OWN network, not a fixed one: a client may have both connected, and acting
+  // on a Facebook comment with an Instagram token is the mix-up this lookup exists to prevent.
+  const adapter = resolveComments(row.platform)
+  if (!adapter) return { ok: false, error: 'That network cannot be moderated from here' }
+
   const { data: connectionData } = await admin
     .from('social_connections')
     .select(SOCIAL_CONNECTION_AUTH_COLUMNS)
     .eq('client_id', row.client_id)
-    .eq('platform', 'instagram')
+    .eq('platform', adapter.platform)
     .maybeSingle()
   const connection = connectionData as SocialConnectionAuthColumns | null
   if (!connection?.access_token) {
-    return { ok: false, error: 'This client has no connected Instagram account' }
+    return { ok: false, error: `This client has no connected ${adapter.label} account` }
   }
   if (isTokenExpired(connection.token_expires_at)) {
-    return { ok: false, error: 'The Instagram connection has expired — reconnect to continue' }
+    return {
+      ok: false,
+      error: `The ${adapter.label} connection has expired — reconnect to continue`,
+    }
   }
   /**
    * The comment was synced under one account and the client is now connected to
@@ -96,7 +103,7 @@ async function resolveComment(
    * would spend the NEW account's token on the OLD account's comment, which Instagram
    * would refuse anyway — but refusing here says why.
    */
-  if (connection.account_id !== row.ig_account_id) {
+  if (connection.account_id !== row.platform_account_id) {
     return { ok: false, error: 'This comment belongs to a previously connected account' }
   }
 
@@ -104,10 +111,11 @@ async function resolveComment(
     ok: true,
     scope: {
       clientId: row.client_id,
-      mediaId: row.ig_media_id,
+      adapter,
+      mediaId: row.external_post_id,
       // Equal to the connection's by the check above, and taken from the row because
       // that is the account the reply will actually be filed under.
-      accountId: row.ig_account_id,
+      accountId: row.platform_account_id,
       accountName: connection.account_name,
       accessToken: connection.access_token,
       admin,
@@ -149,7 +157,11 @@ export async function replyToComment(input: ReplyToCommentInput): Promise<Action
 
   let replyId: string
   try {
-    replyId = await replyToIgComment(commentId, scope.accessToken, message)
+    replyId = await scope.adapter.reply({
+      account: { accountId: scope.accountId, accessToken: scope.accessToken },
+      commentId,
+      message,
+    })
   } catch (err) {
     return { ok: false, error: describe(err, 'Could not post that reply') }
   }
@@ -164,11 +176,12 @@ export async function replyToComment(input: ReplyToCommentInput): Promise<Action
    * decide the parent is answered. A null here would leave the status unchanged and
    * make the write pointless.
    */
-  const { error } = await scope.admin.from('ig_comments').insert({
+  const { error } = await scope.admin.from('platform_comments').insert({
     id: replyId,
     client_id: scope.clientId,
-    ig_account_id: scope.accountId,
-    ig_media_id: scope.mediaId,
+    platform: scope.adapter.platform,
+    platform_account_id: scope.accountId,
+    external_post_id: scope.mediaId,
     parent_id: commentId,
     author_username: scope.accountName,
     text: message,
@@ -180,7 +193,7 @@ export async function replyToComment(input: ReplyToCommentInput): Promise<Action
   // and telling the user it failed would invite them to post it twice.
   if (error) console.error('[comments] reply row insert failed:', error.message)
 
-  revalidateTag(IG_COMMENTS_TAG, 'max')
+  revalidateTag(PLATFORM_COMMENTS_TAG, 'max')
   return { ok: true, data: undefined }
 }
 
@@ -195,15 +208,22 @@ export async function setCommentHidden(input: SetCommentHiddenInput): Promise<Ac
   const { scope } = resolved
 
   try {
-    await setIgCommentHidden(commentId, scope.accessToken, hidden)
+    await scope.adapter.setHidden({
+      account: { accountId: scope.accountId, accessToken: scope.accessToken },
+      commentId,
+      hidden,
+    })
   } catch (err) {
     return { ok: false, error: describe(err, hidden ? 'Could not hide it' : 'Could not unhide it') }
   }
 
-  const { error } = await scope.admin.from('ig_comments').update({ hidden }).eq('id', commentId)
+  const { error } = await scope.admin
+    .from('platform_comments')
+    .update({ hidden })
+    .eq('id', commentId)
   if (error) console.error('[comments] hidden flag update failed:', error.message)
 
-  revalidateTag(IG_COMMENTS_TAG, 'max')
+  revalidateTag(PLATFORM_COMMENTS_TAG, 'max')
   return { ok: true, data: undefined }
 }
 
@@ -218,7 +238,10 @@ export async function deleteComment(input: DeleteCommentInput): Promise<ActionRe
   const { scope } = resolved
 
   try {
-    await deleteIgComment(commentId, scope.accessToken)
+    await scope.adapter.remove({
+      account: { accountId: scope.accountId, accessToken: scope.accessToken },
+      commentId,
+    })
   } catch (err) {
     return { ok: false, error: describe(err, 'Could not delete it') }
   }
@@ -234,13 +257,13 @@ export async function deleteComment(input: DeleteCommentInput): Promise<ActionRe
    * schema has already vetted it.
    */
   const [self, children] = await Promise.all([
-    scope.admin.from('ig_comments').delete().eq('id', commentId),
-    scope.admin.from('ig_comments').delete().eq('parent_id', commentId),
+    scope.admin.from('platform_comments').delete().eq('id', commentId),
+    scope.admin.from('platform_comments').delete().eq('parent_id', commentId),
   ])
   const failure = self.error ?? children.error
   if (failure) console.error('[comments] comment row delete failed:', failure.message)
 
-  revalidateTag(IG_COMMENTS_TAG, 'max')
+  revalidateTag(PLATFORM_COMMENTS_TAG, 'max')
   return { ok: true, data: undefined }
 }
 
@@ -274,29 +297,57 @@ export async function checkClientComments(
   if (!owned) return { ok: false, error: 'Not found' }
 
   const admin = createAdminSupabaseClient()
+  /**
+   * Every commentable network this client has, not a fixed one.
+   *
+   * "Check this client's comments" means all of them: a client with both connected who was
+   * only ever swept for Instagram would press the button, see it succeed, and still be missing
+   * everything said on their Page.
+   */
   const { data } = await admin
     .from('social_connections')
     .select(SOCIAL_CONNECTION_AUTH_COLUMNS)
     .eq('client_id', parsed.id)
-    .eq('platform', 'instagram')
-    .maybeSingle()
-  const connection = data as SocialConnectionAuthColumns | null
-  if (!connection?.access_token) {
-    return { ok: false, error: 'This client has no connected Instagram account' }
-  }
-  if (isTokenExpired(connection.token_expires_at)) {
-    return { ok: false, error: 'The Instagram connection has expired — reconnect to continue' }
+    .in('platform', COMMENTABLE_PLATFORMS)
+  const connections = (data ?? []) as SocialConnectionAuthColumns[]
+  const usable = connections.filter(
+    (connection) => connection.access_token && !isTokenExpired(connection.token_expires_at)
+  )
+  if (usable.length === 0) {
+    // Naming what is wrong: nothing connected at all reads differently from a connection that
+    // has expired, and only one of the two is fixed by reconnecting.
+    return connections.length === 0
+      ? { ok: false, error: 'This client has no connected account to check' }
+      : { ok: false, error: 'The connection has expired — reconnect to continue' }
   }
 
-  try {
-    const result = await syncClientComments(admin, {
-      clientId: parsed.id,
-      accountId: connection.account_id,
-      accessToken: connection.access_token,
-    })
-    revalidateTag(IG_COMMENTS_TAG, 'max')
-    return { ok: true, data: { postsWithNewComments: result.fetched } }
-  } catch (err) {
-    return { ok: false, error: describe(err, 'Could not reach Instagram just now') }
+  /**
+   * Each network on its own. One failing must not cost the others their sync — this ran the
+   * whole loop inside a single try, so a client whose Instagram token predates comment
+   * moderation never reached its Facebook Page at all, and the action reported nothing but the
+   * Instagram error.
+   */
+  let postsWithNewComments = 0
+  const failures: string[] = []
+  for (const connection of usable) {
+    try {
+      const result = await syncClientComments(admin, {
+        clientId: parsed.id,
+        platform: connection.platform,
+        accountId: connection.account_id,
+        accessToken: connection.access_token!,
+      })
+      postsWithNewComments += result.fetched
+    } catch (err) {
+      console.error(`[comments] ${connection.platform} check failed for ${parsed.id}:`, err)
+      failures.push(describe(err, `Could not reach ${connection.platform} just now`))
+    }
   }
+
+  // Only when NOTHING worked is this a failed check. A partial run still brought comments in,
+  // and reporting it as a failure would hide them behind an error about a different network.
+  if (failures.length === usable.length) return { ok: false, error: failures[0]! }
+
+  revalidateTag(PLATFORM_COMMENTS_TAG, 'max')
+  return { ok: true, data: { postsWithNewComments } }
 }

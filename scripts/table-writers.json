@@ -55,15 +55,6 @@
     "src/features/analytics/lib/sync-metrics.ts": "syncDemographicsWeekly, beside the sync that fetches it.",
     "src/features/analytics/lib/purge-account-metrics.ts": "[hand-listed] purgeAccountAnalytics deletes this table through a `scoped(table)` helper, so `.from(table)` never names it and the scan cannot find it. Meta's data-deletion callback and an account switch; deleteClient deliberately leans on the `clients` cascade instead."
   },
-  "ig_comments": {
-    "src/features/comments/lib/sync-comments.ts": "syncClientComments — the half-hourly capture, and the only writer that brings comments IN. Upserts on Instagram's own comment id and deletes rows the API stopped returning for a post it just refetched, which is how an upstream delete reaches us.",
-    "src/features/comments/actions/comment-actions.ts": "The three moderation actions, each recording the change it just made on Instagram: a reply inserts its own row so the comment reads as answered now rather than after the next cron, hide flips the flag, delete removes the comment and its replies. Not a second sync — the same fact the cron would have brought back, written early by the party that caused it.",
-    "src/features/analytics/lib/purge-account-metrics.ts": "[hand-listed] purgeAccountAnalytics deletes this table through a `scoped(table)` helper, so `.from(table)` never names it and the scan cannot find it. This table is the one it touches that holds data about people who are neither the agency nor its client, which makes this line the part of Meta's data-deletion callback that erases third parties."
-  },
-  "ig_post_metrics": {
-    "src/features/analytics/lib/post-metrics-store.ts": "upsertPostMetricRows — the only writer, for the same reason account-metrics-store is: two jobs now write this table and nothing else would keep their conflict target in step. Callers write PARTIAL rows on purpose — the nightly sync writes identity AND measurements, the half-hourly comments sync writes identity only (caption, permalink, thumbnail, post_id) because the queue renders the post a comment sits under and cannot wait until 03:30 for it. The comments sync must never write the measurement columns: a zero there is indistinguishable from a measured zero on the analytics page.",
-    "src/features/analytics/lib/purge-account-metrics.ts": "[hand-listed] purgeAccountAnalytics deletes this table through a `scoped(table)` helper, so `.from(table)` never names it and the scan cannot find it. Meta's data-deletion callback and an account switch; deleteClient deliberately leans on the `clients` cascade instead."
-  },
   "intelligence_briefings": {
     "src/features/dashboard/lib/write-briefing.ts": "writeWeeklyBriefing — the only composer of a briefing.",
     "src/app/api/cron/generate/route.ts": "Patches coaching_points onto a briefing writeWeeklyBriefing has just returned, for solo agencies only. A second call into the briefing writer would need it to accept a field it cannot compute; this stays a patch by id."
@@ -117,5 +108,14 @@
   "users": {
     "src/lib/auth/create-user-record.ts": "The user row is created with the account, with the email guard — that column is a lookup key and a blank one is an account nobody can recover.",
     "src/features/settings/actions/team-actions.ts": "removeTeamMember."
+  },
+  "platform_comments": {
+    "src/features/comments/lib/sync-comments.ts": "syncClientComments — the half-hourly capture, and the only writer that brings comments IN. Upserts on Instagram's own comment id and deletes rows the API stopped returning for a post it just refetched, which is how an upstream delete reaches us.",
+    "src/features/comments/actions/comment-actions.ts": "The three moderation actions, each recording the change it just made on Instagram: a reply inserts its own row so the comment reads as answered now rather than after the next cron, hide flips the flag, delete removes the comment and its replies. Not a second sync — the same fact the cron would have brought back, written early by the party that caused it.",
+    "src/features/analytics/lib/purge-account-metrics.ts": "purgeAccountAnalytics erases the audience's comments alongside the ig_* metrics — the part of Meta's data-deletion callback that actually erases third parties."
+  },
+  "platform_post_metrics": {
+    "src/features/analytics/lib/post-metrics-store.ts": "upsertPostMetricRows — the only writer, for the same reason account-metrics-store is: two jobs now write this table and nothing else would keep their conflict target in step. Callers write PARTIAL rows on purpose — the nightly sync writes identity AND measurements, the half-hourly comments sync writes identity only (caption, permalink, thumbnail, post_id) because the queue renders the post a comment sits under and cannot wait until 03:30 for it. The comments sync must never write the measurement columns: a zero there is indistinguishable from a measured zero on the analytics page.",
+    "src/features/analytics/lib/purge-account-metrics.ts": "[hand-listed] purgeAccountAnalytics deletes this table through a `scoped(table)` helper, so `.from(table)` never names it and the scan cannot find it. Meta's data-deletion callback and an account switch; deleteClient deliberately leans on the `clients` cascade instead."
   }
 }

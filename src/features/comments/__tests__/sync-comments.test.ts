@@ -11,14 +11,25 @@ import type { SupabaseClient } from '@supabase/supabase-js'
  * call, which makes these the only guard on that.
  */
 
-const fetchMediaSince = vi.fn()
+const listCommentablePosts = vi.fn()
 const fetchMediaComments = vi.fn()
 
-vi.mock('@/lib/meta/insights', () => ({
-  fetchMediaSince: (...a: unknown[]) => fetchMediaSince(...a),
-}))
-vi.mock('@/lib/meta/comments', () => ({
-  fetchMediaComments: (...a: unknown[]) => fetchMediaComments(...a),
+/**
+ * The sync now asks a comments ADAPTER, resolved from the connection's platform, rather than a
+ * module named after one network. The spy stands in for that adapter's read; the rest of the
+ * contract is present because the sync resolves the whole adapter, not one method.
+ */
+vi.mock('@/lib/meta/networks', () => ({
+  resolveComments: () => ({
+    platform: 'instagram',
+    label: 'Instagram',
+    listCommentablePosts: (...a: unknown[]) => listCommentablePosts(...a),
+    fetchComments: (...a: unknown[]) => fetchMediaComments(...a),
+    reply: vi.fn(),
+    setHidden: vi.fn(),
+    remove: vi.fn(),
+  }),
+  COMMENTABLE_PLATFORMS: ['instagram', 'facebook'],
 }))
 vi.mock('@/lib/queries/posts-by-media-id', () => ({
   fetchPostIdsByMediaId: async () => new Map([['media-1', 'post-1']]),
@@ -33,7 +44,7 @@ const { syncClientComments } = await import('../lib/sync-comments')
 const { GraphApiError } = await import('@/lib/meta/graph-errors')
 
 /**
- * A Supabase stand-in that records what was asked of `ig_comments`.
+ * A Supabase stand-in that records what was asked of `platform_comments`.
  *
  * `storedIds` seeds the rows the count comparison reads back, which is the only
  * database state any of these assertions depends on.
@@ -58,7 +69,7 @@ function fakeAdmin(storedByMedia: Record<string, string[]> = {}) {
         in: (_column: string, mediaIds: string[]) => {
           const rows = mediaIds.flatMap((mediaId) =>
             (storedByMedia[mediaId] ?? []).map((id) =>
-              columns === 'id' ? { id } : { ig_media_id: mediaId }
+              columns === 'id' ? { id } : { external_post_id: mediaId }
             )
           )
           return Promise.resolve({ data: rows, error: null })
@@ -73,10 +84,25 @@ function fakeAdmin(storedByMedia: Record<string, string[]> = {}) {
   return { client, upsert, deleted }
 }
 
-const CONNECTION = { clientId: 'client-1', accountId: 'acct-1', accessToken: 'tok' }
+/** The identity fields Instagram's adapter supplies; Facebook's returns null instead. */
+const IDENTITY = {
+  caption: 'x',
+  permalink: null,
+  thumbnailUrl: null,
+  mediaType: null,
+  mediaProductType: null,
+  postedAt: null,
+}
+
+const CONNECTION = {
+  clientId: 'client-1',
+  platform: 'instagram',
+  accountId: 'acct-1',
+  accessToken: 'tok',
+}
 
 beforeEach(() => {
-  fetchMediaSince.mockReset()
+  listCommentablePosts.mockReset()
   fetchMediaComments.mockReset()
   upsertPostMetricRows.mockReset()
 })
@@ -87,14 +113,18 @@ describe('media identity', () => {
     // the NIGHTLY sync wrote. So a post commented on this morning showed as an
     // untitled grey box until 03:30, and a post never published from Kontuur showed
     // as nothing at all — which on a live account was 18 of 20 media.
-    fetchMediaSince.mockResolvedValue([
+    listCommentablePosts.mockResolvedValue([
       {
-        id: 'media-1',
-        comments_count: 2,
-        caption: 'A link in your LinkedIn post body',
-        permalink: 'https://instagram.com/p/abc',
-        thumbnail_url: 'https://cdn/thumb.jpg',
-        timestamp: '2026-08-19T10:00:00Z',
+        externalPostId: 'media-1',
+        commentCount: 2,
+        identity: {
+          caption: 'A link in your LinkedIn post body',
+          permalink: 'https://instagram.com/p/abc',
+          thumbnailUrl: 'https://cdn/thumb.jpg',
+          mediaType: null,
+          mediaProductType: null,
+          postedAt: '2026-08-19T10:00:00Z',
+        },
       },
     ])
     const { client } = fakeAdmin({ 'media-1': ['c1', 'c2'] })
@@ -105,7 +135,8 @@ describe('media identity', () => {
     expect(fetchMediaComments).not.toHaveBeenCalled()
     const [, rows] = upsertPostMetricRows.mock.calls[0] as [unknown, Array<Record<string, unknown>>]
     expect(rows[0]).toMatchObject({
-      ig_media_id: 'media-1',
+      platform: 'instagram',
+      external_post_id: 'media-1',
       post_id: 'post-1',
       caption: 'A link in your LinkedIn post body',
       permalink: 'https://instagram.com/p/abc',
@@ -114,7 +145,9 @@ describe('media identity', () => {
   })
 
   it('never writes the measurement columns', async () => {
-    fetchMediaSince.mockResolvedValue([{ id: 'media-1', comments_count: 1, caption: 'x' }])
+    listCommentablePosts.mockResolvedValue([
+      { externalPostId: 'media-1', commentCount: 1, identity: IDENTITY },
+    ])
     fetchMediaComments.mockResolvedValue({
       comments: [{ id: 'c1' }],
       withheld: false,
@@ -136,7 +169,9 @@ describe('media identity', () => {
 
 describe('syncClientComments', () => {
   it('makes no comment call when the stored count already matches', async () => {
-    fetchMediaSince.mockResolvedValue([{ id: 'media-1', comments_count: 2 }])
+    listCommentablePosts.mockResolvedValue([
+      { externalPostId: 'media-1', commentCount: 2, identity: IDENTITY },
+    ])
     const { client } = fakeAdmin({ 'media-1': ['c1', 'c2'] })
 
     const result = await syncClientComments(client, CONNECTION)
@@ -147,7 +182,9 @@ describe('syncClientComments', () => {
   })
 
   it('fetches when the count has risen', async () => {
-    fetchMediaSince.mockResolvedValue([{ id: 'media-1', comments_count: 3 }])
+    listCommentablePosts.mockResolvedValue([
+      { externalPostId: 'media-1', commentCount: 3, identity: IDENTITY },
+    ])
     fetchMediaComments.mockResolvedValue({
       comments: [{ id: 'c1' }, { id: 'c2' }, { id: 'c3' }],
       withheld: false,
@@ -163,9 +200,9 @@ describe('syncClientComments', () => {
   })
 
   it('skips posts with no comments at all without asking Instagram', async () => {
-    fetchMediaSince.mockResolvedValue([
-      { id: 'media-1', comments_count: 0 },
-      { id: 'media-2', comments_count: null },
+    listCommentablePosts.mockResolvedValue([
+      { externalPostId: 'media-1', commentCount: 0, identity: IDENTITY },
+      { externalPostId: 'media-2', commentCount: 0, identity: IDENTITY },
     ])
     const { client } = fakeAdmin()
 
@@ -174,7 +211,9 @@ describe('syncClientComments', () => {
   })
 
   it('follows the cursor — fetchMediaComments returns one page, not all of them', async () => {
-    fetchMediaSince.mockResolvedValue([{ id: 'media-1', comments_count: 2 }])
+    listCommentablePosts.mockResolvedValue([
+      { externalPostId: 'media-1', commentCount: 2, identity: IDENTITY },
+    ])
     fetchMediaComments
       .mockResolvedValueOnce({ comments: [{ id: 'c1' }], withheld: false, nextCursor: 'page-2' })
       .mockResolvedValueOnce({ comments: [{ id: 'c2' }], withheld: false, nextCursor: null })
@@ -190,7 +229,9 @@ describe('syncClientComments', () => {
   it('stores nothing and stops when Instagram withholds the comments', async () => {
     // Standard Access: HTTP 200, empty array, a truthful comments_count. Nothing
     // throws, so only the flag distinguishes this from a quiet post.
-    fetchMediaSince.mockResolvedValue([{ id: 'media-1', comments_count: 4 }])
+    listCommentablePosts.mockResolvedValue([
+      { externalPostId: 'media-1', commentCount: 4, identity: IDENTITY },
+    ])
     fetchMediaComments.mockResolvedValue({ comments: [], withheld: true, nextCursor: 'page-2' })
     const { client, upsert } = fakeAdmin()
 
@@ -201,15 +242,16 @@ describe('syncClientComments', () => {
   })
 
   it('stores replies as rows carrying parent_id', async () => {
-    fetchMediaSince.mockResolvedValue([{ id: 'media-1', comments_count: 1 }])
+    listCommentablePosts.mockResolvedValue([
+      { externalPostId: 'media-1', commentCount: 1, identity: IDENTITY },
+    ])
     fetchMediaComments.mockResolvedValue({
+      // Flat, each naming the comment it answers: nesting is the NETWORK's shape, and the
+      // adapter resolves it before the sync ever sees it. Instagram nests replies in one
+      // response and Facebook keeps them on a second edge; neither reaches here.
       comments: [
-        {
-          id: 'c1',
-          text: 'A question',
-          username: 'maria.kx',
-          replies: { data: [{ id: 'r1', text: 'An answer', username: 'haelanclinic' }] },
-        },
+        { id: 'c1', parentId: null, text: 'A question', authorName: 'maria.kx' },
+        { id: 'r1', parentId: 'c1', text: 'An answer', authorName: 'haelanclinic' },
       ],
       withheld: false,
       nextCursor: null,
@@ -227,7 +269,9 @@ describe('syncClientComments', () => {
   })
 
   it('records the post a comment sits under, so the read never resolves media ids', async () => {
-    fetchMediaSince.mockResolvedValue([{ id: 'media-1', comments_count: 1 }])
+    listCommentablePosts.mockResolvedValue([
+      { externalPostId: 'media-1', commentCount: 1, identity: IDENTITY },
+    ])
     fetchMediaComments.mockResolvedValue({
       comments: [{ id: 'c1' }],
       withheld: false,
@@ -238,11 +282,17 @@ describe('syncClientComments', () => {
     await syncClientComments(client, CONNECTION)
 
     const rows = upsert.mock.calls[0]![0]
-    expect(rows[0]).toMatchObject({ post_id: 'post-1', ig_account_id: 'acct-1' })
+    expect(rows[0]).toMatchObject({
+      post_id: 'post-1',
+      platform: 'instagram',
+      platform_account_id: 'acct-1',
+    })
   })
 
   it('deletes rows Instagram no longer returns for a refetched post', async () => {
-    fetchMediaSince.mockResolvedValue([{ id: 'media-1', comments_count: 1 }])
+    listCommentablePosts.mockResolvedValue([
+      { externalPostId: 'media-1', commentCount: 1, identity: IDENTITY },
+    ])
     fetchMediaComments.mockResolvedValue({
       comments: [{ id: 'c1' }],
       withheld: false,
@@ -256,10 +306,26 @@ describe('syncClientComments', () => {
     expect(deleted).toContainEqual(['c2'])
   })
 
-  it('parses a comment whose body Instagram withheld', async () => {
-    fetchMediaSince.mockResolvedValue([{ id: 'media-1', comments_count: 1 }])
+  it('stores a withheld comment as nulls rather than dropping it', async () => {
+    listCommentablePosts.mockResolvedValue([
+      { externalPostId: 'media-1', commentCount: 1, identity: IDENTITY },
+    ])
+    // What the Instagram adapter actually produces from `{ id: 'c1' }` — the id alone, every
+    // other field explicitly null. That mapping is pinned in the adapter's own suite; this
+    // asserts the row it becomes.
     fetchMediaComments.mockResolvedValue({
-      comments: [{ id: 'c1' }],
+      comments: [
+        {
+          id: 'c1',
+          parentId: null,
+          authorName: null,
+          text: null,
+          hidden: false,
+          canHide: true,
+          likeCount: null,
+          commentedAt: null,
+        },
+      ],
       withheld: false,
       nextCursor: null,
     })
@@ -284,7 +350,7 @@ describe('syncClientComments', () => {
       message: 'Application request limit reached',
       fbtraceId: null,
     })
-    fetchMediaSince.mockRejectedValue(rateLimited)
+    listCommentablePosts.mockRejectedValue(rateLimited)
     const { client } = fakeAdmin()
 
     await expect(syncClientComments(client, CONNECTION)).rejects.toThrow(

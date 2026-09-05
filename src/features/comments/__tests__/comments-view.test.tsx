@@ -71,6 +71,7 @@ function comment(over: Partial<QueuedComment> = {}): QueuedComment {
 function group(over: Partial<CommentGroup> = {}): CommentGroup {
   return {
     igMediaId: 'media-1',
+    platform: 'instagram',
     postId: 'post-1',
     clientId: 'client-1',
     clientName: 'Haelan',
@@ -420,6 +421,24 @@ describe('CommentThread', () => {
     )
 
     expect(screen.getByRole('button', { name: 'Unhide' })).toBeInTheDocument()
+  })
+
+  it('names the network on the row and on the outbound link', async () => {
+    // Two clients' comments in one list gave no way to tell a Page conversation from an
+    // Instagram one, and the detail pane's link read "Open on Instagram" above a Facebook
+    // permalink — pointing someone at the wrong network's name for their own post.
+    renderView([
+      group({
+        platform: 'facebook',
+        permalink: 'https://www.facebook.com/122/posts/456',
+        comments: [comment({ id: 'fb-1', text: 'cool' })],
+      }),
+    ])
+
+    expect(screen.getAllByText(/Facebook/).length).toBeGreaterThan(0)
+    expect(screen.queryByRole('link', { name: /Open on Instagram/ })).not.toBeInTheDocument()
+    const link = screen.getByRole('link', { name: /Open on Facebook/ })
+    expect(link).toHaveAttribute('href', 'https://www.facebook.com/122/posts/456')
   })
 
   it('says the text was withheld rather than rendering an empty comment', () => {

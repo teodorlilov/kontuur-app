@@ -4,7 +4,7 @@ import { createSemaphore } from '@/lib/concurrency'
 import { PLATFORM_NAMES } from '@/lib/validation'
 import { FB_GRAPH_BASE } from '../constants'
 import { graphGet, graphPost } from '../graph-client'
-import { fbCreatedObjectSchema, fbPermalinkSchema, fbPublishAckSchema } from '../schemas'
+import { fbCreatedObjectSchema, fbPermalinkSchema, graphAckSchema } from '../schemas'
 import type {
   NetworkAccount,
   NetworkAdapter,
@@ -121,7 +121,9 @@ export const facebookAdapter: NetworkAdapter = {
    * post id IS the reference, so there is nothing to read back.
    */
   async resume({ account, publishRef }: ResumeInput): Promise<NetworkPublishResult> {
-    await graphPost(fbPublishAckSchema, `${FB_GRAPH_BASE}/${publishRef}`, account.accessToken, {
+    // Answers `{"success":true}` for a post that is already live, which is what makes the
+    // retry safe — probed, including the second call. See docs/META-FB-PROBE.md.
+    await graphPost(graphAckSchema, `${FB_GRAPH_BASE}/${publishRef}`, account.accessToken, {
       is_published: true,
     })
     return { kind: 'published', externalPostId: publishRef }

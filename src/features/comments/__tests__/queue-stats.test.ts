@@ -29,6 +29,7 @@ function comment(over: Partial<QueuedComment> = {}): QueuedComment {
 function group(comments: QueuedComment[]): CommentGroup {
   return {
     igMediaId: 'media-1',
+    platform: 'instagram',
     postId: 'post-1',
     clientId: 'client-1',
     clientName: 'Haelan',

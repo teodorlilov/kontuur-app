@@ -2,7 +2,7 @@ import { type NextRequest, NextResponse } from 'next/server'
 import { revalidateTag } from 'next/cache'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import { syncAllClientComments } from '@/features/comments/lib/sync-comments'
-import { IG_COMMENTS_TAG } from '@/features/comments/queries/comment-queue'
+import { PLATFORM_COMMENTS_TAG } from '@/features/comments/queries/comment-queue'
 
 export const maxDuration = 300
 
@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
     const result = await syncAllClientComments(admin, { timeBudgetMs: TIME_BUDGET_MS })
     // Only when something actually moved. The common case is a run that fetched
     // nothing, and busting the tag then would throw away a warm queue for no reason.
-    if (result.fetched > 0) revalidateTag(IG_COMMENTS_TAG, 'max')
+    if (result.fetched > 0) revalidateTag(PLATFORM_COMMENTS_TAG, 'max')
     const elapsedS = Math.round((Date.now() - startedAt) / 1000)
     if (result.errors.length > 0) {
       console.error('[cron:comments] per-client errors:', result.errors)

@@ -29,7 +29,7 @@ function metricRow(
   }
 }
 
-/** Minimal supabase stub: the connection scope, the ig_post_metrics read, the posts pillar join. */
+/** Minimal supabase stub: the connection scope, the platform_post_metrics read, the posts pillar join. */
 function makeSupabase(
   metricRows: Array<Record<string, unknown>> | Error,
   publishedRows: Array<{ id: string; pillar: string }> = [],
@@ -56,7 +56,7 @@ function makeSupabase(
           }),
         }
       }
-      if (table === 'ig_post_metrics') {
+      if (table === 'platform_post_metrics') {
         return {
           select: () => ({
             eq: () => ({

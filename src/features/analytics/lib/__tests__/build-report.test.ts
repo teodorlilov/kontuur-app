@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type {
   IGAccountMetricColumns,
-  IGPostMetricColumns,
+  PlatformPostMetricColumns,
   PublishedPostPin,
 } from '@/lib/queries/select-columns'
 import {
@@ -48,9 +48,9 @@ function accountRow(overrides: Partial<IGAccountMetricColumns>): IGAccountMetric
   }
 }
 
-function postRow(overrides: Partial<IGPostMetricColumns>): IGPostMetricColumns {
+function postRow(overrides: Partial<PlatformPostMetricColumns>): PlatformPostMetricColumns {
   return {
-    ig_media_id: 'm1',
+    external_post_id: 'm1',
     post_id: null,
     media_type: 'IMAGE',
     media_product_type: 'FEED',
@@ -74,7 +74,7 @@ function postRow(overrides: Partial<IGPostMetricColumns>): IGPostMetricColumns {
 /**
  * A published destination with the post it carried.
  *
- * The pin used to be a `posts` row with `ig_media_id` and `published_at` on it. Both moved
+ * The pin used to be a `posts` row with `external_post_id` and `published_at` on it. Both moved
  * onto `post_publications` — a media id and a publish time belong to the destination that
  * produced them — so the fixture takes them at the top level and nests what is left.
  */
@@ -188,20 +188,20 @@ describe('buildAnalyticsReport', () => {
     const report = build({
       postRows: [
         postRow({
-          ig_media_id: 'a',
+          external_post_id: 'a',
           posted_at: '2026-08-16T09:00:00Z',
           reach: 200,
           caption: 'Small',
         }),
         postRow({
-          ig_media_id: 'b',
+          external_post_id: 'b',
           posted_at: '2026-08-16T18:00:00Z',
           reach: 900,
           follows: 3,
           caption: 'Big',
         }),
         // No timestamp means no day to pin to — the table still lists it.
-        postRow({ ig_media_id: 'c', posted_at: null, reach: 500 }),
+        postRow({ external_post_id: 'c', posted_at: null, reach: 500 }),
       ],
     })
     const day = report.reachByDay[1]!
@@ -215,10 +215,10 @@ describe('buildAnalyticsReport', () => {
   it('files the comparison window’s posts on the comparison line, never in the table', () => {
     const report = build({
       postRows: [
-        postRow({ ig_media_id: 'now', posted_at: '2026-08-16T09:00:00Z', reach: 200 }),
+        postRow({ external_post_id: 'now', posted_at: '2026-08-16T09:00:00Z', reach: 200 }),
         // 11 Aug is the previous-period day that 15 Aug is measured against.
         postRow({
-          ig_media_id: 'then',
+          external_post_id: 'then',
           posted_at: '2026-08-11T09:00:00Z',
           reach: 900,
           caption: 'Last week',
@@ -237,7 +237,7 @@ describe('buildAnalyticsReport', () => {
   it("pins Kontuur's own published posts the sync cannot see, marked honestly", () => {
     const report = build({
       postRows: [
-        postRow({ ig_media_id: 'm-live', posted_at: '2026-08-15T10:00:00+00:00', reach: 300 }),
+        postRow({ external_post_id: 'm-live', posted_at: '2026-08-15T10:00:00+00:00', reach: 300 }),
       ],
       publishedPosts: [
         // Published well before the last sync yet absent from metrics: removed.
@@ -282,7 +282,7 @@ describe('buildAnalyticsReport', () => {
       timezone: 'Europe/Sofia',
       postRows: [
         postRow({
-          ig_media_id: 'early',
+          external_post_id: 'early',
           caption: 'Just after local midnight',
           posted_at: '2026-08-14T22:30:00+00:00',
           reach: 300,
@@ -312,7 +312,7 @@ describe('buildAnalyticsReport', () => {
     const report = build({
       timezone: 'Europe/Sofia',
       postRows: [
-        postRow({ ig_media_id: 'late', posted_at: '2026-08-16T21:00:00+00:00', reach: 120 }),
+        postRow({ external_post_id: 'late', posted_at: '2026-08-16T21:00:00+00:00', reach: 120 }),
       ],
     })
     expect(report.posts[0]!.postedDayKey).toBe('2026-08-17')
@@ -332,8 +332,18 @@ describe('buildAnalyticsReport', () => {
         accountRow({ metric_date: '2026-08-16', follows: 12, unfollows: 0 }),
       ],
       postRows: [
-        postRow({ ig_media_id: 'a', posted_at: '2026-08-16T09:00:00Z', reach: 200, follows: 4 }),
-        postRow({ ig_media_id: 'b', posted_at: '2026-08-16T18:00:00Z', reach: 100, follows: null }),
+        postRow({
+          external_post_id: 'a',
+          posted_at: '2026-08-16T09:00:00Z',
+          reach: 200,
+          follows: 4,
+        }),
+        postRow({
+          external_post_id: 'b',
+          posted_at: '2026-08-16T18:00:00Z',
+          reach: 100,
+          follows: null,
+        }),
       ],
     })
     expect(report.followers.byDay.map((d) => d.gained)).toEqual([5, 12, null, null])
@@ -393,20 +403,20 @@ describe('buildAnalyticsReport', () => {
       ],
       postRows: [
         postRow({
-          ig_media_id: 'a',
+          external_post_id: 'a',
           posted_at: '2026-08-15T10:00:00Z',
           media_product_type: 'FEED',
           media_type: 'IMAGE',
         }),
         postRow({
-          ig_media_id: 'b',
+          external_post_id: 'b',
           posted_at: '2026-08-16T10:00:00Z',
           // Carousel bridges from media_type, not media_product_type.
           media_product_type: 'FEED',
           media_type: 'CAROUSEL_ALBUM',
         }),
         postRow({
-          ig_media_id: 'c',
+          external_post_id: 'c',
           posted_at: '2026-08-16T11:00:00Z',
           media_product_type: 'REELS',
           media_type: 'VIDEO',
@@ -437,7 +447,7 @@ describe('buildAnalyticsReport', () => {
       ],
       postRows: [
         postRow({
-          ig_media_id: 'c1',
+          external_post_id: 'c1',
           posted_at: '2026-08-15T09:00:00Z',
           media_product_type: 'FEED',
           media_type: 'CAROUSEL_ALBUM',
@@ -445,7 +455,7 @@ describe('buildAnalyticsReport', () => {
           total_interactions: 130,
         }),
         postRow({
-          ig_media_id: 'c2',
+          external_post_id: 'c2',
           posted_at: '2026-08-16T09:00:00Z',
           media_product_type: 'FEED',
           media_type: 'CAROUSEL_ALBUM',
@@ -576,12 +586,12 @@ describe('buildAnalyticsReport', () => {
   it('buckets publish windows by agency-local hour with medians, skipping unsynced posts', () => {
     const report = build({
       postRows: [
-        postRow({ ig_media_id: 'a', posted_at: '2026-08-15T07:00:00+00:00', reach: 100 }),
-        postRow({ ig_media_id: 'b', posted_at: '2026-08-16T08:30:00+00:00', reach: 300 }),
-        postRow({ ig_media_id: 'c', posted_at: '2026-08-17T09:00:00+00:00', reach: 200 }),
-        postRow({ ig_media_id: 'd', posted_at: '2026-08-17T18:00:00+00:00', reach: 900 }),
+        postRow({ external_post_id: 'a', posted_at: '2026-08-15T07:00:00+00:00', reach: 100 }),
+        postRow({ external_post_id: 'b', posted_at: '2026-08-16T08:30:00+00:00', reach: 300 }),
+        postRow({ external_post_id: 'c', posted_at: '2026-08-17T09:00:00+00:00', reach: 200 }),
+        postRow({ external_post_id: 'd', posted_at: '2026-08-17T18:00:00+00:00', reach: 900 }),
         // Reach unknown: contributes nothing to any bucket.
-        postRow({ ig_media_id: 'e', posted_at: '2026-08-18T07:30:00+00:00', reach: null }),
+        postRow({ external_post_id: 'e', posted_at: '2026-08-18T07:30:00+00:00', reach: null }),
       ],
     })
     const morning = report.publishWindows.find((bucket) => bucket.key === 'morning')!
@@ -668,14 +678,14 @@ describe('buildAnalyticsReport', () => {
         accountRow({ metric_date: '2026-08-16', reach: 900 }),
       ],
       postRows: [
-        postRow({ ig_media_id: 'a', reach: 100, posted_at: '2026-08-15T09:00:00Z' }),
+        postRow({ external_post_id: 'a', reach: 100, posted_at: '2026-08-15T09:00:00Z' }),
         postRow({
-          ig_media_id: 'b',
+          external_post_id: 'b',
           reach: 600,
           posted_at: '2026-08-16T09:00:00Z',
           caption: 'Iced bar menu, day one',
         }),
-        postRow({ ig_media_id: 'c', reach: 200, posted_at: '2026-08-15T15:00:00Z' }),
+        postRow({ external_post_id: 'c', reach: 200, posted_at: '2026-08-15T15:00:00Z' }),
       ],
     })
     expect(report.posts.map((post) => post.igMediaId)).toEqual(['b', 'c', 'a'])

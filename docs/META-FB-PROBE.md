@@ -287,15 +287,67 @@ app — falling back to `/me/accounts` `tasks` only when the grant record is unr
 }
 ```
 
-### Comments on a Page post — field set and reply threading
+### Comments on a Page post — probed against a real comment, 2026-09-05
 
-`GET /659554973897366_122168377616832251/comments?fields=id,message,from,created_time,like_count,parent,comment_count&limit=5` (Page token) → **200**
+The earlier run here returned `{"data": []}` and proved nothing: it was aimed at Paired Socks,
+a Page this app cannot read, and which had no comments. Re-run against a genuine visitor
+comment on the connected Page.
+
+`GET /{post-id}/comments?fields=id,message,from,created_time,like_count,parent,comment_count,can_hide,is_hidden`
+→ **200**
 
 ```json
-{
-  "data": []
-}
+{ "data": [ {
+  "id": "122167637282960180_1386857980259623",
+  "message": "cool",
+  "from": { "name": "Teodor Lilov", "id": "28443907705226419" },
+  "created_time": "2026-09-05T14:33:01+0000",
+  "like_count": 0, "comment_count": 0,
+  "can_hide": true, "is_hidden": false } ] }
 ```
+
+**Every field name differs from Instagram's.** `message` not `text`, `created_time` not
+`timestamp`, `comment_count` not `replies`, `is_hidden` not `hidden`. `from` is an object with
+a display NAME, where Instagram gives a `username` handle — both answer "who said it", so both
+land in `author_username`, but the column holds a different KIND of string per network.
+
+**`POST /{comment-id}/comments`** with `message` → **200** `{"id": …}`. Replying uses the same
+edge as commenting; the parent is the path, not a parameter.
+
+**Replies are not on the post's edge.** After the reply, `GET /{post-id}/comments` still returned
+one item — the top-level comment, now with `comment_count: 1`. The reply is reachable only at
+`GET /{comment-id}/comments`. So a full sync is two levels: the post's comments, then one call
+per comment whose `comment_count` is above zero.
+
+**A reply carries its whole parent, not an id.** `GET /{reply-id}?fields=parent` →
+
+```json
+{ "parent": { "id": "122167637282960180_1386857980259623",
+              "message": "cool",
+              "from": { "name": "Teodor Lilov", "id": "28443907705226419" },
+              "created_time": "2026-09-05T14:33:01+0000" } }
+```
+
+**A Page cannot hide its own comment, and Graph says so per comment.** `can_hide` was `true` on
+the visitor's comment and `false` on the Page's own reply, and `POST /{comment-id}`
+`{"is_hidden": true}` on that reply returned **403**:
+
+```json
+{ "error": { "message": "(#200) Can not hide or unhide this comment", "code": 200 } }
+```
+
+So `can_hide` is a per-comment capability to read, not a blanket one to assume — the moderation
+UI must not offer hide on a comment Graph has already said no to.
+
+**`DELETE /{comment-id}`** → **200** `{"success":true}`.
+
+**Comment ids are `{post-id}_{comment-id}`**, and a reply's id is keyed to the POST, not to its
+parent comment — `122167637282960180_1584549173454318` replied to
+`122167637282960180_1386857980259623`.
+
+`GET /{page-id}/published_posts?fields=comments.summary(true).limit(0)` returns
+`{"total_count": N, "can_comment": bool, "order": …}` per post, which is the cheap count the
+sync compares before fetching anything.
 
 ### Insight: page_impressions
 

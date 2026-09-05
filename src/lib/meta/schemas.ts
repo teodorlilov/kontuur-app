@@ -178,8 +178,26 @@ export const igCommentSchema = z.looseObject({
   timestamp: z.string().optional(),
   like_count: z.number().optional(),
   hidden: z.boolean().optional(),
-  /** Replies arrive nested when asked for; absent otherwise. */
-  replies: z.looseObject({ data: z.array(z.looseObject({ id: z.string() })) }).optional(),
+  /**
+   * Replies arrive nested when asked for; absent otherwise.
+   *
+   * Typed with the fields the request actually asks for. It named `id` alone, so every other
+   * field on a reply was carried by `looseObject` and invisible to the code reading it.
+   */
+  replies: z
+    .looseObject({
+      data: z.array(
+        z.looseObject({
+          id: z.string(),
+          text: z.string().optional(),
+          username: z.string().optional(),
+          timestamp: z.string().optional(),
+          like_count: z.number().optional(),
+          hidden: z.boolean().optional(),
+        })
+      ),
+    })
+    .optional(),
 })
 
 export const igCommentsResponseSchema = z.looseObject({
@@ -192,10 +210,13 @@ export const igCommentsResponseSchema = z.looseObject({
 /** A created reply returns only its id, like every other Graph write. */
 export const igCommentCreatedSchema = z.looseObject({ id: z.string() })
 
-/** Hide/unhide and delete both answer `{ success: true }`. */
-export const igSuccessSchema = z.looseObject({ success: z.boolean().optional() })
-
-export type IgComment = z.infer<typeof igCommentSchema>
+/**
+ * `{ success: true }` — what every Graph write that returns no object answers.
+ *
+ * Shared by both networks: Instagram's hide and delete, Facebook's publish, hide and delete all
+ * return exactly this. It was spelled twice, once per network, for one shape neither owns.
+ */
+export const graphAckSchema = z.looseObject({ success: z.boolean().optional() })
 
 // ---- Facebook Login and Pages ----
 // Shapes recorded in docs/META-FB-PROBE.md against a real Page, not taken from the docs.
@@ -245,6 +266,59 @@ export const fbCreatedObjectSchema = z.looseObject({
   id: z.string(),
 })
 
+/**
+ * `GET /{page-id}/published_posts` with a comment summary — the Page's own post list.
+ *
+ * `comments.summary(true).limit(0)` returns the tally without the bodies, which is the cheap
+ * count the comment sync compares before fetching anything. Probed; see docs/META-FB-PROBE.md.
+ */
+export const fbPagePostsSchema = z.looseObject({
+  data: z.array(
+    z.looseObject({
+      id: z.string(),
+      message: z.string().optional(),
+      permalink_url: z.string().optional(),
+      full_picture: z.string().optional(),
+      created_time: z.string().optional(),
+      comments: z
+        .looseObject({ summary: z.looseObject({ total_count: z.number().optional() }).optional() })
+        .optional(),
+    })
+  ),
+})
+
+/**
+ * One comment on a Facebook Page post.
+ *
+ * Every field name differs from Instagram's — `message` not `text`, `created_time` not
+ * `timestamp`, `is_hidden` not `hidden`, and `from` is an object carrying a display NAME where
+ * Instagram gives a `username` handle. Probed against a real visitor comment; see
+ * `docs/META-FB-PROBE.md`.
+ *
+ * `comment_count` is how many REPLIES a comment has. Replies do not appear on the post's own
+ * comments edge, so a non-zero count is the signal to read `/{comment-id}/comments`.
+ *
+ * `can_hide` is per comment, not per Page: Facebook refuses to hide a Page's own comment and
+ * says so here before the attempt.
+ */
+export const fbCommentSchema = z.looseObject({
+  id: z.string(),
+  message: z.string().optional(),
+  from: z.looseObject({ name: z.string().optional(), id: z.string().optional() }).optional(),
+  created_time: z.string().optional(),
+  like_count: z.number().optional(),
+  comment_count: z.number().optional(),
+  can_hide: z.boolean().optional(),
+  is_hidden: z.boolean().optional(),
+})
+
+export const fbCommentsResponseSchema = z.looseObject({
+  data: z.array(fbCommentSchema),
+  paging: z
+    .looseObject({ cursors: z.looseObject({ after: z.string().optional() }).optional() })
+    .optional(),
+})
+
 /** `GET /{media-id}?fields=permalink` — where a person can see an Instagram post. */
 export const igPermalinkSchema = z.looseObject({
   permalink: z.string().optional(),
@@ -253,18 +327,6 @@ export const igPermalinkSchema = z.looseObject({
 /** `GET /{post-id}?fields=permalink_url` — the same question on a Facebook Page. */
 export const fbPermalinkSchema = z.looseObject({
   permalink_url: z.string().optional(),
-})
-
-/**
- * `POST /{post-id}` with `is_published` — Facebook's publish step answers only `success`.
- *
- * No id comes back because the caller already holds it: the post was created in the previous
- * phase and this call only flips it live. Probed against a live Page, INCLUDING the second
- * call on an already-published post, which answers `{"success":true}` again rather than
- * erroring or creating anything — that idempotence is what makes the retry safe.
- */
-export const fbPublishAckSchema = z.looseObject({
-  success: z.boolean().optional(),
 })
 
 /**

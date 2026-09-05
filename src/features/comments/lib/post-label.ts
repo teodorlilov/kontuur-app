@@ -1,4 +1,5 @@
 import type { CommentGroup } from '@/types/api'
+import { namePlatforms } from '@/lib/validation'
 import { toPreviewLine } from '@/utils/format'
 
 /**
@@ -15,9 +16,11 @@ import { toPreviewLine } from '@/utils/format'
  *     "Untitled post" claims a record we do not have. It shipped that way and read
  *     as a bug: an unnamed row above a blank grey square looks like a failed load.
  */
-export function postTitle(group: Pick<CommentGroup, 'caption' | 'postId'>): string {
+export function postTitle(group: Pick<CommentGroup, 'caption' | 'postId' | 'platform'>): string {
   if (group.caption) return toPreviewLine(group.caption)
-  return group.postId ? 'Untitled post' : 'Post on Instagram'
+  // Named from the group, not written in: this said "Post on Instagram" over every Facebook
+  // conversation in the queue, which is the one thing a header must not get wrong.
+  return group.postId ? 'Untitled post' : `Post on ${namePlatforms([group.platform])}`
 }
 
 /**
@@ -25,9 +28,9 @@ export function postTitle(group: Pick<CommentGroup, 'caption' | 'postId'>): stri
  *
  * Deliberately states what we know rather than guessing why. `post_id` is null
  * either because the post was never published from Kontuur, or because its row was
- * deleted afterwards — `posts.ig_media_id` is stamped at publish time and the link
- * is ON DELETE SET NULL. "Published outside Kontuur" would be wrong in the second
- * case, and the difference is invisible from here.
+ * deleted afterwards — the sync resolves it from `post_publications.external_post_id`
+ * and the link is ON DELETE SET NULL. "Published outside Kontuur" would be wrong in
+ * the second case, and the difference is invisible from here.
  *
  * Null when there is nothing to explain.
  */

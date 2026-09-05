@@ -128,14 +128,14 @@ export type CommentStatus = 'needs_reply' | 'answered' | 'hidden'
 /**
  * One comment as the queue renders it.
  *
- * Deliberately not `Tables<'ig_comments'>`: the stored row carries the scoping
- * columns the read already spent (`client_id`, `ig_account_id`, `ig_media_id`) and
- * none of the derivation the surface needs. `status` and `replies` are computed on
- * the server so the browser never has to know what "answered" means.
+ * Deliberately not `Tables<'platform_comments'>`: the stored row carries the scoping
+ * columns the read already spent (`client_id`, `platform`, `platform_account_id`,
+ * `external_post_id`) and none of the derivation the surface needs. `status` and `replies`
+ * are computed on the server so the browser never has to know what "answered" means.
  */
 export interface QueuedComment {
   id: string
-  /** Null when the app lacks Advanced Access — Instagram returns the id alone. */
+  /** Null when the network withheld it — Instagram returns the id alone without Advanced Access. */
   authorUsername: string | null
   text: string | null
   commentedAt: string | null
@@ -165,6 +165,8 @@ export interface QueuedCommentReply {
  */
 export interface CommentGroup {
   igMediaId: string
+  /** Which network the conversation happened on — the header names it. */
+  platform: string
   postId: string | null
   clientId: string
   clientName: string
@@ -172,7 +174,12 @@ export interface CommentGroup {
   pillar: string | null
   publishedAt: string | null
   imageUrl: string | null
-  /** Instagram's own link to the post, when the nightly metrics sync has recorded one. */
+  /**
+   * The network's own link to the post, when we hold one.
+   *
+   * Instagram's arrives with the nightly metrics sync. Facebook has none yet — its post
+   * identities have no neutral home, so a Page post shows without a link.
+   */
   permalink: string | null
   comments: QueuedComment[]
 }

@@ -36,14 +36,22 @@ export async function purgeAccountAnalytics(
   const [accountRes, postRes, snapshotRes, reportRes, commentRes, unstampedRes] = await Promise.all(
     [
       scoped('ig_account_metrics'),
-      scoped('ig_post_metrics'),
+      scoped('platform_post_metrics'),
       scoped('ig_audience_snapshots'),
       scoped('analytics_reports'),
       // Comments are the one table here holding data about people who are not the
       // agency and not its client — the audience. That makes this line the part of
       // Meta's data-deletion callback that actually erases third parties, and the
       // reason it is a line here rather than a second purge function.
-      scoped('ig_comments'),
+      // NOT `scoped`: the other four tables still carry `ig_account_id`, and this one renamed
+      // that column to `platform_account_id` when it became network-neutral (20260844). Left on
+      // the shared helper it would have failed on an unknown column — on the one path in this
+      // file whose failure is a legal problem rather than a stale chart.
+      admin
+        .from('platform_comments')
+        .delete()
+        .eq('client_id', clientId)
+        .eq('platform_account_id', accountId),
       // analytics_reports.ig_account_id is nullable where the ig_* columns are
       // NOT NULL (20260826): archived deliverables predating account stamping
       // kept NULL on purpose. A plain `.eq` therefore strands them, invisible to
@@ -66,10 +74,10 @@ export async function purgeAccountAnalytics(
   // than one that stops at the first failure and leaves three tables untouched.
   const failures = [
     { table: 'ig_account_metrics', error: accountRes.error },
-    { table: 'ig_post_metrics', error: postRes.error },
+    { table: 'platform_post_metrics', error: postRes.error },
     { table: 'ig_audience_snapshots', error: snapshotRes.error },
     { table: 'analytics_reports', error: reportRes.error },
-    { table: 'ig_comments', error: commentRes.error },
+    { table: 'platform_comments', error: commentRes.error },
     { table: 'analytics_reports (unstamped)', error: unstampedRes.error },
   ].filter((result) => result.error !== null)
 

@@ -1,24 +1,25 @@
 import 'server-only'
 
+import { COMMENTABLE_PLATFORMS } from '@/lib/meta/networks'
 import { cache } from 'react'
 import { unstable_cache } from 'next/cache'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import { getCachedAgencyClients } from '@/lib/queries/cache'
 import {
   COMMENTED_POST_COLUMNS,
-  IG_COMMENT_COLUMNS,
+  PLATFORM_COMMENT_COLUMNS,
   type CommentedPostColumns,
-  type IGCommentColumns,
+  type PlatformCommentColumns,
 } from '@/lib/queries/select-columns'
 import { fetchImagesByPost } from '@/lib/posts/fetch-post-images'
 import { commentStatus, isOurs } from '@/features/comments/lib/comment-status'
 import type { CommentGroup, QueuedComment, QueuedCommentReply } from '@/types/api'
-import type { IGPostMetricsRow } from '@/types/index'
+import type { PlatformPostMetricsRow } from '@/types/index'
 
 type Admin = ReturnType<typeof createAdminSupabaseClient>
 
 /** The tag the sync and the moderation actions bust. */
-export const IG_COMMENTS_TAG = 'ig-comments'
+export const PLATFORM_COMMENTS_TAG = 'platform-comments'
 
 export interface CommentQueue {
   groups: CommentGroup[]
@@ -83,25 +84,32 @@ const fetchCommentQueue = unstable_cache(
      */
     const { data: connectionData, error: connectionError } = await admin
       .from('social_connections')
-      .select('client_id, account_id, account_name')
-      .eq('platform', 'instagram')
+      .select('client_id, platform, account_id, account_name')
+      .in('platform', COMMENTABLE_PLATFORMS)
       .in('client_id', clientIds)
     if (connectionError) {
       console.error('[comments] connection query failed:', connectionError.message)
       return EMPTY
     }
+    /**
+     * Keyed on (client, PLATFORM), not on client alone.
+     *
+     * A client can have both networks connected, which is two rows — and a map keyed by client
+     * kept whichever arrived last, so every comment from the other network failed the scoping
+     * filter below and vanished from the queue.
+     */
     const connections = new Map(
       (connectionData ?? []).flatMap((row) =>
-        row.client_id ? [[row.client_id, row] as const] : []
+        row.client_id ? [[connectionKey(row.client_id, row.platform), row] as const] : []
       )
     )
     // No connected account means nothing to scope comments to, and the withheld
-    // count would be meaningless too — there is no Instagram here to withhold them.
+    // count would be meaningless too — there is no network here to withhold them.
     if (connections.size === 0) return EMPTY
 
     const { data: commentData, error: commentError } = await admin
-      .from('ig_comments')
-      .select(IG_COMMENT_COLUMNS)
+      .from('platform_comments')
+      .select(PLATFORM_COMMENT_COLUMNS)
       .in('client_id', clientIds)
       .order('commented_at', { ascending: true })
     if (commentError) {
@@ -111,20 +119,21 @@ const fetchCommentQueue = unstable_cache(
 
     /**
      * INVARIANT (20260825/20260826): only rows stamped with the account the client is
-     * connected to RIGHT NOW. A client can be repointed at a different Instagram
-     * account, and the OAuth callback purges the old account's rows — this filter is
-     * the belt to that pair of braces, and it is why the queue cannot show one
-     * account's audience under another's name.
+     * connected to RIGHT NOW. A client can be repointed at a different account, and the OAuth
+     * callback purges the old account's rows — this filter is the belt to that pair of braces,
+     * and it is why the queue cannot show one account's audience under another's name.
      *
-     * Filtered here rather than in the query because the condition is a (client,
-     * account) pair per client, which PostgREST cannot express as one `in`.
+     * Filtered here rather than in the query because the condition is a (client, platform,
+     * account) triple per client, which PostgREST cannot express as one `in`.
      */
     const rows = (commentData ?? []).filter(
-      (row) => connections.get(row.client_id)?.account_id === row.ig_account_id
+      (row) =>
+        connections.get(connectionKey(row.client_id, row.platform))?.account_id ===
+        row.platform_account_id
     )
 
     const postIds = [...new Set(rows.flatMap((row) => (row.post_id ? [row.post_id] : [])))]
-    const mediaIds = [...new Set(rows.map((row) => row.ig_media_id))]
+    const mediaIds = [...new Set(rows.map((row) => row.external_post_id))]
 
     const [posts, images, mediaFacts, withheldPostCount] = await Promise.all([
       fetchPosts(admin, postIds),
@@ -144,23 +153,31 @@ const fetchCommentQueue = unstable_cache(
     }
   },
   ['comment-queue'],
-  { revalidate: 30, tags: [IG_COMMENTS_TAG] }
+  { revalidate: 30, tags: [PLATFORM_COMMENTS_TAG] }
 )
 
 export const getCachedCommentQueue = cache(fetchCommentQueue)
 
 /** The stored row, as this read projects it — derived from the constant it selects. */
-type CommentRow = IGCommentColumns
+/** (client, platform) — the pair a connection is scoped by, since a client may have several. */
+function connectionKey(clientId: string, platform: string): string {
+  return `${clientId}::${platform}`
+}
+
+type CommentRow = PlatformCommentColumns
 
 /**
  * What the nightly metrics sync already knows about a media, reused rather than
  * re-stored.
  *
  * Derived rather than restated: hand-writing these three fields is a mirror of an
- * `ig_post_metrics` row, and `row-mirrors.test.ts` exists because that pattern
+ * `platform_post_metrics` row, and `row-mirrors.test.ts` exists because that pattern
  * drifted from its table for three months without anything noticing.
  */
-type MediaFacts = Pick<IGPostMetricsRow, 'caption' | 'thumbnail_url' | 'permalink' | 'posted_at'>
+type MediaFacts = Pick<
+  PlatformPostMetricsRow,
+  'caption' | 'thumbnail_url' | 'permalink' | 'posted_at'
+>
 
 async function fetchPosts(
   admin: Admin,
@@ -176,7 +193,7 @@ async function fetchPosts(
  * Caption, thumbnail and permalink for media we did NOT publish from Kontuur.
  *
  * The agency may have posted from the Instagram app before connecting, and those
- * posts still collect comments worth answering. `ig_post_metrics` already holds
+ * posts still collect comments worth answering. `platform_post_metrics` already holds
  * exactly these three facts for every media in the same 30-day window, written by
  * the nightly sync — so the alternative was copying them onto every comment row,
  * which would have meant the same fact stored twice and drifting.
@@ -191,21 +208,21 @@ async function fetchMediaFacts(
   mediaIds: string[]
 ): Promise<Map<string, MediaFacts>> {
   if (mediaIds.length === 0) return new Map()
-  // Narrow lookup, inline by convention — IG_POST_METRIC_COLUMNS pulls 18 columns
+  // Narrow lookup, inline by convention — PLATFORM_POST_METRIC_COLUMNS pulls 18 columns
   // for the analytics report and this needs three.
   const { data, error } = await admin
-    .from('ig_post_metrics')
-    .select('ig_media_id, caption, thumbnail_url, permalink, posted_at')
+    .from('platform_post_metrics')
+    .select('external_post_id, caption, thumbnail_url, permalink, posted_at')
     .in('client_id', clientIds)
-    .in('ig_media_id', mediaIds)
+    .in('external_post_id', mediaIds)
   if (error) throw new Error(`media facts query failed: ${error.message}`)
-  return new Map((data ?? []).map((row) => [row.ig_media_id, row]))
+  return new Map((data ?? []).map((row) => [row.external_post_id, row]))
 }
 
 /**
  * How many posts have comments we were not given.
  *
- * `ig_post_metrics.comments_count` comes from the media itself, which Instagram
+ * `platform_post_metrics.comments_count` comes from the media itself, which Instagram
  * reports honestly even under Standard Access — it is the comment BODIES it
  * withholds. So a post with a non-zero count and no stored comment rows is the
  * signature of missing Advanced Access, and it is the one thing that distinguishes
@@ -217,9 +234,22 @@ async function countWithheldPosts(
   mediaWithStoredComments: Set<string>
 ): Promise<number> {
   const { data, error } = await admin
-    .from('ig_post_metrics')
-    .select('ig_media_id, comments_count')
+    .from('platform_post_metrics')
+    .select('external_post_id, comments_count')
     .in('client_id', clientIds)
+    /**
+     * Instagram's, and named here rather than left open.
+     *
+     * "Withheld" is a specific Instagram state — it answers 200 with an empty list until the app
+     * holds Advanced Access for `instagram_business_manage_comments` — and the banner this feeds
+     * explains that mechanism by name. Left unscoped it counted Facebook Page posts as comments
+     * Instagram was withholding, which is two wrong things in one sentence.
+     *
+     * Whether Facebook withholds under Standard Access is NOT established: the probe ran as
+     * someone holding a role on the Meta app, which is exactly the case Instagram exempts. When
+     * that is known, this becomes a per-network count and the copy stops naming one.
+     */
+    .eq('platform', 'instagram')
     .gt('comments_count', 0)
   if (error) {
     // A failure here costs an explanation, not the page. Falling back to 0 renders
@@ -227,7 +257,7 @@ async function countWithheldPosts(
     console.error('[comments] withheld count query failed:', error.message)
     return 0
   }
-  return (data ?? []).filter((row) => !mediaWithStoredComments.has(row.ig_media_id)).length
+  return (data ?? []).filter((row) => !mediaWithStoredComments.has(row.external_post_id)).length
 }
 
 /**
@@ -285,16 +315,17 @@ function assemble(
       replies,
     }
 
-    const group = groups.get(row.ig_media_id)
+    const group = groups.get(row.external_post_id)
     if (group) {
       group.comments.push(comment)
       continue
     }
 
     const post = row.post_id ? context.posts.get(row.post_id) : undefined
-    const facts = context.mediaFacts.get(row.ig_media_id)
-    groups.set(row.ig_media_id, {
-      igMediaId: row.ig_media_id,
+    const facts = context.mediaFacts.get(row.external_post_id)
+    groups.set(row.external_post_id, {
+      igMediaId: row.external_post_id,
+      platform: row.platform,
       postId: row.post_id,
       clientId: row.client_id,
       clientName: context.nameByClient.get(row.client_id) ?? 'Unknown client',
@@ -302,7 +333,7 @@ function assemble(
       // recognise. Instagram's copy is the fallback for posts we did not publish.
       caption: post?.caption ?? facts?.caption ?? null,
       pillar: post?.pillar ?? null,
-      // The destination's, not the post's. `ig_post_metrics.posted_at` is the same
+      // The destination's, not the post's. `platform_post_metrics.posted_at` is the same
       // instant recorded by the nightly sync, and it is already loaded here — reaching
       // for the publication row as well would be a second query for one timestamp.
       publishedAt: facts?.posted_at ?? null,

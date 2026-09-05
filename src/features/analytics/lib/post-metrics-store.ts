@@ -4,7 +4,8 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/types'
 
 /** A media row as any writer of one describes it. */
-export type IGPostMetricsInsert = Database['public']['Tables']['ig_post_metrics']['Insert']
+export type PlatformPostMetricsInsert =
+  Database['public']['Tables']['platform_post_metrics']['Insert']
 
 /**
  * The unique key every writer resolves against. Named once for the same reason
@@ -12,10 +13,16 @@ export type IGPostMetricsInsert = Database['public']['Tables']['ig_post_metrics'
  * the same media must land on the same row, and a typo here would silently create a
  * second one instead of failing.
  */
-const MEDIA_KEY = 'client_id,ig_account_id,ig_media_id'
+/**
+ * The upsert target, matching `platform_post_metrics_client_account_post_key`.
+ *
+ * `platform` is in it because two networks issuing the same post id would otherwise overwrite
+ * each other here, silently — this function writes through the key blind.
+ */
+const MEDIA_KEY = 'client_id,platform,platform_account_id,external_post_id'
 
 /**
- * Write media rows. The ONE way `ig_post_metrics` is written.
+ * Write media rows. The ONE way `platform_post_metrics` is written.
  *
  * PARTIAL ROWS ARE DELIBERATE, and they are the reason this exists. An upsert only
  * touches the columns it is given, so a pass never nulls a column another pass owns.
@@ -41,10 +48,12 @@ const MEDIA_KEY = 'client_id,ig_account_id,ig_media_id'
  */
 export async function upsertPostMetricRows(
   admin: SupabaseClient,
-  rows: IGPostMetricsInsert[],
+  rows: PlatformPostMetricsInsert[],
   context: string
 ): Promise<void> {
   if (rows.length === 0) return
-  const { error } = await admin.from('ig_post_metrics').upsert(rows, { onConflict: MEDIA_KEY })
-  if (error) throw new Error(`ig_post_metrics upsert failed (${context}): ${error.message}`)
+  const { error } = await admin
+    .from('platform_post_metrics')
+    .upsert(rows, { onConflict: MEDIA_KEY })
+  if (error) throw new Error(`platform_post_metrics upsert failed (${context}): ${error.message}`)
 }

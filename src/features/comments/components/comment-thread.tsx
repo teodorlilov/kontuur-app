@@ -8,6 +8,7 @@ import { StatusPill } from '@/components/ui/status-pill'
 import { cn } from '@/utils/cn'
 import { formatRelativeTime, parseTimestamp } from '@/utils/format'
 import { postOrigin, postTitle } from '../lib/post-label'
+import { namePlatforms } from '@/lib/validation'
 import type { CommentGroup, QueuedComment } from '@/types/api'
 
 /**
@@ -41,6 +42,9 @@ export function CommentThread({
   const [message, setMessage] = useState('')
   const [confirmingDelete, setConfirmingDelete] = useState(false)
   const origin = postOrigin(group)
+  // Named once, used by the chip and the outbound link — which said "Open on Instagram" over a
+  // Facebook permalink, sending people to the wrong network's name for their own post.
+  const network = namePlatforms([group.platform])
 
   async function submit() {
     const trimmed = message.trim()
@@ -76,6 +80,7 @@ export function CommentThread({
           <p className="text-caption leading-relaxed text-text3">{postTitle(group)}</p>
         )}
         <div className="mt-2 flex flex-wrap gap-1.5">
+          <StatusPill tone="neutral">{network}</StatusPill>
           {group.pillar && <StatusPill tone="neutral">{group.pillar}</StatusPill>}
           {group.publishedAt && (
             <StatusPill tone="neutral">
@@ -186,7 +191,7 @@ export function CommentThread({
             rel="noopener noreferrer"
             className="inline-flex items-center gap-1.5 text-caption text-text2 hover:text-forest"
           >
-            Open on Instagram
+            Open on {network}
             <ExternalLink size={12} aria-hidden="true" />
           </a>
         </div>

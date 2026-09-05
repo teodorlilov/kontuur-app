@@ -29,7 +29,7 @@ import {
   upsertAccountMetricDays,
   type IGAccountMetricsInsert,
 } from './account-metrics-store'
-import { upsertPostMetricRows, type IGPostMetricsInsert } from './post-metrics-store'
+import { upsertPostMetricRows, type PlatformPostMetricsInsert } from './post-metrics-store'
 
 /**
  * The nightly Instagram metrics capture. One rule governs every write: NULL
@@ -526,13 +526,15 @@ export async function syncPostMetrics(
   ])
 
   const now = new Date().toISOString()
-  const rows: IGPostMetricsInsert[] = media.map((item, index) => {
+  const rows: PlatformPostMetricsInsert[] = media.map((item, index) => {
     const insights = insightsList[index]!
     return {
       client_id: clientId,
-      ig_account_id: accountId,
+      // The nightly measurement is Instagram's; the table it writes now holds both networks.
+      platform: 'instagram',
+      platform_account_id: accountId,
       post_id: postIdByMediaId.get(item.id) ?? null,
-      ig_media_id: item.id,
+      external_post_id: item.id,
       media_type: item.media_type ?? null,
       media_product_type: item.media_product_type ?? null,
       permalink: item.permalink ?? null,

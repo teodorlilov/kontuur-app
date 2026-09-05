@@ -3,9 +3,8 @@ import 'server-only'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database'
 import { GraphApiError } from '@/lib/meta/graph-errors'
-import { fetchMediaComments } from '@/lib/meta/comments'
-import { fetchMediaSince } from '@/lib/meta/insights'
-import type { IgComment } from '@/lib/meta/schemas'
+import { COMMENTABLE_PLATFORMS, resolveComments } from '@/lib/meta/networks'
+import type { CommentsAdapter, NetworkAccount, PlatformComment } from '@/lib/meta/networks/types'
 import { createSemaphore } from '@/lib/concurrency'
 import { fetchPostIdsByMediaId } from '@/lib/queries/posts-by-media-id'
 import { upsertPostMetricRows } from '@/features/analytics/lib/post-metrics-store'
@@ -56,11 +55,11 @@ type IGConnection = SocialConnectionSyncColumns & {
  * A row on its way in, as the generated schema defines it.
  *
  * Derived rather than restated, the same rule `sync-metrics.ts` follows with
- * `IGPostMetricsInsert`: a hand-written copy of a table's columns is what
+ * `PlatformPostMetricsInsert`: a hand-written copy of a table's columns is what
  * `row-mirrors.test.ts` exists to catch, because that shape drifted from its table
  * for three months without anything noticing.
  */
-type CommentRow = Database['public']['Tables']['ig_comments']['Insert']
+type CommentRow = Database['public']['Tables']['platform_comments']['Insert']
 
 export interface CommentsSyncOutcome {
   /** Clients whose comments were brought up to date. */
@@ -100,7 +99,14 @@ export async function syncAllClientComments(
   const { data, error } = await admin
     .from('social_connections')
     .select(SOCIAL_CONNECTION_SYNC_COLUMNS)
-    .eq('platform', 'instagram')
+    /**
+     * Every network with a comments adapter, derived from the registry rather than listed here.
+     *
+     * This read `platform = 'instagram'` while the post list came from Instagram's media edge —
+     * widening it then would have handed a Page token to that edge. The list is the adapter's
+     * now, so the filter is the registry's.
+     */
+    .in('platform', COMMENTABLE_PLATFORMS)
     .not('access_token', 'is', null)
     .not('account_id', 'is', null)
   if (error) throw new Error(`connection roster query failed: ${error.message}`)
@@ -122,6 +128,7 @@ export async function syncAllClientComments(
     try {
       const result = await syncClientComments(admin, {
         clientId,
+        platform: connection.platform,
         accountId: connection.account_id,
         accessToken: connection.access_token,
       })
@@ -154,20 +161,36 @@ export async function syncAllClientComments(
  */
 export async function syncClientComments(
   admin: SupabaseClient,
-  { clientId, accountId, accessToken }: { clientId: string; accountId: string; accessToken: string }
+  {
+    clientId,
+    platform,
+    accountId,
+    accessToken,
+  }: { clientId: string; platform: string; accountId: string; accessToken: string }
 ): Promise<{ unchanged: number; fetched: number }> {
-  const sinceIso = new Date(Date.now() - MEDIA_LOOKBACK_DAYS * MS_PER_DAY).toISOString()
-  const media = await fetchMediaSince(accountId, accessToken, sinceIso)
-  if (media.length === 0) return { unchanged: 0, fetched: 0 }
+  /**
+   * The network reads and moderates its own comments; everything below — which posts to check,
+   * what changed, what to store — is this function's.
+   *
+   * A platform with no comments adapter has nothing to sync, which is the same answer as a
+   * client with no connection: nothing, quietly.
+   */
+  const adapter = resolveComments(platform)
+  if (!adapter) return { unchanged: 0, fetched: 0 }
+  const account: NetworkAccount = { accountId, accessToken }
 
-  const commented = media.filter((item) => (item.comments_count ?? 0) > 0)
+  const sinceIso = new Date(Date.now() - MEDIA_LOOKBACK_DAYS * MS_PER_DAY).toISOString()
+  const posts = await adapter.listCommentablePosts({ account, since: sinceIso })
+  if (posts.length === 0) return { unchanged: 0, fetched: 0 }
+
+  const commented = posts.filter((post) => post.commentCount > 0)
   if (commented.length === 0) return { unchanged: 0, fetched: 0 }
 
   const storedCounts = await countStoredByMedia(
     admin,
     clientId,
     accountId,
-    commented.map((item) => item.id)
+    commented.map((post) => post.externalPostId)
   )
 
   /**
@@ -179,24 +202,26 @@ export async function syncClientComments(
    * bounded to posts already handled. It can never MISS a new comment: anything
    * new raises the count, and a raised count never matches.
    *
-   * There is no stored "count we last saw". `ig_post_metrics.comments_count`
+   * There is no stored "count we last saw". `platform_post_metrics.comments_count`
    * exists but is a nightly analytics measurement with a different owner and
    * cadence; counting our own rows is the same fact for free and adds no second
    * source of truth to keep in step.
    */
-  const stale = commented.filter((item) => (item.comments_count ?? 0) !== storedCounts.get(item.id))
+  const stale = commented.filter(
+    (post) => post.commentCount !== storedCounts.get(post.externalPostId)
+  )
 
   const postIdByMediaId = await fetchPostIdsByMediaId(
     admin,
     clientId,
-    commented.map((item) => item.id)
+    commented.map((post) => post.externalPostId)
   )
 
   /**
    * Record what each commented media IS, not just what was said under it.
    *
    * The queue renders the post a comment sits under, and it reads that from
-   * `ig_post_metrics` — which only the NIGHTLY analytics sync wrote. So a post
+   * `platform_post_metrics` — which only the NIGHTLY analytics sync wrote. So a post
    * commented on this morning appeared as an untitled grey box until 03:30 the next
    * day, and a post never published from Kontuur showed as nothing at all forever,
    * which is most of them: on a live account, 18 of 20 media had no Kontuur post.
@@ -213,23 +238,31 @@ export async function syncClientComments(
    * Ahead of the early return below, because a post whose comments have not changed
    * still needs its caption the first time we see it.
    */
-  await upsertPostMetricRows(
-    admin,
-    commented.map((item) => ({
-      client_id: clientId,
-      ig_account_id: accountId,
-      ig_media_id: item.id,
-      post_id: postIdByMediaId.get(item.id) ?? null,
-      caption: item.caption ?? null,
-      permalink: item.permalink ?? null,
-      // thumbnail_url is video-only on /media; the image itself fills in elsewhere.
-      thumbnail_url: item.thumbnail_url ?? item.media_url ?? null,
-      media_type: item.media_type ?? null,
-      media_product_type: item.media_product_type ?? null,
-      posted_at: item.timestamp ?? null,
-    })),
-    'comment media identity'
+  const identified = commented.flatMap((post) =>
+    post.identity ? [{ post, identity: post.identity }] : []
   )
+  // Only what the network gave an identity for. `platform_post_metrics` is Instagram's own table —
+  // keyed on `ig_media_id`/`ig_account_id` and swept by Instagram-scoped deletes — so an
+  // adapter with no home for its post identities returns none rather than filing them here.
+  if (identified.length > 0) {
+    await upsertPostMetricRows(
+      admin,
+      identified.map(({ post, identity }) => ({
+        client_id: clientId,
+        platform: adapter.platform,
+        platform_account_id: accountId,
+        external_post_id: post.externalPostId,
+        post_id: postIdByMediaId.get(post.externalPostId) ?? null,
+        caption: identity.caption,
+        permalink: identity.permalink,
+        thumbnail_url: identity.thumbnailUrl,
+        media_type: identity.mediaType,
+        media_product_type: identity.mediaProductType,
+        posted_at: identity.postedAt,
+      })),
+      'comment media identity'
+    )
+  }
 
   if (stale.length === 0) return { unchanged: commented.length, fetched: 0 }
 
@@ -238,8 +271,13 @@ export async function syncClientComments(
     stale.map(async (item) => {
       const release = await semaphore.acquire()
       try {
-        const comments = await fetchAllComments(item.id, accessToken, item.comments_count ?? 0)
-        return { mediaId: item.id, comments }
+        const comments = await fetchAllComments(
+          adapter,
+          account,
+          item.externalPostId,
+          item.commentCount
+        )
+        return { mediaId: item.externalPostId, comments }
       } finally {
         release()
       }
@@ -251,30 +289,17 @@ export async function syncClientComments(
   for (const { mediaId, comments } of perMedia) {
     for (const comment of comments) {
       rows.push(
+        // Replies arrive already flattened, each carrying the comment it answers — how a
+        // network delivers them is the adapter's business, and the two do it differently.
         toRow(comment, {
+          platform: adapter.platform,
           clientId,
           accountId,
           mediaId,
           postId: postIdByMediaId.get(mediaId) ?? null,
-          parentId: null,
           syncedAt: now,
         })
       )
-      // Replies arrive nested on the parent rather than as their own page. They are
-      // stored as ordinary rows carrying `parent_id`, which is what makes "have we
-      // answered this" a question about rows we already hold.
-      for (const reply of comment.replies?.data ?? []) {
-        rows.push(
-          toRow(reply, {
-            clientId,
-            accountId,
-            mediaId,
-            postId: postIdByMediaId.get(mediaId) ?? null,
-            parentId: comment.id,
-            syncedAt: now,
-          })
-        )
-      }
     }
   }
 
@@ -283,7 +308,7 @@ export async function syncClientComments(
     admin,
     clientId,
     accountId,
-    stale.map((item) => item.id),
+    stale.map((post) => post.externalPostId),
     new Set(rows.map((row) => row.id))
   )
 
@@ -298,14 +323,20 @@ export async function syncClientComments(
  * busy post at 50 comments.
  */
 async function fetchAllComments(
-  mediaId: string,
-  accessToken: string,
+  adapter: CommentsAdapter,
+  account: NetworkAccount,
+  externalPostId: string,
   expectedCount: number
-): Promise<IgComment[]> {
-  const all: IgComment[] = []
+): Promise<PlatformComment[]> {
+  const all: PlatformComment[] = []
   let cursor: string | undefined
   for (let page = 0; page < MAX_PAGES_PER_MEDIA; page++) {
-    const result = await fetchMediaComments(mediaId, accessToken, expectedCount, cursor)
+    const result = await adapter.fetchComments({
+      account,
+      externalPostId,
+      expectedCount,
+      after: cursor,
+    })
     all.push(...result.comments)
     // `withheld` is not an error and not an empty post: the app lacks Advanced
     // Access, so Instagram answered 200 with nothing. Stopping here stores zero
@@ -317,37 +348,31 @@ async function fetchAllComments(
 }
 
 function toRow(
-  comment: {
-    id: string
-    text?: string
-    username?: string
-    timestamp?: string
-    like_count?: number
-    hidden?: boolean
-  },
+  comment: PlatformComment,
   context: {
+    platform: string
     clientId: string
     accountId: string
     mediaId: string
     postId: string | null
-    parentId: string | null
     syncedAt: string
   }
 ): CommentRow {
   return {
     id: comment.id,
     client_id: context.clientId,
-    ig_account_id: context.accountId,
-    ig_media_id: context.mediaId,
+    platform: context.platform,
+    platform_account_id: context.accountId,
+    external_post_id: context.mediaId,
     post_id: context.postId,
-    parent_id: context.parentId,
-    // Undefined rather than absent when the app lacks Advanced Access: Instagram
-    // returns the id alone, and null is the honest record of that.
-    author_username: comment.username ?? null,
-    text: comment.text ?? null,
-    hidden: comment.hidden ?? false,
-    like_count: comment.like_count ?? null,
-    commented_at: comment.timestamp ?? null,
+    parent_id: comment.parentId,
+    // Null rather than absent when the network withheld it: Instagram returns the id alone
+    // without Advanced Access, and null is the honest record of that.
+    author_username: comment.authorName,
+    text: comment.text,
+    hidden: comment.hidden,
+    like_count: comment.likeCount,
+    commented_at: comment.commentedAt,
     synced_at: context.syncedAt,
   }
 }
@@ -362,24 +387,24 @@ async function countStoredByMedia(
   if (mediaIds.length === 0) return new Map()
 
   const { data, error } = await admin
-    .from('ig_comments')
-    .select('ig_media_id')
+    .from('platform_comments')
+    .select('external_post_id')
     .eq('client_id', clientId)
-    .eq('ig_account_id', accountId)
-    .in('ig_media_id', mediaIds)
-  if (error) throw new Error(`ig_comments count query failed: ${error.message}`)
+    .eq('platform_account_id', accountId)
+    .in('external_post_id', mediaIds)
+  if (error) throw new Error(`platform_comments count query failed: ${error.message}`)
 
   const counts = new Map<string, number>()
-  for (const row of (data ?? []) as Array<{ ig_media_id: string }>) {
-    counts.set(row.ig_media_id, (counts.get(row.ig_media_id) ?? 0) + 1)
+  for (const row of (data ?? []) as Array<{ external_post_id: string }>) {
+    counts.set(row.external_post_id, (counts.get(row.external_post_id) ?? 0) + 1)
   }
   return counts
 }
 
 async function upsertComments(admin: SupabaseClient, rows: CommentRow[]): Promise<void> {
   if (rows.length === 0) return
-  const { error } = await admin.from('ig_comments').upsert(rows, { onConflict: 'id' })
-  if (error) throw new Error(`ig_comments upsert failed: ${error.message}`)
+  const { error } = await admin.from('platform_comments').upsert(rows, { onConflict: 'id' })
+  if (error) throw new Error(`platform_comments upsert failed: ${error.message}`)
 }
 
 /**
@@ -399,20 +424,20 @@ async function deleteVanished(
   if (mediaIds.length === 0) return
 
   const { data, error } = await admin
-    .from('ig_comments')
+    .from('platform_comments')
     .select('id')
     .eq('client_id', clientId)
-    .eq('ig_account_id', accountId)
-    .in('ig_media_id', mediaIds)
-  if (error) throw new Error(`ig_comments stale query failed: ${error.message}`)
+    .eq('platform_account_id', accountId)
+    .in('external_post_id', mediaIds)
+  if (error) throw new Error(`platform_comments stale query failed: ${error.message}`)
 
   const gone = ((data ?? []) as Array<{ id: string }>)
     .map((row) => row.id)
     .filter((id) => !keep.has(id))
   if (gone.length === 0) return
 
-  const { error: deleteError } = await admin.from('ig_comments').delete().in('id', gone)
-  if (deleteError) throw new Error(`ig_comments delete failed: ${deleteError.message}`)
+  const { error: deleteError } = await admin.from('platform_comments').delete().in('id', gone)
+  if (deleteError) throw new Error(`platform_comments delete failed: ${deleteError.message}`)
 }
 
 /**
@@ -425,6 +450,6 @@ async function deleteVanished(
  */
 async function sweepExpiredComments(admin: SupabaseClient): Promise<void> {
   const cutoff = new Date(Date.now() - RETENTION_DAYS * MS_PER_DAY).toISOString()
-  const { error } = await admin.from('ig_comments').delete().lt('commented_at', cutoff)
-  if (error) throw new Error(`ig_comments retention sweep failed: ${error.message}`)
+  const { error } = await admin.from('platform_comments').delete().lt('commented_at', cutoff)
+  if (error) throw new Error(`platform_comments retention sweep failed: ${error.message}`)
 }
