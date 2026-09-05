@@ -145,6 +145,8 @@ export function useCalendar(initialPosts: CalendarPost[], timeZone: string) {
     async (
       postId: string,
       scheduledAt: string,
+      /** Where the post should go — the destinations the server resolved for it. */
+      platforms: readonly string[],
       contentUpdates?: { caption?: string; slides_json?: unknown }
     ) => {
       await runPostMutation({
@@ -158,7 +160,7 @@ export function useCalendar(initialPosts: CalendarPost[], timeZone: string) {
             const copy = await savePostCopy(postId, contentUpdates)
             if (!copy.ok) return copy
           }
-          return persistSchedule(postId, scheduledAt)
+          return persistSchedule(postId, scheduledAt, platforms)
         },
         patch: (p) => ({
           ...p,
@@ -181,7 +183,8 @@ export function useCalendar(initialPosts: CalendarPost[], timeZone: string) {
       await runPostMutation({
         postId,
         // Unscheduling is scheduling to nowhere — same writer, which derives 'approved' itself.
-        run: () => persistSchedule(postId, null),
+        // No destinations either: a post with no slot is not on its way anywhere.
+        run: () => persistSchedule(postId, null, []),
         patch: (p) => ({
           ...p,
           status: 'approved',
@@ -320,7 +323,9 @@ export function useCalendar(initialPosts: CalendarPost[], timeZone: string) {
 
       const ok = await runPostMutation({
         postId,
-        run: () => persistSchedule(postId, to),
+        // Moving a post does not change where it goes, and re-assigning is idempotent —
+        // passing nothing would read as "nowhere to publish" and be reported as such.
+        run: () => persistSchedule(postId, to, post.destinations),
         patch: (p) => ({ ...p, scheduled_at: to }),
         failureMessage: 'Could not move this post',
       })
@@ -361,7 +366,13 @@ export function useCalendar(initialPosts: CalendarPost[], timeZone: string) {
     async (postId: string, instant: string): Promise<boolean> =>
       runPostMutation({
         postId,
-        run: () => persistSchedule(postId, instant),
+        // As in `commitMove`: putting a post back does not change where it goes.
+        run: () =>
+          persistSchedule(
+            postId,
+            instant,
+            postsRef.current.find((p) => p.id === postId)?.destinations ?? []
+          ),
         patch: (p) => ({ ...p, scheduled_at: instant }),
         failureMessage: 'Could not put this post back',
       }),

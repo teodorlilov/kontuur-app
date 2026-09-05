@@ -409,7 +409,7 @@ export function ReviewQueue({
         if (!copy.ok) return copy
         // Through the one scheduler, so approving a single post and scheduling a selection from
         // the batch bar on this same screen validate the instant identically.
-        return schedulePost(postId, scheduledAt)
+        return schedulePost(postId, scheduledAt, post.destinations)
       })
       .then((result) => {
         if (!result.ok) rollback()
@@ -842,6 +842,7 @@ export function ReviewQueue({
           id: p.id,
           client_name: p.client_name,
           caption: p.caption,
+          destinations: p.destinations,
         }))}
         timeZone={timezone}
         initialAssignments={batch?.assignments}

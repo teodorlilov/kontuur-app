@@ -53,7 +53,7 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
     // Publishing now is the moment destinations come into existence for a post that was never
     // scheduled — the same operation scheduling performs, so it goes through the same function.
     // Idempotent, so pressing the button twice cannot create duplicates.
-    const publications = await assignDestinations(admin, postId, post.client_id, postType)
+    const publications = await assignDestinations(admin, postId, post.client_id, postType, 'all')
     if (publications.length === 0) {
       return NextResponse.json(
         { error: 'This client has no connected account that can take this post' },

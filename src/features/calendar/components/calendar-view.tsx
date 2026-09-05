@@ -259,9 +259,9 @@ export function CalendarView({ initialPosts, clients, anchorWeekISO }: CalendarV
     if (next) setActivePostId(next.id)
   }
 
-  async function handleSchedule(postId: string, scheduledAt: string) {
+  async function handleSchedule(postId: string, scheduledAt: string, platforms: string[]) {
     const idx = cardQueue.findIndex((p) => p.id === postId)
-    await schedulePost(postId, scheduledAt)
+    await schedulePost(postId, scheduledAt, platforms)
     closeCard()
     const nextPost = cardQueue[idx + 1]
     setActivePostId(nextPost?.id ?? null)

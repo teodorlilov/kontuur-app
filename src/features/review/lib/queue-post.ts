@@ -31,6 +31,8 @@ export type QueuePost = Omit<
   /** True for legacy rows whose authenticity was never measured — the shell
    *  runs one detect-slop call on focus for these. */
   needsSlopCheck: boolean
+  /** Where this post can go — see `CalendarPost.destinations`. */
+  destinations: string[]
   client_name: string
   is_health_niche: boolean
   images: PostImage[]

@@ -233,9 +233,11 @@ export async function deletePost(
  */
 export async function schedulePost(
   postId: string,
-  scheduledAt: string | null
+  scheduledAt: string | null,
+  /** See `schedulePosts`. Empty when unscheduling or approving without a slot. */
+  platforms: readonly string[]
 ): Promise<ActionResult<{ nowhereToGo: boolean }>> {
-  const result = await schedulePosts([{ postId, scheduledAt }])
+  const result = await schedulePosts([{ postId, scheduledAt, platforms }])
   if (!result.ok) return result
   // A batch reports `ok` with a count, because "three of four landed" is a real outcome it has to
   // be able to say. One post has no such middle: it either moved or it did not, and returning
@@ -264,7 +266,16 @@ export async function schedulePost(
  * single-post caller gains both by coming through here.
  */
 export async function schedulePosts(
-  items: Array<{ postId: string; scheduledAt: string | null }>
+  items: Array<{
+    postId: string
+    scheduledAt: string | null
+    /**
+     * Where this post should go. The server intersects it with what the post can actually
+     * reach, so this is intent, not fact. Ignored when unscheduling — a post with no slot has
+     * no destinations, and its pending ones are withdrawn instead.
+     */
+    platforms: readonly string[]
+  }>
 ): Promise<ActionResult<{ succeeded: number; total: number; nowhereToGo: number }>> {
   // Validated before auth, matching the other writers here: a malformed payload is the caller's
   // own bug and says nothing about the post, so there is nothing to leak by answering it first.
@@ -316,11 +327,13 @@ export async function schedulePosts(
   // Grouped by instant so one update covers every post sharing a slot. `null` groups too — it is
   // the unschedule case, which the single-post caller uses and which used to be impossible here.
   const byTime = new Map<string | null, string[]>()
+  const chosenById = new Map<string, readonly string[]>()
   for (const item of items) {
     if (!verifiedIds.has(item.postId)) continue
     const group = byTime.get(item.scheduledAt) ?? []
     group.push(item.postId)
     byTime.set(item.scheduledAt, group)
+    chosenById.set(item.postId, item.platforms)
   }
 
   let succeeded = 0
@@ -370,7 +383,13 @@ export async function schedulePosts(
         // Zero destinations is not nothing to do — it is a post that can never publish. It was
         // accepted in silence: no rows written, and the cron reads publications, so the post sat
         // in the calendar looking queued forever.
-        const created = await assignDestinations(admin, postId, post.client_id, post.post_type)
+        const created = await assignDestinations(
+          admin,
+          postId,
+          post.client_id,
+          post.post_type,
+          chosenById.get(postId) ?? []
+        )
         if (created.length === 0) nowhereToGo.push(postId)
       } catch (err) {
         // Same end state as resolving to nowhere — a slot with no destinations — so it is

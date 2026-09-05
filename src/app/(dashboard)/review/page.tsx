@@ -1,3 +1,5 @@
+import { capableDestinations } from '@/features/publishing/lib/destinations'
+import type { PostType } from '@/types/api'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { requireSessionUser } from '@/lib/auth/session'
 import { getCachedAgencyClients } from '@/lib/queries/cache'
@@ -31,6 +33,7 @@ export default async function ReviewPage() {
       best_time_json: unknown
       best_time_updated_at: string | null
     } | null
+    social_connections: Array<{ platform: string }> | null
   }
 
   // Oldest first: the queue drains, it doesn't silt up. The week schedule only
@@ -38,7 +41,9 @@ export default async function ReviewPage() {
   const [{ data: clientRows }, { data: postRows }, weekSchedule] = await Promise.all([
     supabase
       .from('clients')
-      .select('id, brand_profiles(is_health_niche, best_time_json, best_time_updated_at)')
+      .select(
+        'id, brand_profiles(is_health_niche, best_time_json, best_time_updated_at), social_connections(platform)'
+      )
       .eq('agency_id', agencyId),
     clientIds.length > 0
       ? supabase
@@ -61,6 +66,11 @@ export default async function ReviewPage() {
     clientList.map((c) => [c.id, c.brand_profiles?.is_health_niche ?? false])
   )
   const nameByClient = new Map(clients.map((c) => [c.id, c.name]))
+  // The same rule the calendar and the publish path apply — one `capableDestinations`, so no
+  // surface can disagree with another about where a post can go.
+  const connectedByClient = new Map(
+    clientList.map((c) => [c.id, (c.social_connections ?? []).map((conn) => conn.platform)])
+  )
 
   // Through `parseBestTimes`, like the calendar. This was the second of the three hand-rolled
   // `Array.isArray(x) ? (x as BestTimePlatform[]) : null` checks that helper was written to replace —
@@ -108,6 +118,10 @@ export default async function ReviewPage() {
     validation: toValidationData(p.validation_json) ?? fallbackValidationData(p.quality_score_avg),
     needsSlopCheck: needsSlopFallback(p.validation_json),
     client_name: nameByClient.get(p.client_id) ?? 'Unknown',
+    destinations: capableDestinations(
+      connectedByClient.get(p.client_id) ?? [],
+      (p.post_type ?? 'single') as PostType
+    ),
     is_health_niche: healthByClient.get(p.client_id) ?? false,
     images: imagesByPost.get(p.id) ?? [],
     composedPositions: composedByPost.get(p.id) ?? [],

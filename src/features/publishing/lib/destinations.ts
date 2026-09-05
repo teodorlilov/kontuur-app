@@ -17,6 +17,23 @@ import type { PostType } from '@/types/api'
  * platforms kept beside it — a list like that has to stay in agreement with the adapters,
  * and the list is what goes stale.
  */
+/**
+ * Which of these connected platforms can take this kind of post.
+ *
+ * The pure half of the question, so the rule has one home. The query below reads it, and so do
+ * the server components that tell a post where it COULD go — without either re-deriving
+ * "carousels are Instagram-only" from a list kept beside the adapters. Capability is the
+ * adapter's answer (`accepts`), never a constant, because a list like that goes stale.
+ */
+export function capableDestinations(connected: readonly string[], postType: PostType): string[] {
+  return connected.flatMap((platform) => {
+    const adapter = resolveNetwork(platform)
+    // Canva shares this vocabulary and is not a publishing network; it resolves to no adapter,
+    // which is the same answer as "we cannot publish there" and needs no special case.
+    return adapter?.accepts(postType) ? [adapter.platform] : []
+  })
+}
+
 async function resolveDestinations(
   admin: SupabaseClient,
   clientId: string,
@@ -31,36 +48,46 @@ async function resolveDestinations(
     .not('access_token', 'is', null)
   if (error) throw new Error(`destination lookup failed for client ${clientId}: ${error.message}`)
 
-  return ((data ?? []) as Array<{ platform: string }>).flatMap((row) => {
-    const adapter = resolveNetwork(row.platform)
-    // Canva shares this table and is not a publishing network; it resolves to no adapter,
-    // which is the same answer as "we cannot publish there" and needs no special case.
-    return adapter?.accepts(postType) ? [adapter.platform] : []
-  })
+  return capableDestinations(
+    ((data ?? []) as Array<{ platform: string }>).map((row) => row.platform),
+    postType
+  )
 }
 
 /**
- * Record the destinations a post's slot implies.
+ * Record where a post is going, from the destinations its caller chose.
  *
  * The SLOT itself stays with the caller — the three writers stamp it differently (a batch update
  * by id, a fresh insert, a conditional stamp on publish-now) and folding that in would mean this
- * function wrote `posts` as well. What it owns is the half that was being pasted: resolve where
- * the post can go, then record it. The third slot writer pasted only the first half: `POST /api/posts` — the generate wizard's approve, the
- * primary way a post is created — stamped `status` and `scheduled_at` and created nothing. The
- * publish cron is rooted on `post_publications`, so those posts sat in the calendar looking
- * scheduled and could never go out, with nothing failing to say so.
+ * function wrote `posts` as well. What it owns is the half that was being pasted: decide the real
+ * destinations, then record them. The third slot writer pasted only the first half — `POST
+ * /api/posts`, the generate wizard's approve — so those posts sat in the calendar looking
+ * scheduled while the cron, which is rooted on `post_publications`, could never see them.
  *
- * Returns what it recorded. An empty array is the answer worth acting on: the client has no
- * connected account that can take this post, so nothing will ever publish it. Idempotent through
- * `createPublications`, so re-scheduling a post cannot duplicate or reset its destinations.
+ * Returns what it recorded. An empty array is the answer worth acting on: nothing will publish
+ * this post. Idempotent through `createPublications`, so re-scheduling cannot duplicate a
+ * destination or reset an attempt counter a previous run earned.
  */
 export async function assignDestinations(
   admin: SupabaseClient,
   postId: string,
   clientId: string,
-  postType: PostType
+  postType: PostType,
+  /**
+   * Which destinations to record. `'all'` is every one this post can reach — what a caller with
+   * no choice to offer means, like publishing on demand or approving a draft straight into a
+   * slot. An array narrows to those, and is what the calendar sends.
+   *
+   * Named rather than optional: "send it everywhere" and "send it to these" are different
+   * intents, and an absent argument would leave which one a caller meant to be inferred.
+   */
+  chosen: readonly string[] | 'all'
 ): Promise<Publication[]> {
-  const destinations = await resolveDestinations(admin, clientId, postType)
-  if (destinations.length === 0) return []
-  return createPublications(admin, postId, destinations)
+  const capable = await resolveDestinations(admin, clientId, postType)
+  // Intersected, never taken on trust. An array arrives from a browser — a statement of intent,
+  // not of fact — so what a post CAN reach stays the server's answer. A caller asking for a
+  // network the client has not connected, or one that cannot take this post type, does not get it.
+  const targets = chosen === 'all' ? capable : capable.filter((p) => chosen.includes(p))
+  if (targets.length === 0) return []
+  return createPublications(admin, postId, targets)
 }

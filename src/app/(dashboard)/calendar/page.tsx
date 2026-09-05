@@ -11,12 +11,13 @@ import {
 } from '@/lib/queries/select-columns'
 import type { PostStatus } from '@/lib/validation'
 import { toPublicationSummary } from '@/lib/posts/publish-state'
+import { capableDestinations } from '@/features/publishing/lib/destinations'
 import type { Tables } from '@/types/database'
 import { fetchImagesByPost } from '@/lib/posts/fetch-post-images'
 import { parseBestTimes } from '@/lib/suggested-times/schemas'
 import { toValidationData } from '@/features/review/lib/adapt-validation'
 import { CalendarView } from '@/features/calendar/components/calendar-view'
-import type { CalendarPost } from '@/types/api'
+import type { CalendarPost, PostType } from '@/types/api'
 
 interface CalendarPageProps {
   searchParams: Promise<Record<string, string | string[] | undefined>>
@@ -135,6 +136,13 @@ export default async function CalendarPage({ searchParams }: CalendarPageProps) 
     ),
   }))
 
+  // The connected networks per client, for the per-post destination resolve below. Read off the
+  // rows already fetched rather than a lookup per post — `capableDestinations` is the same rule
+  // the publish path applies, so the two cannot disagree about where a post can go.
+  const connectedByClient = new Map(
+    clientList.map((c) => [c.id, (c.social_connections ?? []).map((conn) => conn.platform)])
+  )
+
   // Derived, not restated. Adding `expires_at` pushed this to five fields and
   // `row-mirrors` correctly called it a hand-written copy of the table — and the copy
   // was already wrong: it declared `created_at: string` over a nullable column, which
@@ -198,6 +206,10 @@ export default async function CalendarPage({ searchParams }: CalendarPageProps) 
       // Renamed on the way out, once: the card speaks camelCase and the table does not, and
       // leaving the raw shape through would put that translation in every consumer.
       publications: publicationRows.map(toPublicationSummary),
+      destinations: capableDestinations(
+        connectedByClient.get(p.client_id) ?? [],
+        (p.post_type ?? 'single') as PostType
+      ),
       images: imagesByPost.get(p.id) ?? [],
       approval_status: token?.status ?? null,
       approval_client_note: token?.client_note ?? null,

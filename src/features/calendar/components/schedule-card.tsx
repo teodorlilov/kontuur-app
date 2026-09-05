@@ -54,7 +54,7 @@ interface ScheduleCardProps {
   onClose: () => void
   onPrev: () => void
   onNext: () => void
-  onSchedule: (postId: string, scheduledAt: string) => Promise<void>
+  onSchedule: (postId: string, scheduledAt: string, platforms: string[]) => Promise<void>
   onUnschedule: (postId: string) => void
   onSkip: (postId: string) => void
   onDelete: (postId: string) => void
@@ -270,7 +270,7 @@ export const ScheduleCard = memo(function ScheduleCard({
       onRearm(currentPost.id, scheduledAt)
       return
     }
-    void onSchedule(currentPost.id, scheduledAt)
+    void onSchedule(currentPost.id, scheduledAt, currentPost.destinations)
   }
 
   function handleCopyCaption() {

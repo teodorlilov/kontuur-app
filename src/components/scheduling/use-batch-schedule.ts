@@ -10,6 +10,8 @@ import type { PostRow } from '@/types'
 export type BatchPost = Pick<PostRow, 'id' | 'caption'> & {
   /** clients.name through the join — not a posts column. */
   client_name: string
+  /** Where this post can go, resolved server-side. See `CalendarPost.destinations`. */
+  destinations: string[]
 }
 
 interface Assignment {
@@ -67,7 +69,11 @@ export function useBatchSchedule(
     try {
       const items = toSchedule.map((p) => {
         const a = assignments.get(p.id)!
-        return { postId: p.id, scheduledAt: formatScheduledAt(a.date, a.time, timeZone) }
+        return {
+          postId: p.id,
+          scheduledAt: formatScheduledAt(a.date, a.time, timeZone),
+          platforms: p.destinations,
+        }
       })
 
       const result = await schedulePosts(items)

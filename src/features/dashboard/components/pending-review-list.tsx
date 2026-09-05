@@ -61,7 +61,8 @@ export function PendingReviewList({ posts, totalPending }: PendingReviewListProp
   function handleApprove(post: PendingPostPreview) {
     setApprovingId(post.id)
     startTransition(async () => {
-      const result = await schedulePost(post.id, null)
+      // No slot, so no destinations: approving without a time is not sending it anywhere.
+      const result = await schedulePost(post.id, null, [])
       if (!result.ok) {
         setApprovingId(null)
         toast.error(result.error)

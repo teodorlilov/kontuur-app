@@ -203,6 +203,12 @@ export type CalendarPost = Omit<PostColumns, 'slides_json' | 'validation_json'> 
    * ever hold one of them. `publishStateOf` reduces these to the single word a cell shows.
    */
   publications: PublicationSummary[]
+  /**
+   * Where this post CAN go: the client's connected networks whose adapter accepts this post
+   * type, resolved server-side. Scheduling sends it back as the chosen destinations, and the
+   * server intersects it again — this is what a chooser will narrow, not what it will trust.
+   */
+  destinations: string[]
   /** Parsed on the way in, unlike the raw column. */
   slides_json: CarouselSlide[] | null
   /**

@@ -384,7 +384,10 @@ export async function POST(request: Request) {
         admin,
         post.id,
         body.client_id,
-        insertRow.post_type as PostType
+        insertRow.post_type as PostType,
+        // The wizard's approve offers no destination choice; the calendar is where a post's
+        // destinations get narrowed.
+        'all'
       )
       if (destinations.length === 0) {
         console.error(`[posts] ${post.id} scheduled with no publishable destination`)

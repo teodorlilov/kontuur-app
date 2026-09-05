@@ -96,7 +96,7 @@ describe('schedulePost', () => {
       agencyId: AGENCY_ID,
     })
 
-    const result = await schedulePost(POST_ID, null)
+    const result = await schedulePost(POST_ID, null, [])
 
     // The whole point. `ok: true` here removes the row from the dashboard queue and arms an Undo
     // against a post that is still pending_review.
@@ -106,14 +106,17 @@ describe('schedulePost', () => {
   it('reports a failure when the post was not the caller’s to move', async () => {
     mocks.verifyPostsOwnership.mockResolvedValue(new Set<string>())
 
-    const result = await schedulePost(POST_ID, null)
+    const result = await schedulePost(POST_ID, null, [])
 
     // Ownership drops the id rather than raising, so this arrived as `succeeded: 0` wearing `ok`.
     expect(result.ok).toBe(false)
   })
 
   it('succeeds when the post moved', async () => {
-    expect(await schedulePost(POST_ID, null)).toEqual({ ok: true, data: { nowhereToGo: false } })
+    expect(await schedulePost(POST_ID, null, [])).toEqual({
+      ok: true,
+      data: { nowhereToGo: false },
+    })
   })
 })
 
@@ -121,7 +124,7 @@ describe('schedulePosts', () => {
   it('fails the batch when nothing at all landed', async () => {
     mocks.verifyPostsOwnership.mockResolvedValue(new Set<string>())
 
-    const result = await schedulePosts([{ postId: POST_ID, scheduledAt: null }])
+    const result = await schedulePosts([{ postId: POST_ID, scheduledAt: null, platforms: [] }])
 
     expect(result.ok).toBe(false)
   })
@@ -133,8 +136,8 @@ describe('schedulePosts', () => {
     mocks.verifyPostsOwnership.mockResolvedValue(new Set([POST_ID]))
 
     const result = await schedulePosts([
-      { postId: POST_ID, scheduledAt: null },
-      { postId: other, scheduledAt: null },
+      { postId: POST_ID, scheduledAt: null, platforms: [] },
+      { postId: other, scheduledAt: null, platforms: [] },
     ])
 
     expect(result).toEqual({ ok: true, data: { succeeded: 1, total: 2, nowhereToGo: 0 } })
@@ -159,7 +162,7 @@ describe('schedulePosts — the destinations half', () => {
     })
 
     const result = await schedulePosts([
-      { postId: POST_ID, scheduledAt: '2026-09-08T09:00:00.000Z' },
+      { postId: POST_ID, scheduledAt: '2026-09-08T09:00:00.000Z', platforms: ['instagram'] },
     ])
 
     expect(result.ok).toBe(false)
@@ -172,7 +175,7 @@ describe('schedulePosts — the destinations half', () => {
     mocks.assignDestinations.mockResolvedValue([])
 
     const result = await schedulePosts([
-      { postId: POST_ID, scheduledAt: '2026-09-08T09:00:00.000Z' },
+      { postId: POST_ID, scheduledAt: '2026-09-08T09:00:00.000Z', platforms: ['instagram'] },
     ])
 
     // Asked, and answered with nothing — which is the answer that has to reach the user.
@@ -190,7 +193,9 @@ describe('schedulePosts — the destinations half', () => {
     mocks.assignDestinations.mockRejectedValue(new Error('publications upsert failed'))
 
     await expect(
-      schedulePosts([{ postId: POST_ID, scheduledAt: '2026-09-08T09:00:00.000Z' }])
+      schedulePosts([
+        { postId: POST_ID, scheduledAt: '2026-09-08T09:00:00.000Z', platforms: ['instagram'] },
+      ])
     ).resolves.toEqual({ ok: true, data: { succeeded: 1, total: 1, nowhereToGo: 1 } })
   })
 
@@ -203,7 +208,9 @@ describe('schedulePosts — the destinations half', () => {
       agencyId: AGENCY_ID,
     })
 
-    await schedulePosts([{ postId: POST_ID, scheduledAt: '2026-09-08T09:00:00.000Z' }])
+    await schedulePosts([
+      { postId: POST_ID, scheduledAt: '2026-09-08T09:00:00.000Z', platforms: ['instagram'] },
+    ])
 
     expect(mocks.assignDestinations).not.toHaveBeenCalled()
     expect(mocks.withdrawPendingPublications).not.toHaveBeenCalled()

@@ -28,6 +28,7 @@ function post(overrides: Partial<QueuePost> = {}): QueuePost {
     validation_json: null,
     validation: validation(),
     needsSlopCheck: false,
+    destinations: ['instagram'],
     status: 'pending_review',
     priority: false,
     quality_score_avg: 8,
