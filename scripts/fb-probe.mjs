@@ -41,7 +41,10 @@ if (!TOKEN) {
 const redact = (text) =>
   String(text)
     .replaceAll(TOKEN, '{USER_TOKEN}')
-    .replace(/"access_token":"[^"]+"/g, '"access_token":"{PAGE_TOKEN}"')
+    // `\s*` is load-bearing: this ran once without it, and because redaction happens AFTER
+    // JSON.stringify(_, null, 2) inserts a space after the colon, a live Page token from
+    // /me/accounts went into the file in plaintext.
+    .replace(/"access_token"\s*:\s*"[^"]+"/g, '"access_token": "{PAGE_TOKEN}"')
 
 const log = []
 
