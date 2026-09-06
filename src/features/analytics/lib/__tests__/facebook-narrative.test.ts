@@ -11,8 +11,13 @@ vi.mock('next/cache', () => ({ unstable_cache: (fn: unknown) => fn }))
 vi.mock('@/lib/supabase/admin', () => ({ createAdminSupabaseClient: vi.fn() }))
 vi.mock('@/lib/queries/db', () => ({ fetchConnectionSyncState: vi.fn() }))
 vi.mock('@/ai/analytics/generate-summary', () => ({ generateAnalyticsSummary: vi.fn() }))
-vi.mock('../facebook-report-data', () => ({
-  FB_METRICS_TAG: 'fb-metrics',
+// The import() form, not a bare string: a vi.mock path that stops resolving is a SILENT no-op, and
+// this one would fail green — the real module loads cleanly under the mocks above and the two pure
+// builders under test still pass, so nothing would ever say the isolation was gone.
+vi.mock(import('../facebook-report-data'), () => ({
+  // `as const` because the typed form checks the factory against the real module, and the real
+  // FB_METRICS_TAG is the literal 'fb-metrics', not string. That strictness is the point.
+  FB_METRICS_TAG: 'fb-metrics' as const,
   getFacebookAnalyticsReport: vi.fn(),
 }))
 

@@ -13,13 +13,15 @@ vi.mock('@/lib/meta/facebook/insights', () => ({
   fetchPagePostMeasurements: async () => [],
 }))
 const upsertFbPageMetricDays = vi.fn()
-vi.mock('../fb-page-metrics-store', () => ({
+// The import() form, not a bare string: a vi.mock path that stops resolving is a SILENT no-op —
+// the real module loads and the test passes anyway. tsc checks this one.
+vi.mock(import('../fb-page-metrics-store'), () => ({
   upsertFbPageMetricDays: (...args: unknown[]) => upsertFbPageMetricDays(...args),
 }))
 vi.mock('@/lib/queries/posts-by-media-id', () => ({
   fetchPostIdsByMediaId: async () => new Map(),
 }))
-vi.mock('../post-metrics-store', () => ({
+vi.mock(import('../post-metrics-store'), () => ({
   upsertPostMetricRows: vi.fn(),
 }))
 

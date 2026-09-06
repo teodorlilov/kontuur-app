@@ -129,6 +129,23 @@ for (const [table, allowed] of Object.entries(registry)) {
   }
 }
 
+/**
+ * A registry key naming a file that is not on disk.
+ *
+ * The stale check above cannot catch this on its own: a `[hand-listed]` entry is exempt from it by
+ * design (the scan cannot see those writes, so "not found" is their normal state), and nothing else
+ * ever compares a key against the filesystem. So a hand-listed writer that is renamed or moved keeps
+ * its blessing forever, pointing at nothing — and if a file is later recreated at that path, it is
+ * pre-approved to write the table with no review. That is the same allowlist-widening the stale check
+ * exists to prevent, arriving through the one door it left open.
+ */
+const missing = []
+for (const [table, allowed] of Object.entries(registry)) {
+  for (const file of Object.keys(allowed)) {
+    if (!existsSync(join(ROOT, file))) missing.push(`${table} → ${file}`)
+  }
+}
+
 const total = [...found.values()].reduce((n, s) => n + s.size, 0)
 console.log(
   `\n${found.size} tables written from ${total} files; ` +
@@ -152,6 +169,13 @@ if (unlisted.length > 0) {
 if (stale.length > 0) {
   console.error('\nThese files no longer write their table. Delete the entry:\n')
   for (const entry of stale) console.error(`  - ${entry}`)
+}
+
+if (missing.length > 0) {
+  console.error('\nThese entries name a file that does not exist. Point them at the file that')
+  console.error('does the write now, or delete them — a blessing on a path nobody can read is')
+  console.error('a blessing waiting for the wrong file to be created there:\n')
+  for (const entry of missing) console.error(`  - ${entry}`)
 }
 
 /**
@@ -179,4 +203,5 @@ if (existsSync(OPERATIONS_DOC)) {
   }
 }
 
-if (unlisted.length > 0 || stale.length > 0 || undocumented.length > 0) process.exit(1)
+if (unlisted.length > 0 || stale.length > 0 || missing.length > 0 || undocumented.length > 0)
+  process.exit(1)
