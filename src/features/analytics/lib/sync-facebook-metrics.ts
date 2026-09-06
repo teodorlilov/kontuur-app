@@ -176,6 +176,89 @@ async function syncClientPageMetrics(
   }
 }
 
+/** The most days one insights call may span — 120 answered `Invalid parameter`, 90 served 90 points (probed 2026-09-06). */
+const FILL_CHUNK_DAYS = 90
+
+/**
+ * Fill a WINDOW of Page days on demand — Facebook's whole answer to Instagram's
+ * auto-fill machinery, and the reason it is one function instead of an apparatus:
+ * Instagram serves most metrics as one aggregate per asked window, so filling means
+ * walking day by day at ~5 calls each; Facebook serves native day series, so a 90-day
+ * chunk costs the same five calls a single night does. History reaches at least two
+ * years back (probed).
+ *
+ * Days Meta serves land as measured rows. Days it does NOT serve get a MARKER row —
+ * identity and `totals_synced_at` only, every measure absent — recording "asked, nothing
+ * there" so the unfilled count stops counting them and the auto-fill chain terminates.
+ * The same both-null-row pattern the audience snapshot writes, for the same reason.
+ */
+export async function fillPageWindow(
+  admin: SupabaseClient,
+  {
+    clientId,
+    pageId,
+    accessToken,
+    fromDate,
+    toDate,
+  }: { clientId: string; pageId: string; accessToken: string; fromDate: string; toDate: string }
+): Promise<{ wroteDays: number }> {
+  const now = new Date().toISOString()
+  let wroteDays = 0
+
+  let chunkStart = fromDate
+  while (chunkStart <= toDate) {
+    const chunkEnd = minDate(shiftDays(chunkStart, FILL_CHUNK_DAYS - 1), toDate)
+    const sinceTs = Math.floor(Date.parse(`${chunkStart}T00:00:00Z`) / 1000)
+    // `until` is exclusive-ish at Meta's end; one day past the chunk's last day covers it.
+    const untilTs = Math.floor(Date.parse(`${shiftDays(chunkEnd, 1)}T00:00:00Z`) / 1000)
+    const series = await fetchPageDaySeries(pageId, accessToken, sinceTs, untilTs)
+    const rows = zipPageDays(clientId, pageId, series)
+
+    const served = new Set(rows.map((row) => row.metric_date))
+    for (let day = chunkStart; day <= chunkEnd; day = shiftDays(day, 1)) {
+      if (served.has(day)) continue
+      rows.push({ client_id: clientId, page_id: pageId, metric_date: day, totals_synced_at: now })
+    }
+    // Only rows inside the asked window count — the series can bleed a bucket past it.
+    const inWindow = rows.filter(
+      (row) => row.metric_date >= chunkStart && row.metric_date <= chunkEnd
+    )
+    await upsertFbPageMetricDays(admin, inWindow, 'facebook window fill')
+    wroteDays += inWindow.length
+
+    chunkStart = shiftDays(chunkEnd, 1)
+  }
+
+  // The window's posts, identity and tallies together — the same single read the nightly
+  // capture uses, just anchored at the window's start.
+  const posts = await fetchPagePostMeasurements(pageId, accessToken, `${fromDate}T00:00:00Z`)
+  if (posts.length > 0) {
+    const postIdByExternal = await fetchPostIdsByMediaId(
+      admin,
+      clientId,
+      posts.map((post) => post.id)
+    )
+    await upsertPostMetricRows(
+      admin,
+      posts.map((post) => toPostMetricRow(clientId, pageId, post, postIdByExternal)),
+      'facebook window fill posts'
+    )
+  }
+
+  return { wroteDays }
+}
+
+/** A day key shifted by whole days, in UTC — day keys are calendar facts, not instants. */
+function shiftDays(dayKey: string, days: number): string {
+  const date = new Date(`${dayKey}T00:00:00Z`)
+  date.setUTCDate(date.getUTCDate() + days)
+  return date.toISOString().slice(0, 10)
+}
+
+function minDate(a: string, b: string): string {
+  return a <= b ? a : b
+}
+
 /** Any day ever captured for this Page — decides backfill vs trailing window. */
 async function hasPageHistory(
   admin: SupabaseClient,

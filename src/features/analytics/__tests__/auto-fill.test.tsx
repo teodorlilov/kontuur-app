@@ -34,6 +34,7 @@ describe('AutoFill', () => {
     expect(fillPeriodData).toHaveBeenCalledTimes(1)
     expect(fillPeriodData).toHaveBeenCalledWith({
       clientId: 'c1',
+      network: 'instagram',
       preset: '30d',
       start: '2026-07-20',
       end: '2026-08-18',

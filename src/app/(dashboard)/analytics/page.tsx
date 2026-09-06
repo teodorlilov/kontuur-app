@@ -15,12 +15,15 @@ import { parseParam } from '@/utils/parse-param'
 import { AnalyticsNavProvider, PendingVeil } from '@/features/analytics/components/analytics-nav'
 import { AnalyticsView, ConnectPrompt } from '@/features/analytics/components/analytics-view'
 import { FacebookAnalyticsView } from '@/features/analytics/components/facebook-analytics-view'
+import { AutoFill } from '@/features/analytics/components/auto-fill'
+import { FillingDocument } from '@/features/analytics/components/filling-document'
+import { PLATFORM_NAMES } from '@/lib/validation'
 import { getFacebookAnalyticsReport } from '@/features/analytics/lib/facebook-report-data'
 import { MastheadControls } from '@/features/analytics/components/masthead-controls'
 import type { ArchiveEntry } from '@/features/analytics/components/report-archive'
 import { buildFallbackNarrative } from '@/features/analytics/lib/narrative'
 import { getNarrative } from '@/features/analytics/lib/narrative'
-import { resolvePeriod } from '@/features/analytics/lib/period'
+import { periodDayKeys, resolvePeriod } from '@/features/analytics/lib/period'
 import { countUnfilledDays } from '@/features/analytics/lib/refresh-window'
 import { getAnalyticsReport } from '@/features/analytics/lib/report-data'
 import { toDateKey } from '@/utils/date-helpers'
@@ -106,7 +109,8 @@ export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps
       clientId,
       'facebook'
     )
-    const [fbData, fbArchiveResult] = await Promise.all([
+    const todayKey = toDateKey(new Date(), timezone)
+    const [fbData, fbArchiveResult, fbStoredDaysResult] = await Promise.all([
       getFacebookAnalyticsReport(clientId, period, timezone),
       supabase
         .from('analytics_reports')
@@ -116,7 +120,30 @@ export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps
         .eq('platform_account_id', facebook!.account_id)
         .order('created_at', { ascending: false })
         .limit(12),
+      // Uncached, like Instagram's unfilled count: this is the auto-fill trigger AND its
+      // terminator — a stale count would either re-pull forever or never pull at all.
+      supabase
+        .from('fb_page_metrics')
+        .select('metric_date')
+        .eq('client_id', clientId)
+        .eq('page_id', facebook!.account_id)
+        .gte('metric_date', period.start)
+        .lte('metric_date', period.end),
     ])
+    /**
+     * Days of the window never ASKED of Meta — no row at all. A day asked and unserved
+     * carries a marker row (fillPageWindow writes it), so old windows fill once and stay
+     * settled instead of re-pulling on every visit.
+     */
+    const fbStoredDays = new Set(
+      ((fbStoredDaysResult.data ?? []) as Array<{ metric_date: string }>).map(
+        (row) => row.metric_date
+      )
+    )
+    const fbUnfilledDays = periodDayKeys(period.start, period.days).filter(
+      (day) => day <= todayKey && !fbStoredDays.has(day)
+    ).length
+    const fbFilling = fbUnfilledDays > 0 && params.partial !== '1'
     if (fbArchiveResult.error) {
       console.error('[analytics] facebook archive list failed', fbArchiveResult.error)
     }
@@ -143,18 +170,37 @@ export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps
         </div>
         <div className={cn(PAGE_SHELL, 'pb-12 pt-5')}>
           <PendingVeil>
-            <FacebookAnalyticsView
-              data={fbData}
-              clientId={clientId}
-              clientName={client.name}
-              pageName={facebook!.account_name}
-              hasConnection={hasFacebook}
-              timezone={timezone}
-              lastSyncAt={fbSyncAt}
-              syncError={fbSyncError}
-              archive={fbArchive}
-              network="facebook"
-            />
+            {fbFilling ? (
+              <div id="analytics-print-area">
+                <AutoFill
+                  clientId={clientId}
+                  period={period}
+                  unfilledDays={fbUnfilledDays}
+                  network="facebook"
+                  networkLabel={PLATFORM_NAMES.facebook}
+                />
+                <FillingDocument
+                  unfilledDays={fbUnfilledDays}
+                  clientId={clientId}
+                  period={period}
+                  network="facebook"
+                  networkLabel={PLATFORM_NAMES.facebook}
+                />
+              </div>
+            ) : (
+              <FacebookAnalyticsView
+                data={fbData}
+                clientId={clientId}
+                clientName={client.name}
+                pageName={facebook!.account_name}
+                hasConnection={hasFacebook}
+                timezone={timezone}
+                lastSyncAt={fbSyncAt}
+                syncError={fbSyncError}
+                archive={fbArchive}
+                network="facebook"
+              />
+            )}
           </PendingVeil>
         </div>
       </AnalyticsNavProvider>

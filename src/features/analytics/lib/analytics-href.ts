@@ -48,7 +48,11 @@ export function analyticsClientHref(
  * leave the reader on a silhouette over data that is already stored. This is
  * the way out, and it is a plain URL so it survives a reload.
  */
-export function analyticsPartialHref(clientId: string, period: AnalyticsPeriod): string {
+export function analyticsPartialHref(
+  clientId: string,
+  period: AnalyticsPeriod,
+  network?: string
+): string {
   const params = new URLSearchParams({ client: clientId, partial: '1' })
   if (period.preset === 'custom') {
     params.set('from', period.start)
@@ -56,5 +60,5 @@ export function analyticsPartialHref(clientId: string, period: AnalyticsPeriod):
   } else {
     params.set('range', period.preset)
   }
-  return `/analytics?${params.toString()}`
+  return withNetwork(params, network)
 }

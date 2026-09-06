@@ -12,13 +12,15 @@ import {
   SOCIAL_CONNECTION_AUTH_COLUMNS,
   type SocialConnectionAuthColumns,
 } from '@/lib/queries/select-columns'
-import { fetchConnectionSyncState, fetchIgConnectionState } from '@/lib/queries/db'
+import { fetchConnection, fetchConnectionSyncState, fetchIgConnectionState } from '@/lib/queries/db'
+import { GraphApiError } from '@/lib/meta/graph-errors'
 import { isTokenExpired } from '@/lib/meta/token-expiry'
 import { toDateKey } from '@/utils/date-helpers'
 import { archiveReportInputSchema, type ArchiveReportInput } from '../schemas'
 import { periodFromBounds, type AnalyticsPeriod } from '../lib/period'
 import { getAnalyticsReport, IG_METRICS_TAG } from '../lib/report-data'
-import { getFacebookAnalyticsReport } from '../lib/facebook-report-data'
+import { FB_METRICS_TAG, getFacebookAnalyticsReport } from '../lib/facebook-report-data'
+import { fillPageWindow } from '../lib/sync-facebook-metrics'
 import type { FacebookReportData } from '../lib/build-facebook-report'
 import { refreshWindowMetrics } from '../lib/refresh-window'
 import { syncDemographicsWeekly } from '../lib/sync-metrics'
@@ -168,6 +170,43 @@ export async function fillPeriodData(
   if (!resolved.ok) return { ok: false, error: resolved.error }
   const { scope } = resolved
   const admin = createAdminSupabaseClient()
+
+  /**
+   * Facebook's fill is one ranged fetch, not Instagram's day walk — the API serves native
+   * day series, so the whole window costs five calls per 90-day chunk. Same action, same
+   * AutoFill loop; the network decides the shape of the work.
+   */
+  if (scope.network === 'facebook') {
+    const connection = await fetchConnection(admin, scope.client.id, 'facebook')
+    if (!connection?.access_token || isTokenExpired(connection.token_expires_at)) {
+      return { ok: true, data: { filled: false, stalled: true } }
+    }
+    try {
+      const today = toDateKey(new Date(), scope.timezone)
+      const outcome = await fillPageWindow(admin, {
+        clientId: scope.client.id,
+        pageId: connection.account_id,
+        accessToken: connection.access_token,
+        fromDate: scope.period.start,
+        // Never ask past today: the period can end in the future on a custom window.
+        toDate: scope.period.end < today ? scope.period.end : today,
+      })
+      revalidateTag(FB_METRICS_TAG, 'max')
+      // Marker rows count as filled: they are what makes the unfilled count drop, and the
+      // refreshed page renders the stored days with honest gaps for the rest.
+      return { ok: true, data: { filled: outcome.wroteDays > 0, stalled: outcome.wroteDays === 0 } }
+    } catch (err) {
+      console.error('[analytics] facebook period fill failed', { clientId: scope.client.id, err })
+      return {
+        ok: true,
+        data: {
+          filled: false,
+          stalled: true,
+          rateLimited: err instanceof GraphApiError && err.failure === 'rate_limited',
+        },
+      }
+    }
+  }
 
   // WHY as: the auth-scoped client is untyped here, so the projection does not infer.
   const { data: connection } = (await scope.supabase

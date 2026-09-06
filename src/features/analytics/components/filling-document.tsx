@@ -18,23 +18,28 @@ export function FillingDocument({
   unfilledDays,
   clientId,
   period,
+  network = 'instagram',
+  networkLabel = 'Instagram',
 }: {
   unfilledDays: number
   clientId: string
   period: AnalyticsPeriod
+  /** Rides the partial-escape link so the reader stays on the network being filled. */
+  network?: string
+  networkLabel?: string
 }) {
   return (
     <div role="status" className="mt-6 grid gap-7">
       <div className="slot-open grid min-h-28 place-items-center rounded-panel p-4">
         <span className="flex items-center gap-2 rounded-full bg-surface px-4 py-1.5 text-caption font-medium text-text2">
           <span aria-hidden="true" className="live-dot size-1.5 flex-none rounded-full bg-spring" />
-          Pulling this period from Instagram — {unfilledDays} day
+          Pulling this period from {networkLabel} — {unfilledDays} day
           {unfilledDays === 1 ? '' : 's'} still filling in…
         </span>
       </div>
       <p className="-mt-4 text-center text-micro text-text3">
         <Link
-          href={analyticsPartialHref(clientId, period)}
+          href={analyticsPartialHref(clientId, period, network)}
           className="underline decoration-line underline-offset-2 transition-colors hover:decoration-forest focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-forest/40"
         >
           Show what we have so far
