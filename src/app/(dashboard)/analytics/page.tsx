@@ -19,6 +19,10 @@ import { AutoFill } from '@/features/analytics/components/auto-fill'
 import { FillingDocument } from '@/features/analytics/components/filling-document'
 import { PLATFORM_NAMES } from '@/lib/validation'
 import { getFacebookAnalyticsReport } from '@/features/analytics/lib/facebook-report-data'
+import {
+  buildFacebookFallbackNarrative,
+  getFacebookNarrative,
+} from '@/features/analytics/lib/facebook-narrative'
 import { MastheadControls } from '@/features/analytics/components/masthead-controls'
 import type { ArchiveEntry } from '@/features/analytics/components/report-archive'
 import { buildFallbackNarrative } from '@/features/analytics/lib/narrative'
@@ -150,6 +154,12 @@ export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps
     // WHY as: the server client is untyped for this projection, so it does not infer.
     const fbArchive = (fbArchiveResult.data ?? []) as ArchiveEntry[]
 
+    const fbNarrativeResult = fbData.hasHistory
+      ? await getFacebookNarrative(clientId, client.name, period, timezone, fbData.lastSyncAt)
+      : null
+    const fbNarrative =
+      fbNarrativeResult?.text ?? (fbData.hasHistory ? buildFacebookFallbackNarrative(fbData) : null)
+
     return (
       <AnalyticsNavProvider>
         <div className="print-hide">
@@ -190,6 +200,8 @@ export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps
             ) : (
               <FacebookAnalyticsView
                 data={fbData}
+                narrative={fbNarrative}
+                narrativeArchived={fbNarrativeResult?.archived ?? false}
                 clientId={clientId}
                 clientName={client.name}
                 pageName={facebook!.account_name}

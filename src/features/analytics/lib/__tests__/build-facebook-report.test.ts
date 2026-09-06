@@ -149,18 +149,4 @@ describe('buildFacebookReport', () => {
     expect(first.then).toBe(9)
     expect(first.posts).toHaveLength(1)
   })
-
-  it('summarises the period in numbers, and stays quiet with nothing to say', () => {
-    const report = buildFacebookReport(
-      input({
-        pageRows: [
-          pageRow({ metric_date: '2026-09-04', post_engagements: 3, follows: 2, unfollows: 0 }),
-        ],
-      })
-    )
-    expect(report.narrative).toContain('Post engagements were 3')
-    expect(report.narrative).toContain('+2 followers net')
-
-    expect(buildFacebookReport(input({})).narrative).toBeNull()
-  })
 })

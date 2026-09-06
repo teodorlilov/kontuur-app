@@ -98,6 +98,60 @@ beforeEach(() => {
   mocks.duplicatePostAsDraft.mockResolvedValue({ ok: true, data: { id: 'copy-1' } })
 })
 
+describe('a partly published post', () => {
+  const partly = () =>
+    makePost({
+      // WHY as: `publication()` builds loose fixtures; the card narrows status itself.
+      publications: [
+        publication(),
+        publication({
+          id: 'pub-2',
+          platform: 'facebook',
+          status: 'failed',
+          publishedAt: null,
+          publishError: 'Page token expired',
+        }),
+      ] as CalendarPost['publications'],
+      // The retry button only renders over a post that has something to send.
+      images: [
+        {
+          id: 'img-1',
+          publicUrl: 'https://cdn/x.jpg',
+          storagePath: 'p/x.jpg',
+          position: 0,
+          fileName: 'x.jpg',
+          fileSize: 1,
+          contentType: 'image/jpeg',
+        },
+      ],
+    })
+
+  it('names the failed destination on its retry button, and names the failure', async () => {
+    renderCard(partly())
+
+    // "Publish now" over a half-live post reads as resending everything — the button says
+    // exactly what it does: retry the one destination that failed.
+    expect(screen.queryByRole('button', { name: /^publish now$/i })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /retry on facebook/i })).toBeInTheDocument()
+    expect(
+      await screen.findByText(/last attempt failed on facebook: page token expired/i)
+    ).toBeInTheDocument()
+  })
+
+  it('sends the retry through the publish route, which skips the live destination', async () => {
+    const user = userEvent.setup()
+    renderCard(partly())
+
+    await user.click(screen.getByRole('button', { name: /retry on facebook/i }))
+
+    await waitFor(() =>
+      expect(
+        fetchMock.mock.calls.some((call) => String(call[0]).includes('/api/posts/post-1/publish'))
+      ).toBe(true)
+    )
+  })
+})
+
 describe('a published post', () => {
   it('does not offer to reschedule or to send for approval', async () => {
     renderCard(makePost())

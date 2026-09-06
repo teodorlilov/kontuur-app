@@ -7,7 +7,12 @@ import { generateAnalyticsSummary } from '@/ai/analytics/generate-summary'
 import type { AnalyticsReportData } from './build-report'
 import { formatCount } from './format'
 import type { AnalyticsPeriod } from './period'
+import { fetchArchivedSummary, type NarrativeResult } from './narrative-shared'
 import { getAnalyticsReport, IG_METRICS_TAG } from './report-data'
+
+// Re-exported for the consumers that always imported it from here; the type moved to
+// narrative-shared.ts when Facebook's narrative module arrived.
+export type { NarrativeResult } from './narrative-shared'
 
 /**
  * The narrative block: four-to-five sentences written from this period's
@@ -19,12 +24,6 @@ import { getAnalyticsReport, IG_METRICS_TAG } from './report-data'
  */
 
 const CAPTION_FACT_CHARS = 120
-
-export interface NarrativeResult {
-  text: string
-  /** True when the words came from an exported report, not a fresh generation. */
-  archived: boolean
-}
 
 /**
  * The bounded aggregate the model sees. The old report path stringified the
@@ -145,21 +144,15 @@ const _fetchNarrative = unstable_cache(
     // that pin is exactly the "can't generate a new report" trap.
     if (preset === 'custom') {
       const admin = createAdminSupabaseClient()
-      // Account-scoped like every analytics read: a report exported for a
-      // previously connected account must never resurface its wording here.
       const { accountId } = await fetchIgConnectionState(admin, clientId)
       if (accountId) {
-        const { data: archived, error } = await admin
-          .from('analytics_reports')
-          .select('ai_summary')
-          .eq('client_id', clientId)
-          .eq('platform_account_id', accountId)
-          .eq('period_start', start)
-          .eq('period_end', end)
-          .maybeSingle()
-        if (error) throw new Error(`archived summary lookup failed: ${error.message}`)
-        // WHY as: the shared admin client is untyped, so the projection does not infer.
-        const archivedSummary = (archived as { ai_summary: string } | null)?.ai_summary
+        const archivedSummary = await fetchArchivedSummary(admin, {
+          clientId,
+          accountId,
+          platform: 'instagram',
+          start,
+          end,
+        })
         if (archivedSummary) return { text: archivedSummary, archived: true }
       }
     }

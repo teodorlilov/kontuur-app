@@ -3,7 +3,6 @@ import type {
   PlatformPostMetricColumns,
   PublishedPostPin,
 } from '@/lib/queries/select-columns'
-import { formatCount } from './format'
 import { periodDayKeys, type AnalyticsPeriod } from './period'
 import {
   alignRows,
@@ -50,8 +49,6 @@ export interface FacebookReportData {
   posts: ReportPostRow[]
   /** Median of per-post total interactions — the ranking basis, since per-post reach is dead. */
   medianInteractions: number | null
-  /** Deterministic numbers-first summary; Facebook has no AI narrative yet (noted open). */
-  narrative: string | null
 }
 
 export interface BuildFacebookReportInput {
@@ -150,32 +147,5 @@ export function buildFacebookReport(input: BuildFacebookReportInput): FacebookRe
     engagementByDay,
     posts,
     medianInteractions,
-    narrative: buildFacebookFallbackNarrative(engagements, pageViews, followers),
   }
-}
-
-/**
- * Deterministic one-liner — numbers, no prose — mirroring `buildFallbackNarrative`'s tone.
- * The AI narrative is a noted open, not silently absent: this line is the report's summary.
- */
-function buildFacebookFallbackNarrative(
-  engagements: StripCell,
-  pageViews: StripCell,
-  followers: FollowerSummary
-): string | null {
-  if (engagements.now === null && pageViews.now === null) return null
-  const parts: string[] = []
-  if (engagements.now !== null) {
-    const delta =
-      engagements.deltaPct === null
-        ? ''
-        : ` (${engagements.deltaPct >= 0 ? 'up' : 'down'} ${Math.abs(engagements.deltaPct).toFixed(0)}% on the period before)`
-    parts.push(`Post engagements were ${formatCount(engagements.now)}${delta}`)
-  }
-  if (pageViews.now !== null) parts.push(`Page views ${formatCount(pageViews.now)}`)
-  if (followers.net.now !== null) {
-    const net = followers.net.now
-    parts.push(`${net >= 0 ? '+' : ''}${formatCount(net)} followers net`)
-  }
-  return `${parts.join(' · ')}.`
 }

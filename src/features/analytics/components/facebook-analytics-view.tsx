@@ -22,6 +22,10 @@ const ENGAGEMENT_LABELS: TrendLabels = {
 
 interface FacebookAnalyticsViewProps {
   data: FacebookReportData
+  /** The AI pull-quote, or the deterministic fallback the page computed — never built here. */
+  narrative: string | null
+  /** True when the wording came from an exported report rather than a fresh write. */
+  narrativeArchived: boolean
   clientId: string
   clientName: string
   /** The connected Page's name, for the masthead. */
@@ -45,6 +49,8 @@ interface FacebookAnalyticsViewProps {
  */
 export function FacebookAnalyticsView({
   data,
+  narrative,
+  narrativeArchived,
   clientId,
   clientName,
   pageName,
@@ -95,7 +101,7 @@ export function FacebookAnalyticsView({
         </div>
       </header>
 
-      <NarrativeBlock narrative={data.narrative} archived={false} hasHistory={hasHistory} />
+      <NarrativeBlock narrative={narrative} archived={narrativeArchived} hasHistory={hasHistory} />
 
       <StripCells
         cells={[

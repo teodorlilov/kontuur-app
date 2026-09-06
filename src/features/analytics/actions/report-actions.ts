@@ -20,6 +20,7 @@ import { archiveReportInputSchema, type ArchiveReportInput } from '../schemas'
 import { periodFromBounds, type AnalyticsPeriod } from '../lib/period'
 import { getAnalyticsReport, IG_METRICS_TAG } from '../lib/report-data'
 import { FB_METRICS_TAG, getFacebookAnalyticsReport } from '../lib/facebook-report-data'
+import { buildFacebookFallbackNarrative, getFacebookNarrative } from '../lib/facebook-narrative'
 import { fillPageWindow } from '../lib/sync-facebook-metrics'
 import type { FacebookReportData } from '../lib/build-facebook-report'
 import { refreshWindowMetrics } from '../lib/refresh-window'
@@ -117,7 +118,19 @@ export async function archiveReport(input: ArchiveReportInput): Promise<ActionRe
     if (!report.hasHistory) {
       return { ok: false, error: 'Nothing to export yet — the first sync runs tonight' }
     }
-    return upsertReportRow(scope, accountId, 'facebook', report, report.narrative ?? '')
+    const narrative =
+      (
+        await getFacebookNarrative(
+          scope.client.id,
+          scope.client.name,
+          scope.period,
+          scope.timezone,
+          report.lastSyncAt
+        )
+      )?.text ??
+      buildFacebookFallbackNarrative(report) ??
+      ''
+    return upsertReportRow(scope, accountId, 'facebook', report, narrative)
   }
 
   // The archive row is stamped with the account it describes — the account

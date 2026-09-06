@@ -26,9 +26,9 @@ import { missingImagePositions } from '@/lib/posts/image-list'
 import { extractAllFlaggedSlides } from '@/utils/extract-flagged-slides'
 import type { CalendarPost, CarouselSlide, PostImage, ValidationData } from '@/types/api'
 import {
+  failedPublications,
   postDisplayState,
   publishStateOf,
-  firstFailureReason,
   type PostDisplayState,
 } from '@/lib/posts/publish-state'
 import { POST_STATUS_CHIP } from '@/features/calendar/lib/post-status-chip'
@@ -1136,7 +1136,12 @@ function NormalFooter({
           the answer to any more and which only ever agreed with the adapters by luck. */}
       {images.length > 0 && displayState !== 'published' && displayState !== 'publishing' && (
         <Button onClick={onPublishNow} disabled={publishing} loading={publishing}>
-          Publish now
+          {/* On a partly post this button already retried ONLY the failed destination — the
+              route skips published rows — but "Publish now" read as resending everything,
+              which is exactly what a person with one network live is afraid of. Name it. */}
+          {displayState === 'partly'
+            ? `Retry on ${namePlatforms(failedPublications(currentPost.publications).map((p) => p.platform))}`
+            : 'Publish now'}
         </Button>
       )}
       <Button variant="danger" onClick={onDelete}>
@@ -1150,11 +1155,19 @@ function NormalFooter({
           {publishError}
         </div>
       )}
-      {!publishError && firstFailureReason(currentPost.publications) && (
-        <div className="w-full rounded-[6px] bg-danger-bg px-2.5 py-2 text-micro text-danger">
-          Last attempt failed: {firstFailureReason(currentPost.publications)}
-        </div>
-      )}
+      {/* One line per failed destination, named: a post live on one network and failed on the
+          other must say WHICH failed, or the reader checks the wrong account. This card has
+          the room the chip surfaces lack (see firstFailureReason's docblock). */}
+      {!publishError &&
+        failedPublications(currentPost.publications).map((publication) => (
+          <div
+            key={publication.id}
+            className="w-full rounded-[6px] bg-danger-bg px-2.5 py-2 text-micro text-danger"
+          >
+            Last attempt failed on {namePlatforms([publication.platform])}
+            {publication.publishError ? `: ${publication.publishError}` : ''}
+          </div>
+        ))}
     </div>
   )
 }
