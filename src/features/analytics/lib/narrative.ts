@@ -153,7 +153,7 @@ const _fetchNarrative = unstable_cache(
           .from('analytics_reports')
           .select('ai_summary')
           .eq('client_id', clientId)
-          .eq('ig_account_id', accountId)
+          .eq('platform_account_id', accountId)
           .eq('period_start', start)
           .eq('period_end', end)
           .maybeSingle()

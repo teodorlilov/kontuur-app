@@ -75,7 +75,7 @@ true.
 | Meta-mandated erasure | `eraseAccountData` | [app/api/meta/data-deletion/route.ts](../src/app/api/meta/data-deletion/route.ts) |
 | Refresh expiring Instagram tokens | `refreshExpiringTokens` | [features/publishing/lib/refresh-tokens.ts](../src/features/publishing/lib/refresh-tokens.ts) |
 | Refresh the Canva token | `getCanvaToken` | [app/api/canva/canva-auth.ts](../src/app/api/canva/canva-auth.ts) |
-| Stamp the outcome of a metrics sync on the connection | `syncAllClientMetrics` | [features/analytics/lib/sync-metrics.ts](../src/features/analytics/lib/sync-metrics.ts) |
+| Stamp the outcome of a metrics sync on the connection | `recordSyncHealth` | [features/analytics/lib/sync-shared.ts](../src/features/analytics/lib/sync-shared.ts) |
 
 ### Analytics
 
@@ -87,6 +87,8 @@ true.
 | Record measured best posting times | `refreshObservedBestTime` | [features/analytics/lib/online-followers.ts](../src/features/analytics/lib/online-followers.ts) |
 | Sync a client's Instagram metrics | `syncAllClientMetrics` | [features/analytics/lib/sync-metrics.ts](../src/features/analytics/lib/sync-metrics.ts) |
 | Write a day of account metrics | `upsertAccountMetricDays` | [features/analytics/lib/account-metrics-store.ts](../src/features/analytics/lib/account-metrics-store.ts) |
+| Sync a client's Facebook Page metrics | `syncAllFacebookMetrics` | [features/analytics/lib/sync-facebook-metrics.ts](../src/features/analytics/lib/sync-facebook-metrics.ts) |
+| Write a day of Page metrics | `upsertFbPageMetricDays` | [features/analytics/lib/fb-page-metrics-store.ts](../src/features/analytics/lib/fb-page-metrics-store.ts) |
 | Write a media's row | `upsertPostMetricRows` | [features/analytics/lib/post-metrics-store.ts](../src/features/analytics/lib/post-metrics-store.ts) |
 
 ### Comments

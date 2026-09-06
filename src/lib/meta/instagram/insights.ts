@@ -1,9 +1,9 @@
 import 'server-only'
 
 import { mapWithConcurrency } from '@/lib/concurrency'
-import { graphGet } from './graph-client'
-import { GraphApiError } from './graph-errors'
-import { IG_GRAPH_BASE } from './constants'
+import { graphGet } from '../graph-client'
+import { GraphApiError } from '../graph-errors'
+import { IG_GRAPH_BASE } from '../constants'
 import {
   igAccountFieldsSchema,
   igInsightsEnvelopeSchema,
@@ -11,9 +11,9 @@ import {
   type IGInsightEntry,
   type IGMediaItem,
   type IGMediaListPage,
-} from './schemas'
+} from '../schemas'
 import { toDateKey } from '@/utils/date-helpers'
-import { breakdownMapOf, dailySeriesOf, lifetimeValueOf, totalValueOf } from './insight-values'
+import { breakdownMapOf, dailySeriesOf, lifetimeValueOf, totalValueOf } from '../insight-values'
 
 /**
  * Instagram insights fetch layer. Every call shape here is the EMPIRICAL Graph

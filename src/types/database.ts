@@ -90,33 +90,33 @@ export type Database = {
           client_id: string
           created_at: string
           id: string
-          ig_account_id: string | null
           metrics_json: Json | null
           period_end: string
           period_start: string
           platform: string
+          platform_account_id: string | null
         }
         Insert: {
           ai_summary: string
           client_id: string
           created_at?: string
           id?: string
-          ig_account_id?: string | null
           metrics_json?: Json | null
           period_end: string
           period_start: string
           platform: string
+          platform_account_id?: string | null
         }
         Update: {
           ai_summary?: string
           client_id?: string
           created_at?: string
           id?: string
-          ig_account_id?: string | null
           metrics_json?: Json | null
           period_end?: string
           period_start?: string
           platform?: string
+          platform_account_id?: string | null
         }
         Relationships: [
           {
@@ -575,6 +575,56 @@ export type Database = {
             columns: ["client_source_id"]
             isOneToOne: false
             referencedRelation: "client_sources"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fb_page_metrics: {
+        Row: {
+          client_id: string
+          created_at: string
+          followers_count: number | null
+          follows: number | null
+          id: string
+          metric_date: string
+          page_id: string
+          page_views: number | null
+          post_engagements: number | null
+          totals_synced_at: string | null
+          unfollows: number | null
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          followers_count?: number | null
+          follows?: number | null
+          id?: string
+          metric_date: string
+          page_id: string
+          page_views?: number | null
+          post_engagements?: number | null
+          totals_synced_at?: string | null
+          unfollows?: number | null
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          followers_count?: number | null
+          follows?: number | null
+          id?: string
+          metric_date?: string
+          page_id?: string
+          page_views?: number | null
+          post_engagements?: number | null
+          totals_synced_at?: string | null
+          unfollows?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fb_page_metrics_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
             referencedColumns: ["id"]
           },
         ]

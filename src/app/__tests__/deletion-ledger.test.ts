@@ -95,7 +95,18 @@ describe('deleted symbols stay unreferenced', () => {
     'sanitizePromptArray',
     // Instagram-only (2026-08): the Facebook flow and its types
     'fetchFacebookMetrics',
-    'FacebookMetrics',
+    /**
+     * `FacebookMetrics` came OFF this list on 2026-09-06, deliberately.
+     *
+     * The ledger matches substrings, and `syncAllFacebookMetrics` — the nightly Page capture
+     * shipped with Facebook analytics — contains it. What this line guarded against was the
+     * 232-line parallel-branch metrics file that pivoted documentation-guessed `page_*`
+     * metrics into zeros for months. The new sync is the opposite shape by construction: it
+     * asks only the five metrics the probe verified alive (docs/META-FB-PROBE.md), one per
+     * call, writes through one store into a purpose-made table, and shares its loop
+     * vocabulary with the Instagram sync via sync-shared.ts. `fetchFacebookMetrics` and
+     * `pivotFBInsights` stay ledgered: nothing may pivot a metrics grid Meta stopped serving.
+     */
     'pivotFBInsights',
     /**
      * `fbPagesResponseSchema` came OFF this list on 2026-09-05, deliberately.

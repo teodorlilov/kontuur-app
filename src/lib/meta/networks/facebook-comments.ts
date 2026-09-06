@@ -48,6 +48,10 @@ const REPLY_FETCH_CONCURRENCY = 3
 export const facebookComments: CommentsAdapter = {
   platform: 'facebook',
   label: PLATFORM_NAMES.facebook,
+  // Probed 2026-09-06: `comments.summary(true)` said 2 while the edge itself listed 1, and
+  // read 0 over a stored comment. A tally that disagrees with its own edge cannot gate a
+  // fetch — every post that has, or had, comments is read instead.
+  countIsExact: false,
 
   /**
    * The Page's published posts, with the comment tally attached.

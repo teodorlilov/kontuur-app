@@ -11,6 +11,7 @@
 import type {
   ClientRow,
   ClientSourceRow,
+  FbPageMetricsRow,
   IGAccountMetricsRow,
   IGAudienceSnapshotsRow,
   PlatformCommentRow,
@@ -394,6 +395,23 @@ export type IGAccountMetricColumns = Pick<
   IGAccountMetricsRow,
   (typeof IG_ACCOUNT_METRIC_KEYS)[number]
 >
+
+// fb_page_metrics — the Facebook report's daily rows (its own table by decision, 20260846).
+export const FB_PAGE_METRIC_KEYS = [
+  'metric_date',
+  'followers_count',
+  'follows',
+  'unfollows',
+  'post_engagements',
+  'page_views',
+] as const satisfies readonly (keyof FbPageMetricsRow)[]
+
+export const FB_PAGE_METRIC_COLUMNS = FB_PAGE_METRIC_KEYS.join(', ') as Join<
+  typeof FB_PAGE_METRIC_KEYS,
+  ', '
+>
+
+export type FbPageMetricColumns = Pick<FbPageMetricsRow, (typeof FB_PAGE_METRIC_KEYS)[number]>
 
 // platform_post_metrics — the posts table + the research performance source.
 export const PLATFORM_POST_METRIC_KEYS = [

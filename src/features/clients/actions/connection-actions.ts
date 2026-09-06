@@ -8,7 +8,7 @@ import { z } from 'zod'
 import { verifyClientOwnership } from '@/lib/auth/helpers'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import { storeConnection } from '@/lib/meta/connection-store'
-import { fetchFacebookPages, type FacebookPage } from '@/lib/meta/facebook-auth'
+import { fetchFacebookPages, type FacebookPage } from '@/lib/meta/facebook/auth'
 import { FACEBOOK_USER_PLATFORM } from '@/lib/meta/oauth-networks'
 
 /** A Page id is Facebook's, so it is digits — never a uuid, which parseActionId would demand. */

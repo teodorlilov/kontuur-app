@@ -263,6 +263,23 @@ export const fbPagesResponseSchema = z.looseObject({
 })
 
 /**
+ * The identity fields a Page post carries on `/published_posts` — spelled once, because two
+ * reads project them: the comment sync (with a comment tally) and the analytics sync (with
+ * measurement summaries). A `summary(true)` tally arrives as `{ summary: { total_count } }`.
+ */
+const fbPagePostFields = {
+  id: z.string(),
+  message: z.string().optional(),
+  permalink_url: z.string().optional(),
+  full_picture: z.string().optional(),
+  created_time: z.string().optional(),
+}
+
+const fbSummaryCountSchema = z.looseObject({
+  summary: z.looseObject({ total_count: z.number().optional() }).optional(),
+})
+
+/**
  * `GET /{page-id}/published_posts` with a comment summary — the Page's own post list.
  *
  * `comments.summary(true).limit(0)` returns the tally without the bodies, which is the cheap
@@ -271,13 +288,45 @@ export const fbPagesResponseSchema = z.looseObject({
 export const fbPagePostsSchema = z.looseObject({
   data: z.array(
     z.looseObject({
-      id: z.string(),
-      message: z.string().optional(),
-      permalink_url: z.string().optional(),
-      full_picture: z.string().optional(),
-      created_time: z.string().optional(),
-      comments: z
-        .looseObject({ summary: z.looseObject({ total_count: z.number().optional() }).optional() })
+      ...fbPagePostFields,
+      comments: fbSummaryCountSchema.optional(),
+    })
+  ),
+})
+
+/**
+ * The same edge asked for measurements: reactions/comments tallies and `shares`, which is
+ * ABSENT when zero (probed 2026-09-06 — the live post's envelope carried no `shares` key).
+ */
+export const fbPostMeasurementsSchema = z.looseObject({
+  data: z.array(
+    z.looseObject({
+      ...fbPagePostFields,
+      shares: z.looseObject({ count: z.number().optional() }).optional(),
+      reactions: fbSummaryCountSchema.optional(),
+      comments: fbSummaryCountSchema.optional(),
+    })
+  ),
+})
+
+export type FBPostMeasurements = z.infer<typeof fbPostMeasurementsSchema>['data'][number]
+
+/**
+ * A Page insight day series — the classic envelope, unchanged by the 2025-11 metric purge:
+ * `values[{ value, end_time }]`, one entry per requested metric. Structurally the values-half
+ * of Instagram's envelope, which is what lets `dailySeriesOf` extract both.
+ */
+export const fbInsightsEnvelopeSchema = z.looseObject({
+  data: z.array(
+    z.looseObject({
+      name: z.string(),
+      values: z
+        .array(
+          z.looseObject({
+            value: z.unknown().optional(),
+            end_time: z.string().optional(),
+          })
+        )
         .optional(),
     })
   ),

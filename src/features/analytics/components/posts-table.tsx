@@ -5,8 +5,8 @@ import { firstLine, TYPE_META } from '../lib/post-display'
 import { PostThumb } from './post-thumb'
 
 /** ≥1.5× median earns the ratio tag; ≤0.6× is named below median. */
-const TOP_RATIO = 1.5
-const LOW_RATIO = 0.6
+export const TOP_RATIO = 1.5
+export const LOW_RATIO = 0.6
 
 /**
  * Every post published this period, ranked by reach. `follows` is the column
@@ -59,46 +59,10 @@ export function PostsTable({
           </thead>
           <tbody>
             {posts.map((post, index) => {
-              const type = TYPE_META[post.mediaType ?? ''] ?? TYPE_META.IMAGE!
               const top = index === 0 && posts.length > 1
               return (
                 <tr key={post.igMediaId}>
-                  <td
-                    className={cn(
-                      BODY_CELL,
-                      'whitespace-normal pl-0 text-left',
-                      top && 'rounded-l-panel bg-wash pl-2.5'
-                    )}
-                  >
-                    <div className="flex min-w-0 items-center gap-3">
-                      <PostThumb thumbnailUrl={post.thumbnailUrl} mediaType={post.mediaType} />
-                      <span className="min-w-0">
-                        {/* A post removed from Instagram keeps its caption but
-                            loses its destination — a link to a 404 helps nobody. */}
-                        {post.permalink && post.missing !== 'removed' ? (
-                          <a
-                            href={post.permalink}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="block max-w-[30ch] truncate text-caption text-ink underline decoration-line underline-offset-2 transition-colors hover:decoration-forest focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-forest/40"
-                          >
-                            {firstLine(post.caption)}
-                            <span className="sr-only"> — open on Instagram</span>
-                          </a>
-                        ) : (
-                          <span className="block max-w-[30ch] truncate text-caption text-ink">
-                            {firstLine(post.caption)}
-                          </span>
-                        )}
-                        <span className="block text-micro text-text3">
-                          {post.postedDayKey ? `${formatDayMonth(post.postedDayKey)} · ` : ''}
-                          {type.label}
-                          {post.missing === 'removed' && ' · no longer on Instagram'}
-                          {post.missing === 'pending' && ' · metrics after the next sync'}
-                        </span>
-                      </span>
-                    </div>
-                  </td>
+                  <PostCell post={post} top={top} />
                   <td className={cn(BODY_CELL, top && 'bg-wash')}>
                     {post.reach === null ? '—' : formatCount(post.reach)}
                     {post.medianRatio !== null && post.medianRatio >= TOP_RATIO && (
@@ -154,6 +118,60 @@ export function PostsTable({
   )
 }
 
-const HEAD_CELL = 'border-b border-line px-2.5 py-2 text-right text-label text-text3'
-const BODY_CELL =
+export const HEAD_CELL = 'border-b border-line px-2.5 py-2 text-right text-label text-text3'
+export const BODY_CELL =
   'border-b border-ink/[0.05] px-2.5 py-2.5 text-right text-caption tabular-nums text-ink whitespace-nowrap'
+
+/**
+ * The Post column both networks' tables share: thumb, caption (a link while the post is
+ * live), and the meta line. `networkLabel` is who "removed" and "open on" refer to.
+ */
+export function PostCell({
+  post,
+  top,
+  networkLabel = 'Instagram',
+}: {
+  post: ReportPostRow
+  top: boolean
+  networkLabel?: string
+}) {
+  const type = TYPE_META[post.mediaType ?? ''] ?? TYPE_META.IMAGE!
+  return (
+    <td
+      className={cn(
+        BODY_CELL,
+        'whitespace-normal pl-0 text-left',
+        top && 'rounded-l-panel bg-wash pl-2.5'
+      )}
+    >
+      <div className="flex min-w-0 items-center gap-3">
+        <PostThumb thumbnailUrl={post.thumbnailUrl} mediaType={post.mediaType} />
+        <span className="min-w-0">
+          {/* A post removed from the network keeps its caption but
+              loses its destination — a link to a 404 helps nobody. */}
+          {post.permalink && post.missing !== 'removed' ? (
+            <a
+              href={post.permalink}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="block max-w-[30ch] truncate text-caption text-ink underline decoration-line underline-offset-2 transition-colors hover:decoration-forest focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-forest/40"
+            >
+              {firstLine(post.caption)}
+              <span className="sr-only"> — open on {networkLabel}</span>
+            </a>
+          ) : (
+            <span className="block max-w-[30ch] truncate text-caption text-ink">
+              {firstLine(post.caption)}
+            </span>
+          )}
+          <span className="block text-micro text-text3">
+            {post.postedDayKey ? `${formatDayMonth(post.postedDayKey)} · ` : ''}
+            {type.label}
+            {post.missing === 'removed' && ` · no longer on ${networkLabel}`}
+            {post.missing === 'pending' && ' · metrics after the next sync'}
+          </span>
+        </span>
+      </div>
+    </td>
+  )
+}

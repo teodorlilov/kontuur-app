@@ -19,10 +19,13 @@ export function ReportArchive({
   entries,
   clientId,
   timezone,
+  network,
 }: {
   entries: ArchiveEntry[]
   clientId: string
   timezone: string
+  /** Rides each row's link so an opened report stays on the network it was exported from. */
+  network?: string
 }) {
   if (entries.length === 0) {
     return (
@@ -39,7 +42,7 @@ export function ReportArchive({
           className="flex items-center justify-between gap-4 border-b border-ink/[0.05] py-2.5 text-caption last:border-b-0"
         >
           <Link
-            href={analyticsWindowHref(clientId, entry.period_start, entry.period_end)}
+            href={analyticsWindowHref(clientId, entry.period_start, entry.period_end, network)}
             className="font-medium text-forest hover:underline"
           >
             {formatPeriodRange(entry.period_start, entry.period_end)}

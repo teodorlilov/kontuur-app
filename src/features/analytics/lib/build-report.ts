@@ -5,12 +5,43 @@ import type {
   PlatformPostMetricColumns,
   PublishedPostPin,
 } from '@/lib/queries/select-columns'
-import { toDateKey, zonedTimeToInstant } from '@/utils/date-helpers'
+import { zonedTimeToInstant } from '@/utils/date-helpers'
 import { parseTimestamp } from '@/utils/format'
 import { WEEKDAY_LABELS_SHORT } from '@/utils/constants'
 import { RATE_BASE_FLOOR } from './delta-verdict'
 import { formatCount, formatSharePct } from './format'
 import { periodDayKeys, type AnalyticsPeriod } from './period'
+import {
+  alignRows,
+  buildDailyTrend,
+  buildFollowerSummary,
+  buildPosts,
+  dailyValues,
+  dayKeyOf,
+  deltaPct,
+  groupTrendPostsByDay,
+  median,
+  previousTrendPostsByDay,
+  stripCell,
+  sumOrNull,
+  type ComparisonValue,
+  type FollowerSummary,
+  type ReachDay,
+  type ReportPostRow,
+  type StripCell,
+} from './report-sections'
+
+// Re-exported for the consumers that always imported them from here — the section math moved
+// to report-sections.ts when Facebook's builder arrived, so both builders compose one
+// implementation; nothing downstream had to move with it.
+export { deltaPct, sumOrNull } from './report-sections'
+export type {
+  FollowerFlowDay,
+  FollowerSummary,
+  ReachDay,
+  ReportPostRow,
+  TrendPost,
+} from './report-sections'
 
 /**
  * Pure assembly of the comparison console's data: stored rows in, one
@@ -45,42 +76,6 @@ export type AudienceSnapshotInput = IGAudienceSnapshotColumns
 
 // ── Output shape ──
 
-export interface ComparisonValue {
-  now: number | null
-  then: number | null
-  /** Percent change vs the previous period; null when either side is unknowable. */
-  deltaPct: number | null
-}
-
-export interface StripCell extends ComparisonValue {
-  /** One entry per day of the current period; null = the API had nothing. */
-  series: Array<number | null>
-}
-
-export interface FollowerFlowDay {
-  date: string
-  gained: number | null
-  lost: number | null
-  /** Posts published that day — the flow timeline pins and names them like the reach chart. */
-  posts: TrendPost[]
-}
-
-export interface FollowerSummary {
-  gained: ComparisonValue
-  lost: ComparisonValue
-  net: { now: number | null; then: number | null }
-  /** Latest known account total, not a period sum. */
-  total: number | null
-  /** followers_count by day for the sparkline. */
-  series: Array<number | null>
-  /** Day-by-day gains and losses — the flow timeline. */
-  byDay: FollowerFlowDay[]
-  /** Follows Instagram itself attributes to this period's posts (per-media metric). */
-  fromPosts: number | null
-  /** Losses as a share of the followers the period started with. */
-  churnPct: number | null
-}
-
 export interface EngagementRateCell {
   now: number | null
   then: number | null
@@ -98,41 +93,6 @@ export interface ComparisonRow {
   details?: Array<{ label: string; value: string }>
   now: number | null
   then: number | null
-}
-
-/**
- * Why a post row has no metrics: 'pending' = the nightly sync has not run
- * since it published; 'removed' = a completed sync no longer found it on
- * Instagram (deleted after publish). Null = the metrics are real.
- */
-export type PostMissing = 'pending' | 'removed' | null
-
-/** The slice of a post the trend tooltip names — enough to answer "what caused this". */
-export interface TrendPost {
-  igMediaId: string
-  caption: string | null
-  mediaType: string | null
-  reach: number | null
-  follows: number | null
-  missing: PostMissing
-}
-
-export interface ReachDay {
-  date: string
-  now: number | null
-  then: number | null
-  /**
-   * The previous-period day this column's `then` value actually came from.
-   * The two windows share one axis, so without naming it the reader reads
-   * "13 Aug · previous 3,948" and assumes both numbers describe 13 Aug.
-   */
-  thenDate: string
-  /** That day's views — the tooltip pairs the two ways a day was seen. */
-  views: number | null
-  /** Posts published that day, strongest reach first. */
-  posts: TrendPost[]
-  /** Posts published on the previous-period day — what moved THAT line. */
-  thenPosts: TrendPost[]
 }
 
 export interface AudienceOnline {
@@ -199,31 +159,6 @@ export interface AudienceReport {
   countries: AudienceShare[]
 }
 
-export interface ReportPostRow {
-  igMediaId: string
-  postId: string | null
-  caption: string | null
-  postedAt: string | null
-  /**
-   * The agency-calendar day this post belongs to — the same clock the period's
-   * day keys are resolved in. Null when the row carries no timestamp.
-   */
-  postedDayKey: string | null
-  mediaType: string | null
-  mediaProductType: string | null
-  permalink: string | null
-  thumbnailUrl: string | null
-  reach: number | null
-  views: number | null
-  interactions: number | null
-  saved: number | null
-  follows: number | null
-  profileVisits: number | null
-  /** reach ÷ median reach, when both are known. */
-  medianRatio: number | null
-  missing: PostMissing
-}
-
 export interface AnalyticsReportData {
   period: AnalyticsPeriod
   /** False until the first sync has written any account row — the day-one state. */
@@ -255,29 +190,6 @@ export interface AnalyticsReportData {
 
 // ── Small pure helpers ──
 
-/** Sum honoring the NULL contract: null only when every input was null. */
-export function sumOrNull(values: Array<number | null>): number | null {
-  let sum: number | null = null
-  for (const value of values) {
-    if (value === null) continue
-    sum = (sum ?? 0) + value
-  }
-  return sum
-}
-
-/** Percent change, null when the comparison is unknowable (missing or zero base). */
-export function deltaPct(now: number | null, then: number | null): number | null {
-  if (now === null || then === null || then === 0) return null
-  return ((now - then) / then) * 100
-}
-
-function median(values: number[]): number | null {
-  if (values.length === 0) return null
-  const sorted = [...values].sort((a, b) => a - b)
-  const mid = Math.floor(sorted.length / 2)
-  return sorted.length % 2 ? sorted[mid]! : (sorted[mid - 1]! + sorted[mid]!) / 2
-}
-
 /** BOOK_NOW → "Book now"; unknown API enums stay readable without a lookup table. */
 export function humanizeDimension(key: string): string {
   const lower = key.toLowerCase().replace(/_/g, ' ')
@@ -288,37 +200,6 @@ function parseBreakdownMap(raw: unknown): Record<string, number> | null {
   if (raw === null || raw === undefined) return null
   const parsed = breakdownMapSchema.safeParse(raw)
   return parsed.success ? parsed.data : null
-}
-
-/**
- * Instagram never serves historical follower TOTALS — only the nightly sync
- * captures one per night, so a fresh account has a single point and no curve.
- * But every day's gains and losses are stored, and one known total anchors
- * the rest: walk outward from each captured count applying the daily net
- * change. Days whose gains are unknown stay null — the line breaks honestly.
- */
-export function deriveFollowerCurve(
-  counts: Array<number | null>,
-  gains: Array<number | null>,
-  losses: Array<number | null>
-): Array<number | null> {
-  const curve = [...counts]
-  for (let i = curve.length - 1; i > 0; i--) {
-    if (curve[i] !== null && curve[i - 1] === null && gains[i] !== null && gains[i] !== undefined) {
-      curve[i - 1] = curve[i]! - (gains[i]! - (losses[i] ?? 0))
-    }
-  }
-  for (let i = 0; i < curve.length - 1; i++) {
-    if (
-      curve[i] !== null &&
-      curve[i + 1] === null &&
-      gains[i + 1] !== null &&
-      gains[i + 1] !== undefined
-    ) {
-      curve[i + 1] = curve[i]! + (gains[i + 1]! - (losses[i + 1] ?? 0))
-    }
-  }
-  return curve
 }
 
 /** Sums per-day breakdown maps into one map; null when no day had one. */
@@ -337,34 +218,6 @@ function sumBreakdownMaps(
 }
 
 // ── Assembly ──
-
-interface PeriodRows {
-  /** Index-aligned to the period's day keys; missing dates are all-null rows. */
-  byDay: Array<IGAccountMetricColumns | null>
-}
-
-function alignRows(rows: IGAccountMetricColumns[], dayKeys: string[]): PeriodRows {
-  const byDate = new Map(rows.map((row) => [row.metric_date, row]))
-  return { byDay: dayKeys.map((key) => byDate.get(key) ?? null) }
-}
-
-function dailyValues<T>(
-  period: PeriodRows,
-  pick: (row: IGAccountMetricColumns) => T | null
-): Array<T | null> {
-  return period.byDay.map((row) => (row ? pick(row) : null))
-}
-
-function stripCell(
-  current: PeriodRows,
-  previous: PeriodRows,
-  pick: (row: IGAccountMetricColumns) => number | null
-): StripCell {
-  const series = dailyValues(current, pick)
-  const now = sumOrNull(series)
-  const then = sumOrNull(dailyValues(previous, pick))
-  return { now, then, deltaPct: deltaPct(now, then), series }
-}
 
 const FORMAT_LABELS: Record<string, string> = {
   // The insights breakdown vocabulary (POST/REEL/AD/…), NOT /media's FEED/REELS.
@@ -478,102 +331,6 @@ function buildAudience(
     }))
 
   return { snapshotDate: current.snapshot_date, ages, genders, cities, countries }
-}
-
-/** Kontuur's post_type vocabulary mapped onto Instagram's media_type chips. */
-const APP_MEDIA_TYPE: Record<string, string> = { carousel: 'CAROUSEL_ALBUM' }
-
-/**
- * The agency-calendar day a timestamp falls on. The period's day keys are
- * resolved in the agency's clock, so reading the UTC prefix off an instant put
- * every post published in the first hours of local morning one column early —
- * and, on the window's opening day, pushed it out of the window altogether, so
- * a live post arrived through the ledger arm instead and was labelled "no
- * longer on Instagram".
- */
-function dayKeyOf(iso: string | null, timezone: string): string | null {
-  if (!iso) return null
-  // parseTimestamp, not `new Date(iso)`: posts.published_at is a naive UTC
-  // timestamp, which JS would otherwise read in the runtime's zone.
-  const date = parseTimestamp(iso)
-  return Number.isNaN(date.getTime()) ? null : toDateKey(date, timezone)
-}
-
-/** A sync this much newer than a publish had every chance to see the media. */
-const SYNC_GRACE_MS = 60 * 60 * 1000
-
-function buildPosts(
-  postRows: PlatformPostMetricColumns[],
-  publishedPosts: PublishedPostPin[],
-  lastSyncAt: string | null,
-  timezone: string
-): {
-  posts: ReportPostRow[]
-  medianReach: number | null
-} {
-  const medianReach = median(
-    postRows.map((row) => row.reach).filter((reach): reach is number => reach !== null)
-  )
-  const posts: ReportPostRow[] = postRows.map((row) => ({
-    igMediaId: row.external_post_id,
-    postId: row.post_id,
-    caption: row.caption,
-    postedAt: row.posted_at,
-    postedDayKey: dayKeyOf(row.posted_at, timezone),
-    mediaType: row.media_type,
-    mediaProductType: row.media_product_type,
-    permalink: row.permalink,
-    thumbnailUrl: row.thumbnail_url,
-    reach: row.reach,
-    views: row.views,
-    interactions: row.total_interactions,
-    saved: row.saved,
-    follows: row.follows,
-    profileVisits: row.profile_visits,
-    medianRatio:
-      row.reach !== null && medianReach !== null && medianReach > 0
-        ? row.reach / medianReach
-        : null,
-    missing: null as PostMissing,
-  }))
-
-  // Kontuur's own ledger fills what the sync cannot see: posts Instagram no
-  // longer reports (deleted after publish) or has not synced yet. A post the
-  // metrics table already covers defers to that richer row.
-  const knownMedia = new Set(postRows.map((row) => row.external_post_id))
-  const knownPostIds = new Set(postRows.map((row) => row.post_id))
-  for (const publication of publishedPosts) {
-    const post = publication.posts
-    if (!publication.published_at) continue
-    if (publication.external_post_id && knownMedia.has(publication.external_post_id)) continue
-    if (knownPostIds.has(post.id)) continue
-    const syncSawIt =
-      lastSyncAt !== null &&
-      parseTimestamp(lastSyncAt).getTime() - parseTimestamp(publication.published_at).getTime() >
-        SYNC_GRACE_MS
-    posts.push({
-      igMediaId: publication.external_post_id ?? `post-${post.id}`,
-      postId: post.id,
-      caption: post.caption,
-      postedAt: publication.published_at,
-      postedDayKey: dayKeyOf(publication.published_at, timezone),
-      mediaType: APP_MEDIA_TYPE[post.post_type ?? ''] ?? 'IMAGE',
-      mediaProductType: null,
-      permalink: null,
-      thumbnailUrl: null,
-      reach: null,
-      views: null,
-      interactions: null,
-      saved: null,
-      follows: null,
-      profileVisits: null,
-      medianRatio: null,
-      missing: syncSawIt ? 'removed' : 'pending',
-    })
-  }
-
-  posts.sort((a, b) => (b.reach ?? -1) - (a.reach ?? -1))
-  return { posts, medianReach }
 }
 
 /** The hourly picture may only speak after this many sampled days. */
@@ -730,28 +487,6 @@ export function buildAnalyticsReport(input: BuildReportInput): AnalyticsReportDa
   const reach = stripCell(current, previous, (row) => row.reach)
   const interactions = stripCell(current, previous, (row) => row.total_interactions)
 
-  const gainedSeries = dailyValues(current, (row) => row.follows)
-  const lostSeries = dailyValues(current, (row) => row.unfollows)
-  const gained: ComparisonValue = {
-    now: sumOrNull(gainedSeries),
-    then: sumOrNull(dailyValues(previous, (row) => row.follows)),
-    deltaPct: null,
-  }
-  gained.deltaPct = deltaPct(gained.now, gained.then)
-  const lost: ComparisonValue = {
-    now: sumOrNull(lostSeries),
-    then: sumOrNull(dailyValues(previous, (row) => row.unfollows)),
-    deltaPct: null,
-  }
-  lost.deltaPct = deltaPct(lost.now, lost.then)
-  const net = {
-    now: gained.now === null && lost.now === null ? null : (gained.now ?? 0) - (lost.now ?? 0),
-    then: gained.then === null && lost.then === null ? null : (gained.then ?? 0) - (lost.then ?? 0),
-  }
-  const followerCounts = dailyValues(current, (row) => row.followers_count)
-  const followersTotal = [...followerCounts].reverse().find((value) => value !== null) ?? null
-  const followerCurve = deriveFollowerCurve(followerCounts, gainedSeries, lostSeries)
-
   // Engagement rate: period interactions over period reach, in percent.
   const rateOf = (i: number | null, r: number | null): number | null =>
     i !== null && r !== null && r > 0 ? (i / r) * 100 : null
@@ -781,76 +516,35 @@ export function buildAnalyticsReport(input: BuildReportInput): AnalyticsReportDa
     input.lastSyncAt,
     input.timezone
   )
-  const postsByDate = new Map<string, TrendPost[]>()
-  for (const post of posts) {
-    const date = post.postedDayKey
-    if (!date) continue
-    const list = postsByDate.get(date) ?? []
-    list.push({
-      igMediaId: post.igMediaId,
-      caption: post.caption,
-      mediaType: post.mediaType,
-      reach: post.reach,
-      follows: post.follows,
-      missing: post.missing,
-    })
-    postsByDate.set(date, list)
-  }
+  const postsByDate = groupTrendPostsByDay(posts)
+  const previousPostsByDate = previousTrendPostsByDay(
+    input.postRows,
+    period.prevEnd,
+    input.timezone
+  )
 
-  // The previous window's publications, from synced metrics only — the app
-  // ledger's pins are scoped to the current window, so a previous-period post
-  // Instagram never returned simply has no pin rather than a guessed one.
-  const previousPostsByDate = new Map<string, TrendPost[]>()
-  for (const row of input.postRows) {
-    const date = dayKeyOf(row.posted_at, input.timezone)
-    if (!date || date > period.prevEnd) continue
-    const list = previousPostsByDate.get(date) ?? []
-    list.push({
-      igMediaId: row.external_post_id,
-      caption: row.caption,
-      mediaType: row.media_type,
-      reach: row.reach,
-      follows: row.follows,
-      missing: null,
-    })
-    previousPostsByDate.set(date, list)
-  }
-  for (const list of previousPostsByDate.values()) {
-    list.sort((a, b) => (b.reach ?? -1) - (a.reach ?? -1))
-  }
-
-  const reachByDay: ReachDay[] = currentKeys.map((date, index) => {
-    const thenDate = previousKeys[index] ?? date
-    return {
-      date,
-      now: reach.series[index]!,
-      then: previous.byDay[index] ? previous.byDay[index].reach : null,
-      thenDate,
-      views: views.series[index]!,
-      posts: postsByDate.get(date) ?? [],
-      thenPosts: previousPostsByDate.get(thenDate) ?? [],
-    }
+  const reachByDay: ReachDay[] = buildDailyTrend({
+    currentKeys,
+    previousKeys,
+    nowSeries: reach.series,
+    thenSeries: dailyValues(previous, (row) => row.reach),
+    secondarySeries: views.series,
+    postsByDate,
+    previousPostsByDate,
   })
 
-  const flowByDay: FollowerFlowDay[] = currentKeys.map((date, index) => ({
-    date,
-    gained: gainedSeries[index]!,
-    lost: lostSeries[index]!,
-    posts: postsByDate.get(date) ?? [],
-  }))
-  // Per-media follows, straight from Instagram's own attribution — a separate
-  // basis from the account-level gained total, stated as its own fact.
-  const followsFromPosts = sumOrNull(posts.map((post) => post.follows))
-  // Followers at the period's start: the first anchored end-of-day total
-  // minus that day's own net change. Null when the curve never anchors.
-  const startTotal =
-    followerCurve[0] !== null && followerCurve[0] !== undefined
-      ? followerCurve[0] - (gainedSeries[0] ?? 0) + (lostSeries[0] ?? 0)
-      : null
-  const churnPct =
-    lost.now !== null && startTotal !== null && startTotal > 0
-      ? (lost.now / startTotal) * 100
-      : null
+  const { followers, followersTotal } = buildFollowerSummary({
+    current,
+    previous,
+    currentKeys,
+    followsOf: (row) => row.follows,
+    unfollowsOf: (row) => row.unfollows,
+    followersCountOf: (row) => row.followers_count,
+    postsByDate,
+    // Per-media follows, straight from Instagram's own attribution — a separate
+    // basis from the account-level gained total, stated as its own fact.
+    fromPosts: sumOrNull(posts.map((post) => post.follows)),
+  })
 
   let bestDay: BestDay | null = null
   for (const day of reachByDay) {
@@ -1077,9 +771,9 @@ export function buildAnalyticsReport(input: BuildReportInput): AnalyticsReportDa
       key: 'follows',
       label: 'New follows',
       unit: 'follows',
-      now: gained.now,
-      then: gained.then,
-      per100: per100(gained.now, profileViewsNow),
+      now: followers.gained.now,
+      then: followers.gained.then,
+      per100: per100(followers.gained.now, profileViewsNow),
       rateBasis: 'per 100 profile visits',
     },
   ]
@@ -1105,16 +799,7 @@ export function buildAnalyticsReport(input: BuildReportInput): AnalyticsReportDa
     views,
     reach,
     interactions,
-    followers: {
-      gained,
-      lost,
-      net,
-      total: followersTotal,
-      series: followerCurve,
-      byDay: flowByDay,
-      fromPosts: followsFromPosts,
-      churnPct,
-    },
+    followers,
     engagementRate,
     reachByDay,
     bestDay,

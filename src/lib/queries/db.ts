@@ -236,19 +236,32 @@ export interface IgConnectionState {
  * connected". Callers that want only the account id destructure only that — one
  * row either way, and one shape to keep true.
  */
-export async function fetchIgConnectionState(
+export function fetchIgConnectionState(
   supabase: SupabaseClient,
   clientId: string
+): Promise<IgConnectionState> {
+  return fetchConnectionSyncState(supabase, clientId, 'instagram')
+}
+
+/**
+ * One network's connection as its report reads it: the account id every metrics row is scoped
+ * by, and the sync-health pair the nightly run stamps. The Instagram wrapper above delegates
+ * here — Facebook's report asks the same three questions of its own row.
+ */
+export async function fetchConnectionSyncState(
+  supabase: SupabaseClient,
+  clientId: string,
+  platform: string
 ): Promise<IgConnectionState> {
   const data = unwrap(
     await supabase
       .from('social_connections')
       .select('account_id, last_sync_at, last_sync_error')
       .eq('client_id', clientId)
-      .eq('platform', 'instagram')
+      .eq('platform', platform)
       .limit(1)
       .maybeSingle(),
-    'fetchIgConnectionState'
+    'fetchConnectionSyncState'
   )
   // No cast: a literal select string over columns the generated types know does
   // infer. The `as` this file warns about is for projections built from arrays.

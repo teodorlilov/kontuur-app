@@ -476,3 +476,349 @@ sync compares before fetching anything.
 ```
 
 > Publish probe skipped. Re-run with `--publish` to exercise the photos→feed pair.
+
+## Analytics probe with the STORED Page token — 2026-09-06
+
+The Step 0 insights were read with an Explorer token that carried `read_insights`. The app's
+own OAuth flow requests only the four publish/engagement scopes, so everything below is what
+the token Kontuur actually stores can reach — the fact that decides whether Facebook analytics
+needs a scope addition and reconnects.
+
+### Insight with the STORED token: page_post_engagements
+
+`GET /723701000827665/insights?metric=page_post_engagements&period=day` (stored Page token) → **200**
+
+```json
+{
+  "data": [
+    {
+      "name": "page_post_engagements",
+      "period": "day",
+      "values": [
+        {
+          "value": 0,
+          "end_time": "2026-09-04T07:00:00+0000"
+        },
+        {
+          "value": 0,
+          "end_time": "2026-09-05T07:00:00+0000"
+        }
+      ],
+      "title": "Daily Post Engagements",
+      "description": "Daily: The number of times people have engaged with your posts through like, comments and shares and more.",
+      "id": "723701000827665/insights/page_post_engagements/day"
+    }
+  ],
+  "paging": {
+    "previous": "https://graph.facebook.com/v25.0/723701000827665/insights?access_token={PAGE_TOKEN}&metric=page_post_engagements&period=day&since=1788246000&until=1788418800",
+    "next": "https://graph.facebook.com/v25.0/723701000827665/insights?access_token={PAGE_TOKEN}&metric=page_post_engagements&period=day&since=1788591600&until=1788764400"
+  }
+}
+```
+
+### Insight: page_impressions_unique
+
+`GET /723701000827665/insights?metric=page_impressions_unique&period=day` (stored Page token) → **400**
+
+```json
+{
+  "error": {
+    "message": "(#100) The value must be a valid insights metric",
+    "type": "OAuthException",
+    "code": 100,
+    "fbtrace_id": "AHOayPKxYYll8XTK1Zzb_d9"
+  }
+}
+```
+
+### Insight: page_video_views
+
+`GET /723701000827665/insights?metric=page_video_views&period=day` (stored Page token) → **200**
+
+```json
+{
+  "data": [
+    {
+      "name": "page_video_views",
+      "period": "day",
+      "values": [
+        {
+          "value": 0,
+          "end_time": "2026-09-04T07:00:00+0000"
+        },
+        {
+          "value": 0,
+          "end_time": "2026-09-05T07:00:00+0000"
+        }
+      ],
+      "title": "Daily Total Video Views",
+      "description": "Daily: Total number of times videos have been viewed for more than 3 seconds. (Total Count)",
+      "id": "723701000827665/insights/page_video_views/day"
+    }
+  ],
+  "paging": {
+    "previous": "https://graph.facebook.com/v25.0/723701000827665/insights?access_token={PAGE_TOKEN}&metric=page_video_views&period=day&since=1788246000&until=1788418800",
+    "next": "https://graph.facebook.com/v25.0/723701000827665/insights?access_token={PAGE_TOKEN}&metric=page_video_views&period=day&since=1788591600&until=1788764400"
+  }
+}
+```
+
+### Insight: page_daily_unfollows_unique
+
+`GET /723701000827665/insights?metric=page_daily_unfollows_unique&period=day` (stored Page token) → **200**
+
+```json
+{
+  "data": [
+    {
+      "name": "page_daily_unfollows_unique",
+      "period": "day",
+      "values": [
+        {
+          "value": 0,
+          "end_time": "2026-09-04T07:00:00+0000"
+        },
+        {
+          "value": 0,
+          "end_time": "2026-09-05T07:00:00+0000"
+        }
+      ],
+      "title": "Daily New Unfollows",
+      "description": "Daily: The number of Meta Accounts that unfollowed your Page in the selected time period. This metric is estimated. (Unique Users)",
+      "id": "723701000827665/insights/page_daily_unfollows_unique/day"
+    }
+  ],
+  "paging": {
+    "previous": "https://graph.facebook.com/v25.0/723701000827665/insights?access_token={PAGE_TOKEN}&metric=page_daily_unfollows_unique&period=day&since=1788246000&until=1788418800",
+    "next": "https://graph.facebook.com/v25.0/723701000827665/insights?access_token={PAGE_TOKEN}&metric=page_daily_unfollows_unique&period=day&since=1788591600&until=1788764400"
+  }
+}
+```
+
+### Insight: page_follows
+
+`GET /723701000827665/insights?metric=page_follows&period=day` (stored Page token) → **200**
+
+```json
+{
+  "data": [
+    {
+      "name": "page_follows",
+      "period": "day",
+      "values": [
+        {
+          "value": 64,
+          "end_time": "2026-09-04T07:00:00+0000"
+        },
+        {
+          "value": 64,
+          "end_time": "2026-09-05T07:00:00+0000"
+        }
+      ],
+      "title": "Lifetime Total Follows",
+      "description": "Lifetime: The number of followers of your Facebook Page or profile. This is calculated as the number of follows minus the number of unfollows over the lifetime of your Facebook Page or profile. ",
+      "id": "723701000827665/insights/page_follows/day"
+    }
+  ],
+  "paging": {
+    "previous": "https://graph.facebook.com/v25.0/723701000827665/insights?access_token={PAGE_TOKEN}&metric=page_follows&period=day&since=1788246000&until=1788418800",
+    "next": "https://graph.facebook.com/v25.0/723701000827665/insights?access_token={PAGE_TOKEN}&metric=page_follows&period=day&since=1788591600&until=1788764400"
+  }
+}
+```
+
+### Insight: page_fans_online_per_day
+
+`GET /723701000827665/insights?metric=page_fans_online_per_day&period=day` (stored Page token) → **400**
+
+```json
+{
+  "error": {
+    "message": "(#100) The value must be a valid insights metric",
+    "type": "OAuthException",
+    "code": 100,
+    "fbtrace_id": "A8imEbY49M70e48zmbwbBxy"
+  }
+}
+```
+
+### Insight: page_fans_country
+
+`GET /723701000827665/insights?metric=page_fans_country&period=day` (stored Page token) → **400**
+
+```json
+{
+  "error": {
+    "message": "(#100) The value must be a valid insights metric",
+    "type": "OAuthException",
+    "code": 100,
+    "fbtrace_id": "A_-XN2xFNh-_qSSqBlm5Ntm"
+  }
+}
+```
+
+### Page fields: fan_count, followers_count
+
+`GET /723701000827665?fields=fan_count,followers_count` (stored Page token) → **200**
+
+```json
+{
+  "fan_count": 64,
+  "followers_count": 64,
+  "id": "723701000827665"
+}
+```
+
+### Newest published post id
+
+`GET /723701000827665/published_posts?limit=1&fields=id` (stored Page token) → **200**
+
+```json
+{
+  "data": [
+    {
+      "id": "723701000827665_122167637282960180"
+    }
+  ],
+  "paging": {
+    "cursors": {
+      "before": "QVFIVGpMSlFZAekhJbVRkaFdySl9YWnJocmM2UnRJWHBSRnREY0xVZAkt0WFdLSjJtR0oxS0gzd3pDVk9mYUF1VmxrLWVyQ195Y0twbHpsX0kzNEIxQXA4eVlDaGVlZAnlRd054N0hhNUFlampVbHpkQWFJRm9Kbmx2YUdnM0tYbklGWGpVbURnSUtzc1d5bHJPMEc2ZATZA2S0pyZAWNLZAzdmYWVIYW5KV2xDSEk2d0dETGxkRS02VGFCWmRZAWHlWTHVSQ2FPYTVSVUZAtWnJndUd0U002T19pdHo2YzJBVXAxT0xUa0pvVFB5aUtQOHlFWEVIZAktaUnhvY0pSWmlzS3JZAOE5yMHJmOVJjOXYxX1dnVmhLYWhudF9UdWRHamlQRVptMXVEMmgxZADh1UWdSbENmZAWszX2RteFRIUjN2QWMyUVBvRXlqbzJQVTBYZAU1VSmlBTFE4UHJzcWJhMDJNYVRaSzREYU9JMWN3ZAU1zLXpZAaUFHdi1NaXBLc3pwVkV0WWNQOHFYRXB3WEpPN3dsYzVnaDBVZAFVtVWtCbTRMUU1LaG51bEg1VnZAfSUVXMk9HUmg4YUNCNE56R1U5WlV6ZATFLUWo1bC1WVjB6OHc0MHp1OUt6Ym43eEJuSFVLa0gwbFdVLVNyQ1lHdXB5cTRrSTVNYXBrM19ITXc1dE9uZADIya0RRQkItZAkw5djctVXlEekxhbDB1Y1N5X1ZAEZAWgxX0czSVNvRUJXX1RoRENZAbkUxeGdMNTVCeS1BVDNoczBObHF5OHRncAZDZD",
+      "after": "QVFIVEZAZAbEtKcVNJeDJrMFhFdU1yNm1JdGtBZAzZAUTm1vcVBCck95U3YtdERES0VMY2VSSEdzNzZA1Nk9jeXRDRzdVZAnNyV1VJYnJScGZAtaFpkSzJ1WjhxQm55YkZAVdUdzR1hRSTZARZA05NTGNxT09aVXotaGd4VlFISERtVjdMMVVOMXZArTUt1VzNKalFZANDJFejB6WFVxaXBkQWNmY1ZAQNWxDLUR2aEVVazBYc2x6NVY1X0dCaHFyTWZACNDVIRHRydkZAwb2NURUE4RWc4ekFLeF80bGxSTkxVa1RoTF9IREFpVzNZAMkRhcldEQkdtUXRmNkdKWlVMUHdOenB0WHo0VzVhUXlQSVhyUmg3RnlkbmhndW5SLVhSa0JLem5hX3VMU05QbFJKMkdYV003Y0Vib01QOHR3WnVxdWM5dDhXUk5wSEFXWlNXeFo3cDg3N01JWmxsRkxRY3VCNjNXVGFuamlEcnZAiQk9UT1BSV0RBUzctNkZANc3V1T1o1dGhkM3FnVmRjc2xlOE5TaDEwbDlmZA3FTc2J0R3Q0M2dUQTFuNi1pLUM2TnVVbE9MNnRrcnE3MzRCekE5QjZAmRGFfUU8tUWdmb2JSeWFmcXJLRXpqU3EwYVo2YWEya0JXT3lWbzV5Skd0bUZAXMUc1ZAjZADZA1VwU05qY2lhamFHekdlUjM4R29wcl80NVhDWHRseXpubzctVFBXaG84S0V1NXVkdnEtRW9SNk4xV2F0X1o4ZATZANaDlwOXR1VEhmVTBJOTNKLWZAvMW9wSgZDZD"
+    },
+    "next": "https://graph.facebook.com/v25.0/723701000827665/published_posts?limit=1&fields=id&access_token={PAGE_TOKEN}&after=QVFIVEZAZAbEtKcVNJeDJrMFhFdU1yNm1JdGtBZAzZAUTm1vcVBCck95U3YtdERES0VMY2VSSEdzNzZA1Nk9jeXRDRzdVZAnNyV1VJYnJScGZAtaFpkSzJ1WjhxQm55YkZAVdUdzR1hRSTZARZA05NTGNxT09aVXotaGd4VlFISERtVjdMMVVOMXZArTUt1VzNKalFZANDJFejB6WFVxaXBkQWNmY1ZAQNWxDLUR2aEVVazBYc2x6NVY1X0dCaHFyTWZACNDVIRHRydkZAwb2NURUE4RWc4ekFLeF80bGxSTkxVa1RoTF9IREFpVzNZAMkRhcldEQkdtUXRmNkdKWlVMUHdOenB0WHo0VzVhUXlQSVhyUmg3RnlkbmhndW5SLVhSa0JLem5hX3VMU05QbFJKMkdYV003Y0Vib01QOHR3WnVxdWM5dDhXUk5wSEFXWlNXeFo3cDg3N01JWmxsRkxRY3VCNjNXVGFuamlEcnZAiQk9UT1BSV0RBUzctNkZANc3V1T1o1dGhkM3FnVmRjc2xlOE5TaDEwbDlmZA3FTc2J0R3Q0M2dUQTFuNi1pLUM2TnVVbE9MNnRrcnE3MzRCekE5QjZAmRGFfUU8tUWdmb2JSeWFmcXJLRXpqU3EwYVo2YWEya0JXT3lWbzV5Skd0bUZAXMUc1ZAjZADZA1VwU05qY2lhamFHekdlUjM4R29wcl80NVhDWHRseXpubzctVFBXaG84S0V1NXVkdnEtRW9SNk4xV2F0X1o4ZATZANaDlwOXR1VEhmVTBJOTNKLWZAvMW9wSgZDZD"
+  }
+}
+```
+
+### Post insight: post_impressions
+
+`GET /723701000827665_122167637282960180/insights?metric=post_impressions&period=lifetime` (stored Page token) → **400**
+
+```json
+{
+  "error": {
+    "message": "(#100) The value must be a valid insights metric",
+    "type": "OAuthException",
+    "code": 100,
+    "fbtrace_id": "A7DJUdCZTV8WJUpHYSP7jA1"
+  }
+}
+```
+
+### Post insight: post_impressions_unique
+
+`GET /723701000827665_122167637282960180/insights?metric=post_impressions_unique&period=lifetime` (stored Page token) → **400**
+
+```json
+{
+  "error": {
+    "message": "(#100) The value must be a valid insights metric",
+    "type": "OAuthException",
+    "code": 100,
+    "fbtrace_id": "AV7iNfaqiBQL11j58gZX7Iw"
+  }
+}
+```
+
+### Post insight: post_clicks
+
+`GET /723701000827665_122167637282960180/insights?metric=post_clicks&period=lifetime` (stored Page token) → **200**
+
+```json
+{
+  "data": [
+    {
+      "name": "post_clicks",
+      "period": "lifetime",
+      "values": [
+        {
+          "value": 6
+        }
+      ],
+      "title": "Lifetime Matched Audience Targeting Consumptions on Post",
+      "description": "Lifetime: The number of clicks anywhere in your post on News Feed from the user that matched the audience targeting on it. (Total Count)",
+      "id": "723701000827665_122167637282960180/insights/post_clicks/lifetime"
+    }
+  ],
+  "paging": {
+    "previous": "https://graph.facebook.com/v25.0/723701000827665_122167637282960180/insights?access_token={PAGE_TOKEN}&metric=post_clicks&period=lifetime&since=1788159600&until=1788332400",
+    "next": "https://graph.facebook.com/v25.0/723701000827665_122167637282960180/insights?access_token={PAGE_TOKEN}&metric=post_clicks&period=lifetime&since=1788505200&until=1788678000"
+  }
+}
+```
+
+### Post insight: post_reactions_by_type_total
+
+`GET /723701000827665_122167637282960180/insights?metric=post_reactions_by_type_total&period=lifetime` (stored Page token) → **200**
+
+```json
+{
+  "data": [
+    {
+      "name": "post_reactions_by_type_total",
+      "period": "lifetime",
+      "values": [
+        {
+          "value": {
+            "like": 1
+          }
+        }
+      ],
+      "title": "Lifetime Total post Reactions by Type.",
+      "description": "Lifetime: Total post reactions by type.",
+      "id": "723701000827665_122167637282960180/insights/post_reactions_by_type_total/lifetime"
+    }
+  ],
+  "paging": {
+    "previous": "https://graph.facebook.com/v25.0/723701000827665_122167637282960180/insights?access_token={PAGE_TOKEN}&metric=post_reactions_by_type_total&period=lifetime&since=1788159600&until=1788332400",
+    "next": "https://graph.facebook.com/v25.0/723701000827665_122167637282960180/insights?access_token={PAGE_TOKEN}&metric=post_reactions_by_type_total&period=lifetime&since=1788505200&until=1788678000"
+  }
+}
+```
+
+### Post FIELDS: shares, reactions/comments summaries
+
+`GET /723701000827665_122167637282960180?fields=shares,reactions.summary(true).limit(0),comments.summary(true).limit(0)` (stored Page token) → **200**
+
+```json
+{
+  "reactions": {
+    "data": [],
+    "summary": {
+      "total_count": 1,
+      "viewer_reaction": "NONE"
+    }
+  },
+  "comments": {
+    "data": [],
+    "summary": {
+      "order": "ranked",
+      "total_count": 1,
+      "can_comment": true
+    }
+  },
+  "id": "723701000827665_122167637282960180"
+}
+```
+
+## The comment tally is not exact — probed live 2026-09-06
+
+`comments.summary(true).total_count` cannot be trusted to gate fetching, and this is observed,
+not inferred. On post `723701000827665_122167026404960180`, after its author deleted one
+top-level comment (Facebook cascade-deleted the Page's reply to it — both ids answered
+`Unsupported get request … does not exist` afterwards) and then left one NEW comment:
+
+- `GET /{post-id}/comments?summary=true` returned **`total_count: 2`** while its own `data`
+  listed exactly **one** comment.
+- `GET /{page-id}/published_posts?fields=comments.summary(true).limit(0)` read **0** for a
+  different post whose previously fetched comment still existed in Kontuur's store.
+
+So the tally can disagree with the edge's own listing in either direction, which is what let a
+new comment hide behind a deleted one when the sync compared counts for equality. The
+`CommentsAdapter.countIsExact` flag records this per network: `false` for Facebook (every post
+that has, or had, comments is fetched), `true` for Instagram, whose media tally has gated
+correctly since the queue shipped.
+
+Also observed on the same day: a Page post deleted by its owner disappears from
+`/published_posts` entirely — the analytics ledger arm then correctly reads it as
+"no longer on Facebook".

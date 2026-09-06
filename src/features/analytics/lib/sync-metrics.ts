@@ -14,8 +14,16 @@ import {
   fetchMediaSince,
   fetchReachByProductType,
   type IGDemographics,
-} from '@/lib/meta/insights'
-import { notify } from '@/lib/notifications/notify'
+} from '@/lib/meta/instagram/insights'
+import { PLATFORM_NAMES } from '@/lib/validation'
+import {
+  notifyMetricsBlocked,
+  notifySyncIncomplete,
+  recordSyncHealth,
+  runSyncPhases,
+  type MetricsSyncOutcome,
+  type SyncPhase,
+} from './sync-shared'
 import { fetchPostIdsByMediaId } from '@/lib/queries/posts-by-media-id'
 import {
   SOCIAL_CONNECTION_SYNC_COLUMNS,
@@ -48,13 +56,6 @@ const MEDIA_LOOKBACK_DAYS = 30
  * matters — the cure for "our July 28th disagrees with the IG app".
  */
 const CONSOLIDATION_DAYS = 7
-
-export interface MetricsSyncOutcome {
-  synced: number
-  skipped: number
-  failed: number
-  errors: Array<{ clientId: string; error: string }>
-}
 
 /**
  * Syncs yesterday's account metrics, per-post insights and (weekly)
@@ -103,7 +104,7 @@ export async function syncAllClientMetrics(
     try {
       await syncClientMetrics(admin, { ...connection, client_id: clientId })
       outcome.synced++
-      await recordSyncHealth(admin, clientId, null)
+      await recordSyncHealth(admin, clientId, 'instagram', null)
     } catch (err) {
       outcome.failed++
       const message = err instanceof Error ? err.message : 'unknown error'
@@ -111,11 +112,11 @@ export async function syncAllClientMetrics(
       // The verdict outlives the run. The page dated itself from the day
       // rows before this existed — a stamp the on-demand refill also wrote —
       // and so called a sync current while a phase had been failing nightly.
-      await recordSyncHealth(admin, clientId, message)
+      await recordSyncHealth(admin, clientId, 'instagram', message)
       if (err instanceof GraphApiError) {
         if (err.failure === 'token_invalid' || err.failure === 'permission') {
           try {
-            await notifyMetricsBlocked(admin, clientId)
+            await notifyMetricsBlocked(admin, clientId, PLATFORM_NAMES.instagram)
           } catch (notifyErr) {
             outcome.errors.push({
               clientId: clientId,
@@ -145,67 +146,6 @@ export async function syncAllClientMetrics(
     }
   }
   return outcome
-}
-
-/**
- * Stores what this run concluded about one connection (migration 20260828).
- * Best-effort by design and in both directions: a health write must never
- * turn a good sync bad, and until the migration lands everywhere the missing
- * columns simply mean the page keeps its old, quieter behaviour.
- */
-async function recordSyncHealth(
-  admin: SupabaseClient,
-  clientId: string,
-  error: string | null
-): Promise<void> {
-  try {
-    const { error: writeError } = await admin
-      .from('social_connections')
-      .update({ last_sync_at: new Date().toISOString(), last_sync_error: error })
-      .eq('client_id', clientId)
-      .eq('platform', 'instagram')
-    if (writeError) throw new Error(writeError.message)
-  } catch (err) {
-    console.error(`[metrics] sync-health write failed for client ${clientId}:`, err)
-  }
-}
-
-/**
- * Conditions that make every remaining phase pointless: a dead token, a
- * missing permission, or a rate limit answers the same way for all of them.
- * Anything narrower belongs to its own phase.
- */
-function isAccountWideFailure(err: unknown): boolean {
-  return (
-    err instanceof GraphApiError &&
-    (err.failure === 'token_invalid' ||
-      err.failure === 'permission' ||
-      err.failure === 'rate_limited')
-  )
-}
-
-export interface SyncPhase {
-  name: string
-  run: () => Promise<void>
-}
-
-/**
- * Runs each phase even when an earlier one failed, and returns what broke.
- * Account-wide failures propagate immediately — retrying four more phases
- * against a dead token only burns calls. Callers decide what a partial run
- * means; this never decides for them by swallowing.
- */
-export async function runSyncPhases(phases: SyncPhase[]): Promise<string[]> {
-  const failures: string[] = []
-  for (const { name, run } of phases) {
-    try {
-      await run()
-    } catch (err) {
-      if (isAccountWideFailure(err)) throw err
-      failures.push(`${name}: ${err instanceof Error ? err.message : 'unknown error'}`)
-    }
-  }
-  return failures
 }
 
 /**
@@ -595,27 +535,4 @@ export async function syncDemographicsWeekly(
     .from('ig_audience_snapshots')
     .upsert(row, { onConflict: 'client_id,ig_account_id,snapshot_date' })
   if (upsertError) throw new Error(`ig_audience_snapshots upsert failed: ${upsertError.message}`)
-}
-
-/**
- * The half-failure alert. Deliberately phrase-stable rather than naming the
- * failing phase: the message IS the dedup key, so a wording that changes with
- * the error would re-notify every night. The phase detail lives in
- * last_sync_error, which the analytics document reads.
- */
-function notifySyncIncomplete(admin: SupabaseClient, clientId: string): Promise<void> {
-  return notify(admin, {
-    clientId,
-    message: (name) =>
-      `Analytics for ${name} did not finish syncing — some sections are out of date`,
-  })
-}
-
-/** Tell the agency the metrics sync is blocked on a dead or underscoped connection. */
-function notifyMetricsBlocked(admin: SupabaseClient, clientId: string): Promise<void> {
-  return notify(admin, {
-    clientId,
-    message: (name) =>
-      `Instagram metrics for ${name} could not be synced — please reconnect the account`,
-  })
 }

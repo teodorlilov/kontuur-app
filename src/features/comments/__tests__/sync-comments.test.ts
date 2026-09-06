@@ -19,10 +19,15 @@ const fetchMediaComments = vi.fn()
  * module named after one network. The spy stands in for that adapter's read; the rest of the
  * contract is present because the sync resolves the whole adapter, not one method.
  */
+const flags = vi.hoisted(() => ({ countIsExact: true }))
+
 vi.mock('@/lib/meta/networks', () => ({
   resolveComments: () => ({
     platform: 'instagram',
     label: 'Instagram',
+    // The exact-count contract most of these tests pin: equal counts mean no fetch. The
+    // untrusted path flips the flag in its own case.
+    countIsExact: flags.countIsExact,
     listCommentablePosts: (...a: unknown[]) => listCommentablePosts(...a),
     fetchComments: (...a: unknown[]) => fetchMediaComments(...a),
     reply: vi.fn(),
@@ -287,6 +292,48 @@ describe('syncClientComments', () => {
       platform: 'instagram',
       platform_account_id: 'acct-1',
     })
+  })
+
+  it("fetches an equal-count post anyway when the network's tally is not exact", async () => {
+    // Facebook's summary disagreed with its own edge live (probe 2026-09-06): a stored
+    // reply offset a new top-level comment and the equality gate read "unchanged" over a
+    // real change. An inexact count is a hint, never a gate.
+    flags.countIsExact = false
+    try {
+      listCommentablePosts.mockResolvedValue([
+        { externalPostId: 'media-1', commentCount: 1, identity: IDENTITY },
+      ])
+      fetchMediaComments.mockResolvedValue({
+        comments: [{ id: 'c-new' }],
+        withheld: false,
+        nextCursor: null,
+      })
+      const { client, deleted } = fakeAdmin({ 'media-1': ['c-old'] })
+
+      const outcome = await syncClientComments(client, CONNECTION)
+
+      expect(fetchMediaComments).toHaveBeenCalled()
+      expect(outcome.fetched).toBe(1)
+      // The refetch is also the reconcile: the vanished comment leaves with it.
+      expect(deleted).toContainEqual(['c-old'])
+    } finally {
+      flags.countIsExact = true
+    }
+  })
+
+  it('refetches a post whose count fell to zero, so deleted comments leave the queue', async () => {
+    // A post with stored rows used to be filtered out the moment its count hit zero —
+    // before the staleness gate, so deleteVanished never saw it and the rows were immortal.
+    listCommentablePosts.mockResolvedValue([
+      { externalPostId: 'media-1', commentCount: 0, identity: IDENTITY },
+    ])
+    fetchMediaComments.mockResolvedValue({ comments: [], withheld: false, nextCursor: null })
+    const { client, deleted } = fakeAdmin({ 'media-1': ['c1'] })
+
+    const outcome = await syncClientComments(client, CONNECTION)
+
+    expect(outcome.fetched).toBe(1)
+    expect(deleted).toContainEqual(['c1'])
   })
 
   it('deletes rows Instagram no longer returns for a refetched post', async () => {

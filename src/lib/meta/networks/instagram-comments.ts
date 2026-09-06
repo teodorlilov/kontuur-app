@@ -2,7 +2,7 @@ import 'server-only'
 
 import { PLATFORM_NAMES } from '@/lib/validation'
 import { graphDelete, graphGet, graphPost } from '../graph-client'
-import { fetchMediaSince } from '../insights'
+import { fetchMediaSince } from '../instagram/insights'
 import { IG_GRAPH_BASE } from '../constants'
 import {
   graphAckSchema,
@@ -45,6 +45,9 @@ const COMMENTS_PAGE_LIMIT = 50
 export const instagramComments: CommentsAdapter = {
   platform: 'instagram',
   label: PLATFORM_NAMES.instagram,
+  // Instagram's media tally has gated correctly since the queue shipped — equal has meant
+  // unchanged in practice, so the cheap compare stays.
+  countIsExact: true,
 
   /**
    * The account's media, which already carries `comments_count` and every identity field the

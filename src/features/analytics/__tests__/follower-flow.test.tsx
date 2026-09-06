@@ -63,6 +63,51 @@ function hoverDay(container: HTMLElement, index: number): SVGSVGElement {
 }
 
 describe('FollowerFlow', () => {
+  it('says a quiet period in a sentence instead of drawing an empty plot', () => {
+    // Every day measured, nothing moved: the axis would clamp to "+1" over a full-height
+    // void, which reads as a broken chart. The stats still headline the zeros — real data —
+    // and the plot collapses into words.
+    const quiet: FollowerSummary = {
+      ...FOLLOWERS,
+      gained: { now: 0, then: null, deltaPct: null },
+      lost: { now: 0, then: null, deltaPct: null },
+      net: { now: 0, then: null },
+      fromPosts: null,
+      churnPct: null,
+      byDay: [
+        flowDay('2026-09-04', { gained: 0, lost: 0 }),
+        flowDay('2026-09-05', { gained: 0, lost: 0 }),
+      ],
+    }
+    const { container } = render(<FollowerFlow followers={quiet} />)
+    expect(screen.getByText('No follower gains or losses in this period.')).toBeInTheDocument()
+    expect(container.querySelector('svg')).toBeNull()
+  })
+
+  it('names where the data begins when the window reaches past the first stored day', () => {
+    // A 90-day window over a 30-day backfill: unmeasured days and measured zeros are
+    // different facts, and the sentence separates them.
+    const partial: FollowerSummary = {
+      ...FOLLOWERS,
+      gained: { now: 0, then: null, deltaPct: null },
+      lost: { now: 0, then: null, deltaPct: null },
+      net: { now: 0, then: null },
+      fromPosts: null,
+      churnPct: null,
+      byDay: [
+        flowDay('2026-06-08', { gained: null, lost: null }),
+        flowDay('2026-08-08', { gained: 0, lost: 0 }),
+        flowDay('2026-08-09', { gained: 0, lost: 0 }),
+      ],
+    }
+    render(<FollowerFlow followers={partial} />)
+    expect(
+      screen.getByText(
+        "No follower gains or losses in this period — the network's data here begins 8 Aug."
+      )
+    ).toBeInTheDocument()
+  })
+
   it('headlines gained, lost and net with their last-period anchors', () => {
     render(<FollowerFlow followers={FOLLOWERS} />)
     expect(screen.getByText('118')).toBeInTheDocument()

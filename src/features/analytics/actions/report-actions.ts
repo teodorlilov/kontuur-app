@@ -12,12 +12,14 @@ import {
   SOCIAL_CONNECTION_AUTH_COLUMNS,
   type SocialConnectionAuthColumns,
 } from '@/lib/queries/select-columns'
-import { fetchIgConnectionState } from '@/lib/queries/db'
+import { fetchConnectionSyncState, fetchIgConnectionState } from '@/lib/queries/db'
 import { isTokenExpired } from '@/lib/meta/token-expiry'
 import { toDateKey } from '@/utils/date-helpers'
 import { archiveReportInputSchema, type ArchiveReportInput } from '../schemas'
 import { periodFromBounds, type AnalyticsPeriod } from '../lib/period'
 import { getAnalyticsReport, IG_METRICS_TAG } from '../lib/report-data'
+import { getFacebookAnalyticsReport } from '../lib/facebook-report-data'
+import type { FacebookReportData } from '../lib/build-facebook-report'
 import { refreshWindowMetrics } from '../lib/refresh-window'
 import { syncDemographicsWeekly } from '../lib/sync-metrics'
 import { buildFallbackNarrative, getNarrative } from '../lib/narrative'
@@ -27,6 +29,8 @@ interface ReportScope {
   client: { id: string; name: string }
   timezone: string
   period: AnalyticsPeriod
+  /** Parsed, defaulted — never read off the raw input. */
+  network: 'instagram' | 'facebook'
   supabase: SupabaseClient
 }
 
@@ -41,7 +45,7 @@ async function resolveReportScope(
   if (!auth.ok) return { ok: false, error: auth.error }
   const { supabase, agencyId } = auth
 
-  const { clientId, preset, start, end } = parsed.data
+  const { clientId, preset, start, end, network } = parsed.data
   // Through the shared helper. This read the row WITHOUT an agency_id predicate and compared it
   // in TypeScript afterwards — the tenancy rule enforced outside the query, in one place, by hand.
   const client = await fetchClientWithOwnership(supabase, clientId, agencyId)
@@ -54,6 +58,7 @@ async function resolveReportScope(
       client: { id: client.id, name: client.name },
       timezone: agency?.timezone ?? 'UTC',
       period: periodFromBounds(preset, start, end),
+      network,
       supabase,
     },
   }
@@ -62,14 +67,15 @@ async function resolveReportScope(
 async function upsertReportRow(
   scope: ReportScope,
   accountId: string,
-  report: AnalyticsReportData,
+  platform: 'instagram' | 'facebook',
+  report: AnalyticsReportData | FacebookReportData,
   narrative: string
 ): Promise<ActionResult> {
   const { error } = await scope.supabase.from('analytics_reports').upsert(
     {
       client_id: scope.client.id,
-      ig_account_id: accountId,
-      platform: 'instagram',
+      platform_account_id: accountId,
+      platform,
       period_start: scope.period.start,
       period_end: scope.period.end,
       // WHY as: AnalyticsReportData is plain data (checked by its tests); the
@@ -77,7 +83,7 @@ async function upsertReportRow(
       metrics_json: JSON.parse(JSON.stringify(report)) as Json,
       ai_summary: narrative,
     },
-    { onConflict: 'client_id,ig_account_id,platform,period_start,period_end' }
+    { onConflict: 'client_id,platform_account_id,platform,period_start,period_end' }
   )
   if (error) return { ok: false, error: error.message }
   return { ok: true, data: undefined }
@@ -92,6 +98,25 @@ export async function archiveReport(input: ArchiveReportInput): Promise<ActionRe
   const resolved = await resolveReportScope(input)
   if (!resolved.ok) return { ok: false, error: resolved.error }
   const { scope } = resolved
+
+  // Each network is its own short branch here rather than a shared body with holes: the
+  // reports differ in reader, narrative source and shape, and only the row write is common —
+  // which is why THAT is the shared function.
+  if (scope.network === 'facebook') {
+    const { accountId } = await fetchConnectionSyncState(
+      scope.supabase,
+      scope.client.id,
+      'facebook'
+    )
+    if (!accountId) {
+      return { ok: false, error: 'Connect Facebook before exporting a report' }
+    }
+    const report = await getFacebookAnalyticsReport(scope.client.id, scope.period, scope.timezone)
+    if (!report.hasHistory) {
+      return { ok: false, error: 'Nothing to export yet — the first sync runs tonight' }
+    }
+    return upsertReportRow(scope, accountId, 'facebook', report, report.narrative ?? '')
+  }
 
   // The archive row is stamped with the account it describes — the account
   // scoping invariant applies to exported reports like every other read.
@@ -116,7 +141,7 @@ export async function archiveReport(input: ArchiveReportInput): Promise<ActionRe
     )?.text ??
     buildFallbackNarrative(report) ??
     ''
-  return upsertReportRow(scope, accountId, report, narrative)
+  return upsertReportRow(scope, accountId, 'instagram', report, narrative)
 }
 
 /** What one fill run achieved — enough for the caller to know whether to wait. */

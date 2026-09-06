@@ -45,7 +45,15 @@ const CLIENTS = [
 function renderControls(over: Partial<Parameters<typeof MastheadControls>[0]> = {}) {
   return render(
     <AnalyticsNavProvider>
-      <MastheadControls clientId="c1" clients={CLIENTS} period={PERIOD} hasHistory {...over} />
+      <MastheadControls
+        clientId="c1"
+        clients={CLIENTS}
+        period={PERIOD}
+        hasHistory
+        network="instagram"
+        hasFacebook={false}
+        {...over}
+      />
     </AnalyticsNavProvider>
   )
 }
@@ -56,6 +64,25 @@ beforeEach(() => {
 })
 
 describe('MastheadControls', () => {
+  it('offers the network switch only when Facebook is connected, and keeps the network on navigation', async () => {
+    const user = userEvent.setup()
+    renderControls({ hasFacebook: true, network: 'facebook' })
+
+    // Facebook is active; period clicks must not silently bounce the reader to Instagram.
+    expect(screen.getByRole('button', { name: 'Facebook' })).toHaveAttribute('aria-pressed', 'true')
+    await user.click(screen.getByRole('button', { name: '7 days' }))
+    expect(push).toHaveBeenCalledWith('/analytics?client=c1&range=7d&network=facebook')
+
+    await user.click(screen.getByRole('button', { name: 'Instagram' }))
+    // Instagram is the default vocabulary: its links carry no network param at all.
+    expect(push).toHaveBeenCalledWith('/analytics?client=c1&range=30d')
+  })
+
+  it('hides the network switch for a client with only Instagram', () => {
+    renderControls()
+    expect(screen.queryByRole('button', { name: 'Facebook' })).not.toBeInTheDocument()
+  })
+
   it('marks the active range and navigates on another preset', async () => {
     const user = userEvent.setup()
     renderControls()
@@ -108,6 +135,7 @@ describe('MastheadControls', () => {
     await waitFor(() => expect(window.print).toHaveBeenCalled())
     expect(archiveReport).toHaveBeenCalledWith({
       clientId: 'c1',
+      network: 'instagram',
       preset: '30d',
       start: '2026-07-20',
       end: '2026-08-18',

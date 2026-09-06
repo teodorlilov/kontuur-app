@@ -6,12 +6,12 @@ import {
   exchangeFacebookCode,
   exchangeFacebookForLongLived,
   fetchFacebookUser,
-} from '@/lib/meta/facebook-auth'
+} from '@/lib/meta/facebook/auth'
 import {
   exchangeInstagramCode,
   exchangeInstagramForLongLived,
   fetchInstagramUser,
-} from '@/lib/meta/instagram-auth'
+} from '@/lib/meta/instagram/auth'
 import { FACEBOOK_USER_PLATFORM } from '@/lib/meta/oauth-networks'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { resolveAuth } from '@/lib/auth/resolve-auth'

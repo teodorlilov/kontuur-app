@@ -240,6 +240,18 @@ export interface CommentsAdapter {
   readonly label: string
 
   /**
+   * Whether `commentCount` can be TRUSTED to gate fetching: true means equal counts prove
+   * nothing changed; false means the tally is a hint and every post that has — or had —
+   * comments must be fetched.
+   *
+   * A network fact, probed, not assumed. Facebook's summary tally disagreed with its own
+   * comments edge live (2026-09-06: summary 2, edge 1; and 0 over a comment the store still
+   * held), which let a new comment hide behind a deleted one — the exact miss the equality
+   * gate promised could never happen.
+   */
+  readonly countIsExact: boolean
+
+  /**
    * The posts worth checking, newest first, since the given instant.
    *
    * Which posts a network HAS is its own question — Instagram lists media, a Page lists

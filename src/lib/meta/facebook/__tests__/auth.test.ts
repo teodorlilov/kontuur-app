@@ -18,7 +18,7 @@ import { describe, expect, it, vi, beforeEach } from 'vitest'
 const fetchMock = vi.fn()
 vi.stubGlobal('fetch', fetchMock)
 
-const { fetchFacebookPages } = await import('../facebook-auth')
+const { fetchFacebookPages } = await import('../auth')
 
 function ok(body: unknown) {
   return { ok: true, status: 200, json: async () => body, headers: new Headers() }

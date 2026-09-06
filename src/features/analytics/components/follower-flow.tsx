@@ -31,9 +31,26 @@ function signed(value: number): string {
  * that went out. A day the API never answered has no bars; a measured zero
  * is a flat day.
  */
-export function FollowerFlow({ followers }: { followers: FollowerSummary }) {
+export function FollowerFlow({
+  followers,
+  networkLabel = 'Instagram',
+}: {
+  followers: FollowerSummary
+  /** Who attributed `fromPosts` — the meta line names the network making the claim. */
+  networkLabel?: string
+}) {
   const [hover, setHover] = useState<number | null>(null)
   const days = followers.byDay
+
+  /**
+   * A period where nothing moved must not draw a full-height plot of air under a "+1"
+   * ceiling — the axis clamps to one follower and the result reads as a broken chart, when
+   * the truth is quiet: measured zeros. Said in a sentence instead, and when the window
+   * reaches back past the first stored day, the sentence says where the data begins —
+   * unmeasured days and measured-zero days are different facts.
+   */
+  const moved = days.some((day) => (day.gained ?? 0) > 0 || (day.lost ?? 0) > 0)
+  const measuredDays = days.filter((day) => day.gained !== null || day.lost !== null)
 
   const gainCeil = niceCeil(Math.max(1, ...days.map((day) => day.gained ?? 0)))
   const lossMax = Math.max(0, ...days.map((day) => day.lost ?? 0))
@@ -67,7 +84,7 @@ export function FollowerFlow({ followers }: { followers: FollowerSummary }) {
 
   const metaParts = [
     followers.fromPosts !== null && followers.fromPosts > 0
-      ? `Instagram credits ${formatCount(followers.fromPosts)} of these follows to your posts`
+      ? `${networkLabel} credits ${formatCount(followers.fromPosts)} of these follows to your posts`
       : null,
     followers.churnPct !== null
       ? `${followers.churnPct < 10 ? followers.churnPct.toFixed(1) : Math.round(followers.churnPct)}% of the followers you started with left`
@@ -92,146 +109,158 @@ export function FollowerFlow({ followers }: { followers: FollowerSummary }) {
         />
         <FlowStat label="Net" now={followers.net.now} then={followers.net.then} net />
       </div>
-      <div className="relative">
-        <svg
-          viewBox={`0 0 ${W} ${H}`}
-          role="img"
-          aria-label={spoken}
-          className="mt-3 block h-auto w-full touch-none"
-          onPointerMove={locate}
-          onPointerDown={locate}
-          onPointerLeave={() => setHover(null)}
-        >
-          {/* The scale frame: dashed ceilings for each zone, solid zero line. */}
-          <line
-            x1={PAD.left}
-            y1={plotTop}
-            x2={W - PAD.right}
-            y2={plotTop}
-            stroke={CHART_COLORS.grid}
-            strokeWidth={1}
-            strokeDasharray="2 3"
-          />
-          <text
-            x={W - PAD.right}
-            y={plotTop - 4}
-            textAnchor="end"
-            fill={CHART_COLORS.label}
-            className="text-micro tabular-nums"
-          >
-            +{formatCount(gainCeil)}
-          </text>
-          {lossCeil > 0 && (
-            <line
-              x1={PAD.left}
-              y1={plotBottom}
-              x2={W - PAD.right}
-              y2={plotBottom}
-              stroke={CHART_COLORS.grid}
-              strokeWidth={1}
-              strokeDasharray="2 3"
-            />
-          )}
-          {lossZone >= 24 && (
-            <text
-              x={W - PAD.right}
-              y={plotBottom - 4}
-              textAnchor="end"
-              fill={CHART_COLORS.label}
-              className="text-micro tabular-nums"
+      {!moved ? (
+        <p className="mt-4 text-caption text-text3">
+          No follower gains or losses in this period
+          {measuredDays.length > 0 && measuredDays.length < days.length
+            ? ` — the network's data here begins ${formatDayMonth(measuredDays[0]!.date)}`
+            : ''}
+          .
+        </p>
+      ) : (
+        <>
+          <div className="relative">
+            <svg
+              viewBox={`0 0 ${W} ${H}`}
+              role="img"
+              aria-label={spoken}
+              className="mt-3 block h-auto w-full touch-none"
+              onPointerMove={locate}
+              onPointerDown={locate}
+              onPointerLeave={() => setHover(null)}
             >
-              −{formatCount(lossCeil)}
-            </text>
-          )}
-          {hover !== null && (
-            <rect
-              x={x(hover) - step / 2}
-              y={plotTop}
-              width={step}
-              height={plotBottom - plotTop}
-              fill={CHART_COLORS.ink}
-              opacity={0.05}
-              className="print:hidden"
+              {/* The scale frame: dashed ceilings for each zone, solid zero line. */}
+              <line
+                x1={PAD.left}
+                y1={plotTop}
+                x2={W - PAD.right}
+                y2={plotTop}
+                stroke={CHART_COLORS.grid}
+                strokeWidth={1}
+                strokeDasharray="2 3"
+              />
+              <text
+                x={W - PAD.right}
+                y={plotTop - 4}
+                textAnchor="end"
+                fill={CHART_COLORS.label}
+                className="text-micro tabular-nums"
+              >
+                +{formatCount(gainCeil)}
+              </text>
+              {lossCeil > 0 && (
+                <line
+                  x1={PAD.left}
+                  y1={plotBottom}
+                  x2={W - PAD.right}
+                  y2={plotBottom}
+                  stroke={CHART_COLORS.grid}
+                  strokeWidth={1}
+                  strokeDasharray="2 3"
+                />
+              )}
+              {lossZone >= 24 && (
+                <text
+                  x={W - PAD.right}
+                  y={plotBottom - 4}
+                  textAnchor="end"
+                  fill={CHART_COLORS.label}
+                  className="text-micro tabular-nums"
+                >
+                  −{formatCount(lossCeil)}
+                </text>
+              )}
+              {hover !== null && (
+                <rect
+                  x={x(hover) - step / 2}
+                  y={plotTop}
+                  width={step}
+                  height={plotBottom - plotTop}
+                  fill={CHART_COLORS.ink}
+                  opacity={0.05}
+                  className="print:hidden"
+                  aria-hidden="true"
+                />
+              )}
+              <line
+                x1={PAD.left}
+                y1={baseY}
+                x2={W - PAD.right}
+                y2={baseY}
+                stroke={CHART_COLORS.grid}
+                strokeWidth={1}
+              />
+              {days.map((day, index) => {
+                const cx = x(index)
+                return (
+                  <g key={day.date}>
+                    {day.gained !== null && day.gained > 0 && (
+                      <rect
+                        x={cx - barW / 2}
+                        y={baseY - heightOf(day.gained)}
+                        width={barW}
+                        height={heightOf(day.gained)}
+                        rx={2}
+                        fill={CHART_COLORS.now}
+                      />
+                    )}
+                    {day.lost !== null && day.lost > 0 && (
+                      <rect
+                        x={cx - barW / 2}
+                        y={baseY}
+                        width={barW}
+                        height={heightOf(day.lost)}
+                        rx={2}
+                        fill={CHART_COLORS.loss}
+                      />
+                    )}
+                    {day.posts.length > 0 && (
+                      <circle
+                        cx={cx}
+                        cy={H - 9}
+                        r={3.5}
+                        fill={hover === index ? CHART_COLORS.now : '#fff'}
+                        stroke={CHART_COLORS.now}
+                        strokeWidth={2}
+                      />
+                    )}
+                  </g>
+                )
+              })}
+            </svg>
+            {hover !== null && hoveredDay && (
+              <DayCard frac={x(hover) / W}>
+                <div className="text-micro font-semibold text-ink">
+                  {formatDayMonth(hoveredDay.date)}
+                </div>
+                <dl className="mt-1.5 space-y-1">
+                  <DayCardRow
+                    swatch="bg-forest"
+                    label="Gained"
+                    value={hoveredDay.gained}
+                    format={(value) => `+${formatCount(value)}`}
+                  />
+                  <DayCardRow
+                    swatch="bg-danger"
+                    label="Lost"
+                    value={hoveredDay.lost}
+                    format={(value) => `−${formatCount(value)}`}
+                  />
+                </dl>
+                <DayCardPosts posts={hoveredDay.posts} />
+              </DayCard>
+            )}
+          </div>
+          {days.length > 0 && (
+            <div
+              className="mt-1 flex justify-between text-micro tabular-nums text-text3"
               aria-hidden="true"
-            />
-          )}
-          <line
-            x1={PAD.left}
-            y1={baseY}
-            x2={W - PAD.right}
-            y2={baseY}
-            stroke={CHART_COLORS.grid}
-            strokeWidth={1}
-          />
-          {days.map((day, index) => {
-            const cx = x(index)
-            return (
-              <g key={day.date}>
-                {day.gained !== null && day.gained > 0 && (
-                  <rect
-                    x={cx - barW / 2}
-                    y={baseY - heightOf(day.gained)}
-                    width={barW}
-                    height={heightOf(day.gained)}
-                    rx={2}
-                    fill={CHART_COLORS.now}
-                  />
-                )}
-                {day.lost !== null && day.lost > 0 && (
-                  <rect
-                    x={cx - barW / 2}
-                    y={baseY}
-                    width={barW}
-                    height={heightOf(day.lost)}
-                    rx={2}
-                    fill={CHART_COLORS.loss}
-                  />
-                )}
-                {day.posts.length > 0 && (
-                  <circle
-                    cx={cx}
-                    cy={H - 9}
-                    r={3.5}
-                    fill={hover === index ? CHART_COLORS.now : '#fff'}
-                    stroke={CHART_COLORS.now}
-                    strokeWidth={2}
-                  />
-                )}
-              </g>
-            )
-          })}
-        </svg>
-        {hover !== null && hoveredDay && (
-          <DayCard frac={x(hover) / W}>
-            <div className="text-micro font-semibold text-ink">
-              {formatDayMonth(hoveredDay.date)}
+            >
+              <span>{formatDayMonth(days[0]!.date)}</span>
+              <span>{formatDayMonth(days[days.length - 1]!.date)}</span>
             </div>
-            <dl className="mt-1.5 space-y-1">
-              <DayCardRow
-                swatch="bg-forest"
-                label="Gained"
-                value={hoveredDay.gained}
-                format={(value) => `+${formatCount(value)}`}
-              />
-              <DayCardRow
-                swatch="bg-danger"
-                label="Lost"
-                value={hoveredDay.lost}
-                format={(value) => `−${formatCount(value)}`}
-              />
-            </dl>
-            <DayCardPosts posts={hoveredDay.posts} />
-          </DayCard>
-        )}
-      </div>
-      {days.length > 0 && (
-        <div
-          className="mt-1 flex justify-between text-micro tabular-nums text-text3"
-          aria-hidden="true"
-        >
-          <span>{formatDayMonth(days[0]!.date)}</span>
-          <span>{formatDayMonth(days[days.length - 1]!.date)}</span>
-        </div>
+          )}
+        </>
       )}
       {metaParts.length > 0 && (
         <p className="mt-2.5 text-caption text-text2">{metaParts.join(' · ')}.</p>

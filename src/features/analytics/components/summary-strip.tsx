@@ -1,12 +1,12 @@
 import { cn } from '@/utils/cn'
 import { Card } from '@/components/ui/card'
-import type { AnalyticsReportData } from '../lib/build-report'
+import type { AnalyticsReportData, FollowerSummary } from '../lib/build-report'
 import { countDeltaVerdict, rateDeltaVerdict, type DeltaVerdict } from '../lib/delta-verdict'
 import { formatCount } from '../lib/format'
 import { DeltaChip } from './delta-chip'
 import { Sparkline } from './sparkline'
 
-interface CellSpec {
+export interface CellSpec {
   label: string
   value: string | null
   verdict: DeltaVerdict
@@ -17,15 +17,16 @@ interface CellSpec {
   spoken: string
 }
 
-function cellSpecs(data: AnalyticsReportData): CellSpec[] {
-  const simple = (
-    label: string,
-    cell: {
-      now: number | null
-      then: number | null
-      series: Array<number | null>
-    }
-  ): CellSpec => ({
+/** One count-shaped cell: value, verdict, last period's line, trace — both networks' grammar. */
+export function countCellSpec(
+  label: string,
+  cell: {
+    now: number | null
+    then: number | null
+    series: Array<number | null>
+  }
+): CellSpec {
+  return {
     label,
     value: cell.now === null ? null : formatCount(cell.now),
     verdict: countDeltaVerdict(cell.now, cell.then),
@@ -41,36 +42,42 @@ function cellSpecs(data: AnalyticsReportData): CellSpec[] {
               ? 'no previous period to compare'
               : `${formatCount(cell.then)} the period before`
           }.`,
-  })
+  }
+}
 
-  const { followers, engagementRate } = data
+/** The net-followers cell — shared because both networks tell the follower story identically. */
+export function netFollowersCellSpec(followers: FollowerSummary): CellSpec {
   const net = followers.net.now
   const netParts = [
     followers.gained.now !== null ? `${formatCount(followers.gained.now)} gained` : null,
     followers.lost.now !== null ? `${formatCount(followers.lost.now)} lost` : null,
     followers.total !== null ? `${formatCount(followers.total)} total` : null,
   ].filter((part): part is string => part !== null)
+  return {
+    label: 'Net followers',
+    value: net === null ? null : `${net >= 0 ? '+' : '−'}${formatCount(Math.abs(net))}`,
+    verdict: countDeltaVerdict(net, followers.net.then),
+    unit: 'count',
+    thenLine: netParts.length > 0 ? netParts.join(' · ') : 'no follower data yet',
+    series: followers.series,
+    spoken:
+      net === null
+        ? 'Net followers: not captured for this period.'
+        : `Net followers: ${net >= 0 ? 'plus' : 'minus'} ${formatCount(Math.abs(net))} this period${
+            followers.net.then !== null
+              ? `, against ${formatCount(followers.net.then)} the period before`
+              : ''
+          }.`,
+  }
+}
 
+function cellSpecs(data: AnalyticsReportData): CellSpec[] {
+  const { engagementRate } = data
   return [
-    simple('Views', data.views),
-    simple('Reach', data.reach),
-    simple('Interactions', data.interactions),
-    {
-      label: 'Net followers',
-      value: net === null ? null : `${net >= 0 ? '+' : '−'}${formatCount(Math.abs(net))}`,
-      verdict: countDeltaVerdict(net, followers.net.then),
-      unit: 'count',
-      thenLine: netParts.length > 0 ? netParts.join(' · ') : 'no follower data yet',
-      series: followers.series,
-      spoken:
-        net === null
-          ? 'Net followers: not captured for this period.'
-          : `Net followers: ${net >= 0 ? 'plus' : 'minus'} ${formatCount(Math.abs(net))} this period${
-              followers.net.then !== null
-                ? `, against ${formatCount(followers.net.then)} the period before`
-                : ''
-            }.`,
-    },
+    countCellSpec('Views', data.views),
+    countCellSpec('Reach', data.reach),
+    countCellSpec('Interactions', data.interactions),
+    netFollowersCellSpec(data.followers),
     {
       label: 'Engagement rate',
       value: engagementRate.now === null ? null : `${engagementRate.now.toFixed(1)}%`,
@@ -101,14 +108,30 @@ function cellSpecs(data: AnalyticsReportData): CellSpec[] {
  * Day-one cells hold the exact height of their occupied twins.
  */
 export function SummaryStrip({ data }: { data: AnalyticsReportData }) {
-  const cells = cellSpecs(data)
+  return <StripCells cells={cellSpecs(data)} hasHistory={data.hasHistory} />
+}
+
+/**
+ * The strip's rendering, cell-agnostic: the Instagram wrapper above feeds it five cells,
+ * Facebook's view feeds it three — the grammar (label over metric, chip, last period, trace)
+ * is the shared part, and which metrics exist is each network's own truth.
+ */
+export function StripCells({
+  cells,
+  hasHistory,
+  gridClass = 'md:grid-cols-5',
+}: {
+  cells: CellSpec[]
+  hasHistory: boolean
+  gridClass?: string
+}) {
   return (
     // One clearing, not five floating columns: the strip is a Card like every
     // other section, and the hairlines divide cells INSIDE its surface.
     <Card className="px-6 py-1.5">
       <section aria-label="Headline metrics">
         <h3 className="sr-only">Headline metrics, this period against the previous period</h3>
-        <div className="grid grid-cols-2 md:grid-cols-5">
+        <div className={cn('grid grid-cols-2', gridClass)}>
           {cells.map((cell, index) => (
             <div
               key={cell.label}
@@ -120,7 +143,7 @@ export function SummaryStrip({ data }: { data: AnalyticsReportData }) {
               )}
             >
               <div className="text-label text-text3">{cell.label}</div>
-              {data.hasHistory ? (
+              {hasHistory ? (
                 <>
                   <div className="mt-2 flex flex-wrap items-baseline gap-2">
                     <span className="text-metric text-ink">{cell.value ?? '—'}</span>

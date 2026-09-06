@@ -179,38 +179,49 @@ export async function syncClientComments(
   const posts = await adapter.listCommentablePosts({ account, since: sinceIso })
   if (posts.length === 0) return { unchanged: 0, fetched: 0 }
 
-  const commented = posts.filter((post) => post.commentCount > 0)
-  if (commented.length === 0) return { unchanged: 0, fetched: 0 }
-
   const storedCounts = await countStoredByMedia(
     admin,
     clientId,
     accountId,
-    commented.map((post) => post.externalPostId)
+    posts.map((post) => post.externalPostId)
   )
 
   /**
-   * Fetch only what changed.
+   * A candidate is any post where EITHER side believes comments exist. The network's tally
+   * says something is there — or our store says something WAS. The second half is what lets
+   * a deletion leave the queue: a post whose count fell to zero used to be filtered out
+   * before the staleness gate, so `deleteVanished` never saw it and its stored comments
+   * were immortal.
+   */
+  const candidates = posts.filter(
+    (post) => post.commentCount > 0 || (storedCounts.get(post.externalPostId) ?? 0) > 0
+  )
+  if (candidates.length === 0) return { unchanged: 0, fetched: 0 }
+
+  /**
+   * Fetch what changed — when the network's tally can be trusted to say so.
    *
-   * The comparison is deliberately crude, and it is safe in the direction that
-   * matters. If Instagram's `comments_count` excludes replies, a post we have
-   * replied to will disagree forever and be refetched every run — wasted calls,
-   * bounded to posts already handled. It can never MISS a new comment: anything
-   * new raises the count, and a raised count never matches.
+   * For a network with an exact count the comparison is deliberately crude, and safe in the
+   * direction that matters: anything new raises the count, and a raised count never matches.
+   * For a network that declares `countIsExact: false` the tally is only a hint — Facebook's
+   * disagreed with its own edge live (see the adapter) — so every candidate is fetched, at
+   * one call per post that has, or had, comments.
    *
    * There is no stored "count we last saw". `platform_post_metrics.comments_count`
    * exists but is a nightly analytics measurement with a different owner and
    * cadence; counting our own rows is the same fact for free and adds no second
    * source of truth to keep in step.
    */
-  const stale = commented.filter(
-    (post) => post.commentCount !== storedCounts.get(post.externalPostId)
-  )
+  const stale = adapter.countIsExact
+    ? candidates.filter(
+        (post) => post.commentCount !== (storedCounts.get(post.externalPostId) ?? 0)
+      )
+    : candidates
 
   const postIdByMediaId = await fetchPostIdsByMediaId(
     admin,
     clientId,
-    commented.map((post) => post.externalPostId)
+    candidates.map((post) => post.externalPostId)
   )
 
   /**
@@ -234,7 +245,7 @@ export async function syncClientComments(
    * Ahead of the early return below, because a post whose comments have not changed
    * still needs its caption the first time we see it.
    */
-  const identified = commented.flatMap((post) =>
+  const identified = candidates.flatMap((post) =>
     post.identity ? [{ post, identity: post.identity }] : []
   )
   // Only what the network gave an identity for — an adapter returns null identity when the
@@ -260,7 +271,7 @@ export async function syncClientComments(
     )
   }
 
-  if (stale.length === 0) return { unchanged: commented.length, fetched: 0 }
+  if (stale.length === 0) return { unchanged: candidates.length, fetched: 0 }
 
   const perMedia = await mapWithConcurrency(stale, COMMENT_FETCH_CONCURRENCY, async (item) => {
     const comments = await fetchAllComments(
@@ -300,7 +311,7 @@ export async function syncClientComments(
     new Set(rows.map((row) => row.id))
   )
 
-  return { unchanged: commented.length - stale.length, fetched: stale.length }
+  return { unchanged: candidates.length - stale.length, fetched: stale.length }
 }
 
 /**

@@ -1,7 +1,11 @@
 import { requireSessionUser } from '@/lib/auth/session'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { getCachedAgency, getCachedAgencyClients } from '@/lib/queries/cache'
-import { fetchConnectionsByClient, fetchIgConnectionState } from '@/lib/queries/db'
+import {
+  fetchConnectionsByClient,
+  fetchConnectionSyncState,
+  fetchIgConnectionState,
+} from '@/lib/queries/db'
 import { PageHeader } from '@/components/layout/page-header/page-header'
 import { PAGE_SHELL } from '@/components/layout/page-header/shared'
 import { Card } from '@/components/ui/card'
@@ -10,6 +14,8 @@ import { cn } from '@/utils/cn'
 import { parseParam } from '@/utils/parse-param'
 import { AnalyticsNavProvider, PendingVeil } from '@/features/analytics/components/analytics-nav'
 import { AnalyticsView, ConnectPrompt } from '@/features/analytics/components/analytics-view'
+import { FacebookAnalyticsView } from '@/features/analytics/components/facebook-analytics-view'
+import { getFacebookAnalyticsReport } from '@/features/analytics/lib/facebook-report-data'
 import { MastheadControls } from '@/features/analytics/components/masthead-controls'
 import type { ArchiveEntry } from '@/features/analytics/components/report-archive'
 import { buildFallbackNarrative } from '@/features/analytics/lib/narrative'
@@ -84,6 +90,77 @@ export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps
   // whole page by a Page id.
   const connections = await fetchConnectionsByClient(supabase, clientId)
   const instagram = connections.find((connection) => connection.platform === 'instagram') ?? null
+  const facebook = connections.find((connection) => connection.platform === 'facebook') ?? null
+  const hasFacebook = facebook?.account_id != null
+  /**
+   * Which network's report to render. Facebook only counts when a Page is actually
+   * connected — the switcher never offers it otherwise, so a stale URL quietly falls back
+   * to the Instagram document rather than a dead end.
+   */
+  const network = parseParam(params.network, ['instagram', 'facebook'], 'instagram')
+  const activeNetwork = network === 'facebook' && hasFacebook ? 'facebook' : 'instagram'
+
+  if (activeNetwork === 'facebook') {
+    const { lastSyncAt: fbSyncAt, lastSyncError: fbSyncError } = await fetchConnectionSyncState(
+      supabase,
+      clientId,
+      'facebook'
+    )
+    const [fbData, fbArchiveResult] = await Promise.all([
+      getFacebookAnalyticsReport(clientId, period, timezone),
+      supabase
+        .from('analytics_reports')
+        .select('id, period_start, period_end, created_at')
+        .eq('client_id', clientId)
+        .eq('platform', 'facebook')
+        .eq('platform_account_id', facebook!.account_id)
+        .order('created_at', { ascending: false })
+        .limit(12),
+    ])
+    if (fbArchiveResult.error) {
+      console.error('[analytics] facebook archive list failed', fbArchiveResult.error)
+    }
+    // WHY as: the server client is untyped for this projection, so it does not infer.
+    const fbArchive = (fbArchiveResult.data ?? []) as ArchiveEntry[]
+
+    return (
+      <AnalyticsNavProvider>
+        <div className="print-hide">
+          <PageHeader
+            crumb={[{ label: 'Analytics' }]}
+            title="Analytics"
+            actions={
+              <MastheadControls
+                clientId={clientId}
+                clients={clients}
+                period={period}
+                hasHistory={fbData.hasHistory}
+                network="facebook"
+                hasFacebook={hasFacebook}
+              />
+            }
+          />
+        </div>
+        <div className={cn(PAGE_SHELL, 'pb-12 pt-5')}>
+          <PendingVeil>
+            <FacebookAnalyticsView
+              data={fbData}
+              clientId={clientId}
+              clientName={client.name}
+              pageName={facebook!.account_name}
+              hasConnection={hasFacebook}
+              timezone={timezone}
+              lastSyncAt={fbSyncAt}
+              syncError={fbSyncError}
+              archive={fbArchive}
+              network="facebook"
+            />
+          </PendingVeil>
+        </div>
+      </AnalyticsNavProvider>
+    )
+  }
+
   const accountId = instagram?.account_id ?? null
   // The nightly sync's own verdict (migration 20260828). The closing line used
   // to read max(fetched_at), which the on-demand refill also stamped, so a sync
@@ -96,7 +173,10 @@ export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps
           .from('analytics_reports')
           .select('id, period_start, period_end, created_at')
           .eq('client_id', clientId)
-          .eq('ig_account_id', accountId)
+          // Both networks archive into this table now — without the platform filter a
+          // Facebook export would list under the Instagram document.
+          .eq('platform', 'instagram')
+          .eq('platform_account_id', accountId)
           .order('created_at', { ascending: false })
           .limit(12)
       : Promise.resolve({ data: [], error: null }),
@@ -131,6 +211,8 @@ export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps
               clients={clients}
               period={period}
               hasHistory={data.hasHistory}
+              network="instagram"
+              hasFacebook={hasFacebook}
             />
           }
         />

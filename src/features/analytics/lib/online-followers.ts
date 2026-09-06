@@ -1,7 +1,7 @@
 import 'server-only'
 
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { fetchOnlineFollowers } from '@/lib/meta/insights'
+import { fetchOnlineFollowers } from '@/lib/meta/instagram/insights'
 import { asJson } from '@/lib/queries/as-json'
 import { SECONDS_PER_DAY } from '@/utils/constants'
 import { deriveObservedBestTime } from './derive-best-time'

@@ -3,7 +3,7 @@ import 'server-only'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
 /**
- * Erasure of everything Instagram told us about one account, for one client.
+ * Erasure of everything a network told us about one account, for one client.
  *
  * Two callers need exactly this and nothing else: Meta's mandated data-deletion
  * callback, and the OAuth callback when a client is repointed at a DIFFERENT
@@ -13,11 +13,11 @@ import type { SupabaseClient } from '@supabase/supabase-js'
  * switch left rows that every read hid (`.eq('ig_account_id', …)`) and no code
  * path could reach.
  *
- * Deliberately NOT used by `deleteClient`: the four tables cascade from
- * `clients` (20260822, 20260823), and re-implementing that here in TypeScript
- * is precisely what its docblock refuses to do.
+ * Deliberately NOT used by `deleteClient`: every table here cascades from
+ * `clients` (20260822, 20260823, 20260846), and re-implementing that in
+ * TypeScript is precisely what its docblock refuses to do.
  *
- * The admin client is required rather than preferred. All four tables carry RLS
+ * The admin client is required rather than preferred. All these tables carry RLS
  * `for all` policies keyed on `auth.uid()`, and the data-deletion callback runs
  * with no session at all — a user-scoped client would delete zero rows and
  * report no error, which is the worst possible outcome for a deletion path.
@@ -33,8 +33,8 @@ export async function purgeAccountAnalytics(
   const scoped = (table: string) =>
     admin.from(table).delete().eq('client_id', clientId).eq('ig_account_id', accountId)
 
-  const [accountRes, postRes, snapshotRes, reportRes, commentRes, unstampedRes] = await Promise.all(
-    [
+  const [accountRes, postRes, snapshotRes, reportRes, commentRes, unstampedRes, fbPageRes] =
+    await Promise.all([
       scoped('ig_account_metrics'),
       // NOT `scoped`: this table renamed `ig_account_id` to `platform_account_id` when it
       // became network-neutral (20260845). Left on the shared helper it fails on an unknown
@@ -45,7 +45,13 @@ export async function purgeAccountAnalytics(
         .eq('client_id', clientId)
         .eq('platform_account_id', accountId),
       scoped('ig_audience_snapshots'),
-      scoped('analytics_reports'),
+      // NOT `scoped`: the archive renamed `ig_account_id` to `platform_account_id` when
+      // Facebook reports joined it (20260847).
+      admin
+        .from('analytics_reports')
+        .delete()
+        .eq('client_id', clientId)
+        .eq('platform_account_id', accountId),
       // Comments are the one table here holding data about people who are not the
       // agency and not its client — the audience. That makes this line the part of
       // Meta's data-deletion callback that actually erases third parties, and the
@@ -72,10 +78,12 @@ export async function purgeAccountAnalytics(
             .from('analytics_reports')
             .delete()
             .eq('client_id', clientId)
-            .is('ig_account_id', null)
+            .is('platform_account_id', null)
         : Promise.resolve({ error: null }),
-    ]
-  )
+      // Facebook's daily Page series — its own table by design (20260846), so its own line.
+      // The id spaces partition: a Page id only ever matches Facebook rows.
+      admin.from('fb_page_metrics').delete().eq('client_id', clientId).eq('page_id', accountId),
+    ])
 
   // Every table is attempted before anything throws — a partial purge is better
   // than one that stops at the first failure and leaves three tables untouched.
@@ -86,6 +94,7 @@ export async function purgeAccountAnalytics(
     { table: 'analytics_reports', error: reportRes.error },
     { table: 'platform_comments', error: commentRes.error },
     { table: 'analytics_reports (unstamped)', error: unstampedRes.error },
+    { table: 'fb_page_metrics', error: fbPageRes.error },
   ].filter((result) => result.error !== null)
 
   if (failures.length > 0) {

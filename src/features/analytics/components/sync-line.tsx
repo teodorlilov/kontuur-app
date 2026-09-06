@@ -35,6 +35,7 @@ export function SyncLine({
   hasConnection,
   timezone,
   syncError = null,
+  networkLabel = 'Instagram',
 }: {
   lastSyncAt: string | null
   hasHistory: boolean
@@ -42,6 +43,8 @@ export function SyncLine({
   timezone: string
   /** The last run's verdict — null after a clean one (migration 20260828). */
   syncError?: string | null
+  /** The network this line reports on; the copy names it when disconnection is the story. */
+  networkLabel?: string
 }) {
   const stale = hasHistory && isStale(lastSyncAt)
   const incomplete = hasHistory && hasConnection && syncError !== null
@@ -51,7 +54,7 @@ export function SyncLine({
   if (!hasHistory) {
     message = 'Connected · first sync tonight, 03:30'
   } else if (!hasConnection) {
-    message = `Instagram disconnected — metrics stopped${
+    message = `${networkLabel} disconnected — metrics stopped${
       lastSyncAt ? ` ${formatSyncInstant(lastSyncAt, timezone)}` : ''
     } · reconnect to resume`
   } else if (incomplete) {
@@ -62,7 +65,7 @@ export function SyncLine({
   } else if (stale) {
     message = `Last sync ${
       lastSyncAt ? formatSyncInstant(lastSyncAt, timezone) : 'unknown'
-    } — more than two nights ago · reconnect Instagram if this persists`
+    } — more than two nights ago · reconnect ${networkLabel} if this persists`
   } else {
     message = `Synced nightly · last sync ${
       lastSyncAt ? formatSyncInstant(lastSyncAt, timezone) : '—'

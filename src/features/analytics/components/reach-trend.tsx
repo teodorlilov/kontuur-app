@@ -28,18 +28,40 @@ const THEN_PIN_DROP = 16
  * draws in over the already-visible then-line (the page's one motion moment;
  * reduced-motion and print both get the finished state).
  */
-export function ReachTrend({ days, bestDay }: { days: ReachDay[]; bestDay: BestDay | null }) {
+/** The chart's words, so a network that feeds it a different metric can say so. */
+export interface TrendLabels {
+  /** Lowercase, mid-sentence: "Daily reach…". */
+  metric: string
+  /** The day card's row label for the main line. */
+  metricRow: string
+  /** The day card's row label for the secondary value; the row hides when the day has none. */
+  secondaryRow: string
+  empty: string
+}
+
+const REACH_LABELS: TrendLabels = {
+  metric: 'reach',
+  metricRow: 'Reached',
+  secondaryRow: 'Views',
+  empty: 'No daily reach captured for this period yet — the nightly sync fills this in.',
+}
+
+export function ReachTrend({
+  days,
+  bestDay,
+  labels = REACH_LABELS,
+}: {
+  days: ReachDay[]
+  bestDay: BestDay | null
+  labels?: TrendLabels
+}) {
   const [hover, setHover] = useState<number | null>(null)
 
   const nowValues = days.map((day) => day.now)
   const thenValues = days.map((day) => day.then)
   const real = [...nowValues, ...thenValues].filter((v): v is number => v !== null)
   if (real.length === 0 || days.length < 2) {
-    return (
-      <p className="mt-4 text-caption text-text3">
-        No daily reach captured for this period yet — the nightly sync fills this in.
-      </p>
-    )
+    return <p className="mt-4 text-caption text-text3">{labels.empty}</p>
   }
 
   const max = niceCeil(Math.max(...real))
@@ -80,7 +102,7 @@ export function ReachTrend({ days, bestDay }: { days: ReachDay[]; bestDay: BestD
   const publishDays = days.filter((day) => day.posts.length > 0).length
   const thenPublishDays = days.filter((day) => day.thenPosts.length > 0).length
 
-  const spoken = `Line chart. Daily reach for this period as a solid line against the previous period as a dashed one, each column labelled with both windows' dates.${
+  const spoken = `Line chart. Daily ${labels.metric} for this period as a solid line against the previous period as a dashed one, each column labelled with both windows' dates.${
     bestDay ? ` Peaks at ${formatCount(bestDay.reach)} on ${formatDayMonth(bestDay.date)}.` : ''
   }${
     publishDays > 0
@@ -253,7 +275,9 @@ export function ReachTrend({ days, bestDay }: { days: ReachDay[]; bestDay: BestD
               </g>
             ))}
           </svg>
-          {hover !== null && hoveredDay && <TrendTooltip day={hoveredDay} frac={x(hover) / W} />}
+          {hover !== null && hoveredDay && (
+            <TrendTooltip day={hoveredDay} frac={x(hover) / W} labels={labels} />
+          )}
         </div>
       </div>
     </ScrollToRecent>
@@ -266,7 +290,7 @@ export function ReachTrend({ days, bestDay }: { days: ReachDay[]; bestDay: BestD
  * so a card reading "13 Aug · Previous 3,948" invited exactly the wrong
  * conclusion: that 3,948 also described 13 Aug. It came from 6 Aug.
  */
-function TrendTooltip({ day, frac }: { day: ReachDay; frac: number }) {
+function TrendTooltip({ day, frac, labels }: { day: ReachDay; frac: number; labels: TrendLabels }) {
   return (
     <DayCard frac={frac}>
       <div className="flex items-center gap-1.5">
@@ -274,8 +298,8 @@ function TrendTooltip({ day, frac }: { day: ReachDay; frac: number }) {
         <span className="text-micro font-semibold text-ink">{formatDayMonth(day.date)}</span>
       </div>
       <dl className="mt-1.5 space-y-1">
-        <DayCardRow label="Reached" value={day.now} />
-        {day.views !== null && <DayCardRow label="Views" value={day.views} />}
+        <DayCardRow label={labels.metricRow} value={day.now} />
+        {day.views !== null && <DayCardRow label={labels.secondaryRow} value={day.views} />}
       </dl>
       <DayCardPosts posts={day.posts} divided={false} />
 
@@ -288,7 +312,7 @@ function TrendTooltip({ day, frac }: { day: ReachDay; frac: number }) {
           </span>
         </div>
         <dl className="mt-1.5 space-y-1">
-          <DayCardRow label="Reached" value={day.then} />
+          <DayCardRow label={labels.metricRow} value={day.then} />
         </dl>
         <DayCardPosts posts={day.thenPosts} label="Published that day" divided={false} />
       </div>

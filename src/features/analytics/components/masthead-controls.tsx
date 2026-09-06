@@ -11,6 +11,11 @@ import { useAnalyticsNav } from './analytics-nav'
 import { analyticsClientHref, analyticsRangeHref, analyticsWindowHref } from '../lib/analytics-href'
 import { RANGE_PRESETS, type AnalyticsPeriod, type RangePreset } from '../lib/period'
 
+const NETWORKS = [
+  { value: 'instagram', label: 'Instagram' },
+  { value: 'facebook', label: 'Facebook' },
+] as const
+
 const PRESET_LABELS: Record<RangePreset, string> = {
   '7d': '7 days',
   '30d': '30 days',
@@ -22,6 +27,10 @@ interface MastheadControlsProps {
   clients: Array<{ id: string; name: string }>
   period: AnalyticsPeriod
   hasHistory: boolean
+  /** The network whose report is on screen; every navigation keeps the reader on it. */
+  network: 'instagram' | 'facebook'
+  /** The switcher renders only when there are two networks to switch between. */
+  hasFacebook: boolean
 }
 
 /**
@@ -29,7 +38,14 @@ interface MastheadControlsProps {
  * reporting period (the active range is the page's one lime — the standing
  * place in time), and Export, which archives the period then prints it.
  */
-export function MastheadControls({ clientId, clients, period, hasHistory }: MastheadControlsProps) {
+export function MastheadControls({
+  clientId,
+  clients,
+  period,
+  hasHistory,
+  network,
+  hasFacebook,
+}: MastheadControlsProps) {
   const router = useRouter()
   const [customOpen, setCustomOpen] = useState(false)
   const [customFrom, setCustomFrom] = useState(period.start)
@@ -46,6 +62,7 @@ export function MastheadControls({ clientId, clients, period, hasHistory }: Mast
         preset: period.preset,
         start: period.start,
         end: period.end,
+        network,
       })
       if (!result.ok) {
         toast.error(result.error)
@@ -63,8 +80,33 @@ export function MastheadControls({ clientId, clients, period, hasHistory }: Mast
           label="Client"
           value={clientId}
           options={clients.map((client) => ({ value: client.id, label: client.name }))}
-          onChange={(id) => navigate(analyticsClientHref(id, period))}
+          onChange={(id) => navigate(analyticsClientHref(id, period, network))}
         />
+      )}
+
+      {hasFacebook && (
+        <div
+          role="group"
+          aria-label="Network"
+          aria-busy={navigating}
+          className={cn(
+            'flex items-center gap-0.5 rounded-panel border border-line2 bg-surface p-0.5',
+            'transition-opacity',
+            navigating && 'pointer-events-none opacity-60'
+          )}
+        >
+          {NETWORKS.map((option) => (
+            <button
+              key={option.value}
+              type="button"
+              aria-pressed={network === option.value}
+              onClick={() => navigate(analyticsClientHref(clientId, period, option.value))}
+              className={cn(RANGE_BUTTON, network === option.value && RANGE_ACTIVE)}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
       )}
 
       <div className="relative">
@@ -83,7 +125,7 @@ export function MastheadControls({ clientId, clients, period, hasHistory }: Mast
               key={preset}
               type="button"
               aria-pressed={period.preset === preset}
-              onClick={() => navigate(analyticsRangeHref(clientId, preset))}
+              onClick={() => navigate(analyticsRangeHref(clientId, preset, network))}
               className={cn(RANGE_BUTTON, period.preset === preset && RANGE_ACTIVE)}
             >
               {PRESET_LABELS[preset]}
@@ -110,7 +152,7 @@ export function MastheadControls({ clientId, clients, period, hasHistory }: Mast
                 return
               }
               setCustomOpen(false)
-              navigate(analyticsWindowHref(clientId, customFrom, customTo))
+              navigate(analyticsWindowHref(clientId, customFrom, customTo, network))
             }}
           >
             <label className="grid gap-1 text-micro font-medium text-text2">
