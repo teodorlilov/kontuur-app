@@ -27,7 +27,7 @@ import type {
 } from '@/ai/validation/types'
 import type { SlideText } from '@/types/slide'
 
-export interface SourceContext {
+interface SourceContext {
   excerpt: string
   url?: string | null
 }

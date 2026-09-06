@@ -25,7 +25,7 @@ import { buildAudienceOnline, type AudienceOnline } from './build-report'
  */
 const OBSERVED_LOOKBACK_DAYS = 28
 
-export interface ObservedBestTime {
+interface ObservedBestTime {
   platforms: BestTimePlatform[]
   upgrade_note: string
 }

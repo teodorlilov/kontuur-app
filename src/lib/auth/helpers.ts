@@ -72,7 +72,7 @@ export async function requireAuth(
   return { userId, agencyId }
 }
 
-export async function getUserRecord(
+async function getUserRecord(
   supabase: SupabaseServerClient,
   userId: string
 ): Promise<{ agency_id: string; role: string } | null> {
@@ -97,7 +97,7 @@ export async function verifyClientOwnership(
  * already fetches, so they cost nothing here and save a query each at the two call sites that want
  * them — but they are a projection, and a projection deserves a name.
  */
-export type OwnedPost = Pick<PostRow, 'id' | 'client_id' | 'visual_ground' | 'visual_accent'> & {
+type OwnedPost = Pick<PostRow, 'id' | 'client_id' | 'visual_ground' | 'visual_accent'> & {
   /** clients.name through the ownership join — not a posts column. */
   client_name: string
 }

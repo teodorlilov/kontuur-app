@@ -54,7 +54,7 @@ void _schemeBackward
  * One schema, both directions guarded, so a field added to `SeedIdentity` fails the build until every
  * wire that carries it is updated.
  */
-export const seedIdentitySchema = z.object({
+const seedIdentitySchema = z.object({
   palette: paletteSchema,
   style: z.string().optional(),
   clientName: z.string().min(1).optional(),

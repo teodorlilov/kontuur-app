@@ -14,13 +14,13 @@ import { z } from 'zod'
  * Exported so `feedback-box` can enforce the same number as a `maxLength` instead of
  * letting a client discover it as a rejection after typing.
  */
-export const APPROVAL_NOTE_MAX = 2000
+const APPROVAL_NOTE_MAX = 2000
 
 /**
  * Notes one submission may carry — one per post in the batch, so this bounds the batch
  * rather than the client's typing. Well above any batch the app produces.
  */
-export const APPROVAL_NOTES_MAX = 100
+const APPROVAL_NOTES_MAX = 100
 
 /**
  * The client's verdict on a batch.

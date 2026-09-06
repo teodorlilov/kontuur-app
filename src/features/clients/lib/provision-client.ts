@@ -7,7 +7,7 @@ import { buildDefaultIdentity } from '@/lib/visual/identity'
 import type { SourceKind, VisualIdentity } from '@/types/visual'
 import type { BrandProfileInput, ScheduleInput } from '@/features/clients/schemas'
 
-export interface ProvisionClientInput {
+interface ProvisionClientInput {
   agencyId: string
   name: string
   niche?: string | null
@@ -21,7 +21,7 @@ export interface ProvisionClientInput {
   identitySource?: SourceKind
 }
 
-export type ProvisionClientResult = { ok: true; clientId: string } | { ok: false; error: string }
+type ProvisionClientResult = { ok: true; clientId: string } | { ok: false; error: string }
 
 /**
  * Create a client and everything a client must have to work. The ONE way that happens.

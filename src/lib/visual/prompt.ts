@@ -27,7 +27,7 @@ export function clampAtWordBoundary(text: string, maxChars: number): string {
 }
 
 /** What job a slide does in the carousel — the rhythm both the role hint and the variation read. */
-export type SlideRole = 'cover' | 'cta' | 'rich' | 'quiet'
+type SlideRole = 'cover' | 'cta' | 'rich' | 'quiet'
 
 /**
  * Classify a slide's job. ONE definition, because two things now branch on it: the role hint below

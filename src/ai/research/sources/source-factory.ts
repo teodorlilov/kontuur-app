@@ -5,7 +5,7 @@ import { WebsiteResearchSource } from './website-source'
 import { FileResearchSource } from './file-source'
 
 /** Create a ResearchSource from a DB row. Returns null for unknown types. */
-export function createSource(row: ClientSourceRow): ResearchSource | null {
+function createSource(row: ClientSourceRow): ResearchSource | null {
   switch (row.type) {
     case 'rss':
       return new RssResearchSource(row)

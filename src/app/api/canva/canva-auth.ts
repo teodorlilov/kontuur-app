@@ -27,7 +27,7 @@ const requestToken = cache((_userId: string): { value: string | null } => ({ val
  * If the token is expired or forceRefresh is true, refreshes it automatically.
  * Returns null if no Canva connection exists for the user.
  */
-export async function getCanvaToken(userId: string, forceRefresh = false): Promise<string | null> {
+async function getCanvaToken(userId: string, forceRefresh = false): Promise<string | null> {
   const held = requestToken(userId)
   // A force refresh is the 401 path — the held token is precisely what was just rejected.
   if (!forceRefresh && held.value) return held.value

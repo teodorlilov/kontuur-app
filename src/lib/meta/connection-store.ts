@@ -15,7 +15,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
  * platform has killed, disconnecting, and stamping sync health are genuinely different
  * operations with their own owners.
  */
-export interface StoredConnection {
+interface StoredConnection {
   /** `client_id` for an account a client publishes to; null for a user-scoped token. */
   clientId: string | null
   /** Set only for user-scoped rows, which belong to a person rather than a client. */

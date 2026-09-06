@@ -16,7 +16,7 @@ export const DEFAULT_MODEL = 'claude-sonnet-5'
  * URL analysis. It is also the only model these calls may set `temperature` on.
  */
 export const LIGHT_MODEL = 'claude-haiku-4-5'
-export const DEFAULT_MAX_TOKENS = 4096
+const DEFAULT_MAX_TOKENS = 4096
 
 interface CallAnthropicOptions {
   systemPrompt?: string

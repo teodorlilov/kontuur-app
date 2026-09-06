@@ -10,7 +10,7 @@ import { DAYS_PER_WEEK } from '@/utils/constants'
 export const WINDOW_WEEKS_BACK = 8
 export const WINDOW_WEEKS_FORWARD = 12
 
-export interface CalendarWindow {
+interface CalendarWindow {
   /** Monday date-key of the first loaded week. */
   startKey: string
   /** Sunday date-key of the last loaded week. */

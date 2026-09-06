@@ -34,7 +34,7 @@ export function formatHealthRules(): string {
 
 // ---- AI Tell Patterns (per language) ----
 
-export const EN_SPECIFIC_AI_TELLS: readonly string[] = [
+const EN_SPECIFIC_AI_TELLS: readonly string[] = [
   'Syntactic Monotony: 3+ sentences in a row with similar word counts (missing "punchy" vs "detailed" contrast).',
   'Adjective Stacking: Using 3+ descriptors for a single noun (e.g., "innovative, powerful, expert care").',
   'Corporate Prefacing: Using unearned authority triggers like "At [Company Name], we..." or "As experts...".',
@@ -43,7 +43,7 @@ export const EN_SPECIFIC_AI_TELLS: readonly string[] = [
   'Passive Translation: Over-reliance on "is/are/was" and "of/for" structures instead of active, idiomatic verbs.',
 ] as const
 
-export const BG_SPECIFIC_AI_TELLS: readonly string[] = [
+const BG_SPECIFIC_AI_TELLS: readonly string[] = [
   'Passive Voice Overload: Frequent use of "беше [причастие]" (direct translation of English passive).',
   'Filler Goal Phrasing: Using "има за цел да" or "цели да" instead of active verbs.',
   'Noun Chains: 3+ nouns linked by "на" (e.g., "анализ на процеса на работа на...").',
@@ -63,7 +63,7 @@ const AI_TELLS_BY_LANGUAGE: Record<string, readonly string[]> = {
 }
 
 /** Returns AI tell patterns for a given language. Falls back to English. */
-export function getAiTellsForLanguage(language: string): readonly string[] {
+function getAiTellsForLanguage(language: string): readonly string[] {
   return AI_TELLS_BY_LANGUAGE[language.toLowerCase()] ?? EN_SPECIFIC_AI_TELLS
 }
 

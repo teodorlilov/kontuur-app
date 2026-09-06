@@ -51,7 +51,7 @@ export type PublishablePost = Pick<PostRow, 'id' | 'caption' | 'post_type' | 'cl
   post_images: PublishableImage[]
 }
 
-export type PublishOutcome =
+type PublishOutcome =
   | { kind: 'published'; externalPostId: string | null; writeError?: string }
   | { kind: 'failed'; error: string; final: boolean; writeError?: string }
   /** Accepted but not live — the row keeps its reference and the next tick resumes it. */

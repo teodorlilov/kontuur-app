@@ -21,7 +21,7 @@ type Admin = ReturnType<typeof createAdminSupabaseClient>
 /** The tag the sync and the moderation actions bust. */
 export const PLATFORM_COMMENTS_TAG = 'platform-comments'
 
-export interface CommentQueue {
+interface CommentQueue {
   groups: CommentGroup[]
   /**
    * Client id → platform → the handle a reply posts as, for the composer's "Reply as @…".

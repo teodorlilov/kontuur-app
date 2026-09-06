@@ -21,7 +21,7 @@ import { lockupFontStack } from './lockup-fonts'
 export const PREVIEW_CANVAS = { w: CANVAS_WIDTH, h: CANVAS_HEIGHT } as const
 
 /** One drawn box, already reduced to what the DOM needs. */
-export interface PreviewBox {
+interface PreviewBox {
   x: number
   y: number
   width: number

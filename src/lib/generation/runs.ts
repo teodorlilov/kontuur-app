@@ -37,7 +37,7 @@ const UNIQUE_VIOLATION = '23505'
  * batch right now and there is nothing to report, while a failed insert means
  * tracking broke and the batch is deferred.
  */
-export type GenerationRunClaim = { runId: string } | { runId: null; slotTaken: boolean }
+type GenerationRunClaim = { runId: string } | { runId: null; slotTaken: boolean }
 
 /**
  * Claims a generation batch, returning the run id.

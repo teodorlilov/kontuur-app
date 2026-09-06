@@ -160,13 +160,13 @@ void _slopForward
 void _slopBackward
 
 /** Language and grounding minus the corrections already applied to the copy. */
-export type StoredLanguage = Pick<LanguageResult, 'passes' | 'language_score' | 'issues'>
-export type StoredGrounding = Pick<
+type StoredLanguage = Pick<LanguageResult, 'passes' | 'language_score' | 'issues'>
+type StoredGrounding = Pick<
   SourceGroundingResult,
   'grounded' | 'grounding_score' | 'flagged_claims'
 >
 
-export interface StoredValidation {
+interface StoredValidation {
   criteria: ValidationCriteria
   scores: ValidationScores
   language?: StoredLanguage

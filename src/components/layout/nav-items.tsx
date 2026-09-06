@@ -21,7 +21,7 @@ export interface NavItem {
   badge?: NavBadge
 }
 
-export const AGENCY_NAV: NavItem[] = [
+const AGENCY_NAV: NavItem[] = [
   { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { label: 'Clients', href: '/clients', icon: Users },
   { label: 'Generate posts', href: '/generate', icon: Sparkles },
@@ -33,7 +33,7 @@ export const AGENCY_NAV: NavItem[] = [
   { label: 'Analytics', href: '/analytics', icon: BarChart2 },
 ]
 
-export const SOLO_NAV: NavItem[] = [
+const SOLO_NAV: NavItem[] = [
   { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { label: 'Create content', href: '/generate', icon: Sparkles },
   { label: 'My drafts', href: '/review', icon: ClipboardList, badge: 'pending' },

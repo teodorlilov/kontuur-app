@@ -217,7 +217,7 @@ export async function fetchConnection(
 }
 
 /** One client's Instagram connection, as everything downstream of it needs it. */
-export interface IgConnectionState {
+interface IgConnectionState {
   accountId: string | null
   /** End of the last metrics sync ATTEMPT (migration 20260828), clean or not. */
   lastSyncAt: string | null

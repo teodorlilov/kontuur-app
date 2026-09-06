@@ -42,10 +42,10 @@ export const PAGE_DAY_METRICS = [
   'page_views_total',
 ] as const
 
-export type PageDayMetric = (typeof PAGE_DAY_METRICS)[number]
+type PageDayMetric = (typeof PAGE_DAY_METRICS)[number]
 
 /** One day-bucketed point per served day, per metric. Absent days mean Meta served nothing. */
-export type PageDaySeries = Record<PageDayMetric, Array<{ date: string; value: number }>>
+type PageDaySeries = Record<PageDayMetric, Array<{ date: string; value: number }>>
 
 /**
  * The five day series over [sinceTs, untilTs) — five calls, run together.

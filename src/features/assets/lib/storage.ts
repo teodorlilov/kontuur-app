@@ -19,7 +19,7 @@ export interface UploadResult {
 }
 
 /** Upload bytes to any public bucket and return the durable public URL. Throws on failure. */
-export async function uploadToBucket(
+async function uploadToBucket(
   bucket: string,
   storagePath: string,
   file: Buffer,
@@ -130,7 +130,7 @@ export interface ExistingPostImage {
  * uploaded, and the request body carries a path and a URL, not a size. The row is written WHOLE, so
  * leaving one out on an existing row CLEARS it — pass what you have.
  */
-export interface PostImageWrite {
+interface PostImageWrite {
   postId: string
   position: number
   publicUrl: string

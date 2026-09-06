@@ -6,7 +6,7 @@ import { GENERATION_HOUR_OPTIONS, POSTS_PER_RUN_OPTIONS, WEEKDAY_OPTIONS } from 
 import type { DraftSchedule } from '@/features/onboarding/types'
 
 /** "Mondays 09:00 · 3 a week" — the cadence as a sentence. */
-export function formatSchedule(schedule: DraftSchedule): string {
+function formatSchedule(schedule: DraftSchedule): string {
   const day =
     WEEKDAY_OPTIONS.find((weekday) => weekday.value === schedule.day)?.label ?? schedule.day
   return `${day}s ${schedule.time} · ${schedule.count} a week`

@@ -93,7 +93,7 @@ export function chroma({ r, g, b }: Rgb): number {
  * HSL → RGB. The inverse of `toHsl`, and the reason it exists: deriving a tonal ladder means
  * holding a colour's hue and saturation while moving its lightness, which is a round trip.
  */
-export function fromHsl({ h, s, l }: { h: number; s: number; l: number }): Rgb {
+function fromHsl({ h, s, l }: { h: number; s: number; l: number }): Rgb {
   const hue = ((h % 360) + 360) % 360
   const c = (1 - Math.abs(2 * l - 1)) * s
   const x = c * (1 - Math.abs(((hue / 60) % 2) - 1))

@@ -4,7 +4,7 @@
  * each contiguous run of real values becomes its own segment.
  */
 
-export interface LinePoint {
+interface LinePoint {
   x: number
   y: number
 }

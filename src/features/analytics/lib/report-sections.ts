@@ -149,7 +149,7 @@ export function median(values: number[]): number | null {
  * applying the daily net change. Days whose gains are unknown stay null — the line breaks
  * honestly.
  */
-export function deriveFollowerCurve(
+function deriveFollowerCurve(
   counts: Array<number | null>,
   gains: Array<number | null>,
   losses: Array<number | null>
@@ -176,7 +176,7 @@ export function deriveFollowerCurve(
 // ── Day alignment ──
 
 /** A period's rows, index-aligned to its day keys; missing dates are null. */
-export interface DayAlignedRows<Row> {
+interface DayAlignedRows<Row> {
   byDay: Array<Row | null>
 }
 

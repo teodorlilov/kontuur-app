@@ -49,7 +49,7 @@ const SWATCH_CLASS = {
     'h-0.5 w-3.5 bg-[linear-gradient(to_right,var(--then-line)_0_60%,transparent_60%_100%)] bg-[length:6px_2px] bg-repeat-x',
 } as const
 
-export type LegendSwatch = keyof typeof SWATCH_CLASS
+type LegendSwatch = keyof typeof SWATCH_CLASS
 
 /**
  * The two-series legend. Decorative (the charts carry sr-only sentences), so

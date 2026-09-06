@@ -15,7 +15,7 @@ import { shiftDateKey, toDateKey } from '@/utils/date-helpers'
 export const RANGE_PRESETS = ['7d', '30d', '90d'] as const
 export type RangePreset = (typeof RANGE_PRESETS)[number]
 
-export const DEFAULT_RANGE: RangePreset = '30d'
+const DEFAULT_RANGE: RangePreset = '30d'
 
 const PRESET_DAYS: Record<RangePreset, number> = { '7d': 7, '30d': 30, '90d': 90 }
 /** A custom range longer than a year is a typo, not a report. */

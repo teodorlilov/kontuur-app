@@ -10,10 +10,6 @@ import type { AnalyticsPeriod } from './period'
 import { fetchArchivedSummary, type NarrativeResult } from './narrative-shared'
 import { getAnalyticsReport, IG_METRICS_TAG } from './report-data'
 
-// Re-exported for the consumers that always imported it from here; the type moved to
-// narrative-shared.ts when Facebook's narrative module arrived.
-export type { NarrativeResult } from './narrative-shared'
-
 /**
  * The narrative block: four-to-five sentences written from this period's
  * numbers. Live views (the range presets, or a hand-picked window) regenerate
@@ -30,7 +26,7 @@ const CAPTION_FACT_CHARS = 120
  * entire metrics object — every post, every caption — into the prompt; this is
  * the same story in a few hundred tokens.
  */
-export function buildNarrativeFacts(data: AnalyticsReportData): Record<string, unknown> {
+function buildNarrativeFacts(data: AnalyticsReportData): Record<string, unknown> {
   return {
     period: { start: data.period.start, end: data.period.end, days: data.period.days },
     comparedTo: { start: data.period.prevStart, end: data.period.prevEnd },

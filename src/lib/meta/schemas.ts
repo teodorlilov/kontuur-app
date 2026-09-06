@@ -200,7 +200,7 @@ export type IGComment = z.infer<typeof igCommentCoreSchema>
  * public. The edge answers HTTP 200 with an empty `data` array — it does not error — so a schema
  * that required these fields would turn a permissions state into a parse crash.
  */
-export const igCommentSchema = z.looseObject({
+const igCommentSchema = z.looseObject({
   ...igCommentFields,
   // Replies arrive nested when asked for; absent otherwise.
   replies: z

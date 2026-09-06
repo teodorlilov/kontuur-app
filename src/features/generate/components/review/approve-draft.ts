@@ -27,7 +27,7 @@ interface ApproveDraftInput {
  * that hangs off it (visuals, canvas docs) did not. It used to be logged server-side only,
  * so the user was told "approved" and found the images missing days later in the calendar.
  */
-export interface ApproveDraftResult {
+interface ApproveDraftResult {
   /** The SAVED row's id, or null when nothing was approved. */
   postId: string | null
   warnings: string[]

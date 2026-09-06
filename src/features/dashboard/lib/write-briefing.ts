@@ -22,7 +22,7 @@ import { getMondayISO } from '@/utils/date-helpers'
  * would make every caller pay for a generation most of them do not want.
  */
 
-export interface BriefingWrite {
+interface BriefingWrite {
   id: string
   /** False when a briefing already existed and `refresh` was not asked for. */
   written: boolean

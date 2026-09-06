@@ -6,11 +6,16 @@
     "src/app/**/route.ts",
     "src/app/**/error.tsx",
     "src/app/**/opengraph-image.tsx",
-    "src/**/*.test.ts"
+    "src/**/*.test.ts",
+    "src/**/__tests__/**",
+    "src/types/index.ts",
+    "src/types/api.ts",
+    "src/ai/research/types.ts",
+    "src/components/ui/form/index.ts"
   ],
   "project": ["src/**/*.{ts,tsx}"],
   "ignore": ["src/types/database.ts"],
-  "ignoreExportsUsedInFile": true,
+  "ignoreExportsUsedInFile": false,
   "ignoreDependencies": ["postcss", "tailwindcss"],
   "ignoreBinaries": ["supabase"]
 }

@@ -17,7 +17,7 @@ export interface DraftGroup {
   column: DraftColumn
 }
 
-export const DRAFT_GROUPS: readonly DraftGroup[] = [
+const DRAFT_GROUPS: readonly DraftGroup[] = [
   { id: 'basics', name: 'The basics', column: 'left' },
   { id: 'people', name: 'Their people', column: 'left' },
   { id: 'voice', name: 'How they sound', column: 'left' },

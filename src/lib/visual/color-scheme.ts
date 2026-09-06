@@ -23,7 +23,7 @@ export interface ColorScheme {
 /** The rungs a scheme picks from, coarse to fine. Names are the vocabulary styles use to choose. */
 export type ToneName = 'paper' | 'tint' | 'light' | 'primary' | 'secondary' | 'shade' | 'ink'
 
-export type ToneLadder = Record<ToneName, string>
+type ToneLadder = Record<ToneName, string>
 
 /** Lightness targets for the derived rungs. The brand's own two colours sit wherever they sit. */
 const TINT_L = 0.92

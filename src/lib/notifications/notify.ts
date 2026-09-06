@@ -31,7 +31,7 @@ const NOTIFY_COOLDOWN_DAYS = 7
  */
 export const NOTIFY_EVERY_TIME = 0
 
-export interface NotifyInput {
+interface NotifyInput {
   /** Given directly, or resolved from `clientId`. One of the two is required. */
   agencyId?: string
   /** Stored on the row AND used to resolve the agency. Without it a notification cannot be

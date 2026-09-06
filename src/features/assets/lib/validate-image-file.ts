@@ -2,7 +2,7 @@
 export const MAX_IMAGE_BYTES = 8 * 1024 * 1024
 
 /** MIME types accepted for canvas images (file picker, blob paste, and remote-URL paste). */
-export const ALLOWED_IMAGE_TYPES = new Set(['image/jpeg', 'image/jpg', 'image/png', 'image/webp'])
+const ALLOWED_IMAGE_TYPES = new Set(['image/jpeg', 'image/jpg', 'image/png', 'image/webp'])
 
 /** Whether a MIME type is an accepted canvas image type. */
 export function isAllowedImageType(type: string): boolean {

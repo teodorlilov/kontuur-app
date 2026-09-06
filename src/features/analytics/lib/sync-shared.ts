@@ -26,7 +26,7 @@ export interface MetricsSyncOutcome {
  * missing permission, or a rate limit answers the same way for all of them.
  * Anything narrower belongs to its own phase.
  */
-export function isAccountWideFailure(err: unknown): boolean {
+function isAccountWideFailure(err: unknown): boolean {
   return (
     err instanceof GraphApiError &&
     (err.failure === 'token_invalid' ||

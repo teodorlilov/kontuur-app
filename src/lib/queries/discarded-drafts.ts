@@ -11,11 +11,11 @@ import type { DiscardReason } from '@/lib/validation'
  * `reason` next door has had `DISCARD_REASONS` mirroring a database check constraint all along;
  * this column had nothing.
  */
-export const DISCARD_SOURCES = ['wizard', 'review'] as const
-export type DiscardSource = (typeof DISCARD_SOURCES)[number]
+const DISCARD_SOURCES = ['wizard', 'review'] as const
+type DiscardSource = (typeof DISCARD_SOURCES)[number]
 
 /** One rejected draft, as outcome telemetry. Provenance is copied from the post it came from. */
-export interface DiscardedDraft {
+interface DiscardedDraft {
   clientId: string
   clientSourceId: string | null
   pillar: string | null

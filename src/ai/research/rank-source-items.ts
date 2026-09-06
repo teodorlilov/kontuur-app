@@ -10,7 +10,7 @@ import type { TrendSearchResult } from '@/lib/sources/fetch-trend-search'
 const RANK_SCORE_THRESHOLD = 4
 /** Historical approval/discard boost is clamped to ± this many score points. */
 const RANK_BOOST_CLAMP = 2
-export const RANK_PER_PILLAR_CAP = 4
+const RANK_PER_PILLAR_CAP = 4
 export const RANKED_RSS_CAP = 12
 export const RANKED_WEB_CAP = 8
 /** Below this many rankable items the call costs more than it saves. */

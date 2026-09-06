@@ -12,7 +12,7 @@ const STEPS: Array<{ n: 1 | 2 | 3; label: string }> = [
 ]
 
 /** Where the flow stands, as a 1-based rail position. Done sits on step 3. */
-export function stepIndex(step: FlowStep): 1 | 2 | 3 {
+function stepIndex(step: FlowStep): 1 | 2 | 3 {
   if (step === 'setup') return 1
   if (step === 'generating') return 2
   return 3

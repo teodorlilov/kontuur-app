@@ -8,7 +8,7 @@ import { isBotWall, hasEnoughSignal } from './bot-wall'
 import { createSemaphore } from '@/lib/concurrency'
 
 /** The result of a single site capture. `ok:false` means the caller should fall back, not error. */
-export type CaptureResult = {
+type CaptureResult = {
   ok: boolean
   reason?: string
   measured: PageMeasurement | null

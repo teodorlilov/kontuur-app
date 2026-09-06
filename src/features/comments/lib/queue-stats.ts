@@ -10,7 +10,7 @@ import { MS_PER_DAY, MS_PER_HOUR } from '@/utils/constants'
  * point: a header saying "7 need a reply" above a list of six is the failure this
  * shape exists to prevent, and the reason the tab counts come from here too.
  */
-export interface QueueStats {
+interface QueueStats {
   needsReply: number
   answered: number
   hidden: number

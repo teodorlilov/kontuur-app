@@ -9,9 +9,9 @@ import { sendApprovalEmail } from '@/lib/email/resend'
 import { pluralise } from '@/utils/format'
 
 /** How the client receives the link: the agency copies it, or we email it for them. */
-export type ApprovalChannel = 'link' | 'email'
+type ApprovalChannel = 'link' | 'email'
 
-export interface SendForApprovalInput {
+interface SendForApprovalInput {
   agencyId: string
   clientId: string
   weekStart?: string | null
@@ -19,7 +19,7 @@ export interface SendForApprovalInput {
   channel: ApprovalChannel
 }
 
-export type SendForApprovalResult =
+type SendForApprovalResult =
   | { ok: true; url: string; postCount: number }
   | { ok: false; error: string; status: number }
 

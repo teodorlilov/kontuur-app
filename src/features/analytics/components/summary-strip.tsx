@@ -6,7 +6,7 @@ import { formatCount } from '../lib/format'
 import { DeltaChip } from './delta-chip'
 import { Sparkline } from './sparkline'
 
-export interface CellSpec {
+interface CellSpec {
   label: string
   value: string | null
   verdict: DeltaVerdict

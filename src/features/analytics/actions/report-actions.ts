@@ -160,7 +160,7 @@ export async function archiveReport(input: ArchiveReportInput): Promise<ActionRe
 }
 
 /** What one fill run achieved — enough for the caller to know whether to wait. */
-export interface FillOutcome {
+interface FillOutcome {
   /** Days were written; the page is worth re-rendering. */
   filled: boolean
   /** Nothing landed and re-running will not help right now. */

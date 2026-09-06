@@ -26,7 +26,7 @@ import { upsertAccountMetricDays, type IGAccountMetricsInsert } from './account-
 export const ONLINE_FOLLOWERS_BACKFILL_DAYS = 28
 
 /** A connected account, as every function here needs it. */
-export interface OnlineFollowersTarget {
+interface OnlineFollowersTarget {
   clientId: string
   accountId: string
   accessToken: string

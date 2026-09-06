@@ -127,7 +127,7 @@ const DAY_TOTAL_BATCH_METRICS = [
 /** Served from their own call, as probed — the nine-metric batch does not carry them. */
 const DAY_TOTAL_PROFILE_METRICS = ['profile_views', 'website_clicks'] as const
 
-export type IGDayTotals = Record<
+type IGDayTotals = Record<
   (typeof DAY_TOTAL_BATCH_METRICS)[number] | (typeof DAY_TOTAL_PROFILE_METRICS)[number],
   number | null
 >
@@ -254,7 +254,7 @@ export function fetchInteractionsByProductType(
   return fetchProductTypeBreakdown(accountId, accessToken, 'total_interactions', sinceTs, untilTs)
 }
 
-export type IGDemographicKind = 'follower_demographics' | 'engaged_audience_demographics'
+type IGDemographicKind = 'follower_demographics' | 'engaged_audience_demographics'
 
 export interface IGDemographics {
   age: Record<string, number>
@@ -356,7 +356,7 @@ const MEDIA_INSIGHT_METRICS_ALL = [
   ...MEDIA_INSIGHT_METRICS_FEED_ONLY,
 ] as const
 
-export type IGMediaInsights = Record<(typeof MEDIA_INSIGHT_METRICS_ALL)[number], number | null>
+type IGMediaInsights = Record<(typeof MEDIA_INSIGHT_METRICS_ALL)[number], number | null>
 
 /** The API's "this metric does not exist for this media product type" rejection — and only that. */
 function isUnsupportedMetricRejection(err: unknown): boolean {
@@ -393,10 +393,7 @@ async function fetchMediaInsightsEnvelope(mediaId: string, accessToken: string) 
  * universal metrics are refetched (one extra call per reel) and
  * follows/profile_visits read null, which is the truth for those media.
  */
-export async function fetchMediaInsights(
-  mediaId: string,
-  accessToken: string
-): Promise<IGMediaInsights> {
+async function fetchMediaInsights(mediaId: string, accessToken: string): Promise<IGMediaInsights> {
   const body = await fetchMediaInsightsEnvelope(mediaId, accessToken)
   // On the universal refetch the two FEED-only metrics are simply absent and extract to null,
   // which is the truth for those media.

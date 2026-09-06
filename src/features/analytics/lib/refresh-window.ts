@@ -47,7 +47,7 @@ interface MarkerRow {
   totals_synced_at: string | null
 }
 
-export interface RefreshOutcome {
+interface RefreshOutcome {
   /** Days whose totals were (re)written this run. */
   refilledDays: number
   /** Meta throttled mid-run — what landed stays, the rest waits. */

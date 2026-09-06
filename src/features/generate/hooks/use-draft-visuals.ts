@@ -20,7 +20,7 @@ import {
 import { totalVisualSlots } from '@/lib/visual/visual-backlog'
 
 /** The draft fields visual generation needs — satisfied by both `PostData` and `DraftPost`. */
-export interface DraftPostInput {
+interface DraftPostInput {
   id: string
   client_id: string
   post_type: string

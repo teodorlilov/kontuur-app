@@ -178,7 +178,7 @@ export function resolveEffectivePillarIds(pillarIds: unknown, pillars: WeightedP
 }
 
 /** The two facts about a client's sources that any pillar edit has to be judged against. */
-export interface SourceScoping {
+interface SourceScoping {
   /** Content sources with no topic limit — they feed every pillar, including ones added later. */
   unrestrictedCount: number
   /** The effective pillar ids of each content source that IS scoped, one entry per source. */

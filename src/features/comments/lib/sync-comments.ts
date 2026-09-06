@@ -57,7 +57,7 @@ const MAX_PAGES_PER_MEDIA = 10
  */
 type CommentRow = Database['public']['Tables']['platform_comments']['Insert']
 
-export interface CommentsSyncOutcome {
+interface CommentsSyncOutcome {
   /** Clients whose comments were brought up to date. */
   synced: number
   /** Clients not reached — time budget spent, or the run stopped on a rate limit. */

@@ -15,7 +15,7 @@ import type { ExtractionStatus } from '@/features/onboarding/hooks/use-extractio
  * A default, not a detection — the sheet labels it "a starting cadence" rather than claiming the
  * site said so.
  */
-export const DEFAULT_SCHEDULE = { day: 'monday', time: '09:00', count: '3' } as const
+const DEFAULT_SCHEDULE = { day: 'monday', time: '09:00', count: '3' } as const
 
 /** An empty profile: the blank form, for a client with no website to read. */
 export function buildEmptyDraft(): DraftProfile {

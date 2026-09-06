@@ -257,7 +257,7 @@ export function snapTimeToHour(time: string | null | undefined): string {
 const WEEKDAY_NAMES = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday']
 
 /** A day name's `Date.getDay()` index, or -1 when it is not one. Case-insensitive. */
-export function weekdayNameToIndex(dayName: string): number {
+function weekdayNameToIndex(dayName: string): number {
   return WEEKDAY_NAMES.indexOf(dayName.toLowerCase())
 }
 

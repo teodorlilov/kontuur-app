@@ -39,7 +39,7 @@ import type { BestTimePlatform } from '@/lib/suggested-times/schemas'
  * module argues for in its own names was the one thing its directory did not apply.
  */
 
-export interface SlotPickerInput {
+interface SlotPickerInput {
   bestTimes: BestTimePlatform[] | null
   /** The client's weekly target; 0 = no cap. */
   postsPerWeek: number

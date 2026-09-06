@@ -4,8 +4,6 @@ import { applyPostCorrections, applySlideCorrections } from '@/ai/validation/cor
 import type { RewriteContext } from './types'
 import type { SlideText } from '@/types/slide'
 
-export type { RewriteContext }
-
 export async function performRewrite(ctx: RewriteContext) {
   let newCaption: string
   let newSlidesJson: unknown = ctx.slidesJson ?? null

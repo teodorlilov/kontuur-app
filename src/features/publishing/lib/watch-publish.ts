@@ -16,7 +16,7 @@ const POLL_INTERVAL_MS = 3_000
  */
 const WATCH_BUDGET_MS = 60_000
 
-export interface PublishWatchCallbacks {
+interface PublishWatchCallbacks {
   /**
    * One destination reached a terminal state. Fired ONCE per destination, as it lands.
    *
