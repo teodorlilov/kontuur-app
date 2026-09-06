@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { toPostMetricRow, zipPageDays } from '../sync-facebook-metrics'
+import { EMPTY_PAGE_SERIES } from './fixtures'
 
 /**
  * The two mappings between Graph's answers and the stored rows — the exact spots where a
@@ -9,18 +10,10 @@ import { toPostMetricRow, zipPageDays } from '../sync-facebook-metrics'
  * (so absence must stay absence).
  */
 
-const EMPTY_SERIES = {
-  page_follows: [],
-  page_daily_follows_unique: [],
-  page_daily_unfollows_unique: [],
-  page_post_engagements: [],
-  page_views_total: [],
-}
-
 describe('zipPageDays', () => {
   it('zips per-metric series into day rows, leaving unserved metrics absent', () => {
     const rows = zipPageDays('client-1', 'page-1', {
-      ...EMPTY_SERIES,
+      ...EMPTY_PAGE_SERIES,
       page_follows: [
         { date: '2026-09-03', value: 64 },
         { date: '2026-09-04', value: 64 },
@@ -43,7 +36,7 @@ describe('zipPageDays', () => {
   })
 
   it('returns nothing when every series is empty — silence is not a row of zeros', () => {
-    expect(zipPageDays('client-1', 'page-1', EMPTY_SERIES)).toEqual([])
+    expect(zipPageDays('client-1', 'page-1', EMPTY_PAGE_SERIES)).toEqual([])
   })
 })
 

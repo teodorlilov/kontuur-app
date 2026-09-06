@@ -1,12 +1,15 @@
 import { cn } from '@/utils/cn'
 import type { ReportPostRow } from '../lib/build-report'
-import { formatCount, formatDayMonth } from '../lib/format'
-import { firstLine, TYPE_META } from '../lib/post-display'
-import { PostThumb } from './post-thumb'
-
-/** ≥1.5× median earns the ratio tag; ≤0.6× is named below median. */
-export const TOP_RATIO = 1.5
-export const LOW_RATIO = 0.6
+import { formatCount } from '../lib/format'
+import {
+  BODY_CELL,
+  HEAD_CELL,
+  MedianTag,
+  PostCell,
+  PostsTableEmpty,
+  PostsTableFooter,
+  PostsTableShell,
+} from './posts-table-shared'
 
 /**
  * Every post published this period, ranked by reach. `follows` is the column
@@ -20,158 +23,64 @@ export function PostsTable({
   posts: ReportPostRow[]
   medianReach: number | null
 }) {
-  if (posts.length === 0) {
-    return (
-      <p className="mt-4 text-caption text-text3">
-        No posts published in this period — published posts join this table as their first metrics
-        arrive.
-      </p>
-    )
-  }
+  if (posts.length === 0) return <PostsTableEmpty />
   return (
     <>
-      <div className="mt-3 overflow-x-auto">
-        <table className="w-full min-w-2xl border-collapse">
-          <thead>
-            <tr>
-              <th scope="col" className={cn(HEAD_CELL, 'pl-0 text-left')}>
-                Post
-              </th>
-              <th scope="col" className={HEAD_CELL}>
-                Reach
-              </th>
-              <th scope="col" className={cn(HEAD_CELL, 'hidden md:table-cell')}>
-                Views
-              </th>
-              <th scope="col" className={HEAD_CELL}>
-                Interactions
-              </th>
-              <th scope="col" className={cn(HEAD_CELL, 'hidden md:table-cell')}>
-                Saves
-              </th>
-              <th scope="col" className={HEAD_CELL}>
-                Follows
-              </th>
-              <th scope="col" className={cn(HEAD_CELL, 'hidden md:table-cell')}>
-                Profile visits
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {posts.map((post, index) => {
-              const top = index === 0 && posts.length > 1
-              return (
-                <tr key={post.igMediaId}>
-                  <PostCell post={post} top={top} />
-                  <td className={cn(BODY_CELL, top && 'bg-wash')}>
-                    {post.reach === null ? '—' : formatCount(post.reach)}
-                    {post.medianRatio !== null && post.medianRatio >= TOP_RATIO && (
-                      <span className="mt-px block text-micro font-medium text-forest">
-                        {post.medianRatio.toFixed(1)}× median
-                      </span>
-                    )}
-                    {post.medianRatio !== null && post.medianRatio <= LOW_RATIO && (
-                      <span className="mt-px block text-micro font-medium text-danger">
-                        below median
-                      </span>
-                    )}
-                  </td>
-                  <td className={cn(BODY_CELL, 'hidden md:table-cell', top && 'bg-wash')}>
-                    {post.views === null ? '—' : formatCount(post.views)}
-                  </td>
-                  <td className={cn(BODY_CELL, top && 'bg-wash')}>
-                    {post.interactions === null ? '—' : formatCount(post.interactions)}
-                  </td>
-                  <td className={cn(BODY_CELL, 'hidden md:table-cell', top && 'bg-wash')}>
-                    {post.saved === null ? '—' : formatCount(post.saved)}
-                  </td>
-                  <td className={cn(BODY_CELL, top && 'bg-wash')}>
-                    {post.follows === null ? '—' : `+${formatCount(post.follows)}`}
-                  </td>
-                  <td
-                    className={cn(
-                      BODY_CELL,
-                      'hidden md:table-cell',
-                      top && 'rounded-r-panel bg-wash'
-                    )}
-                  >
-                    {post.profileVisits === null ? '—' : formatCount(post.profileVisits)}
-                  </td>
-                </tr>
-              )
-            })}
-          </tbody>
-        </table>
-      </div>
-      <p className="mt-3 text-caption text-text2">
-        {posts.length} post{posts.length === 1 ? '' : 's'} this period
-        {medianReach !== null && (
+      <PostsTableShell
+        columns={
           <>
-            {' '}
-            · median reach{' '}
-            <span className="tabular-nums">{formatCount(Math.round(medianReach))}</span>
+            <th scope="col" className={HEAD_CELL}>
+              Reach
+            </th>
+            <th scope="col" className={cn(HEAD_CELL, 'hidden md:table-cell')}>
+              Views
+            </th>
+            <th scope="col" className={HEAD_CELL}>
+              Interactions
+            </th>
+            <th scope="col" className={cn(HEAD_CELL, 'hidden md:table-cell')}>
+              Saves
+            </th>
+            <th scope="col" className={HEAD_CELL}>
+              Follows
+            </th>
+            <th scope="col" className={cn(HEAD_CELL, 'hidden md:table-cell')}>
+              Profile visits
+            </th>
           </>
-        )}{' '}
-        · every column re-syncs nightly for 30 days after publish.
-      </p>
+        }
+      >
+        {posts.map((post, index) => {
+          const top = index === 0 && posts.length > 1
+          return (
+            <tr key={post.igMediaId}>
+              <PostCell post={post} top={top} />
+              <td className={cn(BODY_CELL, top && 'bg-wash')}>
+                {post.reach === null ? '—' : formatCount(post.reach)}
+                <MedianTag ratio={post.medianRatio} />
+              </td>
+              <td className={cn(BODY_CELL, 'hidden md:table-cell', top && 'bg-wash')}>
+                {post.views === null ? '—' : formatCount(post.views)}
+              </td>
+              <td className={cn(BODY_CELL, top && 'bg-wash')}>
+                {post.interactions === null ? '—' : formatCount(post.interactions)}
+              </td>
+              <td className={cn(BODY_CELL, 'hidden md:table-cell', top && 'bg-wash')}>
+                {post.saved === null ? '—' : formatCount(post.saved)}
+              </td>
+              <td className={cn(BODY_CELL, top && 'bg-wash')}>
+                {post.follows === null ? '—' : `+${formatCount(post.follows)}`}
+              </td>
+              <td
+                className={cn(BODY_CELL, 'hidden md:table-cell', top && 'rounded-r-panel bg-wash')}
+              >
+                {post.profileVisits === null ? '—' : formatCount(post.profileVisits)}
+              </td>
+            </tr>
+          )
+        })}
+      </PostsTableShell>
+      <PostsTableFooter count={posts.length} medianLabel="median reach" medianValue={medianReach} />
     </>
-  )
-}
-
-export const HEAD_CELL = 'border-b border-line px-2.5 py-2 text-right text-label text-text3'
-export const BODY_CELL =
-  'border-b border-ink/[0.05] px-2.5 py-2.5 text-right text-caption tabular-nums text-ink whitespace-nowrap'
-
-/**
- * The Post column both networks' tables share: thumb, caption (a link while the post is
- * live), and the meta line. `networkLabel` is who "removed" and "open on" refer to.
- */
-export function PostCell({
-  post,
-  top,
-  networkLabel = 'Instagram',
-}: {
-  post: ReportPostRow
-  top: boolean
-  networkLabel?: string
-}) {
-  const type = TYPE_META[post.mediaType ?? ''] ?? TYPE_META.IMAGE!
-  return (
-    <td
-      className={cn(
-        BODY_CELL,
-        'whitespace-normal pl-0 text-left',
-        top && 'rounded-l-panel bg-wash pl-2.5'
-      )}
-    >
-      <div className="flex min-w-0 items-center gap-3">
-        <PostThumb thumbnailUrl={post.thumbnailUrl} mediaType={post.mediaType} />
-        <span className="min-w-0">
-          {/* A post removed from the network keeps its caption but
-              loses its destination — a link to a 404 helps nobody. */}
-          {post.permalink && post.missing !== 'removed' ? (
-            <a
-              href={post.permalink}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="block max-w-[30ch] truncate text-caption text-ink underline decoration-line underline-offset-2 transition-colors hover:decoration-forest focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-forest/40"
-            >
-              {firstLine(post.caption)}
-              <span className="sr-only"> — open on {networkLabel}</span>
-            </a>
-          ) : (
-            <span className="block max-w-[30ch] truncate text-caption text-ink">
-              {firstLine(post.caption)}
-            </span>
-          )}
-          <span className="block text-micro text-text3">
-            {post.postedDayKey ? `${formatDayMonth(post.postedDayKey)} · ` : ''}
-            {type.label}
-            {post.missing === 'removed' && ` · no longer on ${networkLabel}`}
-            {post.missing === 'pending' && ' · metrics after the next sync'}
-          </span>
-        </span>
-      </div>
-    </td>
   )
 }

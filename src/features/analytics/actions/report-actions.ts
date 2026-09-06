@@ -8,10 +8,6 @@ import type { ActionResult } from '@/lib/actions/types'
 import type { Json } from '@/types'
 import { getCachedAgency } from '@/lib/queries/cache'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
-import {
-  SOCIAL_CONNECTION_AUTH_COLUMNS,
-  type SocialConnectionAuthColumns,
-} from '@/lib/queries/select-columns'
 import { fetchConnection, fetchConnectionSyncState, fetchIgConnectionState } from '@/lib/queries/db'
 import { GraphApiError } from '@/lib/meta/graph-errors'
 import { isTokenExpired } from '@/lib/meta/token-expiry'
@@ -35,6 +31,45 @@ interface ReportScope {
   /** Parsed, defaulted — never read off the raw input. */
   network: 'instagram' | 'facebook'
   supabase: SupabaseClient
+}
+
+/**
+ * The client's Instagram credentials, or null when there is nothing usable to call Meta with.
+ *
+ * Both on-demand Instagram jobs below need exactly this, and both wrote it out longhand: the same
+ * projection, the same two filters, the same narrowing cast, and the same three-part check that
+ * the connection can still authenticate. The Facebook branch of `fillPeriodData` already called
+ * `fetchConnection` for the same job one screen away.
+ *
+ * The read stays on the AUTH-scoped client, as both copies had it — it is the caller's own RLS
+ * grant that fetches the row, not the admin key.
+ *
+ * A failed read returns null rather than throwing, which is what both call sites did by ignoring
+ * `error` and reading `data`. Keep it that way: they treat "no usable connection" as a
+ * stalled-but-fine outcome, and a lookup that errored is no more usable than one that found
+ * nothing. The log line is new; the control flow is not.
+ */
+async function usableIgCredentials(
+  scope: ReportScope
+): Promise<{ accountId: string; accessToken: string } | null> {
+  let connection
+  try {
+    connection = await fetchConnection(scope.supabase, scope.client.id, 'instagram')
+  } catch (err) {
+    console.error('[analytics] instagram connection lookup failed', {
+      clientId: scope.client.id,
+      err,
+    })
+    return null
+  }
+  if (
+    !connection?.account_id ||
+    !connection.access_token ||
+    isTokenExpired(connection.token_expires_at)
+  ) {
+    return null
+  }
+  return { accountId: connection.account_id, accessToken: connection.access_token }
 }
 
 /** Shared parse + auth + ownership + timezone resolution for the report actions. */
@@ -221,20 +256,8 @@ export async function fillPeriodData(
     }
   }
 
-  // WHY as: the auth-scoped client is untyped here, so the projection does not infer.
-  const { data: connection } = (await scope.supabase
-    .from('social_connections')
-    .select(SOCIAL_CONNECTION_AUTH_COLUMNS)
-    .eq('client_id', scope.client.id)
-    .eq('platform', 'instagram')
-    .maybeSingle()) as { data: SocialConnectionAuthColumns | null }
-  if (
-    !connection?.account_id ||
-    !connection.access_token ||
-    isTokenExpired(connection.token_expires_at)
-  ) {
-    return { ok: true, data: { filled: false, stalled: true } }
-  }
+  const credentials = await usableIgCredentials(scope)
+  if (!credentials) return { ok: true, data: { filled: false, stalled: true } }
 
   let outcome
   try {
@@ -242,8 +265,8 @@ export async function fillPeriodData(
       admin,
       {
         clientId: scope.client.id,
-        accountId: connection.account_id,
-        accessToken: connection.access_token,
+        accountId: credentials.accountId,
+        accessToken: credentials.accessToken,
       },
       scope.period,
       toDateKey(new Date(), scope.timezone)
@@ -283,27 +306,15 @@ export async function ensureAudienceSnapshot(
   if (!resolved.ok) return { ok: false, error: resolved.error }
   const { scope } = resolved
 
-  // WHY as: the auth-scoped client is untyped here, so the projection does not infer.
-  const { data: connection } = (await scope.supabase
-    .from('social_connections')
-    .select(SOCIAL_CONNECTION_AUTH_COLUMNS)
-    .eq('client_id', scope.client.id)
-    .eq('platform', 'instagram')
-    .maybeSingle()) as { data: SocialConnectionAuthColumns | null }
-  if (
-    !connection?.account_id ||
-    !connection.access_token ||
-    isTokenExpired(connection.token_expires_at)
-  ) {
-    return { ok: true, data: { captured: false } }
-  }
+  const credentials = await usableIgCredentials(scope)
+  if (!credentials) return { ok: true, data: { captured: false } }
 
   try {
     await syncDemographicsWeekly(
       createAdminSupabaseClient(),
       scope.client.id,
-      connection.account_id,
-      connection.access_token
+      credentials.accountId,
+      credentials.accessToken
     )
   } catch (err) {
     // Best-effort by design: the page already rendered from stored data.

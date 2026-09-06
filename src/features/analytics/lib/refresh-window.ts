@@ -6,8 +6,8 @@ import { GraphApiError } from '@/lib/meta/graph-errors'
 import { captureOnlineFollowers, refreshObservedBestTime } from './online-followers'
 import { fetchDailyReachSeries } from '@/lib/meta/instagram/insights'
 import { captureDayTotals, syncDemographicsWeekly, syncPostMetrics } from './sync-metrics'
-import { shiftDateKey } from '@/utils/date-helpers'
-import type { AnalyticsPeriod } from './period'
+import { dayKeyToUnixSeconds, shiftDateKey } from '@/utils/date-helpers'
+import { dayChunks, type AnalyticsPeriod } from './period'
 import {
   toReachRows,
   upsertAccountMetricDays,
@@ -124,18 +124,11 @@ async function readMarkerRows(
 
 /** UTC [start, end] inclusive day keys → ≤30-day unix-second windows. */
 function seriesChunks(start: string, end: string): Array<{ sinceTs: number; untilTs: number }> {
-  const chunks: Array<{ sinceTs: number; untilTs: number }> = []
-  let cursor = start
-  while (cursor <= end) {
-    const chunkEnd = shiftDateKey(cursor, SERIES_CHUNK_DAYS - 1)
-    const clampedEnd = chunkEnd < end ? chunkEnd : end
-    chunks.push({
-      sinceTs: Math.floor(Date.parse(cursor) / 1000),
-      untilTs: Math.floor(Date.parse(shiftDateKey(clampedEnd, 1)) / 1000),
-    })
-    cursor = shiftDateKey(clampedEnd, 1)
-  }
-  return chunks
+  return dayChunks(start, end, SERIES_CHUNK_DAYS).map((chunk) => ({
+    sinceTs: dayKeyToUnixSeconds(chunk.start),
+    // `until` is exclusive-ish at Meta's end; one day past the chunk's last day covers it.
+    untilTs: dayKeyToUnixSeconds(shiftDateKey(chunk.end, 1)),
+  }))
 }
 
 /**

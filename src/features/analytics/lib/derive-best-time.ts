@@ -3,6 +3,7 @@ import 'server-only'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { BestTimePlatform } from '@/lib/suggested-times/schemas'
 import { fetchIgConnectionState } from '@/lib/queries/db'
+import { PLATFORM_NAMES } from '@/lib/validation'
 import { MIN_BEST_TIME_DAYS, MS_PER_DAY, WEEKDAY_LABELS } from '@/utils/constants'
 import { buildAudienceOnline, type AudienceOnline } from './build-report'
 
@@ -53,11 +54,11 @@ export function bestTimeFromOnline(online: AudienceOnline): ObservedBestTime {
   return {
     platforms: [
       {
-        platform: 'Instagram',
+        platform: PLATFORM_NAMES.instagram,
         best_days: bestDays,
         best_time_windows: windows,
         confidence: 'observed',
-        reasoning_summary: `Derived from Instagram's hourly follower-online counts, averaged over ${online.sampleDays} days in your timezone — measured activity, not a profile-based estimate.`,
+        reasoning_summary: `Derived from ${PLATFORM_NAMES.instagram}'s hourly follower-online counts, averaged over ${online.sampleDays} days in your timezone — measured activity, not a profile-based estimate.`,
       },
     ],
     upgrade_note: 'Refreshed nightly from observed follower activity.',

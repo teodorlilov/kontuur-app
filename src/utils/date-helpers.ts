@@ -74,10 +74,22 @@ export function getZonedParts(
   }
 }
 
+/**
+ * Monday-first index (0–6) of a weekday NAME, case-insensitive; -1 when it is not one.
+ *
+ * Separate from `getWeekdayIndex` because a caller that already holds formatted parts should not
+ * pay for a second formatter pass to turn the name it is looking at into a number. Both go
+ * through here, so the grid a name lands in cannot disagree between them.
+ */
+export function mondayFirstIndex(weekdayName: string): number {
+  const name = weekdayName.toLowerCase()
+  return MONDAY_FIRST_WEEKDAYS.findIndex((day) => day.toLowerCase() === name)
+}
+
 /** Monday-first index (0–6) of a date's weekday in the given zone. */
 export function getWeekdayIndex(date: Date = new Date(), timeZone?: string): number {
   const name = getFormatter(`weekday:${timeZone ?? ''}`, { weekday: 'long', timeZone }).format(date)
-  return Math.max(MONDAY_FIRST_WEEKDAYS.indexOf(name), 0)
+  return Math.max(mondayFirstIndex(name), 0)
 }
 
 /** Shift a 'YYYY-MM-DD' calendar date by whole days, without touching a clock. */
@@ -87,6 +99,31 @@ export function shiftDateKey(dateISO: string, days: number): string {
   return new Date(Date.UTC(year ?? 0, (month ?? 1) - 1, (day ?? 1) + days))
     .toISOString()
     .slice(0, 10)
+}
+
+/**
+ * The earlier of two 'YYYY-MM-DD' keys — i.e. a window edge clamped to a bound.
+ *
+ * At fixed width, lexicographic order IS chronological order, which is why this is a
+ * comparison and not date arithmetic. It reads as a name rather than as a ternary at the two
+ * chunk loops that clamp their last chunk to the end of the asked window.
+ */
+export function minDateKey(a: string, b: string): string {
+  return a <= b ? a : b
+}
+
+/**
+ * A 'YYYY-MM-DD' key as unix SECONDS at its UTC midnight — the unit Meta's insights windows
+ * take for `since` and `until`.
+ *
+ * Every Graph window in the app is a pair of these, and the conversion was written out seven
+ * times across three sync modules, half of them spelling the key `${day}T00:00:00Z` and half
+ * passing it bare. Those agree — ECMAScript parses a date-only ISO string as UTC, and a
+ * date-time one only because of the explicit Z — but agreeing by coincidence in two spellings
+ * is how a local-midnight version eventually slips in and shifts a window by an hour.
+ */
+export function dayKeyToUnixSeconds(dayKey: string): number {
+  return Math.floor(Date.parse(`${dayKey}T00:00:00Z`) / 1000)
 }
 
 /**

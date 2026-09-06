@@ -119,6 +119,19 @@ export interface ReportPostRow {
 
 // ── Small pure helpers ──
 
+/**
+ * A value against the period's median, or null when the comparison cannot be made.
+ *
+ * Guarded on three things, all of which matter: an unmeasured value has no ratio, a period with
+ * no median has nothing to compare against, and a median of zero would divide to Infinity and
+ * render as "Infinity× median". Instagram rates reach this way and Facebook interactions — the
+ * measure differs, the rule does not, and the Facebook table used to keep its own copy.
+ */
+export function ratioToMedian(value: number | null, median: number | null): number | null {
+  if (value === null || median === null || median <= 0) return null
+  return value / median
+}
+
 /** Sum honoring the NULL contract: null only when every input was null. */
 export function sumOrNull(values: Array<number | null>): number | null {
   let sum: number | null = null
@@ -266,10 +279,7 @@ export function buildPosts(
     likeCount: row.like_count,
     commentsCount: row.comments_count,
     shares: row.shares,
-    medianRatio:
-      row.reach !== null && medianReach !== null && medianReach > 0
-        ? row.reach / medianReach
-        : null,
+    medianRatio: ratioToMedian(row.reach, medianReach),
     missing: null as PostMissing,
   }))
 

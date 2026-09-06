@@ -77,7 +77,9 @@ export function ReachTrend({
   const nowPoints = nowSegments.flat()
   const washPath =
     nowPoints.length > 1
-      ? `${nowPoints.map((p, i) => `${i ? 'L' : 'M'}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ')} L${nowPoints[nowPoints.length - 1]!.x.toFixed(1)},${baseline} L${nowPoints[0]!.x.toFixed(1)},${baseline} Z`
+      ? // One polyline through every real point — the same point formatting the line itself
+        // uses, rather than a second copy of it inline.
+        `${segmentsToPath([nowPoints])} L${nowPoints[nowPoints.length - 1]!.x.toFixed(1)},${baseline} L${nowPoints[0]!.x.toFixed(1)},${baseline} Z`
       : null
 
   const peakIndex = bestDay ? days.findIndex((day) => day.date === bestDay.date) : -1

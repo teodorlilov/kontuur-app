@@ -24,7 +24,7 @@ import {
   getFacebookNarrative,
 } from '@/features/analytics/lib/facebook-narrative'
 import { MastheadControls } from '@/features/analytics/components/masthead-controls'
-import type { ArchiveEntry } from '@/features/analytics/components/report-archive'
+import { fetchReportArchive } from '@/features/analytics/lib/report-archive-query'
 import { buildFallbackNarrative } from '@/features/analytics/lib/narrative'
 import { getNarrative } from '@/features/analytics/lib/narrative'
 import { periodDayKeys, resolvePeriod } from '@/features/analytics/lib/period'
@@ -114,16 +114,9 @@ export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps
       'facebook'
     )
     const todayKey = toDateKey(new Date(), timezone)
-    const [fbData, fbArchiveResult, fbStoredDaysResult] = await Promise.all([
+    const [fbData, fbArchive, fbStoredDaysResult] = await Promise.all([
       getFacebookAnalyticsReport(clientId, period, timezone),
-      supabase
-        .from('analytics_reports')
-        .select('id, period_start, period_end, created_at')
-        .eq('client_id', clientId)
-        .eq('platform', 'facebook')
-        .eq('platform_account_id', facebook!.account_id)
-        .order('created_at', { ascending: false })
-        .limit(12),
+      fetchReportArchive(supabase, clientId, 'facebook', facebook!.account_id),
       // Uncached, like Instagram's unfilled count: this is the auto-fill trigger AND its
       // terminator — a stale count would either re-pull forever or never pull at all.
       supabase
@@ -148,11 +141,6 @@ export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps
       (day) => day <= todayKey && !fbStoredDays.has(day)
     ).length
     const fbFilling = fbUnfilledDays > 0 && params.partial !== '1'
-    if (fbArchiveResult.error) {
-      console.error('[analytics] facebook archive list failed', fbArchiveResult.error)
-    }
-    // WHY as: the server client is untyped for this projection, so it does not infer.
-    const fbArchive = (fbArchiveResult.data ?? []) as ArchiveEntry[]
 
     const fbNarrativeResult = fbData.hasHistory
       ? await getFacebookNarrative(clientId, client.name, period, timezone, fbData.lastSyncAt)
@@ -224,31 +212,17 @@ export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps
   // to read max(fetched_at), which the on-demand refill also stamped, so a sync
   // that had been failing for nights still reported itself as freshly landed.
   const { lastSyncAt, lastSyncError } = await fetchIgConnectionState(supabase, clientId)
-  const [data, archiveResult, unfilledDays] = await Promise.all([
+  const [data, archive, unfilledDays] = await Promise.all([
     getAnalyticsReport(clientId, period, timezone),
     accountId
-      ? supabase
-          .from('analytics_reports')
-          .select('id, period_start, period_end, created_at')
-          .eq('client_id', clientId)
-          // Both networks archive into this table now — without the platform filter a
-          // Facebook export would list under the Instagram document.
-          .eq('platform', 'instagram')
-          .eq('platform_account_id', accountId)
-          .order('created_at', { ascending: false })
-          .limit(12)
-      : Promise.resolve({ data: [], error: null }),
+      ? fetchReportArchive(supabase, clientId, 'instagram', accountId)
+      : Promise.resolve([]),
     // Uncached on purpose: this is the auto-fill trigger AND its terminator —
     // a stale count would either re-pull forever or never pull at all.
     accountId
       ? countUnfilledDays(supabase, clientId, accountId, period, toDateKey(new Date(), timezone))
       : Promise.resolve(0),
   ])
-  if (archiveResult.error) {
-    console.error('[analytics] archive list failed', archiveResult.error)
-  }
-  // WHY as: the server client is untyped for this projection, so it does not infer.
-  const archive = (archiveResult.data ?? []) as ArchiveEntry[]
   const hasConnection = instagram !== null
   const handle = instagram?.account_name?.replace(/^@/, '') ?? null
 

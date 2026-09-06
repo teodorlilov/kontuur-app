@@ -12,6 +12,7 @@ import {
   type BuildReportInput,
 } from '../build-report'
 import type { AnalyticsPeriod } from '../period'
+import { postMetricRow } from './fixtures'
 
 /** A 4-day period (Aug 15–18) against the 4 days before it (Aug 11–14). */
 const PERIOD: AnalyticsPeriod = {
@@ -49,26 +50,8 @@ function accountRow(overrides: Partial<IGAccountMetricColumns>): IGAccountMetric
 }
 
 function postRow(overrides: Partial<PlatformPostMetricColumns>): PlatformPostMetricColumns {
-  return {
-    external_post_id: 'm1',
-    post_id: null,
-    media_type: 'IMAGE',
-    media_product_type: 'FEED',
-    permalink: null,
-    thumbnail_url: null,
-    caption: null,
-    posted_at: null,
-    reach: null,
-    views: null,
-    like_count: null,
-    comments_count: null,
-    saved: null,
-    shares: null,
-    total_interactions: null,
-    follows: null,
-    profile_visits: null,
-    ...overrides,
-  }
+  // Instagram's defaults over the shared skeleton: a plain feed image unless a case says otherwise.
+  return postMetricRow({ media_type: 'IMAGE', media_product_type: 'FEED', ...overrides })
 }
 
 /**

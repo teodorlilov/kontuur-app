@@ -6,14 +6,17 @@ import { toast } from '@/components/ui/toast'
 import { cn } from '@/utils/cn'
 import { Button } from '@/components/ui/button'
 import { SelectControl } from '@/components/layout/page-header/select-control'
+import { PLATFORM_NAMES } from '@/lib/validation'
 import { archiveReport } from '../actions/report-actions'
 import { useAnalyticsNav } from './analytics-nav'
 import { analyticsClientHref, analyticsRangeHref, analyticsWindowHref } from '../lib/analytics-href'
 import { RANGE_PRESETS, type AnalyticsPeriod, type RangePreset } from '../lib/period'
 
+// Labels come from PLATFORM_NAMES, not restated here: this switcher and the documents it
+// switches between must call a network the same thing.
 const NETWORKS = [
-  { value: 'instagram', label: 'Instagram' },
-  { value: 'facebook', label: 'Facebook' },
+  { value: 'instagram', label: PLATFORM_NAMES.instagram },
+  { value: 'facebook', label: PLATFORM_NAMES.facebook },
 ] as const
 
 const PRESET_LABELS: Record<RangePreset, string> = {

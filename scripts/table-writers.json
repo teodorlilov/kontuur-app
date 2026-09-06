@@ -49,11 +49,11 @@
   },
   "ig_account_metrics": {
     "src/features/analytics/lib/account-metrics-store.ts": "upsertAccountMetricDays — the only writer. There were six inline upserts across sync-metrics, refresh-window and online-followers, each restating the onConflict target. Callers write PARTIAL rows on purpose (reach in one pass, day totals in another, online-follower hours in a third) so no pass nulls a column another owns; that is why this is a thin shared upsert and not a whole-row writer.",
-    "src/features/analytics/lib/purge-account-metrics.ts": "[hand-listed] purgeAccountAnalytics deletes this table through a `scoped(table)` helper, so `.from(table)` never names it and the scan cannot find it. Meta's data-deletion callback and an account switch; deleteClient deliberately leans on the `clients` cascade instead."
+    "src/features/analytics/lib/purge-account-metrics.ts": "purgeAccountAnalytics deletes this table for Meta's data-deletion callback and an account switch; deleteClient deliberately leans on the `clients` cascade instead. This was hand-listed until the delete went through a `scoped(table)` helper that hid `.from(table)` from the scan; the deletes are written out now, so the scan finds them and this entry is checked like any other."
   },
   "ig_audience_snapshots": {
     "src/features/analytics/lib/sync-metrics.ts": "syncDemographicsWeekly, beside the sync that fetches it.",
-    "src/features/analytics/lib/purge-account-metrics.ts": "[hand-listed] purgeAccountAnalytics deletes this table through a `scoped(table)` helper, so `.from(table)` never names it and the scan cannot find it. Meta's data-deletion callback and an account switch; deleteClient deliberately leans on the `clients` cascade instead."
+    "src/features/analytics/lib/purge-account-metrics.ts": "purgeAccountAnalytics deletes this table for Meta's data-deletion callback and an account switch; deleteClient deliberately leans on the `clients` cascade instead. This was hand-listed until the delete went through a `scoped(table)` helper that hid `.from(table)` from the scan; the deletes are written out now, so the scan finds them and this entry is checked like any other."
   },
   "intelligence_briefings": {
     "src/features/dashboard/lib/write-briefing.ts": "writeWeeklyBriefing — the only composer of a briefing.",
@@ -116,7 +116,7 @@
   },
   "platform_post_metrics": {
     "src/features/analytics/lib/post-metrics-store.ts": "upsertPostMetricRows — the only writer, for the same reason account-metrics-store is: two jobs now write this table and nothing else would keep their conflict target in step. Callers write PARTIAL rows on purpose — the nightly sync writes identity AND measurements, the half-hourly comments sync writes identity only (caption, permalink, thumbnail, post_id) because the queue renders the post a comment sits under and cannot wait until 03:30 for it. The comments sync must never write the measurement columns: a zero there is indistinguishable from a measured zero on the analytics page.",
-    "src/features/analytics/lib/purge-account-metrics.ts": "[hand-listed] purgeAccountAnalytics deletes this table through a `scoped(table)` helper, so `.from(table)` never names it and the scan cannot find it. Meta's data-deletion callback and an account switch; deleteClient deliberately leans on the `clients` cascade instead."
+    "src/features/analytics/lib/purge-account-metrics.ts": "purgeAccountAnalytics deletes this table for Meta's data-deletion callback and an account switch; deleteClient deliberately leans on the `clients` cascade instead. This was hand-listed until the delete went through a `scoped(table)` helper that hid `.from(table)` from the scan; the deletes are written out now, so the scan finds them and this entry is checked like any other."
   },
   "fb_page_metrics": {
     "src/features/analytics/lib/fb-page-metrics-store.ts": "upsertFbPageMetricDays is the one writer of a Page's daily metrics — a separate table from ig_account_metrics by decision (20260846): five shared columns did not justify squeezing Facebook concepts into Instagram-named ones.",

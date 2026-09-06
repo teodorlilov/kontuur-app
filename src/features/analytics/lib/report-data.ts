@@ -14,9 +14,10 @@ import {
   type PlatformPostMetricColumns,
   type PublishedPostPin,
 } from '@/lib/queries/select-columns'
-import { shiftDateKey, zonedTimeToInstant } from '@/utils/date-helpers'
+import { shiftDateKey } from '@/utils/date-helpers'
 import { buildAnalyticsReport, type AnalyticsReportData } from './build-report'
 import type { AnalyticsPeriod } from './period'
+import { postedWindow } from './report-data-shared'
 
 /**
  * The comparison console's one data read: stored tables in Postgres, assembled
@@ -70,12 +71,10 @@ const _fetchAnalyticsReport = unstable_cache(
     const period: AnalyticsPeriod = { preset, start, end, prevStart, prevEnd, days }
 
     // Post timestamps are instants; the period is agency-calendar days.
-    const postedFrom = zonedTimeToInstant(start, '00:00', timezone).toISOString()
-    const postedTo = zonedTimeToInstant(shiftDateKey(end, 1), '00:00', timezone).toISOString()
-    // Reaches back over the comparison window too: the trend chart draws both
+    // `fromPrevious` reaches back over the comparison window too: the trend chart draws both
     // lines, so it must be able to say which posts moved the previous one.
     // The builder splits them — only current-window rows reach the table.
-    const postedFromPrev = zonedTimeToInstant(prevStart, '00:00', timezone).toISOString()
+    const posted = postedWindow(period, timezone)
 
     // INVARIANT: this report never shows another account's data. Every store
     // it reads — metrics, posts ledger, snapshots — records the client, but a
@@ -104,8 +103,8 @@ const _fetchAnalyticsReport = unstable_cache(
         // The account id is the network partition: each network issues its own ids, so no
         // platform filter is needed for this to stay an Instagram-only read (20260845).
         .eq('platform_account_id', accountId)
-        .gte('posted_at', postedFromPrev)
-        .lt('posted_at', postedTo),
+        .gte('posted_at', posted.fromPrevious)
+        .lt('posted_at', posted.to),
       // Kontuur's own ledger: pins posts the sync cannot see — removed from Instagram
       // after publishing, or published since the last sync ran.
       //
@@ -121,8 +120,8 @@ const _fetchAnalyticsReport = unstable_cache(
         .eq('account_id', accountId)
         .eq('status', 'published')
         .eq('posts.client_id', clientId)
-        .gte('published_at', postedFrom)
-        .lt('published_at', postedTo),
+        .gte('published_at', posted.from)
+        .lt('published_at', posted.to),
       admin
         .from('ig_audience_snapshots')
         .select(IG_AUDIENCE_SNAPSHOT_COLUMNS)
@@ -199,7 +198,11 @@ const _fetchAnalyticsReport = unstable_cache(
   // now, so a v4 entry both lacks the field and pins posts on the wrong day.
   // v6: lastSyncAt is the last CLEAN cron run rather than max(fetched_at), which
   // is what decides whether a post reads "removed" or "pending".
-  ['analytics-report-v6'],
+  // v7: the window math moved into `postedWindow` (report-data-shared.ts). The VALUES are
+  // unchanged, but Next derives a cache key partly from the callback's source text, so every v6
+  // entry is orphaned by the edit regardless — the bump is the honest record of why, not the
+  // cause.
+  ['analytics-report-v7'],
   { revalidate: 3600, tags: [IG_METRICS_TAG] }
 )
 

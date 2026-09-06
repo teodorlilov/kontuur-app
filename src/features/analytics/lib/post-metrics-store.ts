@@ -8,16 +8,13 @@ export type PlatformPostMetricsInsert =
   Database['public']['Tables']['platform_post_metrics']['Insert']
 
 /**
- * The unique key every writer resolves against. Named once for the same reason
- * `account-metrics-store` names its day key: two passes writing different columns of
- * the same media must land on the same row, and a typo here would silently create a
- * second one instead of failing.
- */
-/**
  * The upsert target, matching `platform_post_metrics_client_account_post_key`.
  *
- * `platform` is in it because two networks issuing the same post id would otherwise overwrite
- * each other here, silently — this function writes through the key blind.
+ * Named once for the same reason `account-metrics-store` names its day key: two passes writing
+ * different columns of the same media must land on the same row, and a typo here would silently
+ * create a second one instead of failing. `platform` is in it because two networks issuing the
+ * same post id would otherwise overwrite each other here, silently — this function writes
+ * through the key blind.
  */
 const MEDIA_KEY = 'client_id,platform,platform_account_id,external_post_id'
 

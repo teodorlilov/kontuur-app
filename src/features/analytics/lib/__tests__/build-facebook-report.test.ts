@@ -6,6 +6,7 @@ import type {
 } from '@/lib/queries/select-columns'
 import { buildFacebookReport, type BuildFacebookReportInput } from '../build-facebook-report'
 import type { AnalyticsPeriod } from '../period'
+import { postMetricRow } from './fixtures'
 
 /**
  * The Facebook document's assembly — what `npm run check` cannot see. The builder composes
@@ -37,26 +38,12 @@ function pageRow(overrides: Partial<FbPageMetricColumns>): FbPageMetricColumns {
 }
 
 function postRow(overrides: Partial<PlatformPostMetricColumns>): PlatformPostMetricColumns {
-  return {
+  // A Page post id and a publish instant; Meta serves no media type for these.
+  return postMetricRow({
     external_post_id: '723701000827665_1',
-    post_id: null,
-    media_type: null,
-    media_product_type: null,
-    permalink: null,
-    thumbnail_url: null,
-    caption: null,
     posted_at: '2026-09-04T12:00:00Z',
-    reach: null,
-    views: null,
-    like_count: null,
-    comments_count: null,
-    saved: null,
-    shares: null,
-    total_interactions: null,
-    follows: null,
-    profile_visits: null,
     ...overrides,
-  }
+  })
 }
 
 function input(overrides: Partial<BuildFacebookReportInput>): BuildFacebookReportInput {

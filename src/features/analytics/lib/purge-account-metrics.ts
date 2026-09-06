@@ -30,23 +30,35 @@ export async function purgeAccountAnalytics(
   accountId: string,
   options?: { includeUnstampedReports?: boolean }
 ): Promise<void> {
-  const scoped = (table: string) =>
-    admin.from(table).delete().eq('client_id', clientId).eq('ig_account_id', accountId)
-
+  // Every delete is written out. A shared `scoped` helper stood here and only two of the seven
+  // calls could use it: the other five carry a different account column, and three had to say so
+  // in a comment explaining that the helper would fail on an unknown column — which is how one of
+  // them shipped broken once. A helper the majority must refuse is not a helper.
+  //
+  // Writing `.from('table')` literally also lets `npm run writers` SEE these deletes, so three
+  // tables no longer need a registry entry that is exempt from the staleness check.
   const [accountRes, postRes, snapshotRes, reportRes, commentRes, unstampedRes, fbPageRes] =
     await Promise.all([
-      scoped('ig_account_metrics'),
-      // NOT `scoped`: this table renamed `ig_account_id` to `platform_account_id` when it
-      // became network-neutral (20260845). Left on the shared helper it fails on an unknown
-      // column — which is exactly how it shipped broken once, caught by the 2026-09 audit.
+      admin
+        .from('ig_account_metrics')
+        .delete()
+        .eq('client_id', clientId)
+        .eq('ig_account_id', accountId),
+      // `platform_account_id`, not `ig_account_id`: this table renamed the column when it became
+      // network-neutral (20260845). Getting that wrong is how it shipped broken once, caught by
+      // the 2026-09 audit.
       admin
         .from('platform_post_metrics')
         .delete()
         .eq('client_id', clientId)
         .eq('platform_account_id', accountId),
-      scoped('ig_audience_snapshots'),
-      // NOT `scoped`: the archive renamed `ig_account_id` to `platform_account_id` when
-      // Facebook reports joined it (20260847).
+      admin
+        .from('ig_audience_snapshots')
+        .delete()
+        .eq('client_id', clientId)
+        .eq('ig_account_id', accountId),
+      // `platform_account_id`: the archive renamed the column when Facebook reports joined it
+      // (20260847).
       admin
         .from('analytics_reports')
         .delete()
@@ -56,10 +68,9 @@ export async function purgeAccountAnalytics(
       // agency and not its client — the audience. That makes this line the part of
       // Meta's data-deletion callback that actually erases third parties, and the
       // reason it is a line here rather than a second purge function.
-      // NOT `scoped`: like platform_post_metrics above, this table renamed `ig_account_id`
-      // to `platform_account_id` when it became network-neutral (20260844). Left on the
-      // shared helper it would fail on an unknown column — on the one path in this file
-      // whose failure is a legal problem rather than a stale chart.
+      // `platform_account_id`: like platform_post_metrics above, this table renamed the column
+      // when it became network-neutral (20260844) — on the one path in this file whose failure
+      // is a legal problem rather than a stale chart.
       admin
         .from('platform_comments')
         .delete()

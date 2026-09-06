@@ -1,9 +1,9 @@
-import { Avatar } from '@/components/ui/avatar'
 import { ActionLink } from '@/components/ui/action-link'
 import { Card } from '@/components/ui/card'
 import { UNITEMISED_FORMATS, type AnalyticsReportData } from '../lib/build-report'
 import { shiftDateKey } from '@/utils/date-helpers'
-import { formatCount, formatDayMonth, formatPeriodRange, formatShortRange } from '../lib/format'
+import { PLATFORM_NAMES } from '@/lib/validation'
+import { formatCount, formatDayMonth } from '../lib/format'
 import { firstLine } from '../lib/post-display'
 import { AnalyticsSection, ChartLegend } from './analytics-section'
 import { AudienceSection } from './audience-section'
@@ -12,12 +12,14 @@ import { AutoFill } from './auto-fill'
 import { ComparisonRows } from './comparison-rows'
 import { EmptyFill } from './empty-fill'
 import { FillingDocument } from './filling-document'
-import { FollowerFlow } from './follower-flow'
+import { FollowerFlowSection } from './follower-flow-section'
 import { FunnelSection } from './funnel-section'
 import { NarrativeBlock } from './narrative-block'
+import { ReportMasthead } from './report-masthead'
 import { PostsTable } from './posts-table'
 import { ReachTrend } from './reach-trend'
-import { ReportArchive, type ArchiveEntry } from './report-archive'
+import { ReportArchive } from './report-archive'
+import type { ArchiveEntry } from '../types'
 import { SummaryStrip } from './summary-strip'
 import { SyncLine } from './sync-line'
 import { WhenToPost } from './when-to-post'
@@ -69,7 +71,6 @@ export function AnalyticsView({
   archive,
 }: AnalyticsViewProps) {
   const { hasHistory, followers } = data
-  const flowKnown = followers.gained.now !== null || followers.lost.now !== null
   const filling = hasConnection && unfilledDays > 0 && !showPartial
   // Paid vs organic, from the format-attributed reach — stated side by side,
   // never summed to the period total (accounts can appear in several formats).
@@ -81,37 +82,12 @@ export function AnalyticsView({
     : null
 
   const masthead = (
-    <header className="flex flex-wrap items-end justify-between gap-6 pb-5">
-      <div>
-        <div className="flex items-center gap-2.5">
-          <Avatar name={clientName} size="sm" />
-          <span className="text-title text-ink">{clientName}</span>
-          {handle && <span className="text-micro text-text3">Instagram · @{handle}</span>}
-        </div>
-        {/* The sticky page header carries the screen title; print has no header. */}
-        <h2 className="mt-2 hidden text-headline text-ink print:block">Analytics</h2>
-        {/* The masthead IS the color key: every legend below echoes these two. */}
-        <p className="mt-2.5 flex flex-wrap items-center gap-x-5 gap-y-1 text-body">
-          <span className="flex items-center gap-2">
-            <i aria-hidden="true" className="h-0.5 w-3.5 flex-none rounded-full bg-forest" />
-            <span className="text-text2">
-              <strong className="font-medium text-ink">This period</strong> ·{' '}
-              {formatPeriodRange(data.period.start, data.period.end)}
-            </span>
-          </span>
-          <span className="flex items-center gap-2">
-            <i aria-hidden="true" className="h-0.5 w-3.5 flex-none rounded-full bg-metric-3" />
-            <span className="text-text2">
-              Previous · {formatShortRange(data.period.prevStart, data.period.prevEnd)}
-            </span>
-          </span>
-        </p>
-        <p className="mt-1 text-caption text-text3">
-          Every number below compares the two — {data.period.days} days against the{' '}
-          {data.period.days} before them.
-        </p>
-      </div>
-    </header>
+    <ReportMasthead
+      clientName={clientName}
+      networkLabel={PLATFORM_NAMES.instagram}
+      accountName={handle ? `@${handle}` : null}
+      period={data.period}
+    />
   )
 
   // Nothing partial: while this window still pulls from Instagram, the page
@@ -202,27 +178,11 @@ export function AnalyticsView({
         {/* The mock drew views by follower type here; the live probe proved the
             API has no such breakdown (breakdown=follower_type does not exist).
             The follows/unfollows split is the story the stored data can tell. */}
-        <AnalyticsSection
-          title="Who followed, who left"
-          sub="Gains and losses day by day — hover a day for the posts behind it."
-          ariaLabel="Follower flow"
-          legend={
-            followers.byDay.some((day) => day.posts.length > 0) ? (
-              <ChartLegend items={[{ swatch: 'pin', label: 'Post published' }]} />
-            ) : undefined
-          }
-        >
-          {!hasHistory ? (
-            <EmptyFill className="mt-3.5">Follower flow appears after the first sync</EmptyFill>
-          ) : !flowKnown ? (
-            <p className="mt-4 text-caption text-text3">
-              Instagram reports the gained-and-lost split once an account passes about 100
-              followers.
-            </p>
-          ) : (
-            <FollowerFlow followers={followers} />
-          )}
-        </AnalyticsSection>
+        <FollowerFlowSection
+          followers={followers}
+          hasHistory={hasHistory}
+          unknownNote={`${PLATFORM_NAMES.instagram} reports the gained-and-lost split once an account passes about 100 followers.`}
+        />
 
         <AnalyticsSection
           title="What each format earned"

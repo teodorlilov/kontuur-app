@@ -2,7 +2,7 @@ import { cn } from '@/utils/cn'
 import { Card } from '@/components/ui/card'
 import type { AnalyticsReportData, FollowerSummary } from '../lib/build-report'
 import { countDeltaVerdict, rateDeltaVerdict, type DeltaVerdict } from '../lib/delta-verdict'
-import { formatCount } from '../lib/format'
+import { formatCount, signedCount } from '../lib/format'
 import { DeltaChip } from './delta-chip'
 import { Sparkline } from './sparkline'
 
@@ -55,7 +55,7 @@ export function netFollowersCellSpec(followers: FollowerSummary): CellSpec {
   ].filter((part): part is string => part !== null)
   return {
     label: 'Net followers',
-    value: net === null ? null : `${net >= 0 ? '+' : '−'}${formatCount(Math.abs(net))}`,
+    value: net === null ? null : signedCount(net),
     verdict: countDeltaVerdict(net, followers.net.then),
     unit: 'count',
     thenLine: netParts.length > 0 ? netParts.join(' · ') : 'no follower data yet',

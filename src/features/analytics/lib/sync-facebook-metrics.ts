@@ -1,25 +1,16 @@
 import 'server-only'
 
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { GraphApiError } from '@/lib/meta/graph-errors'
 import { fetchPageDaySeries, fetchPagePostMeasurements } from '@/lib/meta/facebook/insights'
 import { fetchPostIdsByMediaId } from '@/lib/queries/posts-by-media-id'
-import {
-  SOCIAL_CONNECTION_SYNC_COLUMNS,
-  type SyncableConnection,
-} from '@/lib/queries/select-columns'
+import type { SyncableConnection } from '@/lib/queries/select-columns'
 import { PLATFORM_NAMES } from '@/lib/validation'
-import { MS_PER_DAY } from '@/utils/constants'
+import { MS_PER_DAY, SECONDS_PER_DAY } from '@/utils/constants'
+import { dayKeyToUnixSeconds, shiftDateKey } from '@/utils/date-helpers'
 import { upsertFbPageMetricDays, type FbPageMetricsInsert } from './fb-page-metrics-store'
+import { dayChunks } from './period'
 import { upsertPostMetricRows, type PlatformPostMetricsInsert } from './post-metrics-store'
-import {
-  notifyMetricsBlocked,
-  notifySyncIncomplete,
-  recordSyncHealth,
-  runSyncPhases,
-  type MetricsSyncOutcome,
-  type SyncPhase,
-} from './sync-shared'
+import { runSyncPhases, syncRoster, type MetricsSyncOutcome, type SyncPhase } from './sync-shared'
 
 /**
  * The nightly Facebook Page capture — the thin sibling of `syncAllClientMetrics`, written
@@ -52,70 +43,12 @@ export async function syncAllFacebookMetrics(
   admin: SupabaseClient,
   { timeBudgetMs }: { timeBudgetMs: number }
 ): Promise<MetricsSyncOutcome> {
-  const startedAt = Date.now()
-  const outcome: MetricsSyncOutcome = { synced: 0, skipped: 0, failed: 0, errors: [] }
-
-  const { data, error } = await admin
-    .from('social_connections')
-    .select(SOCIAL_CONNECTION_SYNC_COLUMNS)
-    .eq('platform', 'facebook')
-    .not('access_token', 'is', null)
-    .not('account_id', 'is', null)
-  if (error) throw new Error(`facebook connection roster query failed: ${error.message}`)
-  // WHY as: the shared SupabaseClient param is untyped, so the projection does not infer.
-  const connections = (data ?? []) as SyncableConnection[]
-
-  for (const [index, connection] of connections.entries()) {
-    // Between clients, not inside one: a client either syncs whole or not at all.
-    if (Date.now() - startedAt > timeBudgetMs) {
-      outcome.skipped += connections.length - index
-      break
-    }
-    const { client_id: clientId } = connection
-    if (!clientId) {
-      outcome.failed++
-      outcome.errors.push({ clientId: connection.account_id, error: 'connection has no client_id' })
-      continue
-    }
-    try {
-      await syncClientPageMetrics(admin, { ...connection, client_id: clientId })
-      outcome.synced++
-      await recordSyncHealth(admin, clientId, 'facebook', null)
-    } catch (err) {
-      outcome.failed++
-      const message = err instanceof Error ? err.message : 'unknown error'
-      outcome.errors.push({ clientId, error: message })
-      await recordSyncHealth(admin, clientId, 'facebook', message)
-      if (err instanceof GraphApiError) {
-        if (err.failure === 'token_invalid' || err.failure === 'permission') {
-          try {
-            await notifyMetricsBlocked(admin, clientId, PLATFORM_NAMES.facebook)
-          } catch (notifyErr) {
-            outcome.errors.push({
-              clientId,
-              error: `notify failed: ${notifyErr instanceof Error ? notifyErr.message : 'unknown'}`,
-            })
-          }
-          continue
-        }
-        // One rate-limit answer poisons every remaining call in this run.
-        // Self-healing by tomorrow, so it earns a stored verdict but no alert.
-        if (err.failure === 'rate_limited') {
-          outcome.skipped += connections.length - index - 1
-          break
-        }
-      }
-      try {
-        await notifySyncIncomplete(admin, clientId)
-      } catch (notifyErr) {
-        outcome.errors.push({
-          clientId,
-          error: `notify failed: ${notifyErr instanceof Error ? notifyErr.message : 'unknown'}`,
-        })
-      }
-    }
-  }
-  return outcome
+  return syncRoster(admin, {
+    platform: 'facebook',
+    networkLabel: PLATFORM_NAMES.facebook,
+    timeBudgetMs,
+    syncOne: (connection) => syncClientPageMetrics(admin, connection),
+  })
 }
 
 /** One client's Page capture: the day series, then the posts — each phase isolated. */
@@ -139,7 +72,7 @@ async function syncClientPageMetrics(
       run: async () => {
         const days = hadHistory ? FB_CONSOLIDATION_DAYS : FB_BACKFILL_DAYS
         const untilTs = Math.floor(Date.now() / 1000)
-        const sinceTs = untilTs - Math.floor((days * MS_PER_DAY) / 1000)
+        const sinceTs = untilTs - days * SECONDS_PER_DAY
         const series = await fetchPageDaySeries(pageId, accessToken, sinceTs, untilTs)
         await upsertFbPageMetricDays(
           admin,
@@ -205,28 +138,24 @@ export async function fillPageWindow(
   const now = new Date().toISOString()
   let wroteDays = 0
 
-  let chunkStart = fromDate
-  while (chunkStart <= toDate) {
-    const chunkEnd = minDate(shiftDays(chunkStart, FILL_CHUNK_DAYS - 1), toDate)
-    const sinceTs = Math.floor(Date.parse(`${chunkStart}T00:00:00Z`) / 1000)
+  for (const chunk of dayChunks(fromDate, toDate, FILL_CHUNK_DAYS)) {
+    const sinceTs = dayKeyToUnixSeconds(chunk.start)
     // `until` is exclusive-ish at Meta's end; one day past the chunk's last day covers it.
-    const untilTs = Math.floor(Date.parse(`${shiftDays(chunkEnd, 1)}T00:00:00Z`) / 1000)
+    const untilTs = dayKeyToUnixSeconds(shiftDateKey(chunk.end, 1))
     const series = await fetchPageDaySeries(pageId, accessToken, sinceTs, untilTs)
     const rows = zipPageDays(clientId, pageId, series)
 
     const served = new Set(rows.map((row) => row.metric_date))
-    for (let day = chunkStart; day <= chunkEnd; day = shiftDays(day, 1)) {
+    for (let day = chunk.start; day <= chunk.end; day = shiftDateKey(day, 1)) {
       if (served.has(day)) continue
       rows.push({ client_id: clientId, page_id: pageId, metric_date: day, totals_synced_at: now })
     }
     // Only rows inside the asked window count — the series can bleed a bucket past it.
     const inWindow = rows.filter(
-      (row) => row.metric_date >= chunkStart && row.metric_date <= chunkEnd
+      (row) => row.metric_date >= chunk.start && row.metric_date <= chunk.end
     )
     await upsertFbPageMetricDays(admin, inWindow, 'facebook window fill')
     wroteDays += inWindow.length
-
-    chunkStart = shiftDays(chunkEnd, 1)
   }
 
   // The window's posts, identity and tallies together — the same single read the nightly
@@ -246,17 +175,6 @@ export async function fillPageWindow(
   }
 
   return { wroteDays }
-}
-
-/** A day key shifted by whole days, in UTC — day keys are calendar facts, not instants. */
-function shiftDays(dayKey: string, days: number): string {
-  const date = new Date(`${dayKey}T00:00:00Z`)
-  date.setUTCDate(date.getUTCDate() + days)
-  return date.toISOString().slice(0, 10)
-}
-
-function minDate(a: string, b: string): string {
-  return a <= b ? a : b
 }
 
 /** Any day ever captured for this Page — decides backfill vs trailing window. */

@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { PLATFORM_NAMES } from '@/lib/validation'
 import { analyticsPartialHref } from '../lib/analytics-href'
 import type { AnalyticsPeriod } from '../lib/period'
 
@@ -19,7 +20,7 @@ export function FillingDocument({
   clientId,
   period,
   network = 'instagram',
-  networkLabel = 'Instagram',
+  networkLabel = PLATFORM_NAMES.instagram,
 }: {
   unfilledDays: number
   clientId: string

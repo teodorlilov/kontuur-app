@@ -1,14 +1,14 @@
-import { Avatar } from '@/components/ui/avatar'
 import { PLATFORM_NAMES } from '@/lib/validation'
 import type { FacebookReportData } from '../lib/build-facebook-report'
-import { formatPeriodRange, formatShortRange } from '../lib/format'
 import { AnalyticsSection, ChartLegend } from './analytics-section'
 import { EmptyFill } from './empty-fill'
 import { FacebookPostsTable } from './facebook-posts-table'
-import { FollowerFlow } from './follower-flow'
+import { FollowerFlowSection } from './follower-flow-section'
 import { NarrativeBlock } from './narrative-block'
+import { ReportMasthead } from './report-masthead'
 import { ReachTrend, type TrendLabels } from './reach-trend'
-import { ReportArchive, type ArchiveEntry } from './report-archive'
+import { ReportArchive } from './report-archive'
+import type { ArchiveEntry } from '../types'
 import { StripCells, countCellSpec, netFollowersCellSpec } from './summary-strip'
 import { SyncLine } from './sync-line'
 
@@ -62,44 +62,16 @@ export function FacebookAnalyticsView({
   network,
 }: FacebookAnalyticsViewProps) {
   const { hasHistory, followers } = data
-  const flowKnown = followers.gained.now !== null || followers.lost.now !== null
 
   return (
     <div id="analytics-print-area">
-      <header className="flex flex-wrap items-end justify-between gap-6 pb-5">
-        <div>
-          <div className="flex items-center gap-2.5">
-            <Avatar name={clientName} size="sm" />
-            <span className="text-title text-ink">{clientName}</span>
-            {pageName && (
-              <span className="text-micro text-text3">
-                {PLATFORM_NAMES.facebook} · {pageName}
-              </span>
-            )}
-          </div>
-          <h2 className="mt-2 hidden text-headline text-ink print:block">Analytics</h2>
-          <p className="mt-2.5 flex flex-wrap items-center gap-x-5 gap-y-1 text-body">
-            <span className="flex items-center gap-2">
-              <i aria-hidden="true" className="h-0.5 w-3.5 flex-none rounded-full bg-forest" />
-              <span className="text-text2">
-                <strong className="font-medium text-ink">This period</strong> ·{' '}
-                {formatPeriodRange(data.period.start, data.period.end)}
-              </span>
-            </span>
-            <span className="flex items-center gap-2">
-              <i aria-hidden="true" className="h-0.5 w-3.5 flex-none rounded-full bg-metric-3" />
-              <span className="text-text2">
-                Previous · {formatShortRange(data.period.prevStart, data.period.prevEnd)}
-              </span>
-            </span>
-          </p>
-          <p className="mt-1 text-caption text-text3">
-            Every number below compares the two — {data.period.days} days against the{' '}
-            {data.period.days} before them. Facebook serves no reach, audience or posting-time data
-            for Pages, so this report tells the story it can prove.
-          </p>
-        </div>
-      </header>
+      <ReportMasthead
+        clientName={clientName}
+        networkLabel={PLATFORM_NAMES.facebook}
+        accountName={pageName}
+        period={data.period}
+        note={`${PLATFORM_NAMES.facebook} serves no reach, audience or posting-time data for Pages, so this report tells the story it can prove.`}
+      />
 
       <NarrativeBlock narrative={narrative} archived={narrativeArchived} hasHistory={hasHistory} />
 
@@ -137,26 +109,12 @@ export function FacebookAnalyticsView({
       </div>
 
       <div className="mt-7">
-        <AnalyticsSection
-          title="Who followed, who left"
-          sub="Gains and losses day by day — hover a day for the posts behind it."
-          ariaLabel="Follower flow"
-          legend={
-            followers.byDay.some((day) => day.posts.length > 0) ? (
-              <ChartLegend items={[{ swatch: 'pin', label: 'Post published' }]} />
-            ) : undefined
-          }
-        >
-          {!hasHistory ? (
-            <EmptyFill className="mt-3.5">Follower flow appears after the first sync</EmptyFill>
-          ) : !flowKnown ? (
-            <p className="mt-4 text-caption text-text3">
-              No follower changes captured for this period yet.
-            </p>
-          ) : (
-            <FollowerFlow followers={followers} networkLabel={PLATFORM_NAMES.facebook} />
-          )}
-        </AnalyticsSection>
+        <FollowerFlowSection
+          followers={followers}
+          hasHistory={hasHistory}
+          networkLabel={PLATFORM_NAMES.facebook}
+          unknownNote="No follower changes captured for this period yet."
+        />
       </div>
 
       <div className="mt-7">

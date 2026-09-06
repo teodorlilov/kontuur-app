@@ -1,6 +1,6 @@
 import { cn } from '@/utils/cn'
 import type { DeltaVerdict } from '../lib/delta-verdict'
-import { formatCount } from '../lib/format'
+import { signedCount } from '../lib/format'
 
 interface DeltaChipProps {
   verdict: DeltaVerdict
@@ -12,9 +12,10 @@ interface DeltaChipProps {
 }
 
 function signedAbs(diff: number, unit: 'count' | 'pt'): string {
-  const magnitude =
-    unit === 'pt' ? `${Math.abs(diff).toFixed(1)} pt` : formatCount(Math.abs(Math.round(diff)))
-  return `${diff > 0 ? '+' : '−'}${magnitude}`
+  // A zero diff never reaches here — `move` requires |diff| past the noise band and `quiet`
+  // renders an em dash below 0.05 — so the shared helper's `>= 0` rule changes nothing.
+  if (unit === 'count') return signedCount(Math.round(diff))
+  return `${diff > 0 ? '+' : '−'}${Math.abs(diff).toFixed(1)} pt`
 }
 
 /**

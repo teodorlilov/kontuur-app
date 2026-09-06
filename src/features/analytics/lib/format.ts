@@ -26,6 +26,18 @@ export function formatCount(value: number): string {
 }
 
 /**
+ * A count with its direction stated: "+1,204", "−37".
+ *
+ * The minus is U+2212, not a hyphen — it aligns with the digits in tabular figures, which every
+ * caller renders in. Four places built this string by hand, and three of them agreed; the fourth
+ * (`DeltaChip`) rounds first and rendered a zero as "−0", which no verdict can actually produce.
+ * One function, so a later reader does not have to work that out again.
+ */
+export function signedCount(value: number): string {
+  return `${value >= 0 ? '+' : '−'}${formatCount(Math.abs(value))}`
+}
+
+/**
  * A share as a whole percent, never rounding a real value down to "0%".
  *
  * Rounding is right for the numbers this document shows — nobody needs 23.4% of

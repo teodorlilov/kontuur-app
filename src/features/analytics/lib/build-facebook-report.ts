@@ -69,14 +69,10 @@ export function buildFacebookReport(input: BuildFacebookReportInput): FacebookRe
   const { period } = input
   const currentKeys = periodDayKeys(period.start, period.days)
   const previousKeys = periodDayKeys(period.prevStart, period.days)
-  const current = alignRows(
-    input.pageRows.filter((row) => row.metric_date >= period.start),
-    currentKeys
-  )
-  const previous = alignRows(
-    input.pageRows.filter((row) => row.metric_date <= period.prevEnd),
-    previousKeys
-  )
+  // No pre-filter: `alignRows` selects by EXACT day key, so a row outside the window is never
+  // picked up and filtering first only walks the array twice more for the same answer.
+  const current = alignRows(input.pageRows, currentKeys)
+  const previous = alignRows(input.pageRows, previousKeys)
 
   const engagements = stripCell(current, previous, (row) => row.post_engagements)
   const pageViews = stripCell(current, previous, (row) => row.page_views)

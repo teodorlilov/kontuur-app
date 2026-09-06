@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { barWidthPct } from '../lib/bar-scale'
 import type { ComparisonRow } from '../lib/build-report'
-import { formatCount } from '../lib/format'
+import { formatCount, signedCount } from '../lib/format'
 
 interface ComparisonRowsProps {
   rows: ComparisonRow[]
@@ -129,12 +129,7 @@ function RowCard({ row, unit, above }: { row: ComparisonRow; unit: string; above
             label={`${unit} last period`}
             value={row.then === null ? '—' : formatCount(row.then)}
           />
-          {change !== null && (
-            <CardRow
-              label="Change"
-              value={`${change >= 0 ? '+' : '−'}${formatCount(Math.abs(change))}`}
-            />
-          )}
+          {change !== null && <CardRow label="Change" value={signedCount(change)} />}
           {row.details?.map((detail) => (
             <CardRow key={detail.label} label={detail.label} value={detail.value} />
           ))}

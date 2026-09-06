@@ -12,10 +12,9 @@ import {
   type PlatformPostMetricColumns,
   type PublishedPostPin,
 } from '@/lib/queries/select-columns'
-import { zonedTimeToInstant } from '@/utils/date-helpers'
-import { shiftDateKey } from '@/utils/date-helpers'
 import { buildFacebookReport, type FacebookReportData } from './build-facebook-report'
 import type { AnalyticsPeriod } from './period'
+import { postedWindow } from './report-data-shared'
 
 /**
  * The Facebook report's read layer — the thin sibling of `report-data.ts`, holding to its
@@ -61,8 +60,11 @@ const _fetchFacebookReport = unstable_cache(
     const period: AnalyticsPeriod = { preset, start, end, prevStart, prevEnd, days }
 
     // Post timestamps are instants; the period is agency-calendar days.
-    const postedTo = zonedTimeToInstant(shiftDateKey(end, 1), '00:00', timezone).toISOString()
-    const postedFromPrev = zonedTimeToInstant(prevStart, '00:00', timezone).toISOString()
+    // Only the two edges this reader uses. `from` — the CURRENT window's start, which Instagram
+    // binds its ledger pin at — is deliberately not destructured here, so that the divergence
+    // documented at the pin below stays a decision someone has to make rather than a name
+    // already in scope.
+    const { to: postedTo, fromPrevious: postedFromPrev } = postedWindow(period, timezone)
 
     const [pageRes, postRes, publishedRes, historyRes] = await Promise.all([
       admin
@@ -82,7 +84,20 @@ const _fetchFacebookReport = unstable_cache(
         .gte('posted_at', postedFromPrev)
         .lt('posted_at', postedTo),
       // Kontuur's own ledger: pins posts the sync cannot see — removed from the Page after
-      // publishing, or published since the last sync ran. The mirror of Instagram's pin.
+      // publishing, or published since the last sync ran.
+      //
+      // NOT the mirror of Instagram's pin, though it was written as one. Instagram bounds this
+      // at the CURRENT window's start (report-data.ts); this bounds it at the PREVIOUS window's,
+      // so the pin reaches back a whole extra period. `buildPosts` builds its dedupe sets from
+      // the current window's metric rows, so a publication from the comparison window matches
+      // nothing, is pushed with every measure null, and — its publish time being far past the
+      // sync grace — renders as `missing: 'removed'`. On a 30-day Facebook window that means
+      // every post from the preceding 30 days shown as "no longer on Facebook", with an
+      // inflated "{n} posts this period" footer. Instagram cannot do this.
+      //
+      // Left as-is here on purpose: this is a behaviour fix, not a relocation, and it needs a
+      // test in build-facebook-report.test.ts (which today only ever passes `publishedPosts: []`)
+      // plus a look at the rendered table. Changing the bound below to `posted.from` is the fix.
       admin
         .from('post_publications')
         .select(`external_post_id, published_at, posts!inner(${PUBLISHED_POST_PIN_COLUMNS})`)

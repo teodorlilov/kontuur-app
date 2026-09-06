@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { PLATFORM_NAMES } from '@/lib/validation'
 import { fillPeriodData } from '../actions/report-actions'
 import type { AnalyticsPeriod } from '../lib/period'
 
@@ -16,7 +17,7 @@ export function AutoFill({
   period,
   unfilledDays,
   network = 'instagram',
-  networkLabel = 'Instagram',
+  networkLabel = PLATFORM_NAMES.instagram,
 }: {
   clientId: string
   period: AnalyticsPeriod

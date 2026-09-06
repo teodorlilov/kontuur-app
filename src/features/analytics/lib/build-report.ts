@@ -5,9 +5,8 @@ import type {
   PlatformPostMetricColumns,
   PublishedPostPin,
 } from '@/lib/queries/select-columns'
-import { zonedTimeToInstant } from '@/utils/date-helpers'
+import { getZonedParts, mondayFirstIndex, zonedTimeToInstant } from '@/utils/date-helpers'
 import { parseTimestamp } from '@/utils/format'
-import { WEEKDAY_LABELS_SHORT } from '@/utils/constants'
 import { RATE_BASE_FLOOR } from './delta-verdict'
 import { formatCount, formatSharePct } from './format'
 import { periodDayKeys, type AnalyticsPeriod } from './period'
@@ -335,14 +334,6 @@ function buildAudience(
 
 /** The hourly picture may only speak after this many sampled days. */
 const MIN_ONLINE_DAYS = 5
-/**
- * `weekday: 'short'` output → the grid's Monday-first row index. Derived from
- * the shared list rather than restated: a private copy is free to disagree with
- * the labels when-to-post renders the same rows under.
- */
-const WEEKDAY_INDEX: Record<string, number> = Object.fromEntries(
-  WEEKDAY_LABELS_SHORT.map((label, index) => [label, index])
-)
 
 /**
  * Aggregates the per-day hourly follower-online maps into an agency-local
@@ -357,12 +348,6 @@ export function buildAudienceOnline(
 ): AudienceOnline | null {
   const sums = Array.from({ length: 7 }, () => new Array<number>(24).fill(0))
   const counts = Array.from({ length: 7 }, () => new Array<number>(24).fill(0))
-  const zoned = new Intl.DateTimeFormat('en-US', {
-    timeZone: timezone,
-    weekday: 'short',
-    hour: 'numeric',
-    hourCycle: 'h23',
-  })
   let sampleDays = 0
   for (const row of onlineByDay) {
     const map = parseBreakdownMap(row.online_followers_by_hour)
@@ -376,10 +361,10 @@ export function buildAudienceOnline(
         `${String(hour).padStart(2, '0')}:00`,
         'America/Los_Angeles'
       )
-      const parts = zoned.formatToParts(instant)
-      const weekday = WEEKDAY_INDEX[parts.find((part) => part.type === 'weekday')?.value ?? '']
-      const localHour = Number(parts.find((part) => part.type === 'hour')?.value)
-      if (weekday === undefined || !Number.isInteger(localHour) || localHour > 23) continue
+      // One formatter pass for both halves, and a cached formatter rather than a private one.
+      const { weekday: weekdayName, hour: localHour } = getZonedParts(instant, timezone)
+      const weekday = mondayFirstIndex(weekdayName)
+      if (weekday < 0 || !Number.isInteger(localHour) || localHour > 23) continue
       sums[weekday]![localHour]! += value
       counts[weekday]![localHour]! += 1
     }
@@ -474,14 +459,10 @@ export function buildAnalyticsReport(input: BuildReportInput): AnalyticsReportDa
   const { period } = input
   const currentKeys = periodDayKeys(period.start, period.days)
   const previousKeys = periodDayKeys(period.prevStart, period.days)
-  const current = alignRows(
-    input.accountRows.filter((row) => row.metric_date >= period.start),
-    currentKeys
-  )
-  const previous = alignRows(
-    input.accountRows.filter((row) => row.metric_date <= period.prevEnd),
-    previousKeys
-  )
+  // No pre-filter: `alignRows` selects by EXACT day key, so a row outside the window is never
+  // picked up and filtering first only walks the array twice more for the same answer.
+  const current = alignRows(input.accountRows, currentKeys)
+  const previous = alignRows(input.accountRows, previousKeys)
 
   const views = stripCell(current, previous, (row) => row.views)
   const reach = stripCell(current, previous, (row) => row.reach)

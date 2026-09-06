@@ -2,13 +2,7 @@ import Link from 'next/link'
 import { analyticsWindowHref } from '../lib/analytics-href'
 import { formatPeriodRange, formatSyncInstant } from '../lib/format'
 import { ArchiveRowDelete } from './archive-row-delete'
-
-import type { AnalyticsReportRow } from '@/types'
-
-export type ArchiveEntry = Pick<
-  AnalyticsReportRow,
-  'id' | 'period_start' | 'period_end' | 'created_at'
->
+import type { ArchiveEntry } from '../types'
 
 /**
  * Every exported period, kept as it was written. A row is a link back into

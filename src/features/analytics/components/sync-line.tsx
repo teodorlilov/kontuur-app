@@ -1,5 +1,6 @@
 import { cn } from '@/utils/cn'
 import { MS_PER_DAY } from '@/utils/constants'
+import { PLATFORM_NAMES } from '@/lib/validation'
 import { formatSyncInstant } from '../lib/format'
 
 /** Two missed nightly syncs is a problem, one is jitter. */
@@ -35,7 +36,7 @@ export function SyncLine({
   hasConnection,
   timezone,
   syncError = null,
-  networkLabel = 'Instagram',
+  networkLabel = PLATFORM_NAMES.instagram,
 }: {
   lastSyncAt: string | null
   hasHistory: boolean

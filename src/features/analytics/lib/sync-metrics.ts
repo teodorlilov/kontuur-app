@@ -1,7 +1,6 @@
 import 'server-only'
 
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { GraphApiError } from '@/lib/meta/graph-errors'
 import {
   fetchAccountFields,
   fetchDailyReachSeries,
@@ -16,21 +15,11 @@ import {
   type IGDemographics,
 } from '@/lib/meta/instagram/insights'
 import { PLATFORM_NAMES } from '@/lib/validation'
-import {
-  notifyMetricsBlocked,
-  notifySyncIncomplete,
-  recordSyncHealth,
-  runSyncPhases,
-  type MetricsSyncOutcome,
-  type SyncPhase,
-} from './sync-shared'
+import { runSyncPhases, syncRoster, type MetricsSyncOutcome, type SyncPhase } from './sync-shared'
 import { fetchPostIdsByMediaId } from '@/lib/queries/posts-by-media-id'
-import {
-  SOCIAL_CONNECTION_SYNC_COLUMNS,
-  type SyncableConnection,
-} from '@/lib/queries/select-columns'
+import type { SyncableConnection } from '@/lib/queries/select-columns'
 import { MS_PER_DAY, SECONDS_PER_DAY } from '@/utils/constants'
-import { shiftDateKey } from '@/utils/date-helpers'
+import { dayKeyToUnixSeconds, shiftDateKey } from '@/utils/date-helpers'
 import { captureAndDeriveBestTime, ONLINE_FOLLOWERS_BACKFILL_DAYS } from './online-followers'
 import {
   toReachRows,
@@ -68,84 +57,12 @@ export async function syncAllClientMetrics(
   admin: SupabaseClient,
   { timeBudgetMs }: { timeBudgetMs: number }
 ): Promise<MetricsSyncOutcome> {
-  const startedAt = Date.now()
-  const outcome: MetricsSyncOutcome = { synced: 0, skipped: 0, failed: 0, errors: [] }
-
-  const { data, error } = await admin
-    .from('social_connections')
-    .select(SOCIAL_CONNECTION_SYNC_COLUMNS)
-    .eq('platform', 'instagram')
-    .not('access_token', 'is', null)
-    .not('account_id', 'is', null)
-  if (error) throw new Error(`connection roster query failed: ${error.message}`)
-  // WHY as: the shared SupabaseClient param is untyped, so the projection does not infer.
-  const connections = (data ?? []) as SyncableConnection[]
-
-  for (const [index, connection] of connections.entries()) {
-    // Between clients, not inside one: a client either syncs whole or not at all.
-    if (Date.now() - startedAt > timeBudgetMs) {
-      outcome.skipped += connections.length - index
-      break
-    }
-    /**
-     * A connection with no client cannot be synced OR reported.
-     *
-     * `client_id` is nullable and the roster query does not filter it — the hand-written row type
-     * simply declared it `string`, so this value reached `.eq('client_id', …)` keys and the notify
-     * calls below unchecked. Skipped and counted rather than dropped silently: a row like this is a
-     * data problem worth seeing in the run's totals.
-     */
-    const { client_id: clientId } = connection
-    if (!clientId) {
-      outcome.failed++
-      outcome.errors.push({ clientId: connection.account_id, error: 'connection has no client_id' })
-      continue
-    }
-    try {
-      await syncClientMetrics(admin, { ...connection, client_id: clientId })
-      outcome.synced++
-      await recordSyncHealth(admin, clientId, 'instagram', null)
-    } catch (err) {
-      outcome.failed++
-      const message = err instanceof Error ? err.message : 'unknown error'
-      outcome.errors.push({ clientId: clientId, error: message })
-      // The verdict outlives the run. The page dated itself from the day
-      // rows before this existed — a stamp the on-demand refill also wrote —
-      // and so called a sync current while a phase had been failing nightly.
-      await recordSyncHealth(admin, clientId, 'instagram', message)
-      if (err instanceof GraphApiError) {
-        if (err.failure === 'token_invalid' || err.failure === 'permission') {
-          try {
-            await notifyMetricsBlocked(admin, clientId, PLATFORM_NAMES.instagram)
-          } catch (notifyErr) {
-            outcome.errors.push({
-              clientId: clientId,
-              error: `notify failed: ${notifyErr instanceof Error ? notifyErr.message : 'unknown'}`,
-            })
-          }
-          continue
-        }
-        // One rate-limit answer poisons every remaining call in this run.
-        // Self-healing by tomorrow, so it earns a stored verdict but no alert.
-        if (err.failure === 'rate_limited') {
-          outcome.skipped += connections.length - index - 1
-          break
-        }
-      }
-      // transient / permanent / non-Graph: tell the agency, then move on. A
-      // sync that keeps half-failing is invisible otherwise — the page still
-      // renders, just with sections quietly frozen.
-      try {
-        await notifySyncIncomplete(admin, clientId)
-      } catch (notifyErr) {
-        outcome.errors.push({
-          clientId: clientId,
-          error: `notify failed: ${notifyErr instanceof Error ? notifyErr.message : 'unknown'}`,
-        })
-      }
-    }
-  }
-  return outcome
+  return syncRoster(admin, {
+    platform: 'instagram',
+    networkLabel: PLATFORM_NAMES.instagram,
+    timeBudgetMs,
+    syncOne: (connection) => syncClientMetrics(admin, connection),
+  })
 }
 
 /**
@@ -238,7 +155,7 @@ export async function captureDayTotals(
   accessToken: string,
   dateKey: string
 ): Promise<IGAccountMetricsInsert> {
-  const sinceTs = Math.floor(Date.parse(dateKey) / 1000)
+  const sinceTs = dayKeyToUnixSeconds(dateKey)
   const untilTs = sinceTs + SECONDS_PER_DAY
   const [totals, followsSplit, linkTaps, reachByType, interactionsByType] = await Promise.all([
     fetchDayTotals(accountId, accessToken, sinceTs, untilTs),
@@ -317,8 +234,8 @@ async function recaptureConsolidatingDays(
   const reachSeries = await fetchDailyReachSeries(
     accountId,
     accessToken,
-    Math.floor(Date.parse(oldest) / 1000),
-    Math.floor(Date.parse(yesterday) / 1000)
+    dayKeyToUnixSeconds(oldest),
+    dayKeyToUnixSeconds(yesterday)
   )
   await upsertAccountMetricDays(
     admin,

@@ -2,10 +2,11 @@
 
 import { useState } from 'react'
 import { cn } from '@/utils/cn'
+import { PLATFORM_NAMES } from '@/lib/validation'
 import type { FollowerSummary } from '../lib/build-report'
 import { CHART_COLORS } from '../lib/chart-config'
 import { countDeltaVerdict } from '../lib/delta-verdict'
-import { formatCount, formatDayMonth } from '../lib/format'
+import { formatCount, formatDayMonth, signedCount } from '../lib/format'
 import { niceCeil } from '../lib/svg-path'
 import { DayCard, DayCardPosts, DayCardRow } from './day-card'
 import { DeltaChip } from './delta-chip'
@@ -15,10 +16,6 @@ const H = 208
 const PAD = { top: 14, right: 8, bottom: 24, left: 8 }
 /** Any nonzero day stays visible, even beside a spike. */
 const MIN_BAR = 2.5
-
-function signed(value: number): string {
-  return `${value >= 0 ? '+' : '−'}${formatCount(Math.abs(value))}`
-}
 
 /**
  * The follower flow as a diverging daily timeline: gains rise from the
@@ -33,7 +30,7 @@ function signed(value: number): string {
  */
 export function FollowerFlow({
   followers,
-  networkLabel = 'Instagram',
+  networkLabel = PLATFORM_NAMES.instagram,
 }: {
   followers: FollowerSummary
   /** Who attributed `fromPosts` — the meta line names the network making the claim. */
@@ -297,13 +294,13 @@ function FlowStat({
       </div>
       <div className="mt-1 flex items-baseline gap-2">
         <span className="text-title tabular-nums text-ink">
-          {now === null ? '—' : net ? signed(now) : formatCount(now)}
+          {now === null ? '—' : net ? signedCount(now) : formatCount(now)}
         </span>
         {!net && <DeltaChip verdict={countDeltaVerdict(now, then)} invert={invert} />}
       </div>
       {then !== null && (
         <p className="mt-0.5 text-micro tabular-nums text-text3">
-          was {net ? signed(then) : formatCount(then)} last period
+          was {net ? signedCount(then) : formatCount(then)} last period
         </p>
       )}
     </div>

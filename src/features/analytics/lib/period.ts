@@ -1,6 +1,6 @@
 import { MS_PER_DAY } from '@/utils/constants'
 import { parseParam } from '@/utils/parse-param'
-import { shiftDateKey, toDateKey } from '@/utils/date-helpers'
+import { minDateKey, shiftDateKey, toDateKey } from '@/utils/date-helpers'
 
 /**
  * Period math for the comparison console. Every number on the page reads
@@ -20,7 +20,9 @@ const DEFAULT_RANGE: RangePreset = '30d'
 const PRESET_DAYS: Record<RangePreset, number> = { '7d': 7, '30d': 30, '90d': 90 }
 /** A custom range longer than a year is a typo, not a report. */
 export const CUSTOM_MAX_DAYS = 366
-const DATE_KEY_PATTERN = /^\d{4}-\d{2}-\d{2}$/
+/** A calendar day key. Exported so the action schema validates against the same shape
+ * `resolvePeriod` parses URLs with, rather than its own copy of the regex. */
+export const DATE_KEY_PATTERN = /^\d{4}-\d{2}-\d{2}$/
 
 export interface AnalyticsPeriod {
   /** 'custom' when from/to came from the URL; otherwise the pressed preset. */
@@ -36,6 +38,34 @@ export interface AnalyticsPeriod {
 /** Inclusive day count between two date keys. */
 export function dayCount(start: string, end: string): number {
   return Math.round((Date.parse(end) - Date.parse(start)) / MS_PER_DAY) + 1
+}
+
+/**
+ * An inclusive [start, end] span cut into consecutive chunks of at most `chunkDays`, the last
+ * one clamped to `end`.
+ *
+ * Meta caps how much of a series one insights call may span, and the cap differs per network
+ * (30 days for an Instagram series, 90 for a Facebook Page one — both probed). The WALK does
+ * not: advance by the chunk length, clamp the tail, never overshoot the window. Both syncs had
+ * their own copy of it, one returning unix seconds and one returning day keys, which is why the
+ * duplication read as two different things.
+ *
+ * Day keys out, not timestamps: a caller that wants Graph's `since`/`until` converts with
+ * `dayKeyToUnixSeconds`, and a caller that wants to write a row per day already has the keys.
+ */
+export function dayChunks(
+  start: string,
+  end: string,
+  chunkDays: number
+): Array<{ start: string; end: string }> {
+  const chunks: Array<{ start: string; end: string }> = []
+  let cursor = start
+  while (cursor <= end) {
+    const chunkEnd = minDateKey(shiftDateKey(cursor, chunkDays - 1), end)
+    chunks.push({ start: cursor, end: chunkEnd })
+    cursor = shiftDateKey(chunkEnd, 1)
+  }
+  return chunks
 }
 
 function withPreviousPeriod(

@@ -1,4 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest'
+import { EMPTY_PAGE_SERIES } from './fixtures'
 
 /**
  * The Facebook window fill — Instagram's auto-fill capability in Facebook's shape. What
@@ -27,21 +28,13 @@ vi.mock(import('../post-metrics-store'), () => ({
 
 const { fillPageWindow } = await import('../sync-facebook-metrics')
 
-const EMPTY_SERIES = {
-  page_follows: [],
-  page_daily_follows_unique: [],
-  page_daily_unfollows_unique: [],
-  page_post_engagements: [],
-  page_views_total: [],
-}
-
 // The admin client is never reached by these paths (stores are mocked).
 const admin = {} as never
 
 beforeEach(() => {
   fetchPageDaySeries.mockReset()
   upsertFbPageMetricDays.mockReset()
-  fetchPageDaySeries.mockResolvedValue(EMPTY_SERIES)
+  fetchPageDaySeries.mockResolvedValue(EMPTY_PAGE_SERIES)
 })
 
 describe('fillPageWindow', () => {
@@ -68,7 +61,7 @@ describe('fillPageWindow', () => {
 
   it('writes marker rows for asked days Meta served nothing for, so the fill settles', async () => {
     fetchPageDaySeries.mockResolvedValue({
-      ...EMPTY_SERIES,
+      ...EMPTY_PAGE_SERIES,
       page_follows: [{ date: '2026-09-02', value: 64 }],
     })
     const outcome = await fillPageWindow(admin, {
@@ -90,7 +83,7 @@ describe('fillPageWindow', () => {
 
   it('drops series buckets that bleed outside the asked window', async () => {
     fetchPageDaySeries.mockResolvedValue({
-      ...EMPTY_SERIES,
+      ...EMPTY_PAGE_SERIES,
       // Meta's until is loose: a bucket one day past the window can arrive.
       page_views_total: [
         { date: '2026-09-02', value: 5 },
