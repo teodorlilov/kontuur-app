@@ -1,9 +1,9 @@
 'use client'
 
 import { useState } from 'react'
-import { barWidthPct } from '../lib/bar-scale'
-import type { ComparisonRow } from '../lib/build-report'
-import { formatCount, signedCount } from '../lib/format'
+import { barWidthPct } from '../../lib/compute/bar-scale'
+import type { ComparisonRow } from '../../lib/instagram/build-report'
+import { formatCount, signedCount } from '../../lib/compute/format'
 
 interface ComparisonRowsProps {
   rows: ComparisonRow[]

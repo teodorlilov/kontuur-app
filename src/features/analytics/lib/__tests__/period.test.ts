@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { periodDayKeys, resolvePeriod } from '../period'
+import { periodDayKeys, resolvePeriod } from '../compute/period'
 
 describe('resolvePeriod', () => {
   beforeEach(() => {

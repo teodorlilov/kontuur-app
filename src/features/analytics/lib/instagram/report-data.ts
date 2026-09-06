@@ -16,8 +16,8 @@ import {
 } from '@/lib/queries/select-columns'
 import { shiftDateKey } from '@/utils/date-helpers'
 import { buildAnalyticsReport, type AnalyticsReportData } from './build-report'
-import type { AnalyticsPeriod } from './period'
-import { postedWindow } from './report-data-shared'
+import type { AnalyticsPeriod } from '../compute/period'
+import { postedWindow } from '../compute/report-data-shared'
 
 /**
  * The comparison console's one data read: stored tables in Postgres, assembled

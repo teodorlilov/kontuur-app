@@ -2,8 +2,8 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { ensureAudienceSnapshot } from '../actions/report-actions'
-import type { AnalyticsPeriod } from '../lib/period'
+import { ensureAudienceSnapshot } from '../../actions/report-actions'
+import type { AnalyticsPeriod } from '../../lib/compute/period'
 
 /**
  * The audience section's self-healing empty state. Demographics are the one

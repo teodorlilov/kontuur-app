@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { countDeltaVerdict, rateDeltaVerdict } from '../delta-verdict'
+import { countDeltaVerdict, rateDeltaVerdict } from '../compute/delta-verdict'
 
 describe('countDeltaVerdict', () => {
   it('has no verdict when either side was never captured', () => {

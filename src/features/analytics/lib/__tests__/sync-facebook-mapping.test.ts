@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { toPostMetricRow, zipPageDays } from '../sync-facebook-metrics'
+import { toPostMetricRow, zipPageDays } from '../facebook/sync-facebook-metrics'
 import { EMPTY_PAGE_SERIES } from './fixtures'
 
 /**

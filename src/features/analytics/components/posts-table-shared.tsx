@@ -1,9 +1,9 @@
 import type { ReactNode } from 'react'
 import { cn } from '@/utils/cn'
 import { PLATFORM_NAMES } from '@/lib/validation'
-import type { ReportPostRow } from '../lib/build-report'
-import { formatCount, formatDayMonth } from '../lib/format'
-import { firstLine, TYPE_META } from '../lib/post-display'
+import type { ReportPostRow } from '../lib/instagram/build-report'
+import { formatCount, formatDayMonth } from '../lib/compute/format'
+import { firstLine, TYPE_META } from '../lib/compute/post-display'
 import { PostThumb } from './post-thumb'
 
 /**

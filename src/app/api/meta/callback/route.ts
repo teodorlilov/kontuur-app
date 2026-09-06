@@ -17,9 +17,9 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { resolveAuth } from '@/lib/auth/resolve-auth'
 import { verifyClientOwnership } from '@/lib/auth/helpers'
 import { fetchIgConnectionState } from '@/lib/queries/db'
-import { captureAndDeriveBestTime } from '@/features/analytics/lib/online-followers'
-import { IG_METRICS_TAG } from '@/features/analytics/lib/report-data'
-import { purgeAccountAnalytics } from '@/features/analytics/lib/purge-account-metrics'
+import { captureAndDeriveBestTime } from '@/features/analytics/lib/instagram/online-followers'
+import { IG_METRICS_TAG } from '@/features/analytics/lib/instagram/report-data'
+import { purgeAccountAnalytics } from '@/features/analytics/lib/shared/purge-account-metrics'
 import { decodeOAuthState } from '../oauth-state'
 
 // ---- Connection saver ----

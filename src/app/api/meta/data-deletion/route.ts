@@ -2,8 +2,8 @@ import { createHmac, timingSafeEqual } from 'crypto'
 import { NextRequest, NextResponse } from 'next/server'
 import { revalidateTag } from 'next/cache'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
-import { IG_METRICS_TAG } from '@/features/analytics/lib/report-data'
-import { purgeAccountAnalytics } from '@/features/analytics/lib/purge-account-metrics'
+import { IG_METRICS_TAG } from '@/features/analytics/lib/instagram/report-data'
+import { purgeAccountAnalytics } from '@/features/analytics/lib/shared/purge-account-metrics'
 
 function verifySignedRequest(signedRequest: string, appSecret: string): { user_id: string } | null {
   const parts = signedRequest.split('.')

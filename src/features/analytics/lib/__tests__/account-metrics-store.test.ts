@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { toReachRows, upsertAccountMetricDays } from '../account-metrics-store'
+import { toReachRows, upsertAccountMetricDays } from '../instagram/account-metrics-store'
 
 /**
  * The one writer of `ig_account_metrics`.

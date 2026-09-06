@@ -7,7 +7,7 @@ import { captureOnlineFollowers, refreshObservedBestTime } from './online-follow
 import { fetchDailyReachSeries } from '@/lib/meta/instagram/insights'
 import { captureDayTotals, syncDemographicsWeekly, syncPostMetrics } from './sync-metrics'
 import { dayKeyToUnixSeconds, shiftDateKey } from '@/utils/date-helpers'
-import { dayChunks, type AnalyticsPeriod } from './period'
+import { dayChunks, type AnalyticsPeriod } from '../compute/period'
 import {
   toReachRows,
   upsertAccountMetricDays,

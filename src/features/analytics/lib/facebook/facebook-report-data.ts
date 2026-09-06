@@ -13,8 +13,8 @@ import {
   type PublishedPostPin,
 } from '@/lib/queries/select-columns'
 import { buildFacebookReport, type FacebookReportData } from './build-facebook-report'
-import type { AnalyticsPeriod } from './period'
-import { postedWindow } from './report-data-shared'
+import type { AnalyticsPeriod } from '../compute/period'
+import { postedWindow } from '../compute/report-data-shared'
 
 /**
  * The Facebook report's read layer — the thin sibling of `report-data.ts`, holding to its

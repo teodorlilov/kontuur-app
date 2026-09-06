@@ -3,7 +3,7 @@ import type {
   PlatformPostMetricColumns,
   PublishedPostPin,
 } from '@/lib/queries/select-columns'
-import { periodDayKeys, type AnalyticsPeriod } from './period'
+import { periodDayKeys, type AnalyticsPeriod } from '../compute/period'
 import {
   alignRows,
   buildDailyTrend,
@@ -20,7 +20,7 @@ import {
   type ReachDay,
   type ReportPostRow,
   type StripCell,
-} from './report-sections'
+} from '../compute/report-sections'
 
 /**
  * Pure assembly of the Facebook report: stored rows in, one renderable document out — the

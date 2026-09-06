@@ -1,7 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
-import { AudienceCapture } from '../components/audience-capture'
-import type { AnalyticsPeriod } from '../lib/period'
+import { AudienceCapture } from '../components/instagram/audience-capture'
+import type { AnalyticsPeriod } from '../lib/compute/period'
 
 const refresh = vi.fn()
 vi.mock('next/navigation', () => ({

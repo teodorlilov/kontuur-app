@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import type { AudienceOnline } from '../build-report'
-import { bestTimeFromOnline } from '../derive-best-time'
+import type { AudienceOnline } from '../instagram/build-report'
+import { bestTimeFromOnline } from '../instagram/derive-best-time'
 
 function emptyGrid(): number[][] {
   return Array.from({ length: 7 }, () => new Array<number>(24).fill(0))

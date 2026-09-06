@@ -1,6 +1,6 @@
 import Link from 'next/link'
-import { analyticsWindowHref } from '../lib/analytics-href'
-import { formatPeriodRange, formatSyncInstant } from '../lib/format'
+import { analyticsWindowHref } from '../lib/compute/analytics-href'
+import { formatPeriodRange, formatSyncInstant } from '../lib/compute/format'
 import { ArchiveRowDelete } from './archive-row-delete'
 import type { ArchiveEntry } from '../types'
 

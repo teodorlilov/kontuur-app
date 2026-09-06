@@ -1,7 +1,7 @@
 import { cn } from '@/utils/cn'
 import { MS_PER_DAY } from '@/utils/constants'
 import { PLATFORM_NAMES } from '@/lib/validation'
-import { formatSyncInstant } from '../lib/format'
+import { formatSyncInstant } from '../lib/compute/format'
 
 /** Two missed nightly syncs is a problem, one is jitter. */
 const STALE_AFTER_MS = 2 * MS_PER_DAY

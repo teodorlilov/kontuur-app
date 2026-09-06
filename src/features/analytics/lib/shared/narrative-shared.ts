@@ -4,9 +4,9 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import { fetchConnectionSyncState } from '@/lib/queries/db'
 import { generateAnalyticsSummary } from '@/ai/analytics/generate-summary'
-import { formatCount } from './format'
-import type { AnalyticsPeriod } from './period'
-import type { FollowerSummary } from './report-sections'
+import { formatCount } from '../compute/format'
+import type { AnalyticsPeriod } from '../compute/period'
+import type { FollowerSummary } from '../compute/report-sections'
 
 /**
  * What the two networks' narrative modules share — extracted when Facebook's arrived

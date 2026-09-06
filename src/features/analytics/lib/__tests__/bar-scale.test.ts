@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { barWidthPct, MIN_VISIBLE_PCT } from '../bar-scale'
+import { barWidthPct, MIN_VISIBLE_PCT } from '../compute/bar-scale'
 
 /**
  * DESIGN.md: "an empty state must never render larger than an occupied one.

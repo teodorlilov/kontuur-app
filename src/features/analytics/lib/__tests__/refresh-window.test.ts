@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { selectRefillDays } from '../refresh-window'
-import type { AnalyticsPeriod } from '../period'
+import { selectRefillDays } from '../instagram/refresh-window'
+import type { AnalyticsPeriod } from '../compute/period'
 
 /** A 4-day period (Aug 15–18) against the 4 days before it (Aug 11–14). */
 const PERIOD: AnalyticsPeriod = {

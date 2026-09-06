@@ -1,6 +1,6 @@
 import { cn } from '@/utils/cn'
-import type { ReportPostRow } from '../lib/build-report'
-import { formatCount } from '../lib/format'
+import type { ReportPostRow } from '../lib/instagram/build-report'
+import { formatCount } from '../lib/compute/format'
 import {
   BODY_CELL,
   HEAD_CELL,

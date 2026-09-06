@@ -75,7 +75,7 @@ true.
 | Meta-mandated erasure | `eraseAccountData` | [app/api/meta/data-deletion/route.ts](../src/app/api/meta/data-deletion/route.ts) |
 | Refresh expiring Instagram tokens | `refreshExpiringTokens` | [features/publishing/lib/refresh-tokens.ts](../src/features/publishing/lib/refresh-tokens.ts) |
 | Refresh the Canva token | `getCanvaToken` | [app/api/canva/canva-auth.ts](../src/app/api/canva/canva-auth.ts) |
-| Stamp the outcome of a metrics sync on the connection | `recordSyncHealth` | [features/analytics/lib/sync-shared.ts](../src/features/analytics/lib/sync-shared.ts) |
+| Stamp the outcome of a metrics sync on the connection | `recordSyncHealth` | [features/analytics/lib/shared/sync-shared.ts](../src/features/analytics/lib/shared/sync-shared.ts) |
 
 ### Analytics
 
@@ -83,13 +83,13 @@ true.
 | --- | --- | --- |
 | Archive a report for a period | `archiveReport` | [features/analytics/actions/report-actions.ts](../src/features/analytics/actions/report-actions.ts) |
 | Delete an archived report | `deleteReport` | [features/analytics/actions/report-actions.ts](../src/features/analytics/actions/report-actions.ts) |
-| Purge an account's analytics | `purgeAccountAnalytics` | [features/analytics/lib/purge-account-metrics.ts](../src/features/analytics/lib/purge-account-metrics.ts) |
-| Record measured best posting times | `refreshObservedBestTime` | [features/analytics/lib/online-followers.ts](../src/features/analytics/lib/online-followers.ts) |
-| Sync a client's Instagram metrics | `syncAllClientMetrics` | [features/analytics/lib/sync-metrics.ts](../src/features/analytics/lib/sync-metrics.ts) |
-| Write a day of account metrics | `upsertAccountMetricDays` | [features/analytics/lib/account-metrics-store.ts](../src/features/analytics/lib/account-metrics-store.ts) |
-| Sync a client's Facebook Page metrics | `syncAllFacebookMetrics` | [features/analytics/lib/sync-facebook-metrics.ts](../src/features/analytics/lib/sync-facebook-metrics.ts) |
-| Write a day of Page metrics | `upsertFbPageMetricDays` | [features/analytics/lib/fb-page-metrics-store.ts](../src/features/analytics/lib/fb-page-metrics-store.ts) |
-| Write a media's row | `upsertPostMetricRows` | [features/analytics/lib/post-metrics-store.ts](../src/features/analytics/lib/post-metrics-store.ts) |
+| Purge an account's analytics | `purgeAccountAnalytics` | [features/analytics/lib/shared/purge-account-metrics.ts](../src/features/analytics/lib/shared/purge-account-metrics.ts) |
+| Record measured best posting times | `refreshObservedBestTime` | [features/analytics/lib/instagram/online-followers.ts](../src/features/analytics/lib/instagram/online-followers.ts) |
+| Sync a client's Instagram metrics | `syncAllClientMetrics` | [features/analytics/lib/instagram/sync-metrics.ts](../src/features/analytics/lib/instagram/sync-metrics.ts) |
+| Write a day of account metrics | `upsertAccountMetricDays` | [features/analytics/lib/instagram/account-metrics-store.ts](../src/features/analytics/lib/instagram/account-metrics-store.ts) |
+| Sync a client's Facebook Page metrics | `syncAllFacebookMetrics` | [features/analytics/lib/facebook/sync-facebook-metrics.ts](../src/features/analytics/lib/facebook/sync-facebook-metrics.ts) |
+| Write a day of Page metrics | `upsertFbPageMetricDays` | [features/analytics/lib/facebook/fb-page-metrics-store.ts](../src/features/analytics/lib/facebook/fb-page-metrics-store.ts) |
+| Write a media's row | `upsertPostMetricRows` | [features/analytics/lib/shared/post-metrics-store.ts](../src/features/analytics/lib/shared/post-metrics-store.ts) |
 
 ### Comments
 

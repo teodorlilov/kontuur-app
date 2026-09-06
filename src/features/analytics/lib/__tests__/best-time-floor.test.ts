@@ -9,7 +9,7 @@ vi.mock('@/lib/queries/db', () => ({
   }),
 }))
 
-import { deriveObservedBestTime } from '../derive-best-time'
+import { deriveObservedBestTime } from '../instagram/derive-best-time'
 
 /**
  * How much history a posting-time recommendation requires before it will answer.

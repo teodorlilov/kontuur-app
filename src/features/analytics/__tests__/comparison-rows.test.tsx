@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
-import { MIN_VISIBLE_PCT } from '../lib/bar-scale'
-import type { ComparisonRow } from '../lib/build-report'
-import { ComparisonRows } from '../components/comparison-rows'
+import { MIN_VISIBLE_PCT } from '../lib/compute/bar-scale'
+import type { ComparisonRow } from '../lib/instagram/build-report'
+import { ComparisonRows } from '../components/instagram/comparison-rows'
 
 /** The live shape: a huge paid row beside a previous period of 3. */
 const ROWS: ComparisonRow[] = [

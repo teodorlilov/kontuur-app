@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
-import type { ReachDay } from '../lib/build-report'
+import type { ReachDay } from '../lib/instagram/build-report'
 import { ReachTrend } from '../components/reach-trend'
 
 /** Mirrors the chart's own geometry so a test can aim at a specific day. */

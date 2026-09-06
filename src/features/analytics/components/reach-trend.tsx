@@ -1,10 +1,10 @@
 'use client'
 
 import { useState } from 'react'
-import type { BestDay, ReachDay } from '../lib/build-report'
-import { CHART_COLORS } from '../lib/chart-config'
-import { formatCount, formatDayMonth } from '../lib/format'
-import { lineSegments, niceCeil, segmentsToPath } from '../lib/svg-path'
+import type { BestDay, ReachDay } from '../lib/instagram/build-report'
+import { CHART_COLORS } from '../lib/compute/chart-config'
+import { formatCount, formatDayMonth } from '../lib/compute/format'
+import { lineSegments, niceCeil, segmentsToPath } from '../lib/compute/svg-path'
 import { DayCard, DayCardPosts, DayCardRow } from './day-card'
 import { ScrollToRecent } from './scroll-to-recent'
 

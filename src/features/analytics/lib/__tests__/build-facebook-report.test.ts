@@ -4,8 +4,11 @@ import type {
   PlatformPostMetricColumns,
   PublishedPostPin,
 } from '@/lib/queries/select-columns'
-import { buildFacebookReport, type BuildFacebookReportInput } from '../build-facebook-report'
-import type { AnalyticsPeriod } from '../period'
+import {
+  buildFacebookReport,
+  type BuildFacebookReportInput,
+} from '../facebook/build-facebook-report'
+import type { AnalyticsPeriod } from '../compute/period'
 import { postMetricRow } from './fixtures'
 
 /**

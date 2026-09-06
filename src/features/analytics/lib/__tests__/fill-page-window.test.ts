@@ -16,17 +16,17 @@ vi.mock('@/lib/meta/facebook/insights', () => ({
 const upsertFbPageMetricDays = vi.fn()
 // The import() form, not a bare string: a vi.mock path that stops resolving is a SILENT no-op —
 // the real module loads and the test passes anyway. tsc checks this one.
-vi.mock(import('../fb-page-metrics-store'), () => ({
+vi.mock(import('../facebook/fb-page-metrics-store'), () => ({
   upsertFbPageMetricDays: (...args: unknown[]) => upsertFbPageMetricDays(...args),
 }))
 vi.mock('@/lib/queries/posts-by-media-id', () => ({
   fetchPostIdsByMediaId: async () => new Map(),
 }))
-vi.mock(import('../post-metrics-store'), () => ({
+vi.mock(import('../shared/post-metrics-store'), () => ({
   upsertPostMetricRows: vi.fn(),
 }))
 
-const { fillPageWindow } = await import('../sync-facebook-metrics')
+const { fillPageWindow } = await import('../facebook/sync-facebook-metrics')
 
 // The admin client is never reached by these paths (stores are mocked).
 const admin = {} as never

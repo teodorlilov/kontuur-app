@@ -8,9 +8,14 @@ import { PLATFORM_NAMES } from '@/lib/validation'
 import { MS_PER_DAY, SECONDS_PER_DAY } from '@/utils/constants'
 import { dayKeyToUnixSeconds, shiftDateKey } from '@/utils/date-helpers'
 import { upsertFbPageMetricDays, type FbPageMetricsInsert } from './fb-page-metrics-store'
-import { dayChunks } from './period'
-import { upsertPostMetricRows, type PlatformPostMetricsInsert } from './post-metrics-store'
-import { runSyncPhases, syncRoster, type MetricsSyncOutcome, type SyncPhase } from './sync-shared'
+import { dayChunks } from '../compute/period'
+import { upsertPostMetricRows, type PlatformPostMetricsInsert } from '../shared/post-metrics-store'
+import {
+  runSyncPhases,
+  syncRoster,
+  type MetricsSyncOutcome,
+  type SyncPhase,
+} from '../shared/sync-shared'
 
 /**
  * The nightly Facebook Page capture — the thin sibling of `syncAllClientMetrics`, written

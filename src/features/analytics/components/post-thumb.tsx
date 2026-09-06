@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import Image from 'next/image'
 import { cn } from '@/utils/cn'
-import { TYPE_META } from '../lib/post-display'
+import { TYPE_META } from '../lib/compute/post-display'
 
 /**
  * The post's own image, with the lettered badge as its fallback.

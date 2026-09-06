@@ -44,7 +44,7 @@ const upsertPostMetricRows = vi.fn()
 // The import() form, not a bare string: this reaches into another feature, so its path moves when
 // that feature is rearranged — and a vi.mock path that stops resolving is a SILENT no-op. tsc
 // checks this one; the sibling import in sync-comments.ts would not have covered it.
-vi.mock(import('@/features/analytics/lib/post-metrics-store'), () => ({
+vi.mock(import('@/features/analytics/lib/shared/post-metrics-store'), () => ({
   upsertPostMetricRows: (...a: unknown[]) => upsertPostMetricRows(...a),
 }))
 

@@ -7,9 +7,9 @@ import type {
 } from '@/lib/queries/select-columns'
 import { getZonedParts, mondayFirstIndex, zonedTimeToInstant } from '@/utils/date-helpers'
 import { parseTimestamp } from '@/utils/format'
-import { RATE_BASE_FLOOR } from './delta-verdict'
-import { formatCount, formatSharePct } from './format'
-import { periodDayKeys, type AnalyticsPeriod } from './period'
+import { RATE_BASE_FLOOR } from '../compute/delta-verdict'
+import { formatCount, formatSharePct } from '../compute/format'
+import { periodDayKeys, type AnalyticsPeriod } from '../compute/period'
 import {
   alignRows,
   buildDailyTrend,
@@ -28,19 +28,19 @@ import {
   type ReachDay,
   type ReportPostRow,
   type StripCell,
-} from './report-sections'
+} from '../compute/report-sections'
 
 // Re-exported for the consumers that always imported them from here — the section math moved
 // to report-sections.ts when Facebook's builder arrived, so both builders compose one
 // implementation; nothing downstream had to move with it.
-export { deltaPct, sumOrNull } from './report-sections'
+export { deltaPct, sumOrNull } from '../compute/report-sections'
 export type {
   FollowerFlowDay,
   FollowerSummary,
   ReachDay,
   ReportPostRow,
   TrendPost,
-} from './report-sections'
+} from '../compute/report-sections'
 
 /**
  * Pure assembly of the comparison console's data: stored rows in, one

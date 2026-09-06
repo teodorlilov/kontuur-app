@@ -13,16 +13,19 @@ import { GraphApiError } from '@/lib/meta/graph-errors'
 import { isTokenExpired } from '@/lib/meta/token-expiry'
 import { toDateKey } from '@/utils/date-helpers'
 import { archiveReportInputSchema, type ArchiveReportInput } from '../schemas'
-import { periodFromBounds, type AnalyticsPeriod } from '../lib/period'
-import { getAnalyticsReport, IG_METRICS_TAG } from '../lib/report-data'
-import { FB_METRICS_TAG, getFacebookAnalyticsReport } from '../lib/facebook-report-data'
-import { buildFacebookFallbackNarrative, getFacebookNarrative } from '../lib/facebook-narrative'
-import { fillPageWindow } from '../lib/sync-facebook-metrics'
-import type { FacebookReportData } from '../lib/build-facebook-report'
-import { refreshWindowMetrics } from '../lib/refresh-window'
-import { syncDemographicsWeekly } from '../lib/sync-metrics'
-import { buildFallbackNarrative, getNarrative } from '../lib/narrative'
-import type { AnalyticsReportData } from '../lib/build-report'
+import { periodFromBounds, type AnalyticsPeriod } from '../lib/compute/period'
+import { getAnalyticsReport, IG_METRICS_TAG } from '../lib/instagram/report-data'
+import { FB_METRICS_TAG, getFacebookAnalyticsReport } from '../lib/facebook/facebook-report-data'
+import {
+  buildFacebookFallbackNarrative,
+  getFacebookNarrative,
+} from '../lib/facebook/facebook-narrative'
+import { fillPageWindow } from '../lib/facebook/sync-facebook-metrics'
+import type { FacebookReportData } from '../lib/facebook/build-facebook-report'
+import { refreshWindowMetrics } from '../lib/instagram/refresh-window'
+import { syncDemographicsWeekly } from '../lib/instagram/sync-metrics'
+import { buildFallbackNarrative, getNarrative } from '../lib/instagram/narrative'
+import type { AnalyticsReportData } from '../lib/instagram/build-report'
 
 interface ReportScope {
   client: { id: string; name: string }

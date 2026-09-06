@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { archiveReportInputSchema } from '../schemas'
-import { CUSTOM_MAX_DAYS } from '../lib/period'
+import { CUSTOM_MAX_DAYS } from '../lib/compute/period'
 
 const BASE = { clientId: '3f1e4d2c-9a7b-4c1d-8e2f-5a6b7c8d9e0f', preset: '30d' as const }
 

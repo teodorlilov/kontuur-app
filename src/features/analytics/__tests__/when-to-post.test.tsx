@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
-import type { AudienceOnline } from '../lib/build-report'
-import { WhenToPost } from '../components/when-to-post'
+import type { AudienceOnline } from '../lib/instagram/build-report'
+import { WhenToPost } from '../components/instagram/when-to-post'
 
 /**
  * The shape the probe found on a real account: a deep trough and a broad

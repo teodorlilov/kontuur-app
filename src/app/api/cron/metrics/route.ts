@@ -1,10 +1,10 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { revalidateTag } from 'next/cache'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
-import { syncAllClientMetrics } from '@/features/analytics/lib/sync-metrics'
-import { syncAllFacebookMetrics } from '@/features/analytics/lib/sync-facebook-metrics'
-import { IG_METRICS_TAG } from '@/features/analytics/lib/report-data'
-import { FB_METRICS_TAG } from '@/features/analytics/lib/facebook-report-data'
+import { syncAllClientMetrics } from '@/features/analytics/lib/instagram/sync-metrics'
+import { syncAllFacebookMetrics } from '@/features/analytics/lib/facebook/sync-facebook-metrics'
+import { IG_METRICS_TAG } from '@/features/analytics/lib/instagram/report-data'
+import { FB_METRICS_TAG } from '@/features/analytics/lib/facebook/facebook-report-data'
 
 export const maxDuration = 300
 

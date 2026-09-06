@@ -12,8 +12,8 @@ import {
   type NarrativeArgs,
   type NarrativeResult,
   type NarrativeSpec,
-} from './narrative-shared'
-import type { AnalyticsPeriod } from './period'
+} from '../shared/narrative-shared'
+import type { AnalyticsPeriod } from '../compute/period'
 import { getAnalyticsReport, IG_METRICS_TAG } from './report-data'
 
 /**

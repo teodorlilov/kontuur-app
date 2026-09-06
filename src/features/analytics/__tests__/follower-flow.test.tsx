@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
-import type { FollowerFlowDay, FollowerSummary } from '../lib/build-report'
+import type { FollowerFlowDay, FollowerSummary } from '../lib/instagram/build-report'
 import { FollowerFlow } from '../components/follower-flow'
 
 /** Mirrors the chart's own geometry so a test can aim at a specific day. */

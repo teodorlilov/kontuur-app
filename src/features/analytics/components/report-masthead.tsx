@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import { Avatar } from '@/components/ui/avatar'
-import { formatPeriodRange, formatShortRange } from '../lib/format'
-import type { AnalyticsPeriod } from '../lib/period'
+import { formatPeriodRange, formatShortRange } from '../lib/compute/format'
+import type { AnalyticsPeriod } from '../lib/compute/period'
 
 /**
  * The head of the printed report, shared by both networks' documents.

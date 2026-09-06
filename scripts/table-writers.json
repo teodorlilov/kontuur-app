@@ -5,14 +5,14 @@
   },
   "analytics_reports": {
     "src/features/analytics/actions/report-actions.ts": "Saved-report CRUD behind the analytics screen.",
-    "src/features/analytics/lib/purge-account-metrics.ts": "Deletes a client's reports as part of the Meta data-deletion cascade. Not a second way to delete one report — it takes no report id."
+    "src/features/analytics/lib/shared/purge-account-metrics.ts": "Deletes a client's reports as part of the Meta data-deletion cascade. Not a second way to delete one report — it takes no report id."
   },
   "brand_kit_extractions": {
     "src/lib/visual/queries.ts": "The only store for a brand-extraction run."
   },
   "brand_profiles": {
     "src/features/clients/actions/client-actions.ts": "createClient seeds the profile; updateBrandProfile is the client screen's editor.",
-    "src/features/analytics/lib/online-followers.ts": "refreshObservedBestTime — the only writer of best_time_json and best_time_updated_at, and it only ever writes measured Instagram data. The guessed path was deleted 2026-08-31.",
+    "src/features/analytics/lib/instagram/online-followers.ts": "refreshObservedBestTime — the only writer of best_time_json and best_time_updated_at, and it only ever writes measured Instagram data. The guessed path was deleted 2026-08-31.",
     "src/app/(dashboard)/clients/[id]/sources/page.tsx": "A lazy backfill of pillar ids on first open, for clients that predate them. Writes content_pillars only. The comment beside it records why the web-research row is deliberately NOT created here: a page render must not decide whether the pipeline searches the web.",
     "src/features/clients/lib/provision-client.ts": "provisionClient — the ONE way a client and its mandatory children are created. The onboarding form and solo signup both build them here; before 2026-08-31 solo signup built them by hand and shipped without a visual identity, without a web-research row, and without a rollback."
   },
@@ -48,12 +48,12 @@
     "src/features/ideas/lib/ideas.ts": "getOrCreateToken — the idea form's link, minted beside the ideas it collects."
   },
   "ig_account_metrics": {
-    "src/features/analytics/lib/account-metrics-store.ts": "upsertAccountMetricDays — the only writer. There were six inline upserts across sync-metrics, refresh-window and online-followers, each restating the onConflict target. Callers write PARTIAL rows on purpose (reach in one pass, day totals in another, online-follower hours in a third) so no pass nulls a column another owns; that is why this is a thin shared upsert and not a whole-row writer.",
-    "src/features/analytics/lib/purge-account-metrics.ts": "purgeAccountAnalytics deletes this table for Meta's data-deletion callback and an account switch; deleteClient deliberately leans on the `clients` cascade instead. This was hand-listed until the delete went through a `scoped(table)` helper that hid `.from(table)` from the scan; the deletes are written out now, so the scan finds them and this entry is checked like any other."
+    "src/features/analytics/lib/instagram/account-metrics-store.ts": "upsertAccountMetricDays — the only writer. There were six inline upserts across sync-metrics, refresh-window and online-followers, each restating the onConflict target. Callers write PARTIAL rows on purpose (reach in one pass, day totals in another, online-follower hours in a third) so no pass nulls a column another owns; that is why this is a thin shared upsert and not a whole-row writer.",
+    "src/features/analytics/lib/shared/purge-account-metrics.ts": "purgeAccountAnalytics deletes this table for Meta's data-deletion callback and an account switch; deleteClient deliberately leans on the `clients` cascade instead. This was hand-listed until the delete went through a `scoped(table)` helper that hid `.from(table)` from the scan; the deletes are written out now, so the scan finds them and this entry is checked like any other."
   },
   "ig_audience_snapshots": {
-    "src/features/analytics/lib/sync-metrics.ts": "syncDemographicsWeekly, beside the sync that fetches it.",
-    "src/features/analytics/lib/purge-account-metrics.ts": "purgeAccountAnalytics deletes this table for Meta's data-deletion callback and an account switch; deleteClient deliberately leans on the `clients` cascade instead. This was hand-listed until the delete went through a `scoped(table)` helper that hid `.from(table)` from the scan; the deletes are written out now, so the scan finds them and this entry is checked like any other."
+    "src/features/analytics/lib/instagram/sync-metrics.ts": "syncDemographicsWeekly, beside the sync that fetches it.",
+    "src/features/analytics/lib/shared/purge-account-metrics.ts": "purgeAccountAnalytics deletes this table for Meta's data-deletion callback and an account switch; deleteClient deliberately leans on the `clients` cascade instead. This was hand-listed until the delete went through a `scoped(table)` helper that hid `.from(table)` from the scan; the deletes are written out now, so the scan finds them and this entry is checked like any other."
   },
   "intelligence_briefings": {
     "src/features/dashboard/lib/write-briefing.ts": "writeWeeklyBriefing — the only composer of a briefing.",
@@ -103,7 +103,7 @@
     "src/features/settings/actions/canva-actions.ts": "The user disconnecting Canva. Uses the service-role client BY NECESSITY: the only policy on this table is keyed on client_id, and a Canva row is owned by a user so its client_id is NULL — a user-scoped delete would match nothing and report success. Ownership is proven in TypeScript instead; see the comment at the call site.",
     "src/features/settings/actions/team-actions.ts": "removeTeamMember takes the departing member's personal integrations with them. Distinct from disconnectCanvaConnection (that is the owner choosing to unlink); this is the workspace removing someone. Added 2026-08-31 because social_connections.user_id is NO ACTION, so removing a member who held a Canva connection raised 23503 and surfaced as a message the admin could not act on.",
     "src/lib/meta/connection-store.ts": "storeConnection — the ONE writer of \"store the connection an OAuth flow just produced\". Three flows produce one: Instagram Business Login, the Facebook user token that lists a person's Pages, and the Page they then pick. They differ in what they connect, not in how it is recorded, so they share the write rather than carrying three upserts with three conflict targets. Client-scoped rows conflict on (client_id, platform); user-scoped ones on (user_id, platform), with a NULL client_id that also puts them outside RLS — so every read of those keeps its platform filter.",
-    "src/features/analytics/lib/sync-shared.ts": "recordSyncHealth stamps last_sync_at / last_sync_error, and is their only writer. It never touches a token. It updates by (client_id, platform), which is exactly one row: social_connections_client_id_platform_key makes that pair UNIQUE — the same index the meta callback's onConflict relies on."
+    "src/features/analytics/lib/shared/sync-shared.ts": "recordSyncHealth stamps last_sync_at / last_sync_error, and is their only writer. It never touches a token. It updates by (client_id, platform), which is exactly one row: social_connections_client_id_platform_key makes that pair UNIQUE — the same index the meta callback's onConflict relies on."
   },
   "users": {
     "src/lib/auth/create-user-record.ts": "The user row is created with the account, with the email guard — that column is a lookup key and a blank one is an account nobody can recover.",
@@ -112,14 +112,14 @@
   "platform_comments": {
     "src/features/comments/lib/sync-comments.ts": "syncClientComments — the half-hourly capture, and the only writer that brings comments IN. Upserts on Instagram's own comment id and deletes rows the API stopped returning for a post it just refetched, which is how an upstream delete reaches us.",
     "src/features/comments/actions/comment-actions.ts": "The three moderation actions, each recording the change it just made on Instagram: a reply inserts its own row so the comment reads as answered now rather than after the next cron, hide flips the flag, delete removes the comment and its replies. Not a second sync — the same fact the cron would have brought back, written early by the party that caused it.",
-    "src/features/analytics/lib/purge-account-metrics.ts": "purgeAccountAnalytics erases the audience's comments alongside the ig_* metrics — the part of Meta's data-deletion callback that actually erases third parties."
+    "src/features/analytics/lib/shared/purge-account-metrics.ts": "purgeAccountAnalytics erases the audience's comments alongside the ig_* metrics — the part of Meta's data-deletion callback that actually erases third parties."
   },
   "platform_post_metrics": {
-    "src/features/analytics/lib/post-metrics-store.ts": "upsertPostMetricRows — the only writer, for the same reason account-metrics-store is: two jobs now write this table and nothing else would keep their conflict target in step. Callers write PARTIAL rows on purpose — the nightly sync writes identity AND measurements, the half-hourly comments sync writes identity only (caption, permalink, thumbnail, post_id) because the queue renders the post a comment sits under and cannot wait until 03:30 for it. The comments sync must never write the measurement columns: a zero there is indistinguishable from a measured zero on the analytics page.",
-    "src/features/analytics/lib/purge-account-metrics.ts": "purgeAccountAnalytics deletes this table for Meta's data-deletion callback and an account switch; deleteClient deliberately leans on the `clients` cascade instead. This was hand-listed until the delete went through a `scoped(table)` helper that hid `.from(table)` from the scan; the deletes are written out now, so the scan finds them and this entry is checked like any other."
+    "src/features/analytics/lib/shared/post-metrics-store.ts": "upsertPostMetricRows — the only writer, for the same reason account-metrics-store is: two jobs now write this table and nothing else would keep their conflict target in step. Callers write PARTIAL rows on purpose — the nightly sync writes identity AND measurements, the half-hourly comments sync writes identity only (caption, permalink, thumbnail, post_id) because the queue renders the post a comment sits under and cannot wait until 03:30 for it. The comments sync must never write the measurement columns: a zero there is indistinguishable from a measured zero on the analytics page.",
+    "src/features/analytics/lib/shared/purge-account-metrics.ts": "purgeAccountAnalytics deletes this table for Meta's data-deletion callback and an account switch; deleteClient deliberately leans on the `clients` cascade instead. This was hand-listed until the delete went through a `scoped(table)` helper that hid `.from(table)` from the scan; the deletes are written out now, so the scan finds them and this entry is checked like any other."
   },
   "fb_page_metrics": {
-    "src/features/analytics/lib/fb-page-metrics-store.ts": "upsertFbPageMetricDays is the one writer of a Page's daily metrics — a separate table from ig_account_metrics by decision (20260846): five shared columns did not justify squeezing Facebook concepts into Instagram-named ones.",
-    "src/features/analytics/lib/purge-account-metrics.ts": "Deletes a Page's day rows as part of the Meta data-deletion cascade and the reconnect purge, beside the other analytics tables."
+    "src/features/analytics/lib/facebook/fb-page-metrics-store.ts": "upsertFbPageMetricDays is the one writer of a Page's daily metrics — a separate table from ig_account_metrics by decision (20260846): five shared columns did not justify squeezing Facebook concepts into Instagram-named ones.",
+    "src/features/analytics/lib/shared/purge-account-metrics.ts": "Deletes a Page's day rows as part of the Meta data-deletion cascade and the reconnect purge, beside the other analytics tables."
   }
 }

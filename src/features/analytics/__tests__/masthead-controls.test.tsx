@@ -3,7 +3,7 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MastheadControls } from '../components/masthead-controls'
 import { AnalyticsNavProvider } from '../components/analytics-nav'
-import type { AnalyticsPeriod } from '../lib/period'
+import type { AnalyticsPeriod } from '../lib/compute/period'
 
 /**
  * The operator chrome of the comparison console. What matters: the range

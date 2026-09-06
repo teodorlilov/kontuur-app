@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { GraphApiError } from '@/lib/meta/graph-errors'
-import { consolidationWindow } from '../sync-metrics'
-import { runSyncPhases, type SyncPhase } from '../sync-shared'
+import { consolidationWindow } from '../instagram/sync-metrics'
+import { runSyncPhases, type SyncPhase } from '../shared/sync-shared'
 
 function phase(name: string, run: () => Promise<void>): SyncPhase {
   return { name, run }

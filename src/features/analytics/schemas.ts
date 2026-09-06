@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { CUSTOM_MAX_DAYS, DATE_KEY_PATTERN, dayCount, RANGE_PRESETS } from './lib/period'
+import { CUSTOM_MAX_DAYS, DATE_KEY_PATTERN, dayCount, RANGE_PRESETS } from './lib/compute/period'
 
 /** Input for archiving the currently displayed period into analytics_reports. */
 export const archiveReportInputSchema = z

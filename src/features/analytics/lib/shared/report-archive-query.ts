@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import type { ArchiveEntry } from '../types'
+import type { ArchiveEntry } from '../../types'
 
 /** The most recent exports a document lists. */
 const ARCHIVE_LIMIT = 12

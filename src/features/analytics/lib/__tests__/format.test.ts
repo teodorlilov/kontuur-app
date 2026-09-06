@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatSharePct, splitLeadSentence } from '../format'
+import { formatSharePct, splitLeadSentence } from '../compute/format'
 
 describe('splitLeadSentence', () => {
   it('separates the opening sentence from the rest', () => {

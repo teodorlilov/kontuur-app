@@ -7,7 +7,7 @@ import { COMMENTABLE_PLATFORMS, resolveComments } from '@/lib/meta/networks'
 import type { CommentsAdapter, NetworkAccount, PlatformComment } from '@/lib/meta/networks/types'
 import { mapWithConcurrency } from '@/lib/concurrency'
 import { fetchPostIdsByMediaId } from '@/lib/queries/posts-by-media-id'
-import { upsertPostMetricRows } from '@/features/analytics/lib/post-metrics-store'
+import { upsertPostMetricRows } from '@/features/analytics/lib/shared/post-metrics-store'
 import {
   SOCIAL_CONNECTION_SYNC_COLUMNS,
   type SyncableConnection,

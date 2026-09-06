@@ -1,8 +1,8 @@
 import { cn } from '@/utils/cn'
 import { PLATFORM_NAMES } from '@/lib/validation'
-import type { ReportPostRow } from '../lib/build-report'
-import { formatCount } from '../lib/format'
-import { ratioToMedian } from '../lib/report-sections'
+import type { ReportPostRow } from '../../lib/instagram/build-report'
+import { formatCount } from '../../lib/compute/format'
+import { ratioToMedian } from '../../lib/compute/report-sections'
 import {
   BODY_CELL,
   HEAD_CELL,
@@ -11,7 +11,7 @@ import {
   PostsTableEmpty,
   PostsTableFooter,
   PostsTableShell,
-} from './posts-table-shared'
+} from '../posts-table-shared'
 
 /**
  * The Facebook posts table — the lean sibling of `PostsTable`, built from the same shell,

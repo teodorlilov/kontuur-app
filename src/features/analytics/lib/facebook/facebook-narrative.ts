@@ -13,8 +13,8 @@ import {
   type NarrativeArgs,
   type NarrativeResult,
   type NarrativeSpec,
-} from './narrative-shared'
-import type { AnalyticsPeriod } from './period'
+} from '../shared/narrative-shared'
+import type { AnalyticsPeriod } from '../compute/period'
 
 /**
  * The Facebook document's narrative — the sibling of `narrative.ts`, composing the same

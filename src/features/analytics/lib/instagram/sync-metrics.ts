@@ -15,7 +15,12 @@ import {
   type IGDemographics,
 } from '@/lib/meta/instagram/insights'
 import { PLATFORM_NAMES } from '@/lib/validation'
-import { runSyncPhases, syncRoster, type MetricsSyncOutcome, type SyncPhase } from './sync-shared'
+import {
+  runSyncPhases,
+  syncRoster,
+  type MetricsSyncOutcome,
+  type SyncPhase,
+} from '../shared/sync-shared'
 import { fetchPostIdsByMediaId } from '@/lib/queries/posts-by-media-id'
 import type { SyncableConnection } from '@/lib/queries/select-columns'
 import { MS_PER_DAY, SECONDS_PER_DAY } from '@/utils/constants'
@@ -26,7 +31,7 @@ import {
   upsertAccountMetricDays,
   type IGAccountMetricsInsert,
 } from './account-metrics-store'
-import { upsertPostMetricRows, type PlatformPostMetricsInsert } from './post-metrics-store'
+import { upsertPostMetricRows, type PlatformPostMetricsInsert } from '../shared/post-metrics-store'
 
 /**
  * The nightly Instagram metrics capture. One rule governs every write: NULL

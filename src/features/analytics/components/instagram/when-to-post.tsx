@@ -5,8 +5,8 @@ import { cn } from '@/utils/cn'
 // The grid is Monday-first, which is what these two lists are; date-helpers'
 // Sunday-first table is for Date.getDay() indexing and must not be swapped in.
 import { WEEKDAY_LABELS, WEEKDAY_LABELS_SHORT } from '@/utils/constants'
-import type { AudienceOnline, PublishWindowBucket } from '../lib/build-report'
-import { formatCount } from '../lib/format'
+import type { AudienceOnline, PublishWindowBucket } from '../../lib/instagram/build-report'
+import { formatCount } from '../../lib/compute/format'
 
 /** A publish bucket may only editorialize from this many posts. */
 const MIN_BUCKET_POSTS = 3

@@ -13,23 +13,26 @@ import { ActionLink } from '@/components/ui/action-link'
 import { cn } from '@/utils/cn'
 import { parseParam } from '@/utils/parse-param'
 import { AnalyticsNavProvider, PendingVeil } from '@/features/analytics/components/analytics-nav'
-import { AnalyticsView, ConnectPrompt } from '@/features/analytics/components/analytics-view'
-import { FacebookAnalyticsView } from '@/features/analytics/components/facebook-analytics-view'
+import {
+  AnalyticsView,
+  ConnectPrompt,
+} from '@/features/analytics/components/instagram/analytics-view'
+import { FacebookAnalyticsView } from '@/features/analytics/components/facebook/facebook-analytics-view'
 import { AutoFill } from '@/features/analytics/components/auto-fill'
 import { FillingDocument } from '@/features/analytics/components/filling-document'
 import { PLATFORM_NAMES } from '@/lib/validation'
-import { getFacebookAnalyticsReport } from '@/features/analytics/lib/facebook-report-data'
+import { getFacebookAnalyticsReport } from '@/features/analytics/lib/facebook/facebook-report-data'
 import {
   buildFacebookFallbackNarrative,
   getFacebookNarrative,
-} from '@/features/analytics/lib/facebook-narrative'
+} from '@/features/analytics/lib/facebook/facebook-narrative'
 import { MastheadControls } from '@/features/analytics/components/masthead-controls'
-import { fetchReportArchive } from '@/features/analytics/lib/report-archive-query'
-import { buildFallbackNarrative } from '@/features/analytics/lib/narrative'
-import { getNarrative } from '@/features/analytics/lib/narrative'
-import { periodDayKeys, resolvePeriod } from '@/features/analytics/lib/period'
-import { countUnfilledDays } from '@/features/analytics/lib/refresh-window'
-import { getAnalyticsReport } from '@/features/analytics/lib/report-data'
+import { fetchReportArchive } from '@/features/analytics/lib/shared/report-archive-query'
+import { buildFallbackNarrative } from '@/features/analytics/lib/instagram/narrative'
+import { getNarrative } from '@/features/analytics/lib/instagram/narrative'
+import { periodDayKeys, resolvePeriod } from '@/features/analytics/lib/compute/period'
+import { countUnfilledDays } from '@/features/analytics/lib/instagram/refresh-window'
+import { getAnalyticsReport } from '@/features/analytics/lib/instagram/report-data'
 import { toDateKey } from '@/utils/date-helpers'
 
 // The regenerate action runs under this segment: a full window refresh is

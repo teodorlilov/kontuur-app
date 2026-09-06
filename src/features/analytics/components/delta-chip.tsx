@@ -1,6 +1,6 @@
 import { cn } from '@/utils/cn'
-import type { DeltaVerdict } from '../lib/delta-verdict'
-import { signedCount } from '../lib/format'
+import type { DeltaVerdict } from '../lib/compute/delta-verdict'
+import { signedCount } from '../lib/compute/format'
 
 interface DeltaChipProps {
   verdict: DeltaVerdict

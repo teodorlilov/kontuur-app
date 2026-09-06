@@ -1,7 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import { AutoFill } from '../components/auto-fill'
-import type { AnalyticsPeriod } from '../lib/period'
+import type { AnalyticsPeriod } from '../lib/compute/period'
 
 const refresh = vi.fn()
 vi.mock('next/navigation', () => ({

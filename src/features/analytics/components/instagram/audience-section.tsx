@@ -1,6 +1,6 @@
-import { barWidthPct } from '../lib/bar-scale'
-import type { AudienceReport, AudienceShare } from '../lib/build-report'
-import { formatSharePct } from '../lib/format'
+import { barWidthPct } from '../../lib/compute/bar-scale'
+import type { AudienceReport, AudienceShare } from '../../lib/instagram/build-report'
+import { formatSharePct } from '../../lib/compute/format'
 
 /**
  * The plot's height in pixels — the tallest column fills it exactly. It must

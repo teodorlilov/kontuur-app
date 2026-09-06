@@ -10,8 +10,8 @@ import {
   humanizeDimension,
   sumOrNull,
   type BuildReportInput,
-} from '../build-report'
-import type { AnalyticsPeriod } from '../period'
+} from '../instagram/build-report'
+import type { AnalyticsPeriod } from '../compute/period'
 import { postMetricRow } from './fixtures'
 
 /** A 4-day period (Aug 15–18) against the 4 days before it (Aug 11–14). */
