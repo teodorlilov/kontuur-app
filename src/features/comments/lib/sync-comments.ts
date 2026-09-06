@@ -5,18 +5,19 @@ import type { Database } from '@/types/database'
 import { GraphApiError } from '@/lib/meta/graph-errors'
 import { COMMENTABLE_PLATFORMS, resolveComments } from '@/lib/meta/networks'
 import type { CommentsAdapter, NetworkAccount, PlatformComment } from '@/lib/meta/networks/types'
-import { createSemaphore } from '@/lib/concurrency'
+import { mapWithConcurrency } from '@/lib/concurrency'
 import { fetchPostIdsByMediaId } from '@/lib/queries/posts-by-media-id'
 import { upsertPostMetricRows } from '@/features/analytics/lib/post-metrics-store'
 import {
   SOCIAL_CONNECTION_SYNC_COLUMNS,
-  type SocialConnectionSyncColumns,
+  type SyncableConnection,
 } from '@/lib/queries/select-columns'
 import { MS_PER_DAY } from '@/utils/constants'
 
 /**
- * Bringing Instagram's comments into Postgres so the queue can be read without
- * calling Instagram.
+ * Bringing one network's comments into Postgres so the queue can be read without
+ * calling the network — the adapter (`resolveComments`) speaks the dialect; this
+ * file owns the budget, the compare-then-fetch, and every write.
  *
  * The shape of this file is copied from `syncAllClientMetrics`, and copied on
  * purpose — that shape encodes constraints this run has too. Sequential across
@@ -45,11 +46,6 @@ const COMMENT_FETCH_CONCURRENCY = 3
 
 /** A guard against one runaway post consuming the whole run. 50 comments per page. */
 const MAX_PAGES_PER_MEDIA = 10
-
-type IGConnection = SocialConnectionSyncColumns & {
-  account_id: string
-  access_token: string
-}
 
 /**
  * A row on its way in, as the generated schema defines it.
@@ -111,7 +107,7 @@ export async function syncAllClientComments(
     .not('account_id', 'is', null)
   if (error) throw new Error(`connection roster query failed: ${error.message}`)
   // WHY as: the shared SupabaseClient param is untyped, so the projection does not infer.
-  const connections = (data ?? []) as IGConnection[]
+  const connections = (data ?? []) as SyncableConnection[]
 
   for (const [index, connection] of connections.entries()) {
     // Between clients, not inside one: a client's comments either come whole or not at all.
@@ -241,9 +237,9 @@ export async function syncClientComments(
   const identified = commented.flatMap((post) =>
     post.identity ? [{ post, identity: post.identity }] : []
   )
-  // Only what the network gave an identity for. `platform_post_metrics` is Instagram's own table —
-  // keyed on `ig_media_id`/`ig_account_id` and swept by Instagram-scoped deletes — so an
-  // adapter with no home for its post identities returns none rather than filing them here.
+  // Only what the network gave an identity for — an adapter returns null identity when the
+  // nightly metrics sync already owns that fact (Instagram), and rows here carry the
+  // adapter's own platform stamp so neither network's sweep can touch the other's.
   if (identified.length > 0) {
     await upsertPostMetricRows(
       admin,
@@ -266,23 +262,15 @@ export async function syncClientComments(
 
   if (stale.length === 0) return { unchanged: commented.length, fetched: 0 }
 
-  const semaphore = createSemaphore(COMMENT_FETCH_CONCURRENCY)
-  const perMedia = await Promise.all(
-    stale.map(async (item) => {
-      const release = await semaphore.acquire()
-      try {
-        const comments = await fetchAllComments(
-          adapter,
-          account,
-          item.externalPostId,
-          item.commentCount
-        )
-        return { mediaId: item.externalPostId, comments }
-      } finally {
-        release()
-      }
-    })
-  )
+  const perMedia = await mapWithConcurrency(stale, COMMENT_FETCH_CONCURRENCY, async (item) => {
+    const comments = await fetchAllComments(
+      adapter,
+      account,
+      item.externalPostId,
+      item.commentCount
+    )
+    return { mediaId: item.externalPostId, comments }
+  })
 
   const now = new Date().toISOString()
   const rows: CommentRow[] = []

@@ -106,6 +106,7 @@ export async function listFacebookPages(): Promise<ActionResult<ChoosablePage[]>
   }
 }
 
+/** Store one granted Page as this client's Facebook connection, with its Page token. */
 export async function connectFacebookPage(clientId: string, pageId: string): Promise<ActionResult> {
   const parsedClient = parseActionId(clientId, 'clientId')
   if (!parsedClient.ok) return parsedClient.result
@@ -123,6 +124,12 @@ export async function connectFacebookPage(clientId: string, pageId: string): Pro
   if (!pages.ok) return pages
   const page = pages.data.find((candidate) => candidate.id === parsedPage.data)
   if (!page) return { ok: false, error: 'That Page is no longer available' }
+  // The chooser disables these rows, but the page id arrives from the browser: without this
+  // check a crafted request could store a Page the server itself just computed as
+  // non-publishable, and every publish to it would fail at Graph instead of here.
+  if (!page.canPublish) {
+    return { ok: false, error: 'Kontuur does not have permission to publish to that Page' }
+  }
 
   await storeConnection(createAdminSupabaseClient(), {
     clientId,

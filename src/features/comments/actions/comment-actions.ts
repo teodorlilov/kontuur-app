@@ -6,6 +6,7 @@ import { parseActionId } from '@/lib/actions/parse-input'
 import type { ActionResult } from '@/lib/actions/types'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import { syncClientComments } from '../lib/sync-comments'
+import { fetchConnection } from '@/lib/queries/db'
 import {
   SOCIAL_CONNECTION_AUTH_COLUMNS,
   type SocialConnectionAuthColumns,
@@ -81,13 +82,7 @@ async function resolveComment(
   const adapter = resolveComments(row.platform)
   if (!adapter) return { ok: false, error: 'That network cannot be moderated from here' }
 
-  const { data: connectionData } = await admin
-    .from('social_connections')
-    .select(SOCIAL_CONNECTION_AUTH_COLUMNS)
-    .eq('client_id', row.client_id)
-    .eq('platform', adapter.platform)
-    .maybeSingle()
-  const connection = connectionData as SocialConnectionAuthColumns | null
+  const connection = await fetchConnection(admin, row.client_id, adapter.platform)
   if (!connection?.access_token) {
     return { ok: false, error: `This client has no connected ${adapter.label} account` }
   }
@@ -128,18 +123,22 @@ async function resolveComment(
  *
  * `permission` is the one that matters and the one most likely to be misread: it does
  * NOT mean the app is missing Advanced Access — that failure is silent, a 200 with an
- * empty list. It means THIS connection's token predates the
- * `instagram_business_manage_comments` scope, because tokens never gain permissions
- * after they are issued. The client can fix it today by reconnecting, which is why
- * the message says so.
+ * empty list. It means THIS connection's token predates the comment-moderation scope
+ * (`instagram_business_manage_comments`, or `pages_manage_engagement` for a Page),
+ * because tokens never gain permissions after they are issued. The client can fix it
+ * today by reconnecting, which is why the message says so.
+ *
+ * `network` is the display label of the network the failure came from — these actions
+ * moderate both, and naming Instagram over a Facebook failure sent people to reconnect
+ * the wrong account.
  */
-function describe(err: unknown, fallback: string): string {
+function describe(err: unknown, network: string, fallback: string): string {
   if (err instanceof GraphApiError) {
     if (err.failure === 'permission') {
       return 'This connection predates comment moderation — reconnect the account to enable it'
     }
-    if (err.failure === 'token_invalid') return 'The Instagram connection needs reconnecting'
-    if (err.failure === 'rate_limited') return 'Instagram is rate limiting us — try again shortly'
+    if (err.failure === 'token_invalid') return `The ${network} connection needs reconnecting`
+    if (err.failure === 'rate_limited') return `${network} is rate limiting us — try again shortly`
   }
   console.error(`[comments] ${fallback}:`, err)
   return fallback
@@ -163,7 +162,7 @@ export async function replyToComment(input: ReplyToCommentInput): Promise<Action
       message,
     })
   } catch (err) {
-    return { ok: false, error: describe(err, 'Could not post that reply') }
+    return { ok: false, error: describe(err, scope.adapter.label, 'Could not post that reply') }
   }
 
   /**
@@ -214,7 +213,14 @@ export async function setCommentHidden(input: SetCommentHiddenInput): Promise<Ac
       hidden,
     })
   } catch (err) {
-    return { ok: false, error: describe(err, hidden ? 'Could not hide it' : 'Could not unhide it') }
+    return {
+      ok: false,
+      error: describe(
+        err,
+        scope.adapter.label,
+        hidden ? 'Could not hide it' : 'Could not unhide it'
+      ),
+    }
   }
 
   const { error } = await scope.admin
@@ -227,7 +233,7 @@ export async function setCommentHidden(input: SetCommentHiddenInput): Promise<Ac
   return { ok: true, data: undefined }
 }
 
-/** Delete. Irreversible on Instagram's side — the UI should push people to hide instead. */
+/** Delete. Irreversible on the network's side — the UI should push people to hide instead. */
 export async function deleteComment(input: DeleteCommentInput): Promise<ActionResult<void>> {
   const parsed = deleteCommentInputSchema.safeParse(input)
   if (!parsed.success) return { ok: false, error: 'Invalid request' }
@@ -243,7 +249,7 @@ export async function deleteComment(input: DeleteCommentInput): Promise<ActionRe
       commentId,
     })
   } catch (err) {
-    return { ok: false, error: describe(err, 'Could not delete it') }
+    return { ok: false, error: describe(err, scope.adapter.label, 'Could not delete it') }
   }
 
   /**
@@ -340,7 +346,10 @@ export async function checkClientComments(
       postsWithNewComments += result.fetched
     } catch (err) {
       console.error(`[comments] ${connection.platform} check failed for ${parsed.id}:`, err)
-      failures.push(describe(err, `Could not reach ${connection.platform} just now`))
+      // `usable` is filtered to commentable platforms, so the adapter always resolves; the
+      // fallback keeps the lowercase key out of copy shown to a person all the same.
+      const label = resolveComments(connection.platform)?.label ?? connection.platform
+      failures.push(describe(err, label, `Could not reach ${label} just now`))
     }
   }
 

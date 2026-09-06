@@ -101,7 +101,9 @@ const _fetchAnalyticsReport = unstable_cache(
         .from('platform_post_metrics')
         .select(PLATFORM_POST_METRIC_COLUMNS)
         .eq('client_id', clientId)
-        .eq('ig_account_id', accountId)
+        // The account id is the network partition: each network issues its own ids, so no
+        // platform filter is needed for this to stay an Instagram-only read (20260845).
+        .eq('platform_account_id', accountId)
         .gte('posted_at', postedFromPrev)
         .lt('posted_at', postedTo),
       // Kontuur's own ledger: pins posts the sync cannot see — removed from Instagram

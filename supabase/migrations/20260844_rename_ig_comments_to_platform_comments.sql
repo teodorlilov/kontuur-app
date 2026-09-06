@@ -9,9 +9,10 @@
 -- Renamed rather than recreated. Every existing row IS an Instagram comment, so the
 -- discriminator backfills to a fact rather than a guess, and no data moves.
 --
--- The column renames follow `post_publications` (20260838), which chose the same two
--- words for the same two ideas: which account on the network, and the network's own id
--- for the thing being commented on.
+-- The column renames follow `post_publications` (20260838) in idea, not to the letter:
+-- `external_post_id` matches it exactly, while the account column is `platform_account_id`
+-- here against `account_id` there — 20260838 had no second word to disambiguate from, this
+-- table did (`client_id`). Comment corrected 2026-09-06; the original claimed both matched.
 
 alter table ig_comments rename to platform_comments;
 

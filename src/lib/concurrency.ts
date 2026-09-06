@@ -25,3 +25,26 @@ export function createSemaphore(max: number): { acquire: () => Promise<() => voi
 
   return { acquire }
 }
+
+/**
+ * Map with at most `max` callbacks in flight. The acquire/try/finally dance around
+ * `createSemaphore` was being copied at every call site — this is that dance, once.
+ * Results keep item order (a `Promise.all` guarantee), however the work interleaves.
+ */
+export async function mapWithConcurrency<T, R>(
+  items: readonly T[],
+  max: number,
+  fn: (item: T) => Promise<R>
+): Promise<R[]> {
+  const semaphore = createSemaphore(max)
+  return Promise.all(
+    items.map(async (item) => {
+      const release = await semaphore.acquire()
+      try {
+        return await fn(item)
+      } finally {
+        release()
+      }
+    })
+  )
+}

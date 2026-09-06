@@ -58,9 +58,10 @@ function sentBodies(): Array<Record<string, unknown>> {
 beforeEach(() => fetchMock.mockReset())
 
 describe('resolveNetwork', () => {
-  it('resolves Facebook from either vocabulary', () => {
+  it('speaks only the connection vocabulary', () => {
+    // See the Instagram twin: display case died with posts.platform (20260839).
     expect(resolveNetwork('facebook')?.platform).toBe('facebook')
-    expect(resolveNetwork('Facebook')?.platform).toBe('facebook')
+    expect(resolveNetwork('Facebook')).toBeNull()
   })
 })
 

@@ -12,8 +12,7 @@ import {
 } from './publish-post'
 import { MAX_ATTEMPTS, type Publication } from './publication-store'
 import { PUBLICATION_COLUMNS } from '@/lib/queries/select-columns'
-import type { PublicationStatus } from '@/lib/posts/publish-state'
-import { fetchConnection } from '@/features/publishing/lib/connection'
+import { fetchConnection } from '@/lib/queries/db'
 import { MS_PER_DAY } from '@/utils/constants'
 
 /** How far back a due post is still worth publishing. Older posts are marked failed so they surface. */
@@ -23,9 +22,9 @@ const PUBLISH_WINDOW_MS = MS_PER_DAY
  * publish_claimed_at, never from the slot: a run lives at most 300s
  * (maxDuration), so a 30-minute-old claim is provably dead, while slot-based
  * staleness would let an overlapping tick reclaim a post another run is
- * actively publishing and double-post it to Instagram. A reclaimed post that
- * carries ig_creation_id resumes its existing container rather than creating
- * a second one.
+ * actively publishing and double-post it. A reclaimed destination that carries
+ * a publish_ref resumes its existing reference rather than creating a second
+ * one.
  */
 const STALE_CLAIM_MS = 30 * 60 * 1000
 /**
@@ -42,6 +41,23 @@ const RETRY_SPACING_MS = 30 * 60 * 1000
  * duplicate.
  */
 const RESUME_GRACE_MS = 90 * 1000
+
+/**
+ * Is another run still inside this publication's claim window?
+ *
+ * The JS twin of the due query's 'publishing' arms below, for the one caller that cannot
+ * use them: publish-now reads rows first and then decides what to feed the publisher, and
+ * a freshly claimed row must not be fed — the fresh-claim CAS compares against the state
+ * the caller just read, so it admits a claim that already exists, and the network gets the
+ * same post twice. A claim holding a reference is live for the resume grace; one without
+ * is live until it is stale enough that its run is provably dead (a run lives at most
+ * 300s). Change the arms below and this predicate together.
+ */
+export function isClaimLive(publication: Publication, now: Date): boolean {
+  if (publication.status !== 'publishing' || !publication.publish_claimed_at) return false
+  const age = now.getTime() - new Date(publication.publish_claimed_at).getTime()
+  return age < (publication.publish_ref ? RESUME_GRACE_MS : STALE_CLAIM_MS)
+}
 /**
  * Per-run batch cap and time budget. The budget mirrors the generate cron's:
  * the route allows 300s, the loop stops starting new posts at 240s so an
@@ -98,7 +114,19 @@ export async function publishDuePosts(): Promise<PublishSchedulerResult> {
   const { data: stranded, error: sweepError } = await admin
     .from('post_publications')
     .select('id, publish_attempts, posts!inner(client_id, scheduled_at)')
-    .in('status', ['scheduled', 'publishing'] satisfies readonly PublicationStatus[])
+    .or(
+      [
+        'status.eq.scheduled',
+        /**
+         * Claim-age guarded: a 'publishing' row inside its claim window belongs to a run
+         * that is still alive — publish-now pressed on a slot already past the window, or
+         * a tick straddling its edge — and sweeping it would final-fail a publish in
+         * flight, or land after that run's own 'published' write and record a live post
+         * as failed. A stale or absent claim is a dead run; those rows the sweep owns.
+         */
+        `and(status.eq.publishing,or(publish_claimed_at.is.null,publish_claimed_at.lt.${staleClaimCutoff}))`,
+      ].join(',')
+    )
     .lt('posts.scheduled_at', windowStart)
   if (sweepError) throw new Error(`missed-window sweep failed: ${sweepError.message}`)
 
@@ -142,15 +170,22 @@ export async function publishDuePosts(): Promise<PublishSchedulerResult> {
     .select(`${PUBLICATION_COLUMNS}, posts!inner(${PUBLISHABLE_POST_COLUMNS}, scheduled_at)`)
     .lte('posts.scheduled_at', now.toISOString())
     .gte('posts.scheduled_at', windowStart)
-    .lt('publish_attempts', MAX_ATTEMPTS)
     .or(
       [
-        `and(status.eq.scheduled,or(publish_claimed_at.is.null,publish_claimed_at.lt.${retrySpacingCutoff}))`,
+        /**
+         * The attempts cap sits INSIDE the fresh-claim arms, not over the whole query.
+         * A resume charges no attempt (claimPublication only re-stamps), so capping the
+         * resume arm contradicted the accounting: a third attempt that parked a reference
+         * wrote publish_attempts = MAX, and the row that most needed finishing became the
+         * one no tick could see — stranded 'publishing' until the missed-window sweep
+         * falsely failed a post the network may have already put live.
+         */
+        `and(status.eq.scheduled,publish_attempts.lt.${MAX_ATTEMPTS},or(publish_claimed_at.is.null,publish_claimed_at.lt.${retrySpacingCutoff}))`,
         // A parked reference (deferred manual publish whose worker died, or a phase-A
         // timeout) resumes fast — resuming an accepted reference is duplicate-safe and
-        // charges no attempt.
+        // charges no attempt, which is why this arm carries no attempts cap.
         `and(status.eq.publishing,publish_ref.not.is.null,publish_claimed_at.lt.${resumeGraceCutoff})`,
-        `and(status.eq.publishing,publish_claimed_at.lt.${staleClaimCutoff})`,
+        `and(status.eq.publishing,publish_attempts.lt.${MAX_ATTEMPTS},publish_claimed_at.lt.${staleClaimCutoff})`,
         /**
          * Backfilled rows that arrived 'publishing' with no claim stamp (20260838 carried
          * `posts.publish_claimed_at` across as it found it, nulls included).
@@ -168,7 +203,7 @@ export async function publishDuePosts(): Promise<PublishSchedulerResult> {
          * 'publishing', so a null claim cannot belong to a live run. The top-level
          * `posts.scheduled_at` bounds still apply — those are real filters, ANDed, and legal.
          */
-        `and(status.eq.publishing,publish_claimed_at.is.null)`,
+        `and(status.eq.publishing,publish_attempts.lt.${MAX_ATTEMPTS},publish_claimed_at.is.null)`,
       ].join(',')
     )
     /**

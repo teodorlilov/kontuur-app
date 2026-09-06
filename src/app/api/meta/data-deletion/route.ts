@@ -5,15 +5,6 @@ import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import { IG_METRICS_TAG } from '@/features/analytics/lib/report-data'
 import { purgeAccountAnalytics } from '@/features/analytics/lib/purge-account-metrics'
 
-function base64UrlDecode(str: string): Buffer {
-  // Convert base64url to standard base64
-  const base64 = str
-    .replace(/-/g, '+')
-    .replace(/_/g, '/')
-    .padEnd(str.length + ((4 - (str.length % 4)) % 4), '=')
-  return Buffer.from(base64, 'base64')
-}
-
 function verifySignedRequest(signedRequest: string, appSecret: string): { user_id: string } | null {
   const parts = signedRequest.split('.')
   if (parts.length !== 2) return null
@@ -21,13 +12,15 @@ function verifySignedRequest(signedRequest: string, appSecret: string): { user_i
   const payload = parts[1]!
 
   const expectedSig = createHmac('sha256', appSecret).update(payload).digest()
-  const receivedSig = base64UrlDecode(encodedSig)
+  // Node decodes base64url natively (oauth-state.ts already relies on it) — the
+  // hand-rolled '-'/'_'/padding converter this replaced was reimplementing Buffer.
+  const receivedSig = Buffer.from(encodedSig, 'base64url')
 
   if (expectedSig.length !== receivedSig.length) return null
   if (!timingSafeEqual(expectedSig, receivedSig)) return null
 
   try {
-    return JSON.parse(base64UrlDecode(payload).toString('utf8')) as { user_id: string }
+    return JSON.parse(Buffer.from(payload, 'base64url').toString('utf8')) as { user_id: string }
   } catch {
     return null
   }

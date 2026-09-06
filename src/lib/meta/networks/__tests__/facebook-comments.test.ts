@@ -4,9 +4,8 @@ import { describe, expect, it, vi, beforeEach } from 'vitest'
  * A Page's comments, behind the shared contract.
  *
  * Every shape here was probed against a real visitor comment rather than read from the
- * reference, and the two facts most likely to be got wrong by inference are the ones asserted
- * hardest: replies are NOT on the post's own edge, and `can_hide` is per comment — Facebook
- * refuses to hide a Page's own comment and says so before the attempt.
+ * reference, and the fact most likely to be got wrong by inference is the one asserted
+ * hardest: replies are NOT on the post's own edge — a second round of calls fetches them.
  */
 
 const fetchMock = vi.fn()
@@ -190,7 +189,6 @@ describe('fetchComments', () => {
         authorName: 'Teodor Lilov',
         text: 'cool',
         hidden: false,
-        canHide: true,
         likeCount: 0,
         commentedAt: '2026-09-05T14:33:01+0000',
       },
@@ -200,8 +198,6 @@ describe('fetchComments', () => {
         authorName: 'About Social Media',
         text: 'glad you like',
         hidden: false,
-        // Absent in the response: unknown must not read as allowed.
-        canHide: false,
         likeCount: null,
         commentedAt: null,
       },

@@ -144,10 +144,12 @@ async function fetchPageById(
     return await graphGet(fbPageSchema, `${FB_GRAPH_BASE}/${id}`, accessToken, {
       fields: 'id,name,access_token,category',
     })
-  } catch {
+  } catch (err) {
     // A Page named in a grant that will not load is not an error worth failing the whole list
     // for — the other Pages are still connectable, and a Page that cannot be read cannot be
-    // published to either.
+    // published to either. Warned rather than swallowed: "my Page isn't in the chooser" is
+    // undebuggable if the read that dropped it left no trace.
+    console.warn(`[meta] granted page ${id} could not be read:`, err)
     return null
   }
 }

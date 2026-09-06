@@ -77,9 +77,14 @@ export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps
   const supabase = await createServerSupabaseClient()
   // The connection comes first: its account id scopes every read below —
   // archive rows and fill markers may only ever belong to the account this
-  // client is connected to right now.
+  // client is connected to right now. The INSTAGRAM connection specifically:
+  // analytics is Instagram-only until Facebook's metrics are probed, and a
+  // client can hold both networks' rows — `connections[0]` was whichever
+  // happened to connect first, which for a Facebook-first client scoped this
+  // whole page by a Page id.
   const connections = await fetchConnectionsByClient(supabase, clientId)
-  const accountId = connections[0]?.account_id ?? null
+  const instagram = connections.find((connection) => connection.platform === 'instagram') ?? null
+  const accountId = instagram?.account_id ?? null
   // The nightly sync's own verdict (migration 20260828). The closing line used
   // to read max(fetched_at), which the on-demand refill also stamped, so a sync
   // that had been failing for nights still reported itself as freshly landed.
@@ -106,8 +111,8 @@ export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps
   }
   // WHY as: the server client is untyped for this projection, so it does not infer.
   const archive = (archiveResult.data ?? []) as ArchiveEntry[]
-  const hasConnection = connections.length > 0
-  const handle = connections[0]?.account_name?.replace(/^@/, '') ?? null
+  const hasConnection = instagram !== null
+  const handle = instagram?.account_name?.replace(/^@/, '') ?? null
 
   const narrativeResult = data.hasHistory
     ? await getNarrative(clientId, client.name, period, timezone, data.lastSyncAt)

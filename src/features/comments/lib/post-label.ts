@@ -37,3 +37,18 @@ export function postTitle(group: Pick<CommentGroup, 'caption' | 'postId' | 'plat
 export function postOrigin(group: Pick<CommentGroup, 'postId'>): string | null {
   return group.postId ? null : 'no matching post in Kontuur'
 }
+
+/**
+ * A name as its network writes one: Instagram prefixes a handle's @, Facebook uses plain
+ * display names — the queue rendered "@John Smith" over Page comments without this.
+ * Presentation, deliberately NOT an adapter capability: a display convention is the
+ * queue's business, and copy shown to a person is the one place shared code may name a
+ * network. Null when there is no name, so call sites keep their own fallbacks.
+ */
+export function formatHandle(
+  platform: CommentGroup['platform'],
+  name: string | null
+): string | null {
+  if (!name) return null
+  return platform === 'instagram' ? `@${name}` : name
+}

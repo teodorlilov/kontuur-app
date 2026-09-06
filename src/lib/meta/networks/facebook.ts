@@ -1,10 +1,10 @@
 import 'server-only'
 
-import { createSemaphore } from '@/lib/concurrency'
+import { mapWithConcurrency } from '@/lib/concurrency'
 import { PLATFORM_NAMES } from '@/lib/validation'
 import { FB_GRAPH_BASE } from '../constants'
 import { graphGet, graphPost } from '../graph-client'
-import { fbCreatedObjectSchema, fbPermalinkSchema, graphAckSchema } from '../schemas'
+import { fbPermalinkSchema, graphAckSchema, graphCreatedIdSchema } from '../schemas'
 import type {
   NetworkAccount,
   NetworkAdapter,
@@ -97,16 +97,8 @@ export const facebookAdapter: NetworkAdapter = {
      * `Promise.all` resolves in argument order however the requests interleave, so the array
      * handed to `/feed` is the order the post is read in — which is the whole of a carousel.
      */
-    const semaphore = createSemaphore(UPLOAD_CONCURRENCY)
-    const photoIds = await Promise.all(
-      ordered.map(async (image) => {
-        const release = await semaphore.acquire()
-        try {
-          return await uploadUnpublishedPhoto(account, image.publicUrl)
-        } finally {
-          release()
-        }
-      })
+    const photoIds = await mapWithConcurrency(ordered, UPLOAD_CONCURRENCY, (image) =>
+      uploadUnpublishedPhoto(account, image.publicUrl)
     )
 
     // Created, not live. The caller persists this id before anything else happens to it.
@@ -153,7 +145,7 @@ export const facebookAdapter: NetworkAdapter = {
  */
 async function uploadUnpublishedPhoto(account: NetworkAccount, imageUrl: string): Promise<string> {
   const data = await graphPost(
-    fbCreatedObjectSchema,
+    graphCreatedIdSchema,
     `${FB_GRAPH_BASE}/${account.accountId}/photos`,
     account.accessToken,
     { url: imageUrl, published: false }
@@ -178,7 +170,7 @@ async function createUnpublishedPost(
   photoIds: string[]
 ): Promise<string> {
   const data = await graphPost(
-    fbCreatedObjectSchema,
+    graphCreatedIdSchema,
     `${FB_GRAPH_BASE}/${account.accountId}/feed`,
     account.accessToken,
     {

@@ -68,6 +68,13 @@ describe('deleted files stay deleted', () => {
     // comments feature carried an identical file for exactly one release. A file here
     // again means a table is being written through a client that cannot check it.
     'src/features/publishing/lib/admin-client.ts',
+    // Audit fixes (2026-09): the publish path's credential lookup moved to
+    // lib/queries/db.ts as `fetchConnection` when the comment moderation actions grew a
+    // fourth copy of its query — a shared read lives where every feature may reach it.
+    // `types.ts` held only the credential type, renamed `NetworkConnection` in the move:
+    // it carried Facebook tokens under an Instagram name.
+    'src/features/publishing/lib/connection.ts',
+    'src/features/publishing/lib/types.ts',
   ])('%s does not exist', (relPath) => {
     expect(existsSync(path.resolve(SRC, '..', relPath))).toBe(false)
   })
@@ -104,6 +111,14 @@ describe('deleted symbols stay unreferenced', () => {
      * `oauth-networks.ts` — a constant beside them is the second source of truth that list was.
      */
     'FACEBOOK_PAGE_SCOPES',
+    // Audit fixes (2026-09): the neutral publish path's credential type, renamed
+    // NetworkConnection (lib/queries/db.ts) — it carried Facebook tokens under an
+    // Instagram name. The three id-only Graph write schemas collapsed into
+    // graphCreatedIdSchema the same day.
+    'InstagramConnection',
+    'fbCreatedObjectSchema',
+    'igCommentCreatedSchema',
+    'igContainerResponseSchema',
     'capitalizePlatform',
     // Analytics repair (2026-08): the per-day pivot fiction. The API serves range
     // totals plus two daily series — these reshaped a grid that never existed and

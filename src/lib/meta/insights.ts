@@ -1,6 +1,6 @@
 import 'server-only'
 
-import { createSemaphore } from '@/lib/concurrency'
+import { mapWithConcurrency } from '@/lib/concurrency'
 import { graphGet } from './graph-client'
 import { GraphApiError } from './graph-errors'
 import { IG_GRAPH_BASE } from './constants'
@@ -8,6 +8,7 @@ import {
   igAccountFieldsSchema,
   igInsightsEnvelopeSchema,
   igMediaListSchema,
+  type IGInsightEntry,
   type IGMediaItem,
   type IGMediaListPage,
 } from './schemas'
@@ -93,23 +94,43 @@ export async function fetchOnlineFollowers(
   return out
 }
 
-/** The nine metrics the probe verified in ONE total_value call. */
-const DAY_TOTAL_METRICS =
-  'views,accounts_engaged,total_interactions,likes,comments,saves,shares,replies,reposts'
-
-export interface IGDayTotals {
-  views: number | null
-  accounts_engaged: number | null
-  total_interactions: number | null
-  likes: number | null
-  comments: number | null
-  saves: number | null
-  shares: number | null
-  replies: number | null
-  reposts: number | null
-  profile_views: number | null
-  website_clicks: number | null
+/**
+ * One metric list, three uses: the request string, the result type and the extraction all
+ * derive from these arrays. Each fetcher used to spell its metric names three times, and
+ * nothing checked the copies against each other — adding a metric meant editing three spots.
+ */
+function extractMetricValues<Metric extends string>(
+  entries: IGInsightEntry[],
+  metrics: readonly Metric[],
+  valueOf: (data: IGInsightEntry[], metric: string) => number | null
+): Record<Metric, number | null> {
+  // WHY as: Object.fromEntries widens keys to string; `metrics` is the single source of them.
+  return Object.fromEntries(metrics.map((metric) => [metric, valueOf(entries, metric)])) as Record<
+    Metric,
+    number | null
+  >
 }
+
+/** The nine metrics the probe verified in ONE total_value call. */
+const DAY_TOTAL_BATCH_METRICS = [
+  'views',
+  'accounts_engaged',
+  'total_interactions',
+  'likes',
+  'comments',
+  'saves',
+  'shares',
+  'replies',
+  'reposts',
+] as const
+
+/** Served from their own call, as probed — the nine-metric batch does not carry them. */
+const DAY_TOTAL_PROFILE_METRICS = ['profile_views', 'website_clicks'] as const
+
+export type IGDayTotals = Record<
+  (typeof DAY_TOTAL_BATCH_METRICS)[number] | (typeof DAY_TOTAL_PROFILE_METRICS)[number],
+  number | null
+>
 
 /** Account totals over the range — one call for the nine-metric batch plus one for profile_views/website_clicks. */
 export async function fetchDayTotals(
@@ -121,26 +142,17 @@ export async function fetchDayTotals(
   const shared = { period: 'day', metric_type: 'total_value', ...rangeParams(sinceTs, untilTs) }
   const [batch, profile] = await Promise.all([
     graphGet(igInsightsEnvelopeSchema, insightsUrl(accountId), accessToken, {
-      metric: DAY_TOTAL_METRICS,
+      metric: DAY_TOTAL_BATCH_METRICS.join(','),
       ...shared,
     }),
     graphGet(igInsightsEnvelopeSchema, insightsUrl(accountId), accessToken, {
-      metric: 'profile_views,website_clicks',
+      metric: DAY_TOTAL_PROFILE_METRICS.join(','),
       ...shared,
     }),
   ])
   return {
-    views: totalValueOf(batch.data, 'views'),
-    accounts_engaged: totalValueOf(batch.data, 'accounts_engaged'),
-    total_interactions: totalValueOf(batch.data, 'total_interactions'),
-    likes: totalValueOf(batch.data, 'likes'),
-    comments: totalValueOf(batch.data, 'comments'),
-    saves: totalValueOf(batch.data, 'saves'),
-    shares: totalValueOf(batch.data, 'shares'),
-    replies: totalValueOf(batch.data, 'replies'),
-    reposts: totalValueOf(batch.data, 'reposts'),
-    profile_views: totalValueOf(profile.data, 'profile_views'),
-    website_clicks: totalValueOf(profile.data, 'website_clicks'),
+    ...extractMetricValues(batch.data, DAY_TOTAL_BATCH_METRICS, totalValueOf),
+    ...extractMetricValues(profile.data, DAY_TOTAL_PROFILE_METRICS, totalValueOf),
   }
 }
 
@@ -325,21 +337,26 @@ export async function fetchMediaSince(
   return collected
 }
 
-const MEDIA_INSIGHT_METRICS_ALL =
-  'reach,views,saved,shares,total_interactions,likes,comments,follows,profile_visits'
-const MEDIA_INSIGHT_METRICS_UNIVERSAL = 'reach,views,saved,shares,total_interactions,likes,comments'
+/** The seven metrics every media product type serves. */
+const MEDIA_INSIGHT_METRICS_UNIVERSAL = [
+  'reach',
+  'views',
+  'saved',
+  'shares',
+  'total_interactions',
+  'likes',
+  'comments',
+] as const
 
-export interface IGMediaInsights {
-  reach: number | null
-  views: number | null
-  saved: number | null
-  shares: number | null
-  total_interactions: number | null
-  likes: number | null
-  comments: number | null
-  follows: number | null
-  profile_visits: number | null
-}
+/** FEED media also serve these two; REELS reject them outright (code 100). */
+const MEDIA_INSIGHT_METRICS_FEED_ONLY = ['follows', 'profile_visits'] as const
+
+const MEDIA_INSIGHT_METRICS_ALL = [
+  ...MEDIA_INSIGHT_METRICS_UNIVERSAL,
+  ...MEDIA_INSIGHT_METRICS_FEED_ONLY,
+] as const
+
+export type IGMediaInsights = Record<(typeof MEDIA_INSIGHT_METRICS_ALL)[number], number | null>
 
 /** The API's "this metric does not exist for this media product type" rejection — and only that. */
 function isUnsupportedMetricRejection(err: unknown): boolean {
@@ -354,14 +371,14 @@ async function fetchMediaInsightsEnvelope(mediaId: string, accessToken: string) 
   const url = `${IG_GRAPH_BASE}/${mediaId}/insights`
   try {
     return await graphGet(igInsightsEnvelopeSchema, url, accessToken, {
-      metric: MEDIA_INSIGHT_METRICS_ALL,
+      metric: MEDIA_INSIGHT_METRICS_ALL.join(','),
     })
   } catch (err) {
     // Not a swallow: only the deterministic per-media-type rejection falls
     // through to the universal set; every other failure still propagates.
     if (!isUnsupportedMetricRejection(err)) throw err
     return graphGet(igInsightsEnvelopeSchema, url, accessToken, {
-      metric: MEDIA_INSIGHT_METRICS_UNIVERSAL,
+      metric: MEDIA_INSIGHT_METRICS_UNIVERSAL.join(','),
     })
   }
 }
@@ -381,36 +398,20 @@ export async function fetchMediaInsights(
   accessToken: string
 ): Promise<IGMediaInsights> {
   const body = await fetchMediaInsightsEnvelope(mediaId, accessToken)
-  return {
-    reach: lifetimeValueOf(body.data, 'reach'),
-    views: lifetimeValueOf(body.data, 'views'),
-    saved: lifetimeValueOf(body.data, 'saved'),
-    shares: lifetimeValueOf(body.data, 'shares'),
-    total_interactions: lifetimeValueOf(body.data, 'total_interactions'),
-    likes: lifetimeValueOf(body.data, 'likes'),
-    comments: lifetimeValueOf(body.data, 'comments'),
-    follows: lifetimeValueOf(body.data, 'follows'),
-    profile_visits: lifetimeValueOf(body.data, 'profile_visits'),
-  }
+  // On the universal refetch the two FEED-only metrics are simply absent and extract to null,
+  // which is the truth for those media.
+  return extractMetricValues(body.data, MEDIA_INSIGHT_METRICS_ALL, lifetimeValueOf)
 }
 
 /** Bounded so a 50-post sync does not fire 50 concurrent Graph calls. */
 const MEDIA_INSIGHTS_CONCURRENCY = 3
 
 /** Insights for many media ids at bounded concurrency, order-preserving. */
-export async function fetchManyMediaInsights(
+export function fetchManyMediaInsights(
   mediaIds: string[],
   accessToken: string
 ): Promise<IGMediaInsights[]> {
-  const semaphore = createSemaphore(MEDIA_INSIGHTS_CONCURRENCY)
-  return Promise.all(
-    mediaIds.map(async (mediaId) => {
-      const release = await semaphore.acquire()
-      try {
-        return await fetchMediaInsights(mediaId, accessToken)
-      } finally {
-        release()
-      }
-    })
+  return mapWithConcurrency(mediaIds, MEDIA_INSIGHTS_CONCURRENCY, (mediaId) =>
+    fetchMediaInsights(mediaId, accessToken)
   )
 }

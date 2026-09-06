@@ -44,6 +44,9 @@ export default async function ReviewPage() {
       .select(
         'id, brand_profiles(is_health_niche, best_time_json, best_time_updated_at), social_connections(platform)'
       )
+      // Same embed-shaping filter as the calendar: a token-less connection is not a
+      // destination, and the rule must match `resolveDestinations` without selecting the token.
+      .not('social_connections.access_token', 'is', null)
       .eq('agency_id', agencyId),
     clientIds.length > 0
       ? supabase

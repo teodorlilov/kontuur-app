@@ -440,11 +440,21 @@ export function useCalendar(initialPosts: CalendarPost[], timeZone: string) {
          * rows arrive. Ids are local: nothing reads them before the next load, and the state
          * every surface derives comes from `status`.
          */
-        const existing = p.publications.map((publication) => ({
-          ...publication,
-          status: 'published' as const,
-          publishedAt: publication.publishedAt ?? now,
-        }))
+        /**
+         * Only the destinations this press reported, never the whole array: a sibling that
+         * failed (or was skipped as already in flight) keeps its server state, so a post
+         * live on one network and failed on the other still renders 'partly' instead of
+         * hiding the failure until the next load.
+         */
+        const existing = p.publications.map((publication) =>
+          platforms.includes(publication.platform)
+            ? {
+                ...publication,
+                status: 'published' as const,
+                publishedAt: publication.publishedAt ?? now,
+              }
+            : publication
+        )
         const invented = platforms
           .filter((platform) => !p.publications.some((pub) => pub.platform === platform))
           .map((platform) => ({

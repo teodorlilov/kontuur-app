@@ -52,9 +52,16 @@ describe('oauth-state', () => {
     expect(decodeOAuthState(`${staleBody}.${sig}`)).toBeNull()
   })
 
-  it('rejects a non-Instagram platform even when signed', () => {
-    // Also covers a replayed state from any retired platform flow: anything
-    // that is not exactly 'instagram' must fail, not fall through to the IG flow.
+  it('round-trips the Facebook platform', () => {
+    // Both networks issue states through the same signer; the callback dispatches on this
+    // field, so it must survive the round trip exactly.
+    const state = encodeOAuthState({ clientId: 'client-123', platform: 'facebook' })
+    expect(decodeOAuthState(state)).toEqual({ clientId: 'client-123', platform: 'facebook' })
+  })
+
+  it('rejects an unknown platform even when signed', () => {
+    // A replayed state from a retired or never-supported flow must fail outright, not fall
+    // through to either network's exchange.
     const body = Buffer.from(
       JSON.stringify({ clientId: 'client-123', platform: 'tiktok', exp: Date.now() + 60_000 })
     ).toString('base64url')

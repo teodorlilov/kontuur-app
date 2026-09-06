@@ -9,7 +9,8 @@ import {
   type PublishablePost,
 } from '@/features/publishing/lib/publish-post'
 import { assignDestinations } from '@/features/publishing/lib/destinations'
-import { fetchConnection } from '@/features/publishing/lib/connection'
+import { isClaimLive } from '@/features/publishing/lib/scheduler'
+import { fetchConnection } from '@/lib/queries/db'
 import { resolveNetwork } from '@/lib/meta/networks'
 import { statusForSlot } from '@/lib/posts/status-for-slot'
 import type { PostType } from '@/types/api'
@@ -65,6 +66,19 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
       return NextResponse.json({ error: 'Already published' }, { status: 400 })
 
     /**
+     * Rows inside a live claim window belong to another run — the cron mid-publish, or a
+     * second press from another tab. Feeding one back into publishOnePublication would
+     * re-claim it (the fresh-claim CAS compares against the state just read, so it admits
+     * a claim that already exists) and the network would get the same post twice. The
+     * cron's due query enforces this in SQL; `isClaimLive` is the same policy for the
+     * path that reads first.
+     */
+    const claimCheckAt = new Date()
+    const actionable = pending.filter((publication) => !isClaimLive(publication, claimCheckAt))
+    if (actionable.length === 0)
+      return NextResponse.json({ error: 'Post is already being published' }, { status: 409 })
+
+    /**
      * Every destination at once.
      *
      * Each still resolves its OWN credentials — a client publishing to two networks must never
@@ -80,7 +94,7 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
      * remaining destinations still answer.
      */
     const settled = await Promise.allSettled(
-      pending.map(async (publication) => {
+      actionable.map(async (publication) => {
         const adapter = resolveNetwork(publication.platform)
         if (!adapter) return null
         const connection = await fetchConnection(admin, post.client_id, adapter.platform)
@@ -135,10 +149,14 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
       if (slotError) console.error(`[publish] slot stamp failed for ${postId}:`, slotError.message)
     }
 
-    // The networks this press reached. A post published from the unscheduled tray has no
-    // publications in the browser's copy — they were created by this request — so the card has
-    // nothing to mark as published without being told.
-    const platforms = outcomes.map((o) => o.publication.platform)
+    // The networks this press reached — published or still in flight, never a failure: the
+    // card marks these published in its local copy, and a failed sibling listed here would
+    // render as live. A post published from the unscheduled tray has no publications in the
+    // browser's copy — they were created by this request — so the card has nothing to mark
+    // as published without being told.
+    const platforms = outcomes
+      .filter((o) => o.outcome.kind !== 'failed')
+      .map((o) => o.publication.platform)
 
     /**
      * EVERY destination still in flight is finished after the response, not just the one the

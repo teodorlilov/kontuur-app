@@ -1,12 +1,12 @@
 import 'server-only'
 
-import { createSemaphore } from '@/lib/concurrency'
+import { mapWithConcurrency } from '@/lib/concurrency'
 import { PLATFORM_NAMES } from '@/lib/validation'
 import { altTextFromCaption, validateInstagramCaption } from './instagram-caption'
 import { IG_GRAPH_BASE } from '../constants'
 import { graphGet, graphPost } from '../graph-client'
 import {
-  igContainerResponseSchema,
+  graphCreatedIdSchema,
   igContainerStatusSchema,
   igPublishingLimitSchema,
   igPermalinkSchema,
@@ -99,16 +99,8 @@ export const instagramAdapter: NetworkAdapter = {
       return { kind: 'pending', publishRef }
     }
 
-    const semaphore = createSemaphore(CHILD_CONTAINER_CONCURRENCY)
-    const childIds = await Promise.all(
-      imageUrls.map(async (imageUrl) => {
-        const release = await semaphore.acquire()
-        try {
-          return await createImageContainer(account, { imageUrl, altText, isCarouselItem: true })
-        } finally {
-          release()
-        }
-      })
+    const childIds = await mapWithConcurrency(imageUrls, CHILD_CONTAINER_CONCURRENCY, (imageUrl) =>
+      createImageContainer(account, { imageUrl, altText, isCarouselItem: true })
     )
     return {
       kind: 'pending',
@@ -192,7 +184,7 @@ async function createImageContainer(
   if (params.altText) body.alt_text = params.altText
   if (params.isCarouselItem) body.is_carousel_item = true
   const data = await graphPost(
-    igContainerResponseSchema,
+    graphCreatedIdSchema,
     `${IG_GRAPH_BASE}/${account.accountId}/media`,
     account.accessToken,
     body
@@ -207,7 +199,7 @@ async function createCarouselContainer(
   caption: string
 ): Promise<string> {
   const data = await graphPost(
-    igContainerResponseSchema,
+    graphCreatedIdSchema,
     `${IG_GRAPH_BASE}/${account.accountId}/media`,
     account.accessToken,
     { media_type: 'CAROUSEL', children: childIds.join(','), caption }
@@ -218,7 +210,7 @@ async function createCarouselContainer(
 /** Publish a FINISHED container; returns the live media id. */
 async function publishContainer(account: NetworkAccount, creationId: string): Promise<string> {
   const data = await graphPost(
-    igContainerResponseSchema,
+    graphCreatedIdSchema,
     `${IG_GRAPH_BASE}/${account.accountId}/media_publish`,
     account.accessToken,
     { creation_id: creationId }

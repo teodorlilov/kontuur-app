@@ -4,7 +4,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import type { PostImageRow, PostRow } from '@/types'
 import { GraphApiError } from '@/lib/meta/graph-errors'
 import { resolveNetwork } from '@/lib/meta/networks'
-import { fetchConnection } from '@/features/publishing/lib/connection'
+import { fetchConnection, type NetworkConnection } from '@/lib/queries/db'
 import { PUBLICATION_COLUMNS } from '@/lib/queries/select-columns'
 import type { NetworkAdapter, NetworkPublishResult, PostPayload } from '@/lib/meta/networks/types'
 import { isTokenExpired } from '@/lib/meta/token-expiry'
@@ -16,7 +16,6 @@ import {
   setPublishRef,
   type Publication,
 } from './publication-store'
-import type { InstagramConnection } from './types'
 
 /**
  * The one publish implementation — the every-5-minute cron and the manual "Publish now"
@@ -139,7 +138,7 @@ function toPayload(post: PublishablePost): PostPayload {
  * business. A network only judges the content.
  */
 function connectionBlocker(
-  connection: InstagramConnection | null,
+  connection: NetworkConnection | null,
   label: string
 ): { message: string; final: boolean } | null {
   if (!connection) return { message: `No ${label} account connected`, final: false }
@@ -206,7 +205,7 @@ export async function publishOnePublication(
   admin: SupabaseClient,
   publication: Publication,
   post: PublishablePost,
-  connection: InstagramConnection | null,
+  connection: NetworkConnection | null,
   options: { skipPoll?: boolean } = {}
 ): Promise<PublishOutcome> {
   // Runs before the claim — a destination we cannot publish to must never consume an

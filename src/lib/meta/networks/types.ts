@@ -42,8 +42,10 @@ export interface NetworkAdapter {
   accepts(postType: PostType): boolean
 
   /**
-   * Why this content cannot go to this network, checked before anything is
-   * claimed so a doomed post never burns an attempt.
+   * Why this content cannot go to this network. The orchestration runs it after
+   * claiming, so a blocked destination spends an attempt per try — deliberate:
+   * a non-final blocker (images not attached yet) gets its retries and then
+   * terminates at the cap, instead of retrying every tick forever.
    *
    * `final` means no retry can help — a PNG where the network demands JPEG stays
    * a PNG. Connection problems are NOT checked here: a missing or expired token
@@ -174,14 +176,6 @@ export interface PlatformComment {
   authorName: string | null
   text: string | null
   hidden: boolean
-  /**
-   * Whether this network will let us hide THIS comment.
-   *
-   * Per comment, not per network: Facebook refuses to hide a Page's own comment and says so
-   * before the attempt. Offering a control the network has already refused is worse than not
-   * offering it.
-   */
-  canHide: boolean
   likeCount: number | null
   commentedAt: string | null
 }
@@ -202,16 +196,6 @@ export interface PostComments {
 }
 
 /**
- * Reading and moderating one network's comments.
- *
- * Deliberately separate from `NetworkAdapter`: publishing and moderating are different
- * capabilities, and a network could plausibly have one without the other. They share
- * `NetworkAccount` because they need the same credentials, and nothing else.
- *
- * The same two rules hold as for publishing: an adapter never touches the database, and never
- * decides policy. It speaks its network's dialect and returns `PlatformComment`.
- */
-/**
  * A post worth checking for new comments, with what this network already told us about it.
  *
  * `commentCount` is the network's own tally, used to skip posts nothing has been said on since
@@ -222,12 +206,13 @@ export interface CommentablePost {
   commentCount: number
   /**
    * What the post IS, for the queue to render above its comments — and null when this network
-   * has nowhere to keep it.
+   * did not say.
    *
-   * Instagram's identity lands in `platform_post_metrics`, which is that network's own table: it is
-   * keyed on `ig_media_id`/`ig_account_id` and swept by Instagram-scoped deletes, so a Facebook
-   * row in it would be wrong in both directions. Until a neutral home exists, Facebook returns
-   * null and the queue falls back to Kontuur's own record of a post it published.
+   * The sync files what an adapter returns into `platform_post_metrics` (network-neutral since
+   * 20260845, stamped with the adapter's platform). Facebook returns it from the same
+   * `published_posts` call that carries the comment tally; Instagram returns null because its
+   * identity already arrives with the nightly metrics sync, and writing it twice would put one
+   * fact in two hands. Null simply means the queue falls back to what it already holds.
    */
   identity: {
     caption: string | null
@@ -239,6 +224,16 @@ export interface CommentablePost {
   } | null
 }
 
+/**
+ * Reading and moderating one network's comments.
+ *
+ * Deliberately separate from `NetworkAdapter`: publishing and moderating are different
+ * capabilities, and a network could plausibly have one without the other. They share
+ * `NetworkAccount` because they need the same credentials, and nothing else.
+ *
+ * The same two rules hold as for publishing: an adapter never touches the database, and never
+ * decides policy. It speaks its network's dialect and returns `PlatformComment`.
+ */
 export interface CommentsAdapter {
   readonly platform: string
   /** The network's name as a person reads it, for copy that must say which one withheld a comment. */

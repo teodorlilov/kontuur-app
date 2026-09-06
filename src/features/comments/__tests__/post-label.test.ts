@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { postTitle, postOrigin } from '../lib/post-label'
+import { formatHandle, postTitle, postOrigin } from '../lib/post-label'
 
 /**
  * What the queue calls a post it knows almost nothing about.
@@ -35,5 +35,19 @@ describe('postOrigin', () => {
   it('explains a missing post, and stays quiet when there is nothing to explain', () => {
     expect(postOrigin({ postId: null })).toBe('no matching post in Kontuur')
     expect(postOrigin({ postId: 'post-1' })).toBeNull()
+  })
+})
+
+describe('formatHandle', () => {
+  it('writes a name the way its network does', () => {
+    // The queue rendered "@John Smith" over Page comments: the @ is Instagram's convention
+    // for a handle, and Facebook's display names are not handles.
+    expect(formatHandle('instagram', 'paired.socks')).toBe('@paired.socks')
+    expect(formatHandle('facebook', 'John Smith')).toBe('John Smith')
+  })
+
+  it('returns null for a missing name so call sites keep their own fallbacks', () => {
+    expect(formatHandle('instagram', null)).toBeNull()
+    expect(formatHandle('facebook', null)).toBeNull()
   })
 })

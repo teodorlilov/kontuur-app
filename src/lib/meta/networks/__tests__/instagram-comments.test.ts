@@ -117,8 +117,6 @@ describe('fetchComments', () => {
         authorName: null,
         text: null,
         hidden: false,
-        // Instagram offers no per-comment flag, so hiding is always allowed on its own media.
-        canHide: true,
         likeCount: null,
         commentedAt: null,
       },

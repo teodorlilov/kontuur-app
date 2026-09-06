@@ -69,6 +69,11 @@ export default async function CalendarPage({ searchParams }: CalendarPageProps) 
         .select(
           'id, name, contact_email, brand_profiles(best_time_json, best_time_updated_at), social_connections(platform, account_id)'
         )
+        // Shapes the EMBED, not the client list: a connection whose token the refresher
+        // retired is one the publish path refuses (`resolveDestinations` filters the same
+        // column), so it must not count as a destination here either — and filtering beats
+        // selecting the token, which display reads must never carry.
+        .not('social_connections.access_token', 'is', null)
         .eq('agency_id', agencyId),
       clientIds.length > 0
         ? supabase

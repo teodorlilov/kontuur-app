@@ -3,6 +3,8 @@ import { resolveAuth } from '@/lib/auth/resolve-auth'
 import { verifyClientOwnership } from '@/lib/auth/helpers'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import { IG_GRAPH_BASE } from '@/lib/meta/constants'
+import { graphGet } from '@/lib/meta/graph-client'
+import { igProfilePictureSchema } from '@/lib/meta/schemas'
 
 /**
  * Resolves the live profile picture for a connected social account and
@@ -62,10 +64,10 @@ async function resolvePictureUrl(
   // share the table and fall through to null.
   if (platform !== 'instagram') return null
 
-  const res = await fetch(
-    `${IG_GRAPH_BASE}/me?fields=profile_picture_url&access_token=${accessToken}`
-  )
-  if (!res.ok) return null
-  const body = (await res.json()) as { profile_picture_url?: string }
+  // Through the shared client: this was the last ordinary Graph read carrying its token in a
+  // URL query string (the OAuth token-exchange endpoints are the protocol-shaped exceptions).
+  const body = await graphGet(igProfilePictureSchema, `${IG_GRAPH_BASE}/me`, accessToken, {
+    fields: 'profile_picture_url',
+  })
   return body.profile_picture_url ?? null
 }

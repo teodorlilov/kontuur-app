@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { Modal } from '@/components/ui/modal'
 import { Button } from '@/components/ui/button'
 import { toast } from '@/components/ui/toast'
@@ -35,7 +35,22 @@ interface FacebookPageChooserProps {
  */
 export function FacebookPageChooser({ clientId, pages, onClose }: FacebookPageChooserProps) {
   const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
   const [connecting, setConnecting] = useState<string | null>(null)
+
+  /**
+   * Closing spends the URL flag, however the modal closes. `?choose_page=1` is what makes the
+   * server load the Page list, so leaving it in place meant every reload re-listed Graph and
+   * reopened a chooser the person had already dismissed or finished with.
+   */
+  function close() {
+    const params = new URLSearchParams(searchParams)
+    params.delete('choose_page')
+    const query = params.toString()
+    router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false })
+    onClose()
+  }
 
   async function handleConnect(pageId: string) {
     setConnecting(pageId)
@@ -43,7 +58,7 @@ export function FacebookPageChooser({ clientId, pages, onClose }: FacebookPageCh
       const result = await connectFacebookPage(clientId, pageId)
       if (!result.ok) throw new Error(result.error)
       toast.success('Facebook Page connected')
-      onClose()
+      close()
       router.refresh()
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Could not connect that Page')
@@ -53,7 +68,7 @@ export function FacebookPageChooser({ clientId, pages, onClose }: FacebookPageCh
   }
 
   return (
-    <Modal open onClose={onClose} title="Choose a Facebook Page">
+    <Modal open onClose={close} title="Choose a Facebook Page">
       {!pages.ok ? (
         <p className="text-body text-text2">{pages.error}. Start the connection again.</p>
       ) : pages.data.length === 0 ? (

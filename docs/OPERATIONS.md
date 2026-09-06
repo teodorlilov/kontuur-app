@@ -89,21 +89,6 @@ true.
 | Write a day of account metrics | `upsertAccountMetricDays` | [features/analytics/lib/account-metrics-store.ts](../src/features/analytics/lib/account-metrics-store.ts) |
 | Write a media's row | `upsertPostMetricRows` | [features/analytics/lib/post-metrics-store.ts](../src/features/analytics/lib/post-metrics-store.ts) |
 
-### Publishing
-
-A post is content; a **publication** is that content on one network. Everything about an
-attempt — its lock, its retry budget, its reference, its outcome — belongs to the
-publication, which is why none of these operations touch `posts`.
-
-| Operation | Function | File |
-| --- | --- | --- |
-| Record where a post is going | `createPublications` | [features/publishing/lib/publication-store.ts](../src/features/publishing/lib/publication-store.ts) |
-| Take a destination for a publish attempt | `claimPublication` | [features/publishing/lib/publication-store.ts](../src/features/publishing/lib/publication-store.ts) |
-| Persist a resumable reference mid-publish | `setPublishRef` | [features/publishing/lib/publication-store.ts](../src/features/publishing/lib/publication-store.ts) |
-| Record a destination as published | `markPublicationPublished` | [features/publishing/lib/publication-store.ts](../src/features/publishing/lib/publication-store.ts) |
-| Record a destination as failed | `markPublicationFailed` | [features/publishing/lib/publication-store.ts](../src/features/publishing/lib/publication-store.ts) |
-| Put a failed destination back in the queue | `rearmPublication` | [features/publishing/lib/publication-store.ts](../src/features/publishing/lib/publication-store.ts) |
-
 ### Comments
 
 `purgeAccountAnalytics` above erases `platform_comments` too — it is the one table in that purge holding
@@ -112,7 +97,7 @@ Meta's data-deletion callback that erases third parties.
 
 | Operation | Function | File |
 | --- | --- | --- |
-| Sync a client's Instagram comments | `syncClientComments` | [features/comments/lib/sync-comments.ts](../src/features/comments/lib/sync-comments.ts) |
+| Sync a client's comments on one network | `syncClientComments` | [features/comments/lib/sync-comments.ts](../src/features/comments/lib/sync-comments.ts) |
 | Reply to a comment as the client | `replyToComment` | [features/comments/actions/comment-actions.ts](../src/features/comments/actions/comment-actions.ts) |
 | Hide or unhide a comment | `setCommentHidden` | [features/comments/actions/comment-actions.ts](../src/features/comments/actions/comment-actions.ts) |
 | Delete a comment | `deleteComment` | [features/comments/actions/comment-actions.ts](../src/features/comments/actions/comment-actions.ts) |

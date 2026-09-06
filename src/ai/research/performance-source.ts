@@ -41,7 +41,9 @@ export async function fetchPerformanceItems(
       .from('platform_post_metrics')
       .select(PLATFORM_POST_METRIC_COLUMNS)
       .eq('client_id', clientId)
-      .eq('ig_account_id', accountId)
+      // The account id is the network partition — Facebook rows carry the Page id, so this
+      // stays an Instagram-only read without a platform filter (20260845).
+      .eq('platform_account_id', accountId)
       .gte('posted_at', since)
       .not('caption', 'is', null)
       .order('total_interactions', { ascending: false, nullsFirst: false })

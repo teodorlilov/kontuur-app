@@ -1,9 +1,16 @@
 import 'server-only'
 
+import { PLATFORM_NAMES } from '@/lib/validation'
 import { graphDelete, graphGet, graphPost } from '../graph-client'
 import { fetchMediaSince } from '../insights'
 import { IG_GRAPH_BASE } from '../constants'
-import { graphAckSchema, igCommentCreatedSchema, igCommentsResponseSchema } from '../schemas'
+import {
+  graphAckSchema,
+  graphCreatedIdSchema,
+  igCommentCoreSchema,
+  igCommentsResponseSchema,
+  type IGComment,
+} from '../schemas'
 import type { CommentablePost, CommentsAdapter, PlatformComment, PostComments } from './types'
 
 /**
@@ -24,16 +31,20 @@ import type { CommentablePost, CommentsAdapter, PlatformComment, PostComments } 
  * "No comments yet" is a third state and is neither.
  */
 
-/** `replies{...}` is a nested edge, not a scalar: Instagram returns a comment's replies inline. */
-const COMMENT_FIELDS =
-  'id,text,username,timestamp,like_count,hidden,replies{id,text,username,timestamp,like_count,hidden}'
+/**
+ * `replies{...}` is a nested edge, not a scalar: Instagram returns a comment's replies inline.
+ * Derived from the schema's own keys so the request and the parse cannot drift apart — this
+ * string used to spell the six field names a third time.
+ */
+const COMMENT_FIELD_KEYS = Object.keys(igCommentCoreSchema.shape).join(',')
+const COMMENT_FIELDS = `${COMMENT_FIELD_KEYS},replies{${COMMENT_FIELD_KEYS}}`
 
 /** Instagram's page size for this edge. Requesting more is ignored. */
 const COMMENTS_PAGE_LIMIT = 50
 
 export const instagramComments: CommentsAdapter = {
   platform: 'instagram',
-  label: 'Instagram',
+  label: PLATFORM_NAMES.instagram,
 
   /**
    * The account's media, which already carries `comments_count` and every identity field the
@@ -91,7 +102,7 @@ export const instagramComments: CommentsAdapter = {
    */
   async reply({ account, commentId, message }): Promise<string> {
     const data = await graphPost(
-      igCommentCreatedSchema,
+      graphCreatedIdSchema,
       `${IG_GRAPH_BASE}/${commentId}/replies`,
       account.accessToken,
       { message }
@@ -114,31 +125,14 @@ export const instagramComments: CommentsAdapter = {
   },
 }
 
-/**
- * One Instagram comment in the queue's vocabulary.
- *
- * `canHide` is unconditionally true: Instagram allows hiding any comment on the connected
- * account's own media and offers no per-comment flag to say otherwise. Facebook does, which is
- * why the field exists at all.
- */
-function toPlatformComment(
-  comment: {
-    id: string
-    text?: string
-    username?: string
-    timestamp?: string
-    like_count?: number
-    hidden?: boolean
-  },
-  parentId: string | null
-): PlatformComment {
+/** One Instagram comment in the queue's vocabulary. Takes the schema's own type, never a restatement. */
+function toPlatformComment(comment: IGComment, parentId: string | null): PlatformComment {
   return {
     id: comment.id,
     parentId,
     authorName: comment.username ?? null,
     text: comment.text ?? null,
     hidden: comment.hidden ?? false,
-    canHide: true,
     likeCount: comment.like_count ?? null,
     commentedAt: comment.timestamp ?? null,
   }

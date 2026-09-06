@@ -34,11 +34,13 @@ function media(
 beforeEach(() => fetchMock.mockReset())
 
 describe('resolveNetwork', () => {
-  it('resolves Instagram from either vocabulary', () => {
-    // posts store display case, connections store lowercase; the registry is the
-    // one place that has to accept both.
+  it('speaks only the connection vocabulary', () => {
+    // Lowercase is the only vocabulary left: `posts.platform` and its display case went with
+    // 20260839, and every caller passes a connection or publication row's own value. The
+    // registry used to tolerate 'Instagram' for a caller that no longer exists — a guard for
+    // impossible input reads as if the input were possible.
     expect(resolveNetwork('instagram')?.platform).toBe('instagram')
-    expect(resolveNetwork('Instagram')?.platform).toBe('instagram')
+    expect(resolveNetwork('Instagram')).toBeNull()
   })
 
   it('returns null for a network with no adapter', () => {

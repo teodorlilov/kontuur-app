@@ -1,13 +1,16 @@
 import 'server-only'
 
-import { createSemaphore } from '@/lib/concurrency'
+import { mapWithConcurrency } from '@/lib/concurrency'
+import { PLATFORM_NAMES } from '@/lib/validation'
 import { graphDelete, graphGet, graphPost } from '../graph-client'
 import { FB_GRAPH_BASE } from '../constants'
 import {
+  fbCommentSchema,
   fbCommentsResponseSchema,
-  fbCreatedObjectSchema,
   fbPagePostsSchema,
   graphAckSchema,
+  graphCreatedIdSchema,
+  type FBComment,
 } from '../schemas'
 import type {
   CommentablePost,
@@ -33,7 +36,8 @@ import type {
 /** Matches Instagram's page size, so a queue page holds the same amount from either network. */
 const COMMENTS_PAGE_LIMIT = 50
 
-const COMMENT_FIELDS = 'id,message,from,created_time,like_count,comment_count,can_hide,is_hidden'
+// Derived from the schema's own keys so the request and the parse cannot drift apart.
+const COMMENT_FIELDS = Object.keys(fbCommentSchema.shape).join(',')
 
 /** How far back one sweep looks. Matches the media page the Instagram side pulls. */
 const POST_PAGE_LIMIT = 50
@@ -43,7 +47,7 @@ const REPLY_FETCH_CONCURRENCY = 3
 
 export const facebookComments: CommentsAdapter = {
   platform: 'facebook',
-  label: 'Facebook',
+  label: PLATFORM_NAMES.facebook,
 
   /**
    * The Page's published posts, with the comment tally attached.
@@ -101,18 +105,10 @@ export const facebookComments: CommentsAdapter = {
 
     // Only comments that HAVE replies are followed; `comment_count` is what makes that cheap,
     // and it is why the field is requested at all.
-    const semaphore = createSemaphore(REPLY_FETCH_CONCURRENCY)
-    const replies = await Promise.all(
-      page.data
-        .filter((comment) => (comment.comment_count ?? 0) > 0)
-        .map(async (comment) => {
-          const release = await semaphore.acquire()
-          try {
-            return await fetchReplies(account, comment.id)
-          } finally {
-            release()
-          }
-        })
+    const replies = await mapWithConcurrency(
+      page.data.filter((comment) => (comment.comment_count ?? 0) > 0),
+      REPLY_FETCH_CONCURRENCY,
+      (comment) => fetchReplies(account, comment.id)
     )
 
     return {
@@ -137,7 +133,7 @@ export const facebookComments: CommentsAdapter = {
    */
   async reply({ account, commentId, message }): Promise<string> {
     const data = await graphPost(
-      fbCreatedObjectSchema,
+      graphCreatedIdSchema,
       `${FB_GRAPH_BASE}/${commentId}/comments`,
       account.accessToken,
       { message }
@@ -149,9 +145,10 @@ export const facebookComments: CommentsAdapter = {
    * Hiding is a field write on the comment itself, in the body — unlike Instagram's query
    * parameter.
    *
-   * Refused on a Page's own comment with `(#200) Can not hide or unhide this comment`. The
-   * comment's `can_hide` says so beforehand, which is what `PlatformComment.canHide` carries so
-   * the queue never offers a control the network has already declined.
+   * Refused on a Page's own comment with `(#200) Can not hide or unhide this comment`, which
+   * the action surfaces as its error. Graph's per-comment `can_hide` flag could say so before
+   * the attempt, but nothing stores or reads it — see docs/META-FB-PROBE.md if a control ever
+   * wants to disable itself up front.
    */
   async setHidden({ account, commentId, hidden }): Promise<void> {
     await graphPost(graphAckSchema, `${FB_GRAPH_BASE}/${commentId}`, account.accessToken, {
@@ -184,27 +181,13 @@ async function fetchReplies(
  * `from.name` is a display name, where Instagram's `username` is a handle. Both answer "who
  * said it" and neither is more correct, so both land in the same field.
  */
-function toPlatformComment(
-  comment: {
-    id: string
-    message?: string
-    from?: { name?: string }
-    created_time?: string
-    like_count?: number
-    can_hide?: boolean
-    is_hidden?: boolean
-  },
-  parentId: string | null
-): PlatformComment {
+function toPlatformComment(comment: FBComment, parentId: string | null): PlatformComment {
   return {
     id: comment.id,
     parentId,
     authorName: comment.from?.name ?? null,
     text: comment.message ?? null,
     hidden: comment.is_hidden ?? false,
-    // Absent means Graph did not say; treating that as "allowed" would offer a control that
-    // then fails, so the default is no.
-    canHide: comment.can_hide ?? false,
     likeCount: comment.like_count ?? null,
     commentedAt: comment.created_time ?? null,
   }

@@ -57,8 +57,10 @@ const EXEMPT: Record<string, string> = {
   // `z.infer<typeof updatePostSchema>` in lib/validation/post-update-schema.ts, which
   // this scanner does not see at all — a schema declares no field names in a shape it
   // could read. The reason the exemption gave still holds and is recorded there.
-  'lib/meta/insights.ts:IGDayTotals':
-    'The Graph API\'s day-totals response shape, not a table projection — ig_account_metrics was MODELED ON this API return, so the overlap runs the other way. Its nullability means "Meta served nothing for this range" (the probe\'s silent-empty contract), which the column types cannot express.',
+  // `IGDayTotals` came off this list on 2026-09-06: it is a mapped type over the metric-name
+  // arrays now, so it declares no field list this scanner could mistake for a table mirror.
+  // The reason its exemption gave still holds — it is the Graph API's response shape, which
+  // ig_account_metrics was modeled on — and is recorded beside the type.
   'features/sources/actions/source-actions.ts:UpdateSourceInput':
     'A write contract, all fields optional so a caller can send only what changed. Same reason as UpdatePostInput.',
   'features/generate/hooks/use-draft-visuals.ts:DraftPostInput':

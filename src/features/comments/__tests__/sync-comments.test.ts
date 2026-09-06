@@ -321,7 +321,6 @@ describe('syncClientComments', () => {
           authorName: null,
           text: null,
           hidden: false,
-          canHide: true,
           likeCount: null,
           commentedAt: null,
         },

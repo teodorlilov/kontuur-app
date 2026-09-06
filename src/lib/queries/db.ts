@@ -23,6 +23,8 @@ import {
   POSTING_SCHEDULE_COLUMNS,
   USER_COLUMNS,
   SOCIAL_CONNECTION_COLUMNS,
+  SOCIAL_CONNECTION_AUTH_COLUMNS,
+  type SocialConnectionAuthColumns,
   LANGUAGE_RULES_COLUMNS,
   POST_HISTORY_COLUMNS,
   CLIENT_SOURCE_RESEARCH_COLUMNS,
@@ -176,6 +178,42 @@ export async function fetchConnectionsByClient(
     'fetchConnectionsByClient'
   )
   return (data ?? []) as MetaConnection[]
+}
+
+/**
+ * The credentials for one client's account on one network — the shape every caller that
+ * actually talks to Meta needs. `account_id` is narrowed because the row is useless without
+ * one and every consumer treats its absence as "not connected"; `access_token` stays
+ * nullable because the token refresher retires dead tokens in place, and callers report
+ * that as "needs reconnecting" rather than calling Meta with nothing.
+ */
+export type NetworkConnection = SocialConnectionAuthColumns & { account_id: string }
+
+/**
+ * The credentials for one client's account on one network.
+ *
+ * Written out three times before this — the cron's scheduler, the resume path in
+ * `publish-post.ts`, and the publish-now route — with the same projection, the same two
+ * filters and the same narrowing cast in each; the comment moderation actions then grew a
+ * fourth copy, which is when it moved here from the publishing feature.
+ *
+ * `maybeSingle`: a client with no connection for this network is an expected state that
+ * callers report per destination, not a query failure worth aborting a run.
+ */
+export async function fetchConnection(
+  admin: SupabaseClient,
+  clientId: string,
+  platform: string
+): Promise<NetworkConnection | null> {
+  const { data, error } = await admin
+    .from('social_connections')
+    .select(SOCIAL_CONNECTION_AUTH_COLUMNS)
+    .eq('client_id', clientId)
+    .eq('platform', platform)
+    .maybeSingle()
+  if (error) throw new Error(`connection lookup failed for client ${clientId}: ${error.message}`)
+  // WHY as: Supabase returns the exact fields projected; narrow to the credential shape.
+  return data as NetworkConnection | null
 }
 
 /** One client's Instagram connection, as everything downstream of it needs it. */

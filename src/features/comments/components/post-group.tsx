@@ -4,7 +4,7 @@ import Image from 'next/image'
 import { ImageOff } from 'lucide-react'
 import { cn } from '@/utils/cn'
 import { formatRelativeTime, parseTimestamp } from '@/utils/format'
-import { postOrigin, postTitle } from '../lib/post-label'
+import { formatHandle, postOrigin, postTitle } from '../lib/post-label'
 import { namePlatforms } from '@/lib/validation'
 import type { CommentGroup, QueuedComment } from '@/types/api'
 
@@ -96,7 +96,7 @@ export function PostGroup({
               <span className="min-w-0 flex-1">
                 <span className="flex items-baseline gap-2">
                   <span className="truncate text-caption font-semibold text-ink">
-                    {comment.authorUsername ? `@${comment.authorUsername}` : 'Someone'}
+                    {formatHandle(group.platform, comment.authorUsername) ?? 'Someone'}
                   </span>
                   {comment.commentedAt && (
                     <span className="shrink-0 text-micro text-text3">
@@ -105,7 +105,11 @@ export function PostGroup({
                   )}
                 </span>
                 <span className="mt-0.5 line-clamp-2 block text-body text-text2">
-                  {comment.text ?? <em className="text-text3">Instagram withheld this comment</em>}
+                  {comment.text ?? (
+                    <em className="text-text3">
+                      {namePlatforms([group.platform])} withheld this comment
+                    </em>
+                  )}
                 </span>
               </span>
               {comment.status === 'needs_reply' && (

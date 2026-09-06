@@ -99,7 +99,7 @@ function renderView(
     <CommentsView
       initialGroups={groups}
       clients={clients}
-      accountNames={{ 'client-1': 'haelanclinic' }}
+      accountNames={{ 'client-1': { instagram: 'haelanclinic' } }}
       withheldPostCount={withheldPostCount}
       loadedAt={LOADED_AT}
     />
@@ -356,7 +356,7 @@ describe('CommentsView', () => {
     await user.click(screen.getByRole('button', { name: /Check now/ }))
 
     await waitFor(() =>
-      expect(toastSuccess).toHaveBeenCalledWith('Checked Instagram — nothing new')
+      expect(toastSuccess).toHaveBeenCalledWith('Checked every connected network — nothing new')
     )
   })
 

@@ -39,11 +39,9 @@ export interface PostImage {
  * A campaign or announcement written ahead of the researched mix — and the shape a
  * client idea takes once it reaches generation.
  *
- * `platform` follows the empty-string convention `targetDate` set: the editor ships
- * every field, `''` until chosen. Empty inherits the run's platform; a value
- * overrides it for that one post — so an idea asked for on Instagram can ride along
- * with researched posts written for LinkedIn in a single run. The wire schema
- * (`priorityPostSchema`) narrows the value to `PLATFORMS`.
+ * `targetDate` ships as `''` until chosen — the editor sends every field. A platform
+ * used to ride here too; it left with `posts.platform` when where-a-post-goes became
+ * a scheduling decision (20260839).
  */
 export interface PriorityPost {
   title: string
@@ -177,8 +175,8 @@ export interface CommentGroup {
   /**
    * The network's own link to the post, when we hold one.
    *
-   * Instagram's arrives with the nightly metrics sync. Facebook has none yet — its post
-   * identities have no neutral home, so a Page post shows without a link.
+   * Instagram's arrives with the nightly metrics sync; Facebook's with the comment sync
+   * itself, which stores the Page's own `permalink_url` beside the post's identity.
    */
   permalink: string | null
   comments: QueuedComment[]
@@ -336,14 +334,16 @@ export type SettingsTab = 'team' | 'account' | 'integrations' | 'profile'
 
 // ---- Meta Connections ----
 
+/**
+ * A client's row for one connected network. `platform` stays the column's plain string:
+ * a client-scoped read returns 'instagram' and 'facebook' rows (user-scoped rows — canva,
+ * the Facebook user token — carry no client_id and can never appear here), and the literal
+ * narrowing this type used to carry became a lie the day a second network row existed.
+ */
 export type MetaConnection = Pick<
   SocialConnectionRow,
-  'id' | 'account_id' | 'account_name' | 'token_expires_at' | 'created_at'
-> & {
-  /** Narrowed from the column's plain string: the table also holds 'canva' rows,
-   *  which every consumer of this type filters out. */
-  platform: 'instagram'
-}
+  'id' | 'platform' | 'account_id' | 'account_name' | 'token_expires_at' | 'created_at'
+>
 
 // ---- API error ----
 

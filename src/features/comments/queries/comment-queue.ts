@@ -24,14 +24,16 @@ export const PLATFORM_COMMENTS_TAG = 'platform-comments'
 export interface CommentQueue {
   groups: CommentGroup[]
   /**
-   * Client id → the handle a reply posts as, for the composer's "Reply as @…".
+   * Client id → platform → the handle a reply posts as, for the composer's "Reply as @…".
+   * Nested by network because a client can have both connected, each replying as its own
+   * account — a flat client-keyed record kept whichever network's name arrived last.
    *
    * Returned from here rather than fetched by the page, because this read already
    * has it: the account-scoping filter below needs the same `social_connections`
    * rows, and asking twice for one field would be a second query answering a
    * question already answered.
    */
-  accountNames: Record<string, string | null>
+  accountNames: Record<string, Record<string, string | null>>
   /**
    * Posts Instagram says have comments, from which we hold none.
    *
@@ -144,11 +146,16 @@ const fetchCommentQueue = unstable_cache(
       countWithheldPosts(admin, clientIds, new Set(mediaIds)),
     ])
 
+    const accountNames: CommentQueue['accountNames'] = {}
+    for (const row of connections.values()) {
+      if (!row.client_id) continue
+      const forClient = (accountNames[row.client_id] ??= {})
+      forClient[row.platform] = row.account_name
+    }
+
     return {
       groups: assemble(rows, { nameByClient, connections, posts, images, mediaFacts }),
-      accountNames: Object.fromEntries(
-        [...connections].map(([clientId, row]) => [clientId, row.account_name])
-      ),
+      accountNames,
       withheldPostCount,
     }
   },
@@ -291,7 +298,8 @@ function assemble(
   for (const row of rows) {
     if (row.parent_id) continue
 
-    const accountName = context.connections.get(row.client_id)?.account_name ?? null
+    const accountName =
+      context.connections.get(connectionKey(row.client_id, row.platform))?.account_name ?? null
     const replies: QueuedCommentReply[] = (repliesByParent.get(row.id) ?? []).map((reply) => ({
       id: reply.id,
       authorUsername: reply.author_username,

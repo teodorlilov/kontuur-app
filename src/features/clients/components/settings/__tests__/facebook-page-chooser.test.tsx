@@ -3,15 +3,19 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
 const { mocks } = vi.hoisted(() => ({
-  mocks: { connectFacebookPage: vi.fn(), refresh: vi.fn() },
+  mocks: { connectFacebookPage: vi.fn(), refresh: vi.fn(), replace: vi.fn() },
 }))
 vi.mock('@/features/clients/actions/connection-actions', () => ({
   connectFacebookPage: mocks.connectFacebookPage,
 }))
-vi.mock('next/navigation', () => ({ useRouter: () => ({ refresh: mocks.refresh }) }))
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ refresh: mocks.refresh, replace: mocks.replace }),
+  usePathname: () => '/clients/client-1/edit',
+  useSearchParams: () => new URLSearchParams('tab=accounts&choose_page=1'),
+}))
 
 import { FacebookPageChooser } from '../facebook-page-chooser'
-import type { FacebookPage } from '@/lib/meta/facebook-auth'
+import type { ChoosablePage } from '@/features/clients/actions/connection-actions'
 
 /**
  * The step Instagram does not have.
@@ -22,11 +26,12 @@ import type { FacebookPage } from '@/lib/meta/facebook-auth'
  * refused, and refused visibly.
  */
 
-function page(over: Partial<FacebookPage> = {}): FacebookPage {
+// ChoosablePage, never FacebookPage: the prop is the token-free shape by design, and a
+// fixture carrying accessToken would quietly re-teach this surface to accept one.
+function page(over: Partial<ChoosablePage> = {}): ChoosablePage {
   return {
     id: '659554973897366',
     name: 'Paired Socks',
-    accessToken: 'page-token',
     category: 'Clothing store',
     canPublish: true,
     ...over,
@@ -51,6 +56,11 @@ describe('FacebookPageChooser', () => {
     await userEvent.click(screen.getByRole('button', { name: /^connect$/i }))
 
     expect(mocks.connectFacebookPage).toHaveBeenCalledWith('client-1', '659554973897366')
+    // Closing spends the URL flag: with `choose_page=1` left in place, every reload re-listed
+    // Graph and reopened a chooser the person had already finished with.
+    expect(mocks.replace).toHaveBeenCalledWith('/clients/client-1/edit?tab=accounts', {
+      scroll: false,
+    })
   })
 
   it('offers a choice between several Pages', async () => {

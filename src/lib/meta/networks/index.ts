@@ -23,7 +23,7 @@ const ADAPTERS: Record<string, NetworkAdapter> = {
 
 /** The adapter for a platform, or null when we cannot publish there. */
 export function resolveNetwork(platform: string): NetworkAdapter | null {
-  return ADAPTERS[platform.toLowerCase()] ?? null
+  return ADAPTERS[platform] ?? null
 }
 
 /**
@@ -40,7 +40,7 @@ const COMMENT_ADAPTERS: Record<string, CommentsAdapter> = {
 
 /** The comments adapter for a platform, or null when we cannot read its comments. */
 export function resolveComments(platform: string): CommentsAdapter | null {
-  return COMMENT_ADAPTERS[platform.toLowerCase()] ?? null
+  return COMMENT_ADAPTERS[platform] ?? null
 }
 
 /**

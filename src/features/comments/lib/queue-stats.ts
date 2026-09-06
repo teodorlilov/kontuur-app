@@ -1,5 +1,6 @@
 import type { CommentGroup, CommentStatus } from '@/types/api'
 import { parseTimestamp } from '@/utils/format'
+import { MS_PER_DAY, MS_PER_HOUR } from '@/utils/constants'
 
 /**
  * The numbers the header and the rail state.
@@ -18,9 +19,6 @@ export interface QueueStats {
   /** Median gap between a question and our answer, in ms. Null until something is answered. */
   medianReplyMs: number | null
 }
-
-const MS_PER_HOUR = 3_600_000
-const MS_PER_DAY = 86_400_000
 
 export function computeQueueStats(groups: readonly CommentGroup[], now: Date): QueueStats {
   const counts: Record<CommentStatus, number> = { needs_reply: 0, answered: 0, hidden: 0 }

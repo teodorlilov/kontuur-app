@@ -12,8 +12,10 @@ import { Button } from '@/components/ui/button'
 import { toast } from '@/components/ui/toast'
 import { cn } from '@/utils/cn'
 import { pluralise } from '@/utils/format'
+import { namePlatforms } from '@/lib/validation'
 import type { CommentGroup, CommentStatus, QueuedComment } from '@/types/api'
 import { computeQueueStats, formatDuration } from '../lib/queue-stats'
+import { formatHandle } from '../lib/post-label'
 import {
   checkClientComments as checkClientCommentsAction,
   deleteComment as deleteCommentAction,
@@ -51,8 +53,8 @@ export function CommentsView({
 }: {
   initialGroups: CommentGroup[]
   clients: Array<{ id: string; name: string }>
-  /** Client id → the handle replies post as, so the composer can say which. */
-  accountNames: Record<string, string | null>
+  /** Client id → platform → the handle replies post as, so the composer can say which. */
+  accountNames: Record<string, Record<string, string | null>>
   withheldPostCount: number
   /** The server's render instant, so relative times match between SSR and hydration. */
   loadedAt: string
@@ -137,7 +139,7 @@ export function CommentsView({
   }
 
   /**
-   * `done` is not decoration. Every action here changes something on Instagram that
+   * `done` is not decoration. Every action here changes something on the network that
    * the page cannot show you — the reply is live under someone else's comment, the
    * hidden comment is gone from public view. Without a word back, the only evidence
    * of success is a row quietly moving tabs, which reads as the click having failed.
@@ -157,7 +159,7 @@ export function CommentsView({
   }
 
   function reply(comment: QueuedComment, group: CommentGroup, message: string) {
-    const accountName = accountNames[group.clientId] ?? null
+    const accountName = accountNames[group.clientId]?.[group.platform] ?? null
     patch(comment.id, (current) => ({
       ...current,
       status: 'answered',
@@ -172,13 +174,13 @@ export function CommentsView({
         },
       ],
     }))
-    const handle = accountName ? `@${accountName}` : 'the client'
+    const handle = formatHandle(group.platform, accountName) ?? 'the client'
     run(() => replyToCommentAction({ commentId: comment.id, message }), `Replied as ${handle}`)
     return true
   }
 
   /**
-   * Ask Instagram for this client's comments now.
+   * Ask every network this client has connected for comments now.
    *
    * `router.refresh()` on the way out because the action revalidates the tag but the
    * page already in the browser is holding the old copy — without it the button
@@ -195,7 +197,7 @@ export function CommentsView({
       const found = result.data.postsWithNewComments
       toast.success(
         found === 0
-          ? 'Checked Instagram — nothing new'
+          ? 'Checked every connected network — nothing new'
           : `Found new comments on ${pluralise(found, 'post')}`
       )
       router.refresh()
@@ -238,7 +240,7 @@ export function CommentsView({
             {/**
              * Two different promises, so two different buttons.
              *
-             * With a client picked, this actually asks Instagram — one client only.
+             * With a client picked, this actually asks the networks — one client only.
              * Sweeping the whole roster from a button would put an unbounded burst on
              * the app-wide Meta quota that scheduled publishing shares, which is the
              * cost that made this feature sync-then-read in the first place. The cron
@@ -246,7 +248,7 @@ export function CommentsView({
              * time-budgeted and stops on the first rate limit.
              *
              * With "All clients", it only re-reads the page. It says "Reload" rather
-             * than "Refresh" because the old label implied it was checking Instagram
+             * than "Refresh" because the old label implied it was checking the networks
              * when it was not, and a comment left seconds earlier would not appear.
              */}
             {selectedClientId ? (
@@ -367,7 +369,7 @@ export function CommentsView({
                 <CommentThread
                   group={active.group}
                   comment={active.comment}
-                  accountName={accountNames[active.group.clientId] ?? null}
+                  accountName={accountNames[active.group.clientId]?.[active.group.platform] ?? null}
                   now={now}
                   pending={pending}
                   onReply={async (message) => reply(active.comment, active.group, message)}
@@ -392,7 +394,7 @@ export function CommentsView({
                     setSelection(null)
                     run(
                       () => deleteCommentAction({ commentId: active.comment.id }),
-                      'Deleted from Instagram'
+                      `Deleted from ${namePlatforms([active.group.platform])}`
                     )
                   }}
                 />

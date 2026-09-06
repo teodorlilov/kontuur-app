@@ -36,17 +36,24 @@ export async function purgeAccountAnalytics(
   const [accountRes, postRes, snapshotRes, reportRes, commentRes, unstampedRes] = await Promise.all(
     [
       scoped('ig_account_metrics'),
-      scoped('platform_post_metrics'),
+      // NOT `scoped`: this table renamed `ig_account_id` to `platform_account_id` when it
+      // became network-neutral (20260845). Left on the shared helper it fails on an unknown
+      // column — which is exactly how it shipped broken once, caught by the 2026-09 audit.
+      admin
+        .from('platform_post_metrics')
+        .delete()
+        .eq('client_id', clientId)
+        .eq('platform_account_id', accountId),
       scoped('ig_audience_snapshots'),
       scoped('analytics_reports'),
       // Comments are the one table here holding data about people who are not the
       // agency and not its client — the audience. That makes this line the part of
       // Meta's data-deletion callback that actually erases third parties, and the
       // reason it is a line here rather than a second purge function.
-      // NOT `scoped`: the other four tables still carry `ig_account_id`, and this one renamed
-      // that column to `platform_account_id` when it became network-neutral (20260844). Left on
-      // the shared helper it would have failed on an unknown column — on the one path in this
-      // file whose failure is a legal problem rather than a stale chart.
+      // NOT `scoped`: like platform_post_metrics above, this table renamed `ig_account_id`
+      // to `platform_account_id` when it became network-neutral (20260844). Left on the
+      // shared helper it would fail on an unknown column — on the one path in this file
+      // whose failure is a legal problem rather than a stale chart.
       admin
         .from('platform_comments')
         .delete()

@@ -348,6 +348,18 @@ export type SocialConnectionSyncColumns = Pick<
   (typeof SOCIAL_CONNECTION_SYNC_KEYS)[number]
 >
 
+/**
+ * A sync roster row after the filters every sync applies (`.not('access_token', 'is', null)`,
+ * `.not('account_id', 'is', null)`): the two nullable credential columns arrive proven
+ * non-null. Narrowed once here, beside the projection that makes it true — the metrics sync
+ * and the comments sync each hand-declared this identical intersection. `client_id` is NOT
+ * filtered, so it stays nullable and the null handling is the compiler's business.
+ */
+export type SyncableConnection = SocialConnectionSyncColumns & {
+  account_id: string
+  access_token: string
+}
+
 // ig_account_metrics — the analytics document's daily rows: only what it renders.
 // Columns the sync captures but nothing displays yet (accounts_engaged,
 // profile_links_taps, follows_count, media_count, …) stay unselected on purpose.

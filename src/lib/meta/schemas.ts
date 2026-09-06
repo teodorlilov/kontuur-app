@@ -40,6 +40,11 @@ export const igUserSchema = z.looseObject({
   name: z.string().optional(),
 })
 
+/** GET /me?fields=profile_picture_url — absent when the account has no picture. */
+export const igProfilePictureSchema = z.looseObject({
+  profile_picture_url: z.string().optional(),
+})
+
 /** ig_refresh_token response; `error` arrives instead of a token when the refresh is rejected. */
 export const igRefreshResponseSchema = z.looseObject({
   access_token: z.string().optional(),
@@ -52,8 +57,14 @@ export type IGLongLivedToken = z.infer<typeof igLongLivedTokenSchema>
 
 // ── Content publishing shapes ──────────────────────────────────────────────
 
-/** POST /{ig-user-id}/media and /{ig-user-id}/media_publish both return an id. */
-export const igContainerResponseSchema = z.looseObject({
+/**
+ * A Graph CREATE answers only the new object's id — a container, a media publish, a comment
+ * reply, an unpublished photo, a feed post. One schema, because three copies of `{ id }` had
+ * grown, one per endpoint family. What a given id MEANS stays at the call site: for `/feed`
+ * it is `<page-id>_<post-id>`, which is what `post_publications.external_post_id` stores
+ * (probed; docs/META-FB-PROBE.md).
+ */
+export const graphCreatedIdSchema = z.looseObject({
   id: z.string().min(1),
 })
 
@@ -164,6 +175,24 @@ export type IGMediaListPage = z.infer<typeof igMediaListSchema>
 // ── Comments ──────────────────────────────────────────────────────────────────────────────────
 
 /**
+ * The fields one comment carries — spelled once because a reply carries exactly the same set,
+ * and the nested copy drifted from this one before: it named `id` alone, so every other field
+ * on a reply rode in `looseObject`, invisible to the code reading it.
+ */
+const igCommentFields = {
+  id: z.string(),
+  text: z.string().optional(),
+  username: z.string().optional(),
+  timestamp: z.string().optional(),
+  like_count: z.number().optional(),
+  hidden: z.boolean().optional(),
+}
+
+/** One comment or reply before any nesting — the shape both levels share, and the adapter's type. */
+export const igCommentCoreSchema = z.looseObject(igCommentFields)
+export type IGComment = z.infer<typeof igCommentCoreSchema>
+
+/**
  * One comment on a media item.
  *
  * `username` and `text` are OPTIONAL, and that is the whole story of this feature: with Standard
@@ -172,30 +201,11 @@ export type IGMediaListPage = z.infer<typeof igMediaListSchema>
  * that required these fields would turn a permissions state into a parse crash.
  */
 export const igCommentSchema = z.looseObject({
-  id: z.string(),
-  text: z.string().optional(),
-  username: z.string().optional(),
-  timestamp: z.string().optional(),
-  like_count: z.number().optional(),
-  hidden: z.boolean().optional(),
-  /**
-   * Replies arrive nested when asked for; absent otherwise.
-   *
-   * Typed with the fields the request actually asks for. It named `id` alone, so every other
-   * field on a reply was carried by `looseObject` and invisible to the code reading it.
-   */
+  ...igCommentFields,
+  // Replies arrive nested when asked for; absent otherwise.
   replies: z
     .looseObject({
-      data: z.array(
-        z.looseObject({
-          id: z.string(),
-          text: z.string().optional(),
-          username: z.string().optional(),
-          timestamp: z.string().optional(),
-          like_count: z.number().optional(),
-          hidden: z.boolean().optional(),
-        })
-      ),
+      data: z.array(igCommentCoreSchema),
     })
     .optional(),
 })
@@ -206,9 +216,6 @@ export const igCommentsResponseSchema = z.looseObject({
     .looseObject({ cursors: z.looseObject({ after: z.string().optional() }).optional() })
     .optional(),
 })
-
-/** A created reply returns only its id, like every other Graph write. */
-export const igCommentCreatedSchema = z.looseObject({ id: z.string() })
 
 /**
  * `{ success: true }` — what every Graph write that returns no object answers.
@@ -256,17 +263,6 @@ export const fbPagesResponseSchema = z.looseObject({
 })
 
 /**
- * `POST /{page-id}/photos` and `POST /{page-id}/feed` both answer with just an id.
- *
- * The photo id is the handle a feed post attaches; the feed id is `<page-id>_<post-id>` and is
- * what `post_publications.external_post_id` stores. Neither response carries a status, because
- * neither call is asynchronous — probed live, recorded in `docs/META-FB-PROBE.md`.
- */
-export const fbCreatedObjectSchema = z.looseObject({
-  id: z.string(),
-})
-
-/**
  * `GET /{page-id}/published_posts` with a comment summary — the Page's own post list.
  *
  * `comments.summary(true).limit(0)` returns the tally without the bodies, which is the cheap
@@ -297,9 +293,6 @@ export const fbPagePostsSchema = z.looseObject({
  *
  * `comment_count` is how many REPLIES a comment has. Replies do not appear on the post's own
  * comments edge, so a non-zero count is the signal to read `/{comment-id}/comments`.
- *
- * `can_hide` is per comment, not per Page: Facebook refuses to hide a Page's own comment and
- * says so here before the attempt.
  */
 export const fbCommentSchema = z.looseObject({
   id: z.string(),
@@ -308,9 +301,10 @@ export const fbCommentSchema = z.looseObject({
   created_time: z.string().optional(),
   like_count: z.number().optional(),
   comment_count: z.number().optional(),
-  can_hide: z.boolean().optional(),
   is_hidden: z.boolean().optional(),
 })
+
+export type FBComment = z.infer<typeof fbCommentSchema>
 
 export const fbCommentsResponseSchema = z.looseObject({
   data: z.array(fbCommentSchema),

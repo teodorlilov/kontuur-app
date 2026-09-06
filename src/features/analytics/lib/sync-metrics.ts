@@ -19,7 +19,7 @@ import { notify } from '@/lib/notifications/notify'
 import { fetchPostIdsByMediaId } from '@/lib/queries/posts-by-media-id'
 import {
   SOCIAL_CONNECTION_SYNC_COLUMNS,
-  type SocialConnectionSyncColumns,
+  type SyncableConnection,
 } from '@/lib/queries/select-columns'
 import { MS_PER_DAY, SECONDS_PER_DAY } from '@/utils/constants'
 import { shiftDateKey } from '@/utils/date-helpers'
@@ -48,20 +48,6 @@ const MEDIA_LOOKBACK_DAYS = 30
  * matters — the cure for "our July 28th disagrees with the IG app".
  */
 const CONSOLIDATION_DAYS = 7
-
-/**
- * Derived, with the narrowing the QUERY guarantees stated explicitly.
- *
- * The hand-written version declared all three non-null over nullable columns, applied by a cast so
- * nothing checked. Two of them are true at runtime — the roster query filters `access_token` and
- * `account_id` — and saying so here, beside the filter that makes it true, is the difference
- * between a guarantee and a hope. `client_id` is NOT filtered, so it stays nullable and the null
- * handling becomes the compiler's business.
- */
-type IGConnection = SocialConnectionSyncColumns & {
-  account_id: string
-  access_token: string
-}
 
 export interface MetricsSyncOutcome {
   synced: number
@@ -92,7 +78,7 @@ export async function syncAllClientMetrics(
     .not('account_id', 'is', null)
   if (error) throw new Error(`connection roster query failed: ${error.message}`)
   // WHY as: the shared SupabaseClient param is untyped, so the projection does not infer.
-  const connections = (data ?? []) as IGConnection[]
+  const connections = (data ?? []) as SyncableConnection[]
 
   for (const [index, connection] of connections.entries()) {
     // Between clients, not inside one: a client either syncs whole or not at all.
@@ -237,7 +223,7 @@ async function syncClientMetrics(
   admin: SupabaseClient,
   // The caller has already skipped connections with no client, so the guarantee travels in the
   // type rather than being re-tested here.
-  connection: IGConnection & { client_id: string }
+  connection: SyncableConnection & { client_id: string }
 ): Promise<void> {
   const { client_id: clientId, account_id: accountId, access_token: accessToken } = connection
   // Read the history flag BEFORE writing yesterday's row, or it is never zero.

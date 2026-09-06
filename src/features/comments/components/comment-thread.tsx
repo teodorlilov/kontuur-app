@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { StatusPill } from '@/components/ui/status-pill'
 import { cn } from '@/utils/cn'
 import { formatRelativeTime, parseTimestamp } from '@/utils/format'
-import { postOrigin, postTitle } from '../lib/post-label'
+import { formatHandle, postOrigin, postTitle } from '../lib/post-label'
 import { namePlatforms } from '@/lib/validation'
 import type { CommentGroup, QueuedComment } from '@/types/api'
 
@@ -94,7 +94,7 @@ export function CommentThread({
       <div className="px-3.5 py-3">
         <div className="flex items-baseline gap-2">
           <span className="truncate text-caption font-semibold text-ink">
-            {comment.authorUsername ? `@${comment.authorUsername}` : 'Someone'}
+            {formatHandle(group.platform, comment.authorUsername) ?? 'Someone'}
           </span>
           {comment.commentedAt && (
             <span className="text-micro text-text3">
@@ -110,8 +110,9 @@ export function CommentThread({
         <p className="mt-1 text-body leading-relaxed text-ink">
           {comment.text ?? (
             <em className="text-text3">
-              Instagram withheld the text of this comment. It will appear once the app has Advanced
-              Access.
+              {network} withheld the text of this comment.
+              {group.platform === 'instagram' &&
+                ' It will appear once the app has Advanced Access.'}
             </em>
           )}
         </p>
@@ -127,7 +128,7 @@ export function CommentThread({
                       reply.fromUs ? 'text-forest' : 'text-ink'
                     )}
                   >
-                    {reply.authorUsername ? `@${reply.authorUsername}` : 'Someone'}
+                    {formatHandle(group.platform, reply.authorUsername) ?? 'Someone'}
                   </span>
                   {reply.commentedAt && (
                     <span className="text-micro text-text3">
@@ -148,7 +149,11 @@ export function CommentThread({
             onChange={(event) => setMessage(event.target.value)}
             rows={3}
             maxLength={2200}
-            placeholder={accountName ? `Reply as @${accountName}…` : 'Write a reply…'}
+            placeholder={
+              accountName
+                ? `Reply as ${formatHandle(group.platform, accountName)}…`
+                : 'Write a reply…'
+            }
             className={cn(
               'w-full resize-none rounded-sm border border-line2 bg-paper px-2.5 py-2',
               'text-body text-ink placeholder:text-text3',
