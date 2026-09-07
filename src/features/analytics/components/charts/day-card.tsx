@@ -1,8 +1,8 @@
 import { cn } from '@/utils/cn'
 import { PLATFORM_NAMES } from '@/lib/validation'
-import type { TrendPost } from '../lib/instagram/build-report'
-import { formatCount } from '../lib/compute/format'
-import { firstLine, postTypeMeta } from '../lib/compute/post-display'
+import type { TrendPost } from '../../lib/instagram/build-report'
+import { formatCount } from '../../lib/compute/format'
+import { firstLine, postTypeMeta } from '../../lib/compute/post-display'
 
 /** The card names at most this many posts; the table below holds the rest. */
 const DAY_CARD_POSTS = 3

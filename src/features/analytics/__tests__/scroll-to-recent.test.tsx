@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { render, screen } from '@testing-library/react'
-import { ScrollToRecent } from '../components/scroll-to-recent'
+import { ScrollToRecent } from '../components/charts/scroll-to-recent'
 
 describe('ScrollToRecent', () => {
   it('renders its children and leaves an unscrollable container alone', () => {

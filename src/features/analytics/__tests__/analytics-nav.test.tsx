@@ -1,7 +1,11 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { AnalyticsNavProvider, PendingVeil, useAnalyticsNav } from '../components/analytics-nav'
+import {
+  AnalyticsNavProvider,
+  PendingVeil,
+  useAnalyticsNav,
+} from '../components/chrome/analytics-nav'
 
 const push = vi.fn()
 vi.mock('next/navigation', () => ({

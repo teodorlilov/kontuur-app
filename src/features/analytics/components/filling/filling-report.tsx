@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import { AutoFill } from './auto-fill'
 import { FillingDocument } from './filling-document'
-import type { AnalyticsPeriod } from '../lib/compute/period'
+import type { AnalyticsPeriod } from '../../lib/compute/period'
 
 /**
  * The whole-document state while a window is still pulling from Meta: the report's silhouette

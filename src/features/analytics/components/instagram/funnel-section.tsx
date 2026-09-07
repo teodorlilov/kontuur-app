@@ -2,7 +2,7 @@ import { barWidthPct } from '../../lib/compute/bar-scale'
 import type { FunnelStage } from '../../lib/instagram/build-report'
 import { countDeltaVerdict } from '../../lib/compute/delta-verdict'
 import { formatCount } from '../../lib/compute/format'
-import { DeltaChip } from '../delta-chip'
+import { DeltaChip } from '../charts/delta-chip'
 
 /** Bars stop here so the widest stage never crowds the rate caption beside it. */
 const BAR_SPAN_BEFORE_CAPTION = 78

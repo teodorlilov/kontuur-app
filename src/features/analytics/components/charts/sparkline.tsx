@@ -1,5 +1,5 @@
-import { CHART_COLORS } from '../lib/compute/chart-config'
-import { lastPoint, lineSegments, segmentsToPath } from '../lib/compute/svg-path'
+import { CHART_COLORS } from '../../lib/compute/chart-config'
+import { lastPoint, lineSegments, segmentsToPath } from '../../lib/compute/svg-path'
 
 const WIDTH = 220
 const HEIGHT = 28

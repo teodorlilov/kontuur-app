@@ -1,8 +1,8 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { MastheadControls } from '../components/masthead-controls'
-import { AnalyticsNavProvider } from '../components/analytics-nav'
+import { MastheadControls } from '../components/chrome/masthead-controls'
+import { AnalyticsNavProvider } from '../components/chrome/analytics-nav'
 import type { AnalyticsPeriod } from '../lib/compute/period'
 
 /**

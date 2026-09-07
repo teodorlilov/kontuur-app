@@ -1,7 +1,7 @@
-import { AnalyticsSection, ChartLegend } from './analytics-section'
-import { EmptyFill } from './empty-fill'
+import { AnalyticsSection, ChartLegend } from '../document/analytics-section'
+import { EmptyFill } from '../document/empty-fill'
 import { FollowerFlow } from './follower-flow'
-import type { FollowerSummary } from '../lib/instagram/build-report'
+import type { FollowerSummary } from '../../lib/instagram/build-report'
 
 /**
  * "Who followed, who left" — the one section both networks render identically, down to its

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { render, screen } from '@testing-library/react'
-import { SyncLine } from '../components/sync-line'
+import { SyncLine } from '../components/document/sync-line'
 
 const NOW = new Date().toISOString()
 

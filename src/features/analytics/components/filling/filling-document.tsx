@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { PLATFORM_NAMES } from '@/lib/validation'
-import { analyticsPartialHref } from '../lib/compute/analytics-href'
-import type { AnalyticsPeriod } from '../lib/compute/period'
+import { analyticsPartialHref } from '../../lib/compute/analytics-href'
+import type { AnalyticsPeriod } from '../../lib/compute/period'
 
 /**
  * The whole-document loading state while a period pulls from Instagram: the

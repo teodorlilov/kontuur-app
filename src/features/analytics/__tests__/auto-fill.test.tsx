@@ -1,6 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
-import { AutoFill } from '../components/auto-fill'
+import { AutoFill } from '../components/filling/auto-fill'
 import type { AnalyticsPeriod } from '../lib/compute/period'
 
 const refresh = vi.fn()

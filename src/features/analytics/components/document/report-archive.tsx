@@ -1,8 +1,8 @@
 import Link from 'next/link'
-import { analyticsWindowHref } from '../lib/compute/analytics-href'
-import { formatPeriodRange, formatSyncInstant } from '../lib/compute/format'
+import { analyticsWindowHref } from '../../lib/compute/analytics-href'
+import { formatPeriodRange, formatSyncInstant } from '../../lib/compute/format'
 import { ArchiveRowDelete } from './archive-row-delete'
-import type { ArchiveEntry } from '../types'
+import type { ArchiveEntry } from '../../types'
 
 /**
  * Every exported period, kept as it was written. A row is a link back into

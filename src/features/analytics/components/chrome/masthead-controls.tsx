@@ -7,14 +7,14 @@ import { cn } from '@/utils/cn'
 import { Button } from '@/components/ui/button'
 import { SelectControl } from '@/components/layout/page-header/select-control'
 import { PLATFORM_NAMES } from '@/lib/validation'
-import { archiveReport } from '../actions/report-actions'
+import { archiveReport } from '../../actions/report-actions'
 import { useAnalyticsNav } from './analytics-nav'
 import {
   analyticsClientHref,
   analyticsRangeHref,
   analyticsWindowHref,
-} from '../lib/compute/analytics-href'
-import { RANGE_PRESETS, type AnalyticsPeriod, type RangePreset } from '../lib/compute/period'
+} from '../../lib/compute/analytics-href'
+import { RANGE_PRESETS, type AnalyticsPeriod, type RangePreset } from '../../lib/compute/period'
 
 // Labels come from PLATFORM_NAMES, not restated here: this switcher and the documents it
 // switches between must call a network the same thing.

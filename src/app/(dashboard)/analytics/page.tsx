@@ -12,7 +12,10 @@ import { Card } from '@/components/ui/card'
 import { ActionLink } from '@/components/ui/action-link'
 import { cn } from '@/utils/cn'
 import { parseParam } from '@/utils/parse-param'
-import { AnalyticsNavProvider, PendingVeil } from '@/features/analytics/components/analytics-nav'
+import {
+  AnalyticsNavProvider,
+  PendingVeil,
+} from '@/features/analytics/components/chrome/analytics-nav'
 import {
   AnalyticsView,
   ConnectPrompt,
@@ -23,7 +26,7 @@ import {
   buildFacebookFallbackNarrative,
   getFacebookNarrative,
 } from '@/features/analytics/lib/facebook/facebook-narrative'
-import { MastheadControls } from '@/features/analytics/components/masthead-controls'
+import { MastheadControls } from '@/features/analytics/components/chrome/masthead-controls'
 import { fetchReportArchive } from '@/features/analytics/lib/shared/report-archive-query'
 import { buildFallbackNarrative } from '@/features/analytics/lib/instagram/narrative'
 import { getNarrative } from '@/features/analytics/lib/instagram/narrative'

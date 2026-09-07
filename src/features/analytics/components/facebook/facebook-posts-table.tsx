@@ -11,7 +11,7 @@ import {
   PostsTableEmpty,
   PostsTableFooter,
   PostsTableShell,
-} from '../posts-table-shared'
+} from '../table/posts-table-shared'
 
 /**
  * The Facebook posts table — the lean sibling of `PostsTable`, built from the same shell,

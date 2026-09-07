@@ -3,8 +3,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { PLATFORM_NAMES } from '@/lib/validation'
-import { fillPeriodData } from '../actions/report-actions'
-import type { AnalyticsPeriod } from '../lib/compute/period'
+import { fillPeriodData } from '../../actions/report-actions'
+import type { AnalyticsPeriod } from '../../lib/compute/period'
 
 /**
  * Mounted only when the selected window has days never asked of Meta: fires

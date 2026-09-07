@@ -1,14 +1,14 @@
 import { cn } from '@/utils/cn'
 import { Card } from '@/components/ui/card'
-import type { AnalyticsReportData, FollowerSummary } from '../lib/instagram/build-report'
+import type { AnalyticsReportData, FollowerSummary } from '../../lib/instagram/build-report'
 import {
   countDeltaVerdict,
   rateDeltaVerdict,
   type DeltaVerdict,
-} from '../lib/compute/delta-verdict'
-import { formatCount, signedCount } from '../lib/compute/format'
-import { DeltaChip } from './delta-chip'
-import { Sparkline } from './sparkline'
+} from '../../lib/compute/delta-verdict'
+import { formatCount, signedCount } from '../../lib/compute/format'
+import { DeltaChip } from '../charts/delta-chip'
+import { Sparkline } from '../charts/sparkline'
 
 interface CellSpec {
   label: string

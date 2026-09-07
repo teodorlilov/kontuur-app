@@ -1,6 +1,6 @@
 import { cn } from '@/utils/cn'
 import { hasCyrillic } from '@/lib/canvas/font-library'
-import { splitLeadSentence } from '../lib/compute/format'
+import { splitLeadSentence } from '../../lib/compute/format'
 
 /**
  * The report speaks from the Pine Deep capsule — the system's dark ground for

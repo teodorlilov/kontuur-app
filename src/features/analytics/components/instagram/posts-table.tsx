@@ -9,7 +9,7 @@ import {
   PostsTableEmpty,
   PostsTableFooter,
   PostsTableShell,
-} from '../posts-table-shared'
+} from '../table/posts-table-shared'
 
 /**
  * Every post published this period, ranked by reach. `follows` is the column

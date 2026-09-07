@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
-import { PostThumb } from '../components/post-thumb'
+import { PostThumb } from '../components/table/post-thumb'
 
 describe('PostThumb', () => {
   it('shows the post’s own image when Instagram gave us one', () => {
