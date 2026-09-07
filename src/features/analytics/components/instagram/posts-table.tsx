@@ -1,6 +1,6 @@
 import { cn } from '@/utils/cn'
-import type { ReportPostRow } from '../lib/instagram/build-report'
-import { formatCount } from '../lib/compute/format'
+import type { ReportPostRow } from '../../lib/instagram/build-report'
+import { formatCount } from '../../lib/compute/format'
 import {
   BODY_CELL,
   HEAD_CELL,
@@ -9,7 +9,7 @@ import {
   PostsTableEmpty,
   PostsTableFooter,
   PostsTableShell,
-} from './posts-table-shared'
+} from '../posts-table-shared'
 
 /**
  * Every post published this period, ranked by reach. `follows` is the column

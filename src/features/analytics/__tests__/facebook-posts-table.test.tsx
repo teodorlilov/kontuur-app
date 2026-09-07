@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import type { ReportPostRow } from '../lib/instagram/build-report'
 import { FacebookPostsTable } from '../components/facebook/facebook-posts-table'
-import { PostsTable } from '../components/posts-table'
+import { PostsTable } from '../components/instagram/posts-table'
 
 /**
  * What a Facebook row may claim about itself.
