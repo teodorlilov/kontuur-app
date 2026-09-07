@@ -14,10 +14,9 @@ import {
 } from '../table/posts-table-shared'
 
 /**
- * The Facebook posts table — the lean sibling of `PostsTable`, built from the same shell,
- * Post cell and footer, with the columns Meta actually serves for a Page post: reactions,
- * comments, shares, and their sum. Per-post reach died in the 2025-11-15 purge, so ranking
- * and the median tag both stand on interactions instead — the column the builder sorted by.
+ * The columns Meta still serves for a Page post: reactions, comments, shares, and their sum.
+ * Per-post reach died in the 2025-11-15 purge, so ranking and the median tag both stand on
+ * interactions — the column `build-facebook-report` sorts the rows by.
  */
 export function FacebookPostsTable({
   posts,

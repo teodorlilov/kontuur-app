@@ -3,11 +3,10 @@ import { toPostMetricRow, zipPageDays } from '../facebook/sync-facebook-metrics'
 import { EMPTY_PAGE_SERIES } from './fixtures'
 
 /**
- * The two mappings between Graph's answers and the stored rows — the exact spots where a
- * wrong default becomes wrong analytics. The rules under test come from the probe
- * (docs/META-FB-PROBE.md): a post's `shares` field is ABSENT when genuinely zero (so absence
- * IS an answer there), while an insights series omitting a day means Meta served nothing
- * (so absence must stay absence).
+ * The two mappings between Graph's answers and the stored rows — the exact spots where a wrong
+ * default becomes wrong analytics. Absence means opposite things on the two sides, both probed
+ * (docs/META-FB-PROBE.md): a post's `shares` field is omitted when genuinely zero, while an
+ * insights series omitting a day means Meta served nothing for it.
  */
 
 describe('zipPageDays', () => {
@@ -49,7 +48,8 @@ describe('toPostMetricRow', () => {
     full_picture: 'https://cdn/p.jpg',
     reactions: { summary: { total_count: 5 } },
     comments: { summary: { total_count: 2 } },
-    // shares ABSENT — the probed zero-shares envelope.
+    // shares ABSENT, as it was in the probe's 200 for this post id — the rest of this
+    // envelope is fixture, not a transcript.
   }
 
   it('maps tallies honestly: absent shares is zero, the total is the computed sum', () => {

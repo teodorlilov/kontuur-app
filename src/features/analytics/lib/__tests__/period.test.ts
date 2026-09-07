@@ -4,7 +4,7 @@ import { periodDayKeys, resolvePeriod } from '../compute/period'
 describe('resolvePeriod', () => {
   beforeEach(() => {
     vi.useFakeTimers()
-    // 2026-08-19 noon UTC — "yesterday" is 2026-08-18 in UTC.
+    // Noon UTC, so every zone in the tests below still agrees on the calendar date.
     vi.setSystemTime(new Date('2026-08-19T12:00:00Z'))
   })
   afterEach(() => {

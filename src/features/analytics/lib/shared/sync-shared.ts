@@ -9,19 +9,13 @@ import {
 } from '@/lib/queries/select-columns'
 
 /**
- * What the two nightly metric syncs share — extracted when Facebook's arrived (2026-09-06).
+ * What the two nightly metric syncs share: the outcome vocabulary, the roster read, the failure
+ * ladder, the phase isolation, the sync-health stamp and the notification copy — everything that
+ * must not drift between the networks.
  *
- * This first drew the line at "everything except the loop", on the reasoning that a shared loop
- * over two networks' PHASES would be a network branch waiting to happen. That reasoning still
- * holds and is still honoured — the phases stay per network, and `runSyncPhases` never learns
- * what a phase is for. But it was applied one level too high: the ROSTER loop around the phases
- * turned out to contain no phase logic at all, only the failure ladder, and the two copies of it
- * were identical for thirty-five lines apart from a platform string, a display name and which
- * per-client function to call. `syncRoster` takes those three and owns the ladder.
- *
- * So: what is shared is everything that must not drift between the networks — the outcome
- * vocabulary, the roster read, the failure ladder, the phase isolation, the sync-health stamp
- * and the notification copy. What is not is what a network actually fetches.
+ * What a network actually fetches stays with the network. The phases are built per network and
+ * `runSyncPhases` never learns what a phase is for, so a shared loop can never grow a network
+ * branch inside it.
  */
 
 export interface MetricsSyncOutcome {
@@ -55,7 +49,7 @@ export interface SyncPhase {
  * both nightly runs answer to.
  *
  * The ladder, in order: a time budget checked BETWEEN clients, never inside one, so a client
- * either syncs whole or not at all; a connection with no `client_id` counted and skipped rather
+ * either syncs whole or not at all; a connection with no `client_id` counted as a failure rather
  * than dropped silently, because it can be neither synced nor reported and a row like that is a
  * data problem worth seeing in the totals; a dead token or missing permission notifying the
  * agency and moving on; one rate-limit answer ending the run, since it poisons every remaining
@@ -63,9 +57,9 @@ export interface SyncPhase {
  * that the sync did not finish, because otherwise a half-failing sync is invisible: the page
  * still renders, just with sections quietly frozen.
  *
- * `recordSyncHealth` runs on both outcomes. The verdict outlives the run — the page used to date
- * itself from the day rows, a stamp the on-demand refill also wrote, and so called a sync current
- * while a phase had been failing nightly.
+ * `recordSyncHealth` runs on both outcomes, so the run's own verdict is stored rather than
+ * inferred later from the metric day rows — which the on-demand refill writes too, and so cannot
+ * distinguish a sync that landed from a phase that has been failing nightly.
  */
 export async function syncRoster(
   admin: SupabaseClient,
@@ -146,7 +140,8 @@ export async function syncRoster(
  * Runs each phase even when an earlier one failed, and returns what broke.
  * Account-wide failures propagate immediately — retrying more phases
  * against a dead token only burns calls. Callers decide what a partial run
- * means; this never decides for them by swallowing.
+ * means; this never decides for them by swallowing. Both halves are pinned by
+ * `sync-phases.test.ts`.
  */
 export async function runSyncPhases(phases: SyncPhase[]): Promise<string[]> {
   const failures: string[] = []
@@ -163,9 +158,7 @@ export async function runSyncPhases(phases: SyncPhase[]): Promise<string[]> {
 
 /**
  * Stores what a run concluded about one connection (migration 20260828).
- * Best-effort by design and in both directions: a health write must never
- * turn a good sync bad, and until the migration lands everywhere the missing
- * columns simply mean the page keeps its old, quieter behaviour.
+ * Best-effort by design: a health write must never turn a good sync bad.
  */
 async function recordSyncHealth(
   admin: SupabaseClient,
@@ -186,10 +179,9 @@ async function recordSyncHealth(
 }
 
 /**
- * The half-failure alert. Deliberately phrase-stable rather than naming the
- * failing phase: the message IS the dedup key, so a wording that changes with
- * the error would re-notify every night. The phase detail lives in
- * last_sync_error, which the analytics document reads.
+ * The half-failure alert. Deliberately phrase-stable rather than naming the failing phase:
+ * `notify` dedups on the message text itself, so a wording that changes with the error would
+ * re-notify every night. The phase detail lives in `last_sync_error`, which the document reads.
  */
 function notifySyncIncomplete(admin: SupabaseClient, clientId: string): Promise<void> {
   return notify(admin, {

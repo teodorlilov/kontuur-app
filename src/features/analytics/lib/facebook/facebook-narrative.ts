@@ -22,9 +22,10 @@ import type { AnalyticsPeriod } from '../compute/period'
  * sync stamp keys the cache), only an archive-linked window reuses stored wording.
  *
  * Its own fact sheet rather than a mode on Instagram's, because what a network can honestly
- * narrate differs: the facts below carry NO reach, NO audience, NO formats — Meta deleted
- * those for Pages (docs/META-FB-PROBE.md), and a fact sheet with empty slots invites the
- * model to write about absence.
+ * narrate differs: the facts below carry NO reach, NO audience, NO formats — the probe found
+ * every one of those metrics dead for Pages (docs/META-FB-PROBE.md), and a sheet with empty
+ * slots invites the model to write about absence. `facebook-narrative.test.ts` pins the exact
+ * key set, so a well-meaning harmonisation cannot quietly add one back.
  */
 
 /** The bounded aggregate the model sees — only what Facebook actually serves. */
@@ -45,9 +46,9 @@ export function buildFacebookNarrativeFacts(data: FacebookReportData): Record<st
 }
 
 /**
- * Deterministic one-liner for when the model is unavailable — numbers, no prose,
- * mirroring the Instagram fallback's tone because it IS the Instagram fallback,
- * led by the two metrics Facebook has.
+ * Deterministic one-liner for when the model is unavailable — the same
+ * `buildFallbackSentence` the Instagram fallback composes, led by the two
+ * metrics Facebook has.
  */
 export function buildFacebookFallbackNarrative(data: FacebookReportData): string | null {
   return buildFallbackSentence({
@@ -84,8 +85,7 @@ const _fetchFacebookNarrative = unstable_cache(
     void syncStamp
     return resolveNarrative(FB_NARRATIVE, args)
   },
-  // The network is named explicitly — see the Instagram site for why the key literal, not the
-  // callback text, is what keeps the two networks' cached narratives apart.
+  // Versioned and network-named for the reasons the Instagram site records.
   ['facebook-narrative-v1', 'facebook'],
   { revalidate: 86_400, tags: [FB_METRICS_TAG] }
 )

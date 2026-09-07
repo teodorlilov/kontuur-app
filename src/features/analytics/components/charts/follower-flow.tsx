@@ -18,15 +18,13 @@ const PAD = { top: 14, right: 8, bottom: 24, left: 8 }
 const MIN_BAR = 2.5
 
 /**
- * The follower flow as a diverging daily timeline: gains rise from the
- * baseline in Deep Pine, losses hang below in Clay (the chips' desirability
- * vocabulary — direction separates them too, never color alone), and publish
- * days carry the same baseline pin the reach chart speaks. Both zones share
- * one px-per-follower scale, but each is sized to its own maximum, so a
- * quiet loss row never costs the gains half the height. Hovering (or
- * tapping) a day raises the shared day card: gained, lost, and the posts
- * that went out. A day the API never answered has no bars; a measured zero
- * is a flat day.
+ * The follower flow as a diverging daily timeline: gains rise from the baseline in Deep Pine,
+ * losses hang below in Clay — the delta chips' desirability vocabulary, and direction
+ * separates the two as well, so neither rests on hue alone.
+ *
+ * Both zones share one px-per-follower unit but take their own ceiling, so a quiet loss row
+ * never costs the gains half the plot. A day the API never answered draws no bar at all; a
+ * measured zero is a flat day — the two are different facts and must not render alike.
  */
 export function FollowerFlow({
   followers,
@@ -40,11 +38,10 @@ export function FollowerFlow({
   const days = followers.byDay
 
   /**
-   * A period where nothing moved must not draw a full-height plot of air under a "+1"
-   * ceiling — the axis clamps to one follower and the result reads as a broken chart, when
-   * the truth is quiet: measured zeros. Said in a sentence instead, and when the window
-   * reaches back past the first stored day, the sentence says where the data begins —
-   * unmeasured days and measured-zero days are different facts.
+   * A period where nothing moved is said in a sentence, not drawn: `gainCeil` clamps to 1,
+   * so the plot would be full-height air under a "+1" ceiling and read as broken. The
+   * sentence names where the network's data begins when the window reaches back past the
+   * first stored day, because an unmeasured day is not a measured zero.
    */
   const moved = days.some((day) => (day.gained ?? 0) > 0 || (day.lost ?? 0) > 0)
   const measuredDays = days.filter((day) => day.gained !== null || day.lost !== null)
@@ -126,7 +123,6 @@ export function FollowerFlow({
               onPointerDown={locate}
               onPointerLeave={() => setHover(null)}
             >
-              {/* The scale frame: dashed ceilings for each zone, solid zero line. */}
               <line
                 x1={PAD.left}
                 y1={plotTop}
@@ -267,9 +263,8 @@ export function FollowerFlow({
 }
 
 /**
- * One headline block: swatch-tied label on top, the number beside its noise-
- * banded chip, the previous period spelled out underneath. Net skips the chip
- * — its neighbours already carry the judgement — and prints signed.
+ * Net skips the delta chip — its two neighbours already carry the judgement on the same
+ * numbers — and prints signed, since an unsigned net reads as a gain either way.
  */
 function FlowStat({
   swatch,

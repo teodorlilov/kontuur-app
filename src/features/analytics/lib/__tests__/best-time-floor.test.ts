@@ -14,13 +14,10 @@ import { deriveObservedBestTime } from '../instagram/derive-best-time'
 /**
  * How much history a posting-time recommendation requires before it will answer.
  *
- * The floor used to be five days, which is not a pattern — it is one Tuesday. A weekday-by-hour
- * grid built from five samples has a single observation in most cells, and the calendar published
- * against it as confidently as it would against a month.
- *
- * Guarded here rather than trusted because the check is one comparison in a function that otherwise
- * returns a rich object: lose it and every test above still passes, while the product starts making
- * recommendations from a long weekend.
+ * A weekday-by-hour grid needs samples per cell: at five days most cells hold one observation,
+ * and the calendar publishes against it as confidently as against a month. Guarded here because
+ * the floor is a single comparison inside a function that otherwise returns a rich object — lose
+ * it and everything else about the derivation still passes.
  */
 
 /** A day of hourly counts, in the shape `ig_account_metrics` stores. */
@@ -75,22 +72,22 @@ describe('deriveObservedBestTime — the evidence floor', () => {
   })
 
   it('still refuses at the old five-day floor', async () => {
-    // The number this replaced. Named explicitly so lowering it back fails loudly rather than
-    // quietly restoring recommendations built on a handful of samples.
+    // A hard 5 rather than an expression on MIN_BEST_TIME_DAYS: lowering the constant back to
+    // five would leave the two cases above passing, and only this one would object.
     expect(await deriveObservedBestTime(dbWith(daysOfHistory(5)), 'c1')).toBeNull()
   })
 
   it('reports the sample size it actually used', async () => {
     const result = await deriveObservedBestTime(dbWith(daysOfHistory(20)), 'c1')
-    // The reasoning is shown to a user as the justification, so it has to name the real number
-    // rather than the window that was asked for.
+    // A user reads the reasoning as the justification, so it names the days actually found,
+    // not OBSERVED_LOOKBACK_DAYS (28), the window that was asked for.
     expect(result!.platforms[0]!.reasoning_summary).toContain('20 days')
   })
 
   it('abandons the derivation when the timezone read fails, rather than assuming UTC', async () => {
-    // The timezone buckets every hourly map into the weekday x hour grid the recommendation is
-    // read off. Defaulting a FAILED read to UTC rotates the whole grid and produces a wrong
-    // answer indistinguishable from a right one — which then gets written to best_time_json.
+    // The timezone buckets every hourly map into the weekday x hour grid. Defaulting a FAILED
+    // read to UTC rotates the whole grid and produces a wrong answer indistinguishable from a
+    // right one — which then gets written to best_time_json.
     const result = await deriveObservedBestTime(
       dbWith(daysOfHistory(20), { timezoneError: true }),
       'c1'

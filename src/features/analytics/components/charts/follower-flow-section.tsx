@@ -4,12 +4,12 @@ import { FollowerFlow } from './follower-flow'
 import type { FollowerSummary } from '../../lib/instagram/build-report'
 
 /**
- * "Who followed, who left" — the one section both networks render identically, down to its
+ * "Who followed, who left" — rendered identically by both networks' documents, down to its
  * title, sub, aria label and pin legend.
  *
- * Only the sentence shown when the split is unknown differs, because the two networks withhold
- * it for different reasons: Instagram gates the gained/lost breakdown behind an account size,
- * while Facebook simply may not have captured the days yet.
+ * `unknownNote` differs per caller because the two networks withhold the gained/lost split for
+ * different reasons: Instagram gates it behind an account size, while Facebook may simply not
+ * have captured the days yet.
  */
 export function FollowerFlowSection({
   followers,

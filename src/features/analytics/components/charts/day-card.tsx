@@ -8,11 +8,13 @@ import { firstLine, postTypeMeta } from '../../lib/compute/post-display'
 const DAY_CARD_POSTS = 3
 
 /**
- * The hover day card the reach and follower-flow timelines share: a positioned
- * panel beside the crosshair, flipping sides past the chart's midpoint.
- * Decorative for readers on purpose — each chart speaks its own sr-only
- * sentence and the posts table carries every number in text, so the card
- * never narrates twice.
+ * The hover card the reach and follower-flow timelines share: a panel beside
+ * the crosshair, flipping to the other side past the chart's midpoint so it
+ * never runs off the edge.
+ *
+ * aria-hidden on purpose: both charts already carry their own `role="img"`
+ * aria-label sentence and the posts table below prints every number, so the
+ * card must not narrate a third time.
  */
 export function DayCard({ frac, children }: { frac: number; children: React.ReactNode }) {
   const side =
@@ -56,7 +58,6 @@ export function DayCardRow({
   )
 }
 
-/** The "Published this day" block — identical wording on every timeline. */
 export function DayCardPosts({
   posts,
   label = 'Published this day',
@@ -66,7 +67,7 @@ export function DayCardPosts({
   posts: TrendPost[]
   label?: string
   divided?: boolean
-  /** Who "no longer on …" refers to. The last post-naming component to get one. */
+  /** Who "no longer on …" refers to. */
   networkLabel?: string
 }) {
   if (posts.length === 0) return null
@@ -87,13 +88,10 @@ export function DayCardPosts({
 }
 
 /**
- * What this post is worth saying, in the order the reader can trust it.
- *
- * Reach first where a network has it. Then interactions, which is what a Facebook Page post
- * actually carries — Meta's 2025-11-15 purge left Pages no per-post reach at all, so the old
- * reach-or-apologise shape told every Facebook reader their metrics were "after the next sync"
- * about a number that is never coming. Only a genuinely absent measure falls through to the
- * explanation, and "removed" names the network the post was removed FROM.
+ * Reach first where a network has it, then interactions — all a Facebook Page post carries,
+ * since Meta's 2025-11-15 purge left Pages no per-post reach at all. Ordering matters: only a
+ * genuinely absent measure may fall through to "metrics after the next sync", or every
+ * Facebook reader is told to wait for a number that is never coming.
  */
 function postMeasure(post: TrendPost, networkLabel: string): string {
   if (post.reach !== null) return `${formatCount(post.reach)} reached`

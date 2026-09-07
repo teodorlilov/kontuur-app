@@ -21,20 +21,21 @@ import {
 } from './account-metrics-store'
 
 /**
- * The on-demand refill behind "Regenerate": pulls the SELECTED window from
- * Instagram again instead of waiting for tonight's sync. The nightly capture
- * only ever writes yesterday, so history from before the account was
- * connected has day totals (views, likes, …) sitting NULL — the API can serve
- * them, one day per call, and this module asks, newest day first, under a
- * hard call budget so a click can never spend the Meta quota.
+ * The on-demand refill behind the auto-fill (`fillPeriodData` → `AutoFill`):
+ * pulls the SELECTED window from Instagram again instead of waiting for
+ * tonight's sync. The nightly capture writes yesterday and the consolidation
+ * tail, and a first sync's backfill seeds reach alone, so history from before
+ * the account was connected has its day totals (views, likes, …) sitting NULL
+ * — the API can serve them, one day per call, and this module asks, newest day
+ * first, under a hard call budget so opening a window can never spend the
+ * Meta quota.
  */
 
 /**
- * A refilled day costs six Graph calls (totals pair + four breakdowns).
- * 62 days covers the DEFAULT 30-day view's two windows in one run; deeper
- * windows chain runs (the auto-fill re-fires while the unfilled count keeps
- * dropping). Marked days are always skipped, so a run only ever spends budget
- * on history it has never asked for.
+ * A refilled day costs six Graph calls: `captureDayTotals` is the totals pair
+ * plus four breakdowns. 62 days covers the DEFAULT 30-day view's two windows
+ * in one run; deeper windows chain, the auto-fill re-firing while the unfilled
+ * count keeps dropping.
  */
 const REFILL_DAYS_CAP = 62
 /** Insights time ranges cap at 30 days per request — series calls are chunked. */
@@ -54,8 +55,9 @@ interface RefreshOutcome {
  * Which days deserve a totals call: inside either window, not today (still
  * accruing), and either never asked of Meta (no row, or no totals_synced_at
  * marker) or inside the recent tail that re-asks for consolidation. Newest
- * first — the current period fills before deep history. "Asked but Meta had
- * nothing" days carry a marker and are never re-spent on.
+ * first — the current period fills before deep history. Past that tail a
+ * marked day is never asked again, which is what lets the auto-fill chain
+ * terminate: "asked, and Meta had nothing" is an answer, not a gap.
  */
 export function selectRefillDays(
   rows: MarkerRow[],
@@ -85,11 +87,11 @@ function seriesChunks(start: string, end: string): Array<{ sinceTs: number; unti
 }
 
 /**
- * Refreshes both windows of the period from the Graph API: the two cheap
- * series (reach, follower deltas) across the whole span, day totals for the
- * capped target days, and the period's post metrics. Writes are per-column
- * batches so a refreshed value never nulls out a column another pass owns.
- * A rate limit stops the run and reports it; everything already written stays.
+ * Refreshes both windows of the period from the Graph API: the two ranged
+ * series (daily reach, hourly follower-online maps) across the whole span, day
+ * totals for the capped target days, and the period's post metrics. Writes are
+ * per-column batches so a refreshed value never nulls out a column another pass
+ * owns. A rate limit stops the run and reports it; what landed stays.
  */
 export async function refreshWindowMetrics(
   admin: SupabaseClient,
@@ -107,15 +109,13 @@ export async function refreshWindowMetrics(
   let refilledDays = 0
   let failedDays = 0
 
-  // The series the API still serves for the past — chunked, both windows.
+  // The series the API serves for past days as one ranged call — chunked, both windows.
   const reachRows: IGAccountMetricsInsert[] = []
   try {
     for (const chunk of seriesChunks(period.prevStart, spanEnd)) {
       const [reach] = await Promise.all([
         fetchDailyReachSeries(accountId, accessToken, chunk.sinceTs, chunk.untilTs),
-        // Through the shared capture, which stores as it goes. This branch used to fetch and map
-        // the same column itself, in parallel with the nightly sync doing the same over a different
-        // window — two writers of one column, and only the other one derived anything from it.
+        // Through the shared capture, which stores as it goes rather than returning rows.
         captureOnlineFollowers(
           admin,
           { clientId, accountId, accessToken },
@@ -129,12 +129,9 @@ export async function refreshWindowMetrics(
     else throw err
   }
   await upsertAccountMetricDays(admin, reachRows, 'window refresh reach')
-  // The hours this refill just stored may be exactly what was blocking this client's posting
-  // times — before, they were written here and derived only by the nightly cron, so refreshing
-  // analytics filled the gap and left the answer stale until the morning.
-  //
-  // Best-effort on purpose, like the capture it follows: posting times are an enhancement and
-  // must never cost the refill its day totals.
+  // The hours just stored may be exactly what was blocking this client's posting times, so the
+  // derivation runs here rather than waiting for the nightly cron. Best-effort on purpose:
+  // posting times are an enhancement and must never cost the refill its day totals.
   try {
     await refreshObservedBestTime(admin, clientId)
   } catch (err) {
@@ -158,9 +155,8 @@ export async function refreshWindowMetrics(
             rateLimited = true
             return
           }
-          // Counted, not thrown. Rejecting here took the whole Promise.all with
-          // it, so the upsert below never ran and up to 61 days that HAD been
-          // fetched were discarded because the sixty-second failed.
+          // Counted, not thrown: a rejection here takes the whole Promise.all with it, and the
+          // upsert below would never run — every day already fetched discarded for one failure.
           failedDays++
           console.error(`[analytics] day capture failed for ${dateKey}:`, err)
         } finally {
@@ -183,11 +179,11 @@ export async function refreshWindowMetrics(
   }
 
   // "Who follows, who engages" is the one section no day row can produce: it
-  // needs a demographics snapshot, and until now ONLY the nightly cron wrote
-  // one — so every filter could refill the whole document and still leave the
-  // audience panel saying no snapshot exists. The call is cadence-gated inside
-  // (a snapshot within the week makes it a single cheap lookup) and
-  // best-effort: eight breakdown calls must never cost the refill its totals.
+  // needs a demographics snapshot, so a refill that skipped this could fill the
+  // whole document and still leave the audience panel saying none exists. The
+  // call is cadence-gated inside (a snapshot within the week makes it a single
+  // cheap lookup) and best-effort: its eight breakdown calls must never cost
+  // the refill its totals.
   if (!rateLimited) {
     try {
       await syncDemographicsWeekly(admin, clientId, accountId, accessToken)

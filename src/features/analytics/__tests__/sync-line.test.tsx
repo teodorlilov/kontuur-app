@@ -6,9 +6,9 @@ const NOW = new Date().toISOString()
 
 describe('SyncLine', () => {
   it('says the run did not finish and names the phases — even when the stamp looks fresh', () => {
-    // The exact shape syncClientMetrics throws. lastSyncAt is current because
-    // recordSyncHealth stamps every ATTEMPT: the freshness alone never said
-    // whether the run finished.
+    // The exact string `syncClientMetrics` throws (it has five phases). The stamp is current
+    // because `recordSyncHealth` runs on success AND failure, so freshness alone cannot say
+    // whether the run finished — only `syncError` can.
     render(
       <SyncLine
         lastSyncAt={NOW}
@@ -42,9 +42,9 @@ describe('SyncLine', () => {
   })
 
   it('calls a clean-but-old run stale', () => {
-    // Reachable only now that the page feeds social_connections.last_sync_at.
-    // While this was dated from the day rows, any on-demand refill re-stamped
-    // it and a cron that had not fired for a week still said "Synced nightly".
+    // Reachable only because `lastSyncAt` comes from `social_connections.last_sync_at`. Dated
+    // from the day rows instead, any on-demand refill would re-stamp it and a cron that had not
+    // fired for a week would still read "Synced nightly".
     const threeNightsAgo = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString()
     render(
       <SyncLine

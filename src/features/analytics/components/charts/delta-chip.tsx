@@ -12,19 +12,20 @@ interface DeltaChipProps {
 }
 
 function signedAbs(diff: number, unit: 'count' | 'pt'): string {
-  // A zero diff never reaches here — `move` requires |diff| past the noise band and `quiet`
-  // renders an em dash below 0.05 — so the shared helper's `>= 0` rule changes nothing.
+  // Never called with a zero diff: `move` needs |diff| past the ±2√N band (≥2) and `quiet`
+  // prints an em dash below 0.05, so signedCount's `>= 0` rule can never render "+0".
   if (unit === 'count') return signedCount(Math.round(diff))
   return `${diff > 0 ? '+' : '−'}${Math.abs(diff).toFixed(1)} pt`
 }
 
 /**
- * The one delta treatment, verdict-driven (see delta-verdict): colored by
- * desirability only when the change clears the noise band — forest on Wash
- * going up, Clay going down — with the percentage printed only on a solid
- * base. Inside the band it states the absolute quietly in gray, so a +2 off
- * a base of 1 can never out-shout a real move. Living Green Text is
- * deliberately not used here (4.1:1 on Wash, under the chip's own bar).
+ * The one delta treatment, verdict-driven (see delta-verdict): colored only once the change
+ * clears the noise band, and the percentage printed only on a solid base — inside the band it
+ * states the absolute quietly in gray, so a +2 off a base of 1 cannot out-shout a real move.
+ *
+ * The up-chip is Deep Pine, not Living Green Text: DESIGN.md:208 measures `#278658` at 4.53:1
+ * on white, but on this chip's Wash ground it falls to ~4.1:1 — under the 4.5:1 bar that 11px
+ * `text-micro` needs.
  */
 export function DeltaChip({ verdict, unit = 'count', invert = false, className }: DeltaChipProps) {
   if (verdict.kind === 'none') return null

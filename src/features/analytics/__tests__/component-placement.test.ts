@@ -7,11 +7,9 @@ import { describe, expect, it } from 'vitest'
  *
  * `components/` is split on two axes: which network a thing belongs to, then what it is. The
  * network axis is the one that rots, because it is a claim about the import graph rather than
- * about the file — and the graph moves under it. `posts-table.tsx` sat with the shared
- * components for a commit after `posts-table-shared` was extracted out of it, because nothing
- * noticed it had stopped being shared. Nothing would have noticed the reverse either: a file in
- * `instagram/` that a Facebook section quietly started rendering is a network label that is
- * simply false, and every gate in `npm run check` is blind to it.
+ * about the file — and the graph moves under it. Nothing else here can see that: `npm run arch`
+ * only judges cross-FEATURE placement (see its own docblock on what it deliberately skips),
+ * tsc and eslint never read a folder name, and knip only asks whether an export is used at all.
  *
  * So the rule is derived, not declared. Reachability from the two document roots decides the
  * folder, and the folder has to agree:

@@ -46,14 +46,13 @@ const MEDIA_LOOKBACK_DAYS = 30
 /**
  * Meta keeps consolidating a day's numbers after it ends (late-counted views,
  * spam removal). Each night the sync re-captures this many finished days, so
- * every stored day converges to Instagram's own value during the week it
- * matters — the cure for "our July 28th disagrees with the IG app".
+ * every stored day converges on Instagram's own value during the week anyone
+ * is still looking at it.
  */
 const CONSOLIDATION_DAYS = 7
 
 /**
- * Syncs yesterday's account metrics, per-post insights and (weekly)
- * demographics for every client with a live Instagram connection. Per-client
+ * Every client with a live Instagram connection, one at a time. Per-client
  * failures are contained: dead tokens notify the agency and move on, one
  * rate-limit answer stops the whole run (tomorrow retries), anything else
  * skips just that client.
@@ -73,13 +72,12 @@ export async function syncAllClientMetrics(
 /**
  * One client's nightly capture, phase by phase — each isolated.
  *
- * These used to run as a single chain, so ONE flaky call anywhere upstream
- * cost every later phase its writes. That is how an account with a firing
- * cron and a valid token still showed an empty audience section for days:
- * demographics run last, and the run never got there. Now a narrow failure is
+ * Isolated because a chain lets ONE flaky call cost every later phase its
+ * writes, and demographics run last: an account with a firing cron and a valid
+ * token would show an empty audience section for days. A narrow failure is
  * recorded and the next phase still runs; only account-wide conditions abort.
  * The aggregate throw at the end keeps the failure VISIBLE in the cron's
- * per-client errors — silence is what let this hide.
+ * per-client errors — silence is what lets this hide.
  */
 async function syncClientMetrics(
   admin: SupabaseClient,
@@ -110,13 +108,11 @@ async function syncClientMetrics(
     {
       name: 'online hours',
       /**
-       * An account with no history asks for the whole window at once, not four days.
-       *
-       * Nothing used to backfill this column, so a new client gained one day per night and waited
-       * about three weeks for a usable grid — while `refreshWindowMetrics` was already proving Meta
-       * serves ninety days on request. An established account reaches the threshold on its first
-       * night now. An account that already has history keeps the short trailing window, which is all
-       * the consolidation lag needs.
+       * An account with no history asks for the whole backfill window at once, not four days:
+       * Meta serves the range on request, so a new client clears the derivation's evidence
+       * floor on its first night rather than gaining one day per night for weeks. An account
+       * that already has history keeps the short trailing window, which is all the
+       * consolidation lag needs.
        */
       run: async () => {
         await captureAndDeriveBestTime(
@@ -144,15 +140,15 @@ const ONLINE_FOLLOWERS_LOOKBACK_DAYS = 4
 
 /**
  * One finished day's full capture — the totals pair plus the four rendered
- * breakdowns. Shared by the nightly sync (yesterday + the consolidation
- * window) and the analytics window refill.
+ * breakdowns, six Graph calls. Shared by the nightly sync (yesterday + the
+ * consolidation window) and the analytics window refill.
  *
- * interactions_by_media_product_type belongs here beside its denominator.
- * When only syncAccountDay fetched it, one day in thirty-five carried it
- * while every day carried reach_by_media_product_type — so the formats
- * section divided a single day's interactions by a whole window's reach and
- * called the result an engagement rate. A breakdown and the reach it is
- * rated against must be captured by the same call, or the ratio is fiction.
+ * interactions_by_media_product_type belongs here BESIDE ITS DENOMINATOR. Move
+ * it to a caller that runs on fewer days than reach_by_media_product_type and
+ * the formats section starts dividing one day's interactions by a whole
+ * window's reach and calling it an engagement rate. A breakdown and the reach
+ * it is rated against must be captured by the same call, or the ratio is
+ * fiction.
  */
 export async function captureDayTotals(
   clientId: string,
@@ -190,7 +186,8 @@ export async function captureDayTotals(
     link_taps_by_button_type: linkTaps.byButton,
     reach_by_media_product_type: reachByType,
     interactions_by_media_product_type: interactionsByType,
-    // Asked, whatever came back — the refill never re-spends on this day.
+    // Stamped whatever came back, so the on-demand refill counts this day as asked and stops
+    // spending calls on it once it leaves that refill's short consolidation tail.
     totals_synced_at: new Date().toISOString(),
   }
 }
@@ -211,12 +208,12 @@ export function consolidationWindow(yesterday: string): { dayKeys: string[]; old
  * Re-captures days 2..N back so stored values track Meta's consolidation.
  *
  * Reach rides along in its OWN batch rather than inside captureDayTotals. It is
- * a series metric — one call covers the whole window, where the totals cost one
- * call per day — and it must never be written as an explicit NULL for a day the
- * series skipped, which a shared row shape would force. Leaving it out entirely
- * was the older bug: the headline number of the whole document, and the one the
- * "our 28 July disagrees with the app" complaint was about, was the only metric
- * the consolidation window never revisited.
+ * a series metric — one call covers the whole window, where the totals cost six
+ * calls per day — and it must never be written as an explicit NULL for a day
+ * the series skipped, which a shared row shape would force. It cannot be left
+ * out either: reach is the document's headline number, so a consolidation
+ * window that skipped it would leave the one figure readers check against the
+ * Instagram app as the only one that never converges.
  *
  * followers_count deliberately stays out: it is a reading of the account taken
  * now, so there is no past value to re-ask for.
@@ -275,7 +272,8 @@ function yesterdayUtcWindow(): { date: string; sinceTs: number; untilTs: number 
   }
 }
 
-/** Writes yesterday's full account row — seven independent fetches in parallel. */
+/** Writes yesterday's full account row: the account snapshot, the reach series and the shared
+ *  day capture, run together. */
 async function syncAccountDay(
   admin: SupabaseClient,
   clientId: string,
@@ -286,9 +284,8 @@ async function syncAccountDay(
   const [account, reachSeries, dayTotals] = await Promise.all([
     fetchAccountFields(accountId, accessToken),
     fetchDailyReachSeries(accountId, accessToken, window.sinceTs, window.untilTs),
-    // The same capture the consolidation recapture and the analytics refill use. Eighteen columns
-    // were written here from a second literal that duplicated it field for field — identical
-    // values, two places to change, and `follows`/`unfollows` among them.
+    // The same capture the consolidation recapture and the analytics refill use — eighteen
+    // columns, so a second literal here would be eighteen chances to drift.
     captureDayTotals(clientId, accountId, accessToken, window.date),
   ])
 
@@ -307,11 +304,11 @@ async function syncAccountDay(
 }
 
 /**
- * First sync only: seed the trailing 30 days with what the API can still serve
- * per-day — reach and the new-follower delta. Every other column stays NULL;
- * historical day totals are not reconstructable. Yesterday already has its full
- * row, so it is excluded, and ignoreDuplicates keeps this from ever downgrading
- * a richer row in a race.
+ * First sync only: seed the trailing 30 days with the one thing the API still
+ * serves per past day — reach. Every other column stays NULL; historical day
+ * totals are not reconstructable. Yesterday already has its full row, so it is
+ * excluded, and ignoreDuplicates keeps this from ever downgrading a richer row
+ * in a race.
  */
 async function backfillAccountHistory(
   admin: SupabaseClient,
@@ -378,7 +375,7 @@ export async function syncPostMetrics(
     const insights = insightsList[index]!
     return {
       client_id: clientId,
-      // The nightly measurement is Instagram's; the table it writes now holds both networks.
+      // The discriminator: this table holds both networks' post rows.
       platform: 'instagram',
       platform_account_id: accountId,
       post_id: postIdByMediaId.get(item.id) ?? null,

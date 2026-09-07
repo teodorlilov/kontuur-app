@@ -5,9 +5,10 @@ const WIDTH = 220
 const HEIGHT = 28
 
 /**
- * The strip cell's thirty-day trace: a sage line with a Living Green end-dot
- * (the now-mark). Purely decorative reinforcement — the cell's printed value,
- * delta and then-line carry the information, so this stays aria-hidden.
+ * The strip cell's day-by-day trace, ending on the Living Green now-mark.
+ * Decorative reinforcement only: the cell prints its value, delta and
+ * last-period line, and carries an sr-only sentence, so this stays aria-hidden
+ * rather than being read a second time.
  */
 export function Sparkline({ values }: { values: Array<number | null> }) {
   const real = values.filter((value): value is number => value !== null)

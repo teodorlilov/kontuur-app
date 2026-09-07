@@ -39,18 +39,14 @@ interface ReportScope {
 /**
  * The client's Instagram credentials, or null when there is nothing usable to call Meta with.
  *
- * Both on-demand Instagram jobs below need exactly this, and both wrote it out longhand: the same
- * projection, the same two filters, the same narrowing cast, and the same three-part check that
- * the connection can still authenticate. The Facebook branch of `fillPeriodData` already called
- * `fetchConnection` for the same job one screen away.
+ * Reads through `scope.supabase`, the caller's RLS-scoped client, not the admin key: this is a
+ * user-initiated action and the row it fetches should be one the caller can already see. The
+ * Facebook branch of `fillPeriodData` below uses the admin client for the same query, which is
+ * a difference to preserve deliberately rather than harmonise by reflex.
  *
- * The read stays on the AUTH-scoped client, as both copies had it — it is the caller's own RLS
- * grant that fetches the row, not the admin key.
- *
- * A failed read returns null rather than throwing, which is what both call sites did by ignoring
- * `error` and reading `data`. Keep it that way: they treat "no usable connection" as a
- * stalled-but-fine outcome, and a lookup that errored is no more usable than one that found
- * nothing. The log line is new; the control flow is not.
+ * A failed read returns null rather than throwing. Both callers treat "no usable connection" as a
+ * stalled-but-fine outcome and return `ok: true` on it — the page has already rendered from stored
+ * data — and a lookup that errored is no more usable than one that found nothing.
  */
 async function usableIgCredentials(
   scope: ReportScope
@@ -75,7 +71,6 @@ async function usableIgCredentials(
   return { accountId: connection.account_id, accessToken: connection.access_token }
 }
 
-/** Shared parse + auth + ownership + timezone resolution for the report actions. */
 async function resolveReportScope(
   input: ArchiveReportInput
 ): Promise<{ ok: true; scope: ReportScope } | { ok: false; error: string }> {
@@ -87,8 +82,6 @@ async function resolveReportScope(
   const { supabase, agencyId } = auth
 
   const { clientId, preset, start, end, network } = parsed.data
-  // Through the shared helper. This read the row WITHOUT an agency_id predicate and compared it
-  // in TypeScript afterwards — the tenancy rule enforced outside the query, in one place, by hand.
   const client = await fetchClientWithOwnership(supabase, clientId, agencyId)
   if (!client) return { ok: false, error: 'Not found' }
 
@@ -119,8 +112,7 @@ async function upsertReportRow(
       platform,
       period_start: scope.period.start,
       period_end: scope.period.end,
-      // WHY as: AnalyticsReportData is plain data (checked by its tests); the
-      // round-trip strips undefined so the value satisfies the Json column.
+      // WHY as: the round-trip strips `undefined`, which `Json` has no member for.
       metrics_json: JSON.parse(JSON.stringify(report)) as Json,
       ai_summary: narrative,
     },
@@ -131,18 +123,16 @@ async function upsertReportRow(
 }
 
 /**
- * Writes the currently displayed period into the report archive, exactly as
- * shown: the same stored-table data and the same narrative. Rows are keyed by
- * (client, platform, period), so re-exporting a period updates it in place.
+ * Writes the currently displayed period into the report archive exactly as shown — the same
+ * stored-table data and the same narrative the reader is looking at, never a fresh pull.
  */
 export async function archiveReport(input: ArchiveReportInput): Promise<ActionResult> {
   const resolved = await resolveReportScope(input)
   if (!resolved.ok) return { ok: false, error: resolved.error }
   const { scope } = resolved
 
-  // Each network is its own short branch here rather than a shared body with holes: the
-  // reports differ in reader, narrative source and shape, and only the row write is common —
-  // which is why THAT is the shared function.
+  // A branch per network rather than one body with holes: reader, narrative source and report
+  // shape all differ, and only the row write is common — which is why THAT is the shared function.
   if (scope.network === 'facebook') {
     const { accountId } = await fetchConnectionSyncState(
       scope.supabase,
@@ -171,8 +161,8 @@ export async function archiveReport(input: ArchiveReportInput): Promise<ActionRe
     return upsertReportRow(scope, accountId, 'facebook', report, narrative)
   }
 
-  // The archive row is stamped with the account it describes — the account
-  // scoping invariant applies to exported reports like every other read.
+  // The row is stamped with the account it describes: `fetchReportArchive` filters on
+  // `platform_account_id`, so an unstamped row is invisible to the list that offers it.
   const { accountId } = await fetchIgConnectionState(scope.supabase, scope.client.id)
   if (!accountId) {
     return { ok: false, error: 'Connect Instagram before exporting a report' }
@@ -197,24 +187,24 @@ export async function archiveReport(input: ArchiveReportInput): Promise<ActionRe
   return upsertReportRow(scope, accountId, 'instagram', report, narrative)
 }
 
-/** What one fill run achieved — enough for the caller to know whether to wait. */
+/** What one fill run achieved — enough for `AutoFill` to know whether to wait. */
 interface FillOutcome {
   /** Days were written; the page is worth re-rendering. */
   filled: boolean
-  /** Nothing landed and re-running will not help right now. */
+  /** Nothing landed and re-running will not help right now — the chain stops and says so. */
   stalled: boolean
   rateLimited?: boolean
 }
 
 /**
- * The automatic period fill: when the console lands on a window with days
- * never asked of Meta, the page mounts a client leaf that calls this once
- * (and again per run while the unfilled count keeps dropping). Same pull as
- * Regenerate, but silent, and it never rewrites archived reports or
- * narratives — it only completes the stored data and busts the caches.
- * Repeat calls are cheap by construction: marked days are never re-asked. That holds on both
- * branches — Instagram's `selectRefillDays` skips them, and Facebook's fill reads the window's
- * markers before deciding whether a chunk is worth a call.
+ * The automatic period fill: `AutoFill` mounts when the window has days never asked of Meta and
+ * calls this once per (window, unfilled-count), so completed runs chain and a run that moves
+ * nothing terminates the chain. It only completes the stored data and busts the caches —
+ * archived reports and narratives are never rewritten.
+ *
+ * Repeat calls are cheap by construction, because a day marked "asked" is never re-asked:
+ * Instagram's `selectRefillDays` skips them and Facebook's fill drops a chunk whose every day is
+ * marked before spending a call on it.
  */
 export async function fillPeriodData(
   input: ArchiveReportInput
@@ -225,9 +215,9 @@ export async function fillPeriodData(
   const admin = createAdminSupabaseClient()
 
   /**
-   * Facebook's fill is one ranged fetch, not Instagram's day walk — the API serves native
-   * day series, so the whole window costs five calls per 90-day chunk. Same action, same
-   * AutoFill loop; the network decides the shape of the work.
+   * Facebook's fill is a ranged fetch, not Instagram's day walk: the API serves native day
+   * series, so a 90-day chunk costs the same five calls (one per `PAGE_DAY_METRICS` entry) that
+   * a single night does. Same action, same AutoFill loop; the network decides the shape.
    */
   if (scope.network === 'facebook') {
     const connection = await fetchConnection(admin, scope.client.id, 'facebook')
@@ -240,10 +230,9 @@ export async function fillPeriodData(
         clientId: scope.client.id,
         pageId: connection.account_id,
         accessToken: connection.access_token,
-        // BOTH windows, like Instagram's refill. The Facebook reader builds every "then"
-        // number and delta chip from days at or after prevStart, so a fill that stopped at
-        // period.start left the comparison column with whatever the initial backfill happened
-        // to reach — and nothing ever asked for the rest.
+        // BOTH windows, like Instagram's refill: the Facebook reader selects rows from
+        // prevStart and builds every "then" number from them, so a fill starting at
+        // period.start would leave the comparison column to whatever the backfill reached.
         fromDate: scope.period.prevStart,
         // Never ask past today: the period can end in the future on a custom window.
         toDate: scope.period.end < today ? scope.period.end : today,
@@ -287,9 +276,8 @@ export async function fillPeriodData(
   }
 
   revalidateTag(IG_METRICS_TAG, 'max')
-  // The outcome used to be discarded, so a throttled run that wrote nothing was
-  // indistinguishable from one that filled sixty days — and the caller kept
-  // waiting on a chain that could no longer advance.
+  // A throttled run and a run that filled sixty days must not look alike to the caller: with no
+  // stalled signal the AutoFill chain waits on a run that can no longer advance.
   return {
     ok: true,
     data: {
@@ -301,21 +289,14 @@ export async function fillPeriodData(
 }
 
 /**
- * Captures the audience snapshot on demand — the one section a period filter
- * cannot refill from day rows. The window refresh only asks for days, and its
- * auto-fill stops running once every day is marked, so an account whose
- * nightly sync has not yet written a snapshot would otherwise sit on "no
- * snapshot exists" forever. Cadence-gated inside (one a week per account), so
- * a repeat call costs a single lookup.
+ * Captures the audience snapshot on demand — the one section a period fill cannot produce. The
+ * window refill only asks for days and stops once every day is marked, so an account whose
+ * nightly sync has not written a snapshot would otherwise sit on "no snapshot exists" forever.
+ * `syncDemographicsWeekly` is cadence-gated per account, so a repeat call is one lookup.
  *
- * INSTAGRAM ONLY, and it says so now. This takes the same `ArchiveReportInput` as its two
- * siblings, whose `network` field is parsed and defaulted by `resolveReportScope` — and then
- * never read it, going straight to the Instagram connection, `syncDemographicsWeekly` and
- * IG_METRICS_TAG. A caller passing `network: 'facebook'` got a validated request that quietly
- * captured Instagram demographics and busted the Instagram cache while the reader sat on the
- * Facebook document. Meta serves no audience data for Pages at all, so there is no Facebook
- * behaviour to add here; the honest answer is to refuse. A parameter that validates and is then
- * ignored is worse than one that was never offered.
+ * It refuses a Facebook request rather than ignoring the field: everything below is the
+ * Instagram connection, Instagram demographics and IG_METRICS_TAG, and Meta serves no
+ * equivalent for Pages (`page_fans_country` answers 400 — docs/META-FB-PROBE.md:645).
  */
 export async function ensureAudienceSnapshot(
   input: ArchiveReportInput
@@ -350,7 +331,6 @@ export async function ensureAudienceSnapshot(
   return { ok: true, data: { captured: true } }
 }
 
-/** Delete an analytics report by ID. */
 export async function deleteReport(reportId: string): Promise<ActionResult> {
   const parsed = parseActionId(reportId, 'reportId')
   if (!parsed.ok) return parsed.result
@@ -372,6 +352,7 @@ export async function deleteReport(reportId: string): Promise<ActionResult> {
   const { error } = await supabase.from('analytics_reports').delete().eq('id', reportId)
   if (error) return { ok: false, error: error.message }
 
-  // The archive list is read fresh on each render; the caller refreshes the route.
+  // No revalidateTag: the archive list is read fresh on each render and `ArchiveRowDelete`
+  // refreshes the route.
   return { ok: true, data: undefined }
 }

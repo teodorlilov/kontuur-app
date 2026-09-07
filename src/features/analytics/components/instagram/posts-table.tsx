@@ -12,9 +12,10 @@ import {
 } from '../table/posts-table-shared'
 
 /**
- * Every post published this period, ranked by reach. `follows` is the column
- * that answers the client's real question — who followed because of this post.
- * Metrics re-sync nightly for 30 days after publish, so recent rows move.
+ * Every post published this period, ranked by reach (`buildPosts` sorts). `follows` earns its
+ * column by answering who followed BECAUSE of a post. Metrics re-sync
+ * nightly for 30 days after publish, so recent rows move between page loads — the footer says
+ * so, because otherwise it reads as instability.
  */
 export function PostsTable({
   posts,

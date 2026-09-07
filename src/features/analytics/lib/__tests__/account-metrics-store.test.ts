@@ -3,12 +3,9 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { toReachRows, upsertAccountMetricDays } from '../instagram/account-metrics-store'
 
 /**
- * The one writer of `ig_account_metrics`.
- *
- * There were six inline upserts across three files. Nothing in the repo wrote to this table under
- * test, so a divergence — a changed conflict target, a lost `ignoreDuplicates` — would have passed
- * the whole suite green and surfaced as wrong numbers on a client's analytics page days later.
- * These pin the two properties that were only ever guaranteed by six copies agreeing.
+ * The one writer of `ig_account_metrics`. Its conflict target and `ignoreDuplicates` pass-through
+ * are invisible to every other gate: a change to either type-checks, lints and passes the rest of
+ * the suite, then surfaces as wrong numbers on a client's page days later.
  */
 
 function fakeAdmin(error: { message: string } | null = null) {
@@ -45,8 +42,8 @@ describe('upsertAccountMetricDays', () => {
       { ignoreDuplicates: true }
     )
 
-    // Without this the 30-day seed becomes replace-mode and overwrites a day another pass
-    // already captured in full with the 4 columns history can still serve.
+    // Without it the 30-day seed runs in replace mode and overwrites a day another pass
+    // already captured in full, with the one measure history still serves — reach.
     expect(upsert.mock.calls[0]?.[1]).toEqual({
       onConflict: 'client_id,ig_account_id,metric_date',
       ignoreDuplicates: true,

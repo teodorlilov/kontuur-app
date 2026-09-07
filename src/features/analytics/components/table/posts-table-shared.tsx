@@ -7,14 +7,13 @@ import { firstLine, postTypeMeta } from '../../lib/compute/post-display'
 import { PostThumb } from './post-thumb'
 
 /**
- * What the two networks' posts tables share — the third module in this feature to make that
- * split, after `sync-shared.ts` and `narrative-shared.ts`.
+ * What the two networks' posts tables share, kept out of either network's own module so
+ * neither ends up owning the other's vocabulary (as `lib/shared/` does for sync and
+ * narrative).
  *
- * It exists because the Facebook table was reaching INTO `posts-table.tsx` for five symbols,
- * which made the Instagram-named module quietly the owner of both networks' table vocabulary.
- * What differs between the tables is only their columns: Instagram ranks on reach and has six
- * measures, Facebook lost per-post reach in Meta's 2025-11-15 purge and ranks on interactions.
- * The shell, the empty state, the ratio tag and the footer sentence are the same table.
+ * Only the columns differ: Instagram ranks on reach across six measures, Facebook lost
+ * per-post reach in Meta's 2025-11-15 purge and ranks on interactions. The shell, the empty
+ * state, the ratio tag and the footer sentence are one table.
  */
 
 /** ≥1.5× median earns the ratio tag; ≤0.6× is named below median. */

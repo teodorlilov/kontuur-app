@@ -3,13 +3,12 @@ import { hasCyrillic } from '@/lib/canvas/font-library'
 import { splitLeadSentence } from '../../lib/compute/format'
 
 /**
- * The report speaks from the Pine Deep capsule — the system's dark ground for
- * moments of address (the dashboard stat card, the generate rail). The lead
- * sentence carries the serif voice at headline scale; whatever follows sits
- * beside it as quiet supporting prose, so the block composes as a full-width
- * plate instead of a narrow column of italic book type. Bulgarian text falls
- * back to the sans face (the Latin-Only Serif Rule). Print flattens the
- * capsule to a bordered white panel.
+ * The report speaks from a Pine Deep capsule (DESIGN.md:204 — the system's dark ground). The
+ * lead sentence takes headline scale and whatever follows sits beside it, so the block
+ * composes as a full-width plate rather than a narrow column of italic book type.
+ *
+ * `hasCyrillic` gates every serif run: DESIGN.md:313, the Latin-Only Serif Rule — Instrument
+ * Serif ships no Cyrillic glyphs, and this text is AI-written from a client's own words.
  */
 export function NarrativeBlock({
   narrative,
@@ -55,11 +54,9 @@ export function NarrativeBlock({
           “{lead}”
         </p>
         {rest && (
-          // The serif voice carries the whole summary (user call — the split
-          // to sans read as a different text). Scale drops to Display so the
-          // lead still leads.
-          // WHY alpha ink: the Legible Tint Rule bans alpha inks on light
-          // tints; on Pine Deep, ink-inv at 85% still measures ~10:1.
+          // One voice for the whole summary; only the scale drops, so the lead still leads.
+          // The Legible Tint Rule (DESIGN.md:271) bans alpha inks on LIGHT tints — over Pine
+          // Deep, ink-inv at 85% still measures about 10:1.
           <p
             className={cn(
               'text-display text-ink-inv/85 print:text-text2',

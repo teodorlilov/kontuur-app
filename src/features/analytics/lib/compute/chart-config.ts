@@ -1,28 +1,25 @@
 /**
- * The comparison console's frozen chart vocabulary (surface brief
- * src-app-dashboard-analytics): Deep Pine is this period, sage is the previous
- * one, Living Green is the now-instant — never a third series. The sage pair
- * was validated against Deep Pine at ΔE 33; 2e9e68↔7fa588 fails CVD at ΔE 5.2,
- * which is why "now" and "then" are never Living Green and sage side by side.
+ * The comparison console's frozen chart vocabulary (.impeccable/surfaces/
+ * src-app-dashboard-analytics.md): Deep Pine is this period, sage is the previous one, Living
+ * Green is the now-instant. Never a third green in one plot — the brief's validated pair
+ * measures ΔE 33, while 2e9e68↔7fa588 fails at ΔE 5.2, so Living Green can never stand in
+ * for "then" beside sage.
  *
- * Hex literals rather than var() on purpose: these feed SVG presentation
- * attributes, which do not resolve CSS custom properties (the same constraint
- * DESIGN.md records for chart axes). DOM elements use the `--metric-3` /
- * `--then-line` tokens instead.
+ * Hex literals rather than var() on purpose: these feed SVG presentation attributes, which do
+ * not resolve CSS custom properties. DOM elements use
+ * the matching `--metric-3` / `--then-line` tokens instead.
  */
 export const CHART_COLORS = {
-  /** This period — Deep Pine. */
   now: '#164430',
-  /** Previous period fills — always value-labeled (2.75:1 alone). */
+  /** 2.75:1 on white — a fill, and one that needs its value labelled (globals.css:216). */
   then: '#7fa588',
-  /** Previous period at 2px stroke — same hue, 3.4:1 on white. */
+  /** The same hue held to 3.4:1, so a 2px stroke of it stays legible. */
   thenLine: '#6f957a',
-  /** The now-instant: peak dots, sparkline end-marks. */
   instant: '#2e9e68',
-  /** Losses on the flow timeline — Clay, the chips' desirability-down color. */
+  /** Clay — the same `--danger` the delta chips spend on a move in the wrong direction. */
   loss: '#b04a38',
   grid: '#e7ece7',
-  /** Axis labels — 5.15:1 on Surface (the AA fix, do not lighten). */
+  /** Axis labels — 5.15:1 on Surface (#ffffff). The AA fix; do not lighten. */
   label: '#667068',
   ink: '#0f1512',
 } as const

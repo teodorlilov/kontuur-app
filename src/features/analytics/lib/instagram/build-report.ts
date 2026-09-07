@@ -30,9 +30,8 @@ import {
   type StripCell,
 } from '../compute/report-sections'
 
-// Re-exported for the consumers that always imported them from here — the section math moved
-// to report-sections.ts when Facebook's builder arrived, so both builders compose one
-// implementation; nothing downstream had to move with it.
+// Re-exported because the section math lives in report-sections.ts (both builders compose it)
+// while every component still imports these types from the builder they render.
 export { deltaPct, sumOrNull } from '../compute/report-sections'
 export type {
   FollowerFlowDay,
@@ -64,12 +63,9 @@ const demographicsSchema = z.object({
 })
 
 /**
- * Derived, and the only declaration of this shape.
- *
- * `report-data.ts` held a structurally identical `SnapshotRow` and cast rows into it before handing
- * them here — one projection, written by hand twice, in two files, with both jsonb columns widened
- * to `unknown`. The narrowing that matters happens at `demographicsSchema` below, which is where it
- * always did.
+ * Derived from the select-columns projection, and the only declaration of this shape — a
+ * hand-written mirror would widen both jsonb columns to `unknown` for nothing. The narrowing
+ * that matters happens at `demographicsSchema` above.
  */
 export type AudienceSnapshotInput = IGAudienceSnapshotColumns
 
@@ -182,7 +178,7 @@ export interface AnalyticsReportData {
   hasAudienceSnapshot: boolean
   posts: ReportPostRow[]
   medianReach: number | null
-  /** Null until ~a week of hourly maps exists — a thin sample must not speak. */
+  /** Null below `MIN_ONLINE_DAYS` sampled days — a thin sample must not speak. */
   audienceOnline: AudienceOnline | null
   publishWindows: PublishWindowBucket[]
 }
@@ -230,9 +226,8 @@ const FORMAT_LABELS: Record<string, string> = {
 /**
  * Formats the /media endpoint never returns, so no per-post count can exist
  * for them however complete the sync is — their reach arrives only as an
- * account-level breakdown. The SECTION says this once, in its own words; a
- * per-row note repeated the apology on every affected row and told the reader
- * about our data source rather than about their account.
+ * account-level breakdown. `analytics-view.tsx` says this once in the section
+ * subtitle when a row is affected; it does not belong on every row.
  */
 export const UNITEMISED_FORMATS = new Set(['STORY', 'AD'])
 
@@ -337,10 +332,13 @@ const MIN_ONLINE_DAYS = 5
 
 /**
  * Aggregates the per-day hourly follower-online maps into an agency-local
- * weekday × hour grid of means. Meta anchors both the day buckets and the
- * hour keys to America/Los_Angeles (probe 2026-08-20: the trough lands on the
- * audience's local night only under that reading), so each (day, hour) is
- * turned into a real instant there and re-read in the agency's clock.
+ * weekday × hour grid of means.
+ *
+ * Meta anchors the hour keys to America/Los_Angeles — probe 2026-08-20: the
+ * trough lands on the audience's local night only under that reading, and
+ * `fetchOnlineFollowers` dates each day's bucket in the same zone. So each
+ * (day, hour) is turned into a real instant there and re-read in the agency's
+ * clock; `build-report.test.ts` pins one conversion end to end.
  */
 export function buildAudienceOnline(
   onlineByDay: Array<{ metric_date: string; online_followers_by_hour: unknown }>,
@@ -442,7 +440,7 @@ export interface BuildReportInput {
   /**
    * Kontuur's own published ledger for the same window — fills what the sync
    * cannot see. The read layer has already scoped these to the client's
-   * CURRENTLY connected account (posts.ig_account_id stamp); rows published
+   * CURRENTLY connected account (post_publications.account_id); rows published
    * to any other account never reach this builder.
    */
   publishedPosts: PublishedPostPin[]
@@ -480,15 +478,12 @@ export function buildAnalyticsReport(input: BuildReportInput): AnalyticsReportDa
     series: current.byDay.map((row) => (row ? rateOf(row.total_interactions, row.reach) : null)),
   }
 
-  // Publications keyed by calendar day (the UTC slice of posted_at — the same
-  // convention the best-day caption uses); buildPosts already ordered them
-  // strongest-reach first, so each day's list keeps that order. Only the
-  // CURRENT window feeds the table and the medians; the previous window's
-  // rows exist solely to explain the shape of the comparison line.
+  // Only the CURRENT window feeds the table and the medians; the previous
+  // window's rows exist solely to explain the shape of the comparison line.
   const currentPostRows = input.postRows.filter((row) => {
     const date = dayKeyOf(row.posted_at, input.timezone)
     // A row without a timestamp has no day to belong to, so it can never be a
-    // comparison-window pin — but the table still lists it, as it always has.
+    // comparison-window pin — but the table still lists it.
     return date === null || date >= period.start
   })
   const { posts, medianReach } = buildPosts(
@@ -558,10 +553,10 @@ export function buildAnalyticsReport(input: BuildReportInput): AnalyticsReportDa
    * ourselves is what lets carousels have a rate at all — the account
    * breakdown omits CAROUSEL_CONTAINER entirely — and it repairs feed posts,
    * where that breakdown attributed 356 interactions to 279 reached accounts
-   * (127%, from counting the two on different bases). Where both sources
-   * exist they agree closely: reels read 6.7% here against Instagram's 7.8%,
-   * a little lower because summing per-post reach counts a person once per
-   * post that reached them, while the account figure counts them once.
+   * (127%, the two counted on different bases). Where both sources exist they
+   * agree closely: reels read 6.7% here against Instagram's 7.8%, a little
+   * lower because summing per-post reach counts a person once per post that
+   * reached them, while the account figure counts them once.
    */
   const ownRateByFormat = new Map<string, { reach: number; interactions: number }>()
   for (const post of posts) {
@@ -580,11 +575,11 @@ export function buildAnalyticsReport(input: BuildReportInput): AnalyticsReportDa
   // A rate is only honest when both halves were measured on the SAME days.
   // Reach accumulates from every captured day while the interactions
   // breakdown can lag a few (a day backfilled before it was captured, a
-  // failed sync phase); dividing across that gap once turned a real 0.45% ad
-  // rate into "under 0.1%". So the rate is computed from the PAIRED days
-  // alone, which keeps numerator and denominator on the same footing, and the
-  // solidity floor now guards the denominator the rate actually used rather
-  // than the window total beside it.
+  // failed sync phase); dividing across that gap turned a real 0.45% ad rate
+  // into "under 0.1%". So the rate is computed from the PAIRED days alone,
+  // which keeps numerator and denominator on the same footing, and the
+  // solidity floor guards the denominator the rate actually used rather than
+  // the window total beside it.
   const pairedDays = current.byDay.filter(
     (row): row is IGAccountMetricColumns =>
       row !== null &&
@@ -608,7 +603,7 @@ export function buildAnalyticsReport(input: BuildReportInput): AnalyticsReportDa
   ).map((row) => {
     // Every fragment here answers one question the section header asks, and
     // names its own unit — "8 published · 0.4% engagement rate" reads without
-    // a key. Abbreviations and apologies both failed that test.
+    // a key.
     const metaParts: string[] = []
     const details: Array<{ label: string; value: string }> = []
     const count = postCountByFormat.get(row.key)

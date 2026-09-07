@@ -7,10 +7,9 @@ import { formatCount, signedCount } from '../../lib/compute/format'
 
 interface ComparisonRowsProps {
   rows: ComparisonRow[]
-  /** The chart restated in words — this element is one image to a reader. */
   /**
-   * What the chart IS — "Reach by format", "Bar chart of link taps by button". The per-row
-   * readout is appended from the rows themselves; a caller never writes it.
+   * What the chart IS — "Reach by format", "Link taps by button". The per-row readout is
+   * appended from the rows themselves; a caller never writes it.
    */
   ariaLabel: string
   /** What these rows measure — leads the hover card's own lines. */
@@ -21,12 +20,9 @@ interface ComparisonRowsProps {
 const BAR_SPAN_BEFORE_VALUE = 82
 
 /**
- * The chart's readout for a screen reader: what it is, then every row's pair.
- *
- * Each of the three callers used to build this itself — three near-identical map/join chains
- * over rows the component already holds, phrased three slightly different ways, each with its
- * own copy of the null handling. A caller now says only what the chart IS; the numbers are read
- * off the same `rows` the bars are drawn from, so the two cannot disagree.
+ * The `role="img"` readout: what the chart is, then every row's pair. Built here, off the same
+ * `rows` the bars are drawn from, so the spoken numbers cannot drift from the drawn ones —
+ * a caller supplies only the name.
  */
 function describeRows(rows: ComparisonRow[], ariaLabel: string, unit: string): string {
   const value = (amount: number | null) => (amount === null ? 'unknown' : formatCount(amount))
@@ -40,16 +36,14 @@ function describeRows(rows: ComparisonRow[], ariaLabel: string, unit: string): s
 }
 
 /**
- * The one paired-bar chart: a labeled row, this period's bar over last
- * period's thinner sage bar, both value-labeled. Formats, the taps funnel and
- * the follower flow all render through here — identity lives in the row label,
- * so every bar keeps one hue.
+ * The one paired-bar chart, shared by the Instagram document's three row lists (reach by
+ * format, interactions by kind, link taps by button): a labeled row, this period's bar over
+ * last period's thinner one, both value-labeled. Identity lives in the row label, so every bar
+ * keeps one hue.
  *
- * Hovering a row raises its detail card. The facts that used to sit as a grey
- * fragment under the label live there instead, each one labeled, because
- * "8 published · 13.7% engagement rate" asked the reader to work out what
- * kind of thing each half was. Print keeps the fragment, since a printed
- * report cannot be hovered.
+ * `row.details` names each fact in the hover card, because the compact `row.meta` fragment
+ * ("8 published · 13.7% engagement rate") makes the reader work out what kind of thing each
+ * half is. Print keeps the fragment — paper cannot be hovered.
  */
 export function ComparisonRows({ rows, ariaLabel, unit = 'Reached' }: ComparisonRowsProps) {
   const [hover, setHover] = useState<string | null>(null)
@@ -78,9 +72,9 @@ export function ComparisonRows({ rows, ariaLabel, unit = 'Reached' }: Comparison
                 {row.now !== null && row.now > 0 && (
                   <i
                     className="block h-full rounded-r bg-forest"
-                    // Computed width — the one truly dynamic style. Floored by
-                    // barWidthPct: 3 against a 32,340 maximum is 0.008% of the
-                    // track, a bar the reader never sees beside a number they do.
+                    // Computed width, floored by barWidthPct: the live shape is 3 against a
+                    // 32,340 maximum, 0.008% of the track — a bar the reader cannot see
+                    // beside a number they can. `comparison-rows.test.tsx` pins that case.
                     style={{
                       width: `${barWidthPct(row.now, max, BAR_SPAN_BEFORE_VALUE).toFixed(1)}%`,
                     }}
@@ -106,9 +100,8 @@ export function ComparisonRows({ rows, ariaLabel, unit = 'Reached' }: Comparison
                 </span>
               </div>
             </div>
-            {/* Every row earns a card: its reach and change are worth naming
-                even when no count or rate exists to add — Stories carry
-                neither, and used to hover into nothing at all. */}
+            {/* Every row earns a card, `details` or not: value and change are worth naming
+                on their own, and Stories carry neither a post count nor a rate. */}
             {hover === row.key && (
               <RowCard row={row} unit={unit} above={index === rows.length - 1 && rows.length > 1} />
             )}
@@ -120,18 +113,15 @@ export function ComparisonRows({ rows, ariaLabel, unit = 'Reached' }: Comparison
 }
 
 /**
- * The anchor a measured zero gets instead of a bar. A zero with nothing
- * beside it leaves its number floating at the track's origin, reading as a
- * rendering fault rather than as the value it is. Drawing a real bar would be
- * worse: it would be indistinguishable from the minimum width a genuinely
- * small number carries. So the tick is muted and stays at the origin — an
- * anchor, never a length.
+ * What a measured zero gets instead of a bar. It stays at the origin and is never scaled: a
+ * real bar at any width would be indistinguishable from the `MIN_VISIBLE_PCT` floor a
+ * genuinely small number draws, which is the one distinction this chart must not lose.
  */
 function ZeroTick() {
   return <i aria-hidden="true" className="block h-full w-[3px] rounded-r bg-line" />
 }
 
-/** The row's own numbers, each under a name. Decorative — the bars speak. */
+/** aria-hidden: `describeRows` already speaks these numbers in the chart's own label. */
 function RowCard({ row, unit, above }: { row: ComparisonRow; unit: string; above: boolean }) {
   const change = row.now !== null && row.then !== null ? row.now - row.then : null
   return (

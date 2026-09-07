@@ -7,7 +7,7 @@ function phase(name: string, run: () => Promise<void>): SyncPhase {
   return { name, run }
 }
 
-/** Code 190 classifies as token_invalid; 2 as transient. */
+/** 190 classifies as token_invalid — account-wide, so the run aborts. 2 is transient. */
 function graphError(code: number, message: string): GraphApiError {
   return new GraphApiError({
     httpStatus: 400,

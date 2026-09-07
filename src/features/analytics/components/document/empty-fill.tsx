@@ -1,8 +1,8 @@
 import { cn } from '@/utils/cn'
 
 /**
- * Hatched absence, the coverage-strip idiom: the space a section will occupy
- * holds its height before the first sync, with one quiet pill saying when.
+ * Hatched absence (`slot-open` is the coverage strip's open-day hatch): a section holds the
+ * space it will occupy rather than collapsing, so day one is not a shorter page.
  */
 export function EmptyFill({ children, className }: { children: string; className?: string }) {
   return (

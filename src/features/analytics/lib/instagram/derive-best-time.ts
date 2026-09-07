@@ -8,15 +8,13 @@ import { MIN_BEST_TIME_DAYS, MS_PER_DAY, WEEKDAY_LABELS } from '@/utils/constant
 import { buildAudienceOnline, type AudienceOnline } from './build-report'
 
 /**
- * The observed replacement for the model-invented best_time_json.
+ * Posting times read off the observed weekday × hour grid of follower-online counts.
  *
- * generateBestTime asks a model to imagine posting times from four profile
- * fields — no Meta data ever touches it, and the calendar's ghost slots treat
- * the output as a stored pattern. Wherever the hourly follower-online history
- * exists, THIS derivation outranks it: days and windows read off the observed
- * weekday × hour grid, confidence says 'observed', and the reasoning names
- * its evidence. Null whenever the evidence is thin — callers fall back
- * rather than fabricate.
+ * This is the ONLY thing that produces `brand_profiles.best_time_json` (written by
+ * `refreshObservedBestTime`), which is why it returns null rather than a thin answer whenever the
+ * evidence is short: `slot-picker.ts` records that a second, model-written source of the same
+ * column was deleted rather than narrowed, because nothing downstream could tell a measurement
+ * from an invention.
  */
 
 /**
@@ -31,7 +29,7 @@ interface ObservedBestTime {
   upgrade_note: string
 }
 
-/** Top weekdays by their busiest hour; top hours by cross-week mean. Pure. */
+/** Pure — grid in, recommendation out, which is what lets `derive-best-time.test.ts` drive it. */
 export function bestTimeFromOnline(online: AudienceOnline): ObservedBestTime {
   const bestDays = online.grid
     .map((row, weekday) => ({ weekday, score: Math.max(...row) }))
@@ -73,12 +71,12 @@ export async function deriveObservedBestTime(
   const { accountId } = await fetchIgConnectionState(db, clientId)
   if (!accountId) return null
 
-  // `error` is destructured, and a failed read abandons the derivation rather than defaulting.
-  // It used to be dropped: a transient failure here silently became UTC, and since this timezone
-  // is what buckets every hourly map into a weekday x hour grid, the whole recommendation
-  // rotated — a wrong answer that looks exactly like a right one, written into best_time_json
-  // and published against. An ABSENT timezone is still UTC; that is a real answer about a client
-  // with no agency setting, and the same default every other reader of this column uses.
+  // A FAILED timezone read abandons the derivation; it must never fall through to the default.
+  // This timezone buckets every hourly map into the weekday × hour grid, so defaulting on a
+  // transient failure rotates the whole recommendation — a wrong answer shaped exactly like a
+  // right one, written to best_time_json and published against. An ABSENT timezone is still UTC:
+  // that is a real answer about a client whose agency set none. Pinned by `best-time-floor.test.ts`
+  // ("abandons the derivation when the timezone read fails").
   const { data: clientRow, error: clientError } = await db
     .from('clients')
     .select('agencies(timezone)')
@@ -103,8 +101,6 @@ export async function deriveObservedBestTime(
     .eq('ig_account_id', accountId)
     .gte('metric_date', since)
     .not('online_followers_by_hour', 'is', null)
-  // Read failed or nothing stored: no observed value — the caller falls
-  // back, it never fabricates on our behalf.
   if (error) return null
   const online = buildAudienceOnline(
     (data ?? []) as Array<{ metric_date: string; online_followers_by_hour: unknown }>,

@@ -41,7 +41,7 @@ export interface FacebookReportData {
   followersTotal: number | null
   /** page_post_engagements — the closest thing a Page has to "interactions". */
   engagements: StripCell
-  /** page_views_total — people looking at the Page itself. */
+  /** page_views_total — views of the Page itself, not of its posts. */
   pageViews: StripCell
   followers: FollowerSummary
   /** Engagements day by day, with post pins — the ReachDay shape ReachTrend renders. */
@@ -114,7 +114,7 @@ export function buildFacebookReport(input: BuildFacebookReportInput): FacebookRe
     previousKeys,
     nowSeries: engagements.series,
     thenSeries: dailyValues(previous, (row) => row.post_engagements),
-    // The tooltip's second lens on a day: how many people looked at the Page itself.
+    // The tooltip's second lens on a day: views of the Page itself.
     secondarySeries: pageViews.series,
     postsByDate,
     previousPostsByDate,

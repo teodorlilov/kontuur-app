@@ -61,10 +61,9 @@ const _fetchAnalyticsReport = unstable_cache(
     prevEnd: string,
     days: number,
     timezone: string,
-    // Passed in, not derived here: this used to be max(fetched_at) over the day
-    // rows, which the on-demand refill also stamped. It now comes from the
-    // cron's own verdict, and being an argument makes it part of the cache key —
-    // a fresh sync yields a fresh report rather than waiting on the tag.
+    // The cron's own verdict, passed in rather than derived from the rows so it
+    // keys the cache — a fresh sync yields a fresh report rather than waiting
+    // on the tag.
     lastSyncAt: string | null
   ): Promise<AnalyticsReportData> => {
     const admin = createAdminSupabaseClient()
@@ -79,14 +78,13 @@ const _fetchAnalyticsReport = unstable_cache(
     // INVARIANT: this report never shows another account's data. Every store
     // it reads — metrics, posts ledger, snapshots — records the client, but a
     // client can be reconnected to a different Instagram account. So every
-    // query below claims ONLY rows stamped (migrations 20260825/20260826)
-    // with the account id this client is connected to right now.
+    // query below claims ONLY rows stamped (migration 20260826) with the
+    // account id this client is connected to right now.
     //
-    // The rows this hides no longer outlive the switch: the OAuth callback
-    // purges the superseded account's metrics, snapshots and stamped reports
-    // (purge-account-metrics.ts). Unreachable rows were never a history, and
-    // nothing could delete them. Published posts DO survive — they are the
-    // agency's own ledger, so the pin below still filters rather than assumes.
+    // The rows this hides do not outlive the switch: the OAuth callback purges
+    // the superseded account's metrics, snapshots and stamped reports
+    // (shared/purge-account-metrics.ts). Published posts DO survive — they are
+    // the agency's own ledger, so the pin below filters rather than assumes.
     const [accountRes, postRes, publishedRes, snapshotRes, latestRes] = await Promise.all([
       admin
         .from('ig_account_metrics')
@@ -109,10 +107,8 @@ const _fetchAnalyticsReport = unstable_cache(
       // after publishing, or published since the last sync ran.
       //
       // Reads publications, not posts: "published to Instagram, at this time, as this
-      // media" is one destination's fact. The old form filtered posts on a status and a
-      // platform they no longer carry, and needed a case-insensitive compare because the
-      // two tables spell a platform differently — a publication already speaks the
-      // connection's lowercase vocabulary, so that mismatch is gone with it.
+      // media" is one destination's fact, and a post reaching two networks has two of
+      // them. `account_id` here is what scopes the pin to the current account.
       admin
         .from('post_publications')
         .select(`external_post_id, published_at, posts!inner(${PUBLISHED_POST_PIN_COLUMNS})`)
@@ -186,22 +182,11 @@ const _fetchAnalyticsReport = unstable_cache(
       lastSyncAt,
     })
   },
-  // The key carries a version because the cached VALUE is a whole report
-  // object: when its shape grows, entries written by the previous deploy are
-  // still served and silently lack the new fields. That is what happened to
-  // v3 — reports cached before `details` existed rendered rows with no hover
-  // card, and only the windows a reader happened to revisit came back right.
-  // Bump this on every shape change; a stale report costs more than a rebuild.
-  //
-  // v4: reachByDay.thenDate/thenPosts + ComparisonRow.details.
-  // v5: ReportPostRow.postedDayKey — posts are bucketed in the agency's clock
-  // now, so a v4 entry both lacks the field and pins posts on the wrong day.
-  // v6: lastSyncAt is the last CLEAN cron run rather than max(fetched_at), which
-  // is what decides whether a post reads "removed" or "pending".
-  // v7: the window math moved into `postedWindow` (report-data-shared.ts). The VALUES are
-  // unchanged, but Next derives a cache key partly from the callback's source text, so every v6
-  // entry is orphaned by the edit regardless — the bump is the honest record of why, not the
-  // cause.
+  // BUMP THIS ON EVERY SHAPE CHANGE. The cached VALUE is a whole report object, so entries
+  // written by the previous deploy keep being served and silently lack whatever field was just
+  // added — a row rendering without its hover card until someone happens to revisit that window.
+  // A stale report costs more than a rebuild. (Next also derives the key partly from the
+  // callback's source text, so an edit in there orphans entries whether or not this changes.)
   ['analytics-report-v7'],
   { revalidate: 3600, tags: [IG_METRICS_TAG] }
 )

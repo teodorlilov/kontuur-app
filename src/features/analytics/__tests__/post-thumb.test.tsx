@@ -10,7 +10,7 @@ describe('PostThumb', () => {
         mediaType="CAROUSEL_ALBUM"
       />
     )
-    // Decorative: the caption beside it already names the post.
+    // alt="" on purpose: the caption in the next cell already names the post.
     expect(screen.getByRole('presentation', { hidden: true })).toBeInTheDocument()
   })
 

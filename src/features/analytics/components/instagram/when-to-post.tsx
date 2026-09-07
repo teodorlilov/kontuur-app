@@ -2,8 +2,9 @@
 
 import { useState } from 'react'
 import { cn } from '@/utils/cn'
-// The grid is Monday-first, which is what these two lists are; date-helpers'
-// Sunday-first table is for Date.getDay() indexing and must not be swapped in.
+// The grid's weekday 0 is Monday, which is what these two lists are. date-helpers keeps a
+// second, Sunday-first table for Date.getDay() indexing — swapping it in here shifts the
+// whole heat map by a day.
 import { WEEKDAY_LABELS, WEEKDAY_LABELS_SHORT } from '@/utils/constants'
 import type { AudienceOnline, PublishWindowBucket } from '../../lib/instagram/build-report'
 import { formatCount } from '../../lib/compute/format'
@@ -46,11 +47,10 @@ interface HoverCell {
 }
 
 /**
- * Two observed signals, side by side: when this account's followers are
- * online (Instagram's own hourly counts, averaged over the period and read in
- * the agency's clock) and what each publish window's posts actually earned
- * (medians, floored at three posts). Everything states its evidence — sampled
- * days, post counts — and neither signal ever renders from a thin sample.
+ * Two observed signals, side by side: when this account's followers are online (Instagram's
+ * own hourly counts, averaged and read in the agency's clock) and what each publish window's
+ * posts earned. Both state their evidence — sampled days, post counts — and neither
+ * editorializes from a thin sample.
  */
 export function WhenToPost({
   online,

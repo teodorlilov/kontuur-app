@@ -12,10 +12,9 @@ import type { AnalyticsPeriod } from '../compute/period'
 import { postMetricRow, publishedPost } from './fixtures'
 
 /**
- * The Facebook document's assembly — what `npm run check` cannot see. The builder composes
- * report-sections' shared math, so what these pin is the COMPOSITION: which column feeds
- * which section, the interactions ranking that replaces the dead reach ranking, and the
- * NULL contract surviving the trip.
+ * The Facebook document's assembly. The builder composes report-sections' shared math, so what
+ * these pin is the COMPOSITION: which column feeds which section, the interactions ranking that
+ * stands in for the reach ranking Pages cannot have, and the NULL contract surviving the trip.
  */
 
 /** A 3-day period (Sep 4–6) against the 3 days before it (Sep 1–3). */
@@ -41,7 +40,7 @@ function pageRow(overrides: Partial<FbPageMetricColumns>): FbPageMetricColumns {
 }
 
 function postRow(overrides: Partial<PlatformPostMetricColumns>): PlatformPostMetricColumns {
-  // A Page post id and a publish instant; Meta serves no media type for these.
+  // A Page post id and a publish instant. media_type stays null — Meta serves none for these.
   return postMetricRow({
     external_post_id: '723701000827665_1',
     posted_at: '2026-09-04T12:00:00Z',
@@ -143,10 +142,10 @@ describe('buildFacebookReport', () => {
 
 describe('the app ledger pin', () => {
   it("does not pull the comparison window's publications into this period", () => {
-    // The reader used to bound this query at the PREVIOUS window's start, so a post published
-    // during the comparison period arrived here, matched none of the current window's metric
-    // rows, and rendered with every column "—" and "no longer on Facebook" — on a 30-day window,
-    // the whole preceding month shown as deleted from the Page.
+    // A pin from the comparison window matches none of the current window's metric rows, so
+    // buildPosts would push it with every measure null and a "removed" verdict — a 30-day
+    // window showing the preceding month as deleted from the Page. Enforced in buildPosts
+    // rather than left to each caller's query bounds, so a third network cannot rediscover it.
     const report = buildFacebookReport(
       input({
         publishedPosts: [

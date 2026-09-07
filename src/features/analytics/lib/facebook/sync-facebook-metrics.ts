@@ -24,11 +24,9 @@ import {
  * 2025-11-15 purge left Pages five day-series metrics and the posts' own field tallies.
  * No reach, no demographics, no follower-online hours — nothing here fakes them.
  *
- * The loop shape is COPIED from the Instagram sync on purpose, the same blessing the comments
- * sync records: sequential across clients, a wall-clock budget checked between clients, and a
- * hard stop on the first rate limit, because Meta's quota is per-app and one 429 poisons every
- * remaining call in the run. What must not drift — the outcome vocabulary, phase isolation,
- * sync health, notification copy — is imported from `sync-shared.ts`, not copied.
+ * What must not drift between the two networks — the roster loop and its failure ladder, the
+ * outcome vocabulary, phase isolation, sync health, notification copy — comes from
+ * `sync-shared.ts`. What stays here is only what Facebook actually fetches.
  *
  * The whole run costs at most six Graph calls per client: five ranged day series (a 30-day
  * backfill costs the same five, since the range rides the request) and one published_posts
@@ -122,19 +120,19 @@ const FILL_CHUNK_DAYS = 90
  * Fill a WINDOW of Page days on demand — Facebook's whole answer to Instagram's
  * auto-fill machinery, and the reason it is one function instead of an apparatus:
  * Instagram serves most metrics as one aggregate per asked window, so filling means
- * walking day by day at ~5 calls each; Facebook serves native day series, so a 90-day
- * chunk costs the same five calls a single night does. History reaches at least two
- * years back (probed).
+ * walking day by day at six calls each (`captureDayTotals`); Facebook serves native day
+ * series, so a 90-day chunk costs the same five calls a single night does. History reaches
+ * at least two years back (probed).
  *
  * Days Meta serves land as measured rows. Days it does NOT serve get a MARKER row —
  * identity and `totals_synced_at` only, every measure absent — recording "asked, nothing
  * there" so the unfilled count stops counting them and the auto-fill chain terminates.
  * The same both-null-row pattern the audience snapshot writes, for the same reason.
  *
- * `wroteDays` counts days that were NOT already stored. It used to count every row upserted,
- * which on a re-run is the whole window — so `wroteDays === 0` was unreachable and the caller's
- * "stalled" signal, the thing that stops the auto-fill chain re-firing, could never be true. A
- * chunk whose every day is already marked is skipped entirely rather than re-asked.
+ * `wroteDays` must count only days that were NOT already stored: the caller reads
+ * `wroteDays === 0` as "stalled" and stops re-firing the chain on it, and counting every row
+ * upserted would make that unreachable on any re-run. A chunk whose every day is already
+ * marked is skipped rather than re-asked.
  */
 export async function fillPageWindow(
   admin: SupabaseClient,
@@ -234,7 +232,8 @@ async function hasPageHistory(
  * a metric absent for that date stays absent from the row — the upsert only touches the keys
  * it is given, so absence never overwrites a value a fuller capture stored.
  *
- * Exported for its test: this mapping is exactly what `npm run check` cannot see.
+ * Exported for `sync-facebook-mapping.test.ts`: a series zipped into the wrong column is
+ * type-correct in every direction, so nothing but a test can catch it.
  */
 export function zipPageDays(
   clientId: string,
@@ -266,7 +265,7 @@ export function zipPageDays(
   return [...byDate.values()]
 }
 
-/** One Page post's identity and tallies in the neutral table's vocabulary. Exported for its test. */
+/** One Page post's identity and tallies in the neutral table's vocabulary. Exported for the same test. */
 export function toPostMetricRow(
   clientId: string,
   pageId: string,

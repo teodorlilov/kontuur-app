@@ -3,7 +3,7 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import type { ReachDay } from '../lib/instagram/build-report'
 import { ReachTrend } from '../components/charts/reach-trend'
 
-/** Mirrors the chart's own geometry so a test can aim at a specific day. */
+/** reach-trend.tsx's own W and PAD.left — jsdom has no layout, so a hover has to be aimed. */
 const W = 1120
 const PAD_X = 12
 
@@ -13,7 +13,6 @@ function day(date: string, overrides: Partial<ReachDay> = {}): ReachDay {
   return { date, now: 100, then: 80, thenDate, views: 150, posts: [], thenPosts: [], ...overrides }
 }
 
-/** 8 days; day index 2 (13 Aug) carries four publications. */
 const DAYS: ReachDay[] = [
   day('2026-08-11'),
   day('2026-08-12'),
@@ -39,7 +38,7 @@ const DAYS: ReachDay[] = [
         follows: 0,
         missing: null,
       },
-      // Published through Kontuur, later deleted from Instagram.
+      // A ledger pin: published through Kontuur, then deleted from Instagram.
       {
         externalPostId: 'low',
         caption: 'Third post',
@@ -101,17 +100,16 @@ describe('ReachTrend', () => {
     expect(screen.getByText('Published this day')).toBeInTheDocument()
     expect(screen.getByText('Launch day')).toBeInTheDocument()
     expect(screen.getByText('900 reached · +3 follows')).toBeInTheDocument()
-    // A post deleted from Instagram after publishing says so instead of a number.
     expect(screen.getByText('no longer on Instagram')).toBeInTheDocument()
-    // Only three posts are named; the fourth defers to the table.
+    // DAY_CARD_POSTS is 3; the fourth defers to the table rather than growing the card.
     expect(screen.queryByText('Fourth post')).not.toBeInTheDocument()
     expect(screen.getByText('+1 more in the posts table below')).toBeInTheDocument()
   })
 
   it('names the network a post was removed from, and speaks the measure that network has', () => {
-    // Facebook's shape: Meta's 2025-11-15 purge left Pages no per-post reach and no media-type
-    // vocabulary, so every card here used to read "metrics after the next sync" about a number
-    // that is never coming, under a chip claiming the post was a "single".
+    // Facebook's shape: no per-post reach exists for Pages and the post list carries no media
+    // type, so both arrive null forever. "metrics after the next sync" would be a promise no
+    // sync can keep, and a type chip here would be a guess.
     const days = [...DAYS]
     days[2] = day('2026-08-13', {
       now: 1840,

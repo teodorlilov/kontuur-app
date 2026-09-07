@@ -30,7 +30,7 @@ describe('formatSharePct', () => {
   })
 
   it('never rounds a real share down to a measured zero', () => {
-    // The third-place country the audience list used to print as "0%".
+    // A third-place country at 0.4%: "0%" would read as measured absence, which it is not.
     expect(formatSharePct(0.4)).toBe('<1%')
     expect(formatSharePct(0.04)).toBe('<1%')
   })

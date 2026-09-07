@@ -7,16 +7,14 @@ import type { AnalyticsPeriod } from '../compute/period'
 /**
  * "How much of this period has never been asked of Meta" — one rule, both networks.
  *
- * Instagram's version lived in `refresh-window.ts` and walked BOTH windows; Facebook's was
- * written inline in the analytics page and walked only the current one, over a query bounded the
- * same way. But the Facebook READER reads from `period.prevStart` and builds every "then" number
- * and delta chip out of those days — so on a newly connected Page the comparison window was
- * never fetched by anything, and every delta compared a full period against whatever fragment
- * the initial 30-day backfill happened to leave there. Nothing counted those days as missing, so
- * nothing ever asked for them.
+ * BOTH windows, never just the current one. Each report reads day rows from `period.prevStart`
+ * and builds every "then" number and delta chip out of the earlier half, and this count is the
+ * only thing that marks a day as never-asked. Narrow the span to the current window and the
+ * comparison window is never fetched by anything: every delta then compares a full period
+ * against whatever fragment the initial backfill happened to leave there.
  *
- * Two windows, minus today (still accruing) and minus the consolidation tail, whose re-asks are
- * Meta still settling numbers rather than absence.
+ * Minus today (still accruing) and minus the consolidation tail, whose re-asks are Meta still
+ * settling numbers rather than absence.
  */
 
 /** Recent days re-ask even when marked — Meta consolidates for a day or two after capture. */

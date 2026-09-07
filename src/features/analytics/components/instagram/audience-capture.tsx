@@ -6,12 +6,13 @@ import { ensureAudienceSnapshot } from '../../actions/report-actions'
 import type { AnalyticsPeriod } from '../../lib/compute/period'
 
 /**
- * The audience section's self-healing empty state. Demographics are the one
- * part of the document a period filter cannot produce — they come from a
- * snapshot, and the window refill only asks Meta for days. Rather than telling
- * the reader to wait for tonight's sync, this asks for the snapshot now and
- * re-renders when it lands. One attempt per mount; the action is cadence-gated
- * server-side, so nothing here can spend the eight breakdown calls twice.
+ * The audience section's self-healing empty state. Demographics are the one part of the
+ * document a period filter cannot produce — they come from a snapshot, while the window
+ * refill only asks Meta for days.
+ *
+ * Safe to fire on mount because the server action is cadence-gated: `syncDemographicsWeekly`
+ * returns early if a snapshot for this account is under a week old, so a reload cannot spend
+ * the eight breakdown calls (two kinds × age/gender/city/country) a second time.
  */
 export function AudienceCapture({
   clientId,

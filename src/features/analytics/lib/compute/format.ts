@@ -28,10 +28,9 @@ export function formatCount(value: number): string {
 /**
  * A count with its direction stated: "+1,204", "−37".
  *
- * The minus is U+2212, not a hyphen — it aligns with the digits in tabular figures, which every
- * caller renders in. Four places built this string by hand, and three of them agreed; the fourth
- * (`DeltaChip`) rounds first and rendered a zero as "−0", which no verdict can actually produce.
- * One function, so a later reader does not have to work that out again.
+ * The minus is U+2212, not a hyphen — every caller (DeltaChip, the strip's net cell, the flow
+ * chart's totals, the comparison card) renders it in tabular figures, where only the true minus
+ * shares the digits' advance width.
  */
 export function signedCount(value: number): string {
   return `${value >= 0 ? '+' : '−'}${formatCount(Math.abs(value))}`
@@ -40,10 +39,9 @@ export function signedCount(value: number): string {
 /**
  * A share as a whole percent, never rounding a real value down to "0%".
  *
- * Rounding is right for the numbers this document shows — nobody needs 23.4% of
- * followers — but `Math.round` turns every share under half a percent into a
- * measured zero, which is a different claim entirely. The one exception carries
- * the house form the interaction mix already speaks.
+ * Rounding is right for the numbers this document shows — nobody needs 23.4% of followers — but
+ * `Math.round` turns every share under half a percent into a measured zero, which is a different
+ * claim entirely. A true zero still says "0%"; format.test.ts pins both halves.
  */
 export function formatSharePct(pct: number): string {
   return pct > 0 && pct < 1 ? '<1%' : `${Math.round(pct)}%`
@@ -65,9 +63,10 @@ export function formatShortRange(start: string, end: string): string {
 }
 
 /**
- * Splits prose into its opening sentence and the rest — the narrative block
- * speaks only the lead in the serif voice. Sentence ends are periods followed
- * by whitespace and a capital/quote, so decimals ("0.3 percent") stay intact.
+ * Splits prose into its opening sentence and the rest, so the narrative block can set the lead
+ * at headline scale with the remainder beside it. A sentence end is a period followed by
+ * whitespace AND a capital or quote, which is what keeps "0.34 percent across 62,372 views"
+ * from splitting mid-number (pinned in format.test.ts).
  */
 export function splitLeadSentence(text: string): { lead: string; rest: string } {
   const match = /(?<=[.!?][”"']?)\s+(?=[A-Z“"'])/.exec(text)

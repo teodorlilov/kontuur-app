@@ -4,9 +4,9 @@ import type { AudienceOnline } from '../lib/instagram/build-report'
 import { WhenToPost } from '../components/instagram/when-to-post'
 
 /**
- * The shape the probe found on a real account: a deep trough and a broad
- * plateau — 16 of 24 hours within 30% of each other. Sharing one linear ramp
- * with the max painted them all the same green.
+ * The shape `rankShade` exists for: a deep trough and a broad plateau, the curve its docblock
+ * records from the probed account (sixteen of twenty-four hours within 30% of each other).
+ * Under a value/max ramp every plateau hour lands in the top quarter of the scale.
  */
 function realisticGrid(): number[][] {
   return Array.from({ length: 7 }, (_, weekday) =>

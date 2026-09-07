@@ -17,10 +17,10 @@ import type { AnalyticsPeriod } from '../compute/period'
 import { getAnalyticsReport, IG_METRICS_TAG } from './report-data'
 
 /**
- * The narrative block: four-to-five sentences written from this period's
- * numbers. Live views (the range presets, or a hand-picked window) regenerate
- * after each nightly sync — the sync stamp is part of the cache key — and can
- * be re-rolled on demand via the regenerate action, which busts this cache.
+ * The narrative block: this period's numbers written as a short pull-quote.
+ * Live views (the range presets, or a hand-picked window) regenerate after
+ * each nightly sync — the sync stamp is part of the cache key, and the
+ * IG_METRICS_TAG below drops the entry whenever a fill or a sync writes.
  * Only a window opened through an archive link shows the stored wording: an
  * exported report keeps its words until it is deliberately rewritten.
  *
@@ -30,9 +30,9 @@ import { getAnalyticsReport, IG_METRICS_TAG } from './report-data'
  */
 
 /**
- * The bounded aggregate the model sees. The old report path stringified the
- * entire metrics object — every post, every caption — into the prompt; this is
- * the same story in a few hundred tokens.
+ * The bounded aggregate the model sees: period totals, the two strongest age
+ * bands and the three strongest posts — never the whole report object, whose
+ * every post and full caption would go into the prompt verbatim.
  */
 function buildNarrativeFacts(data: AnalyticsReportData): Record<string, unknown> {
   return {
@@ -111,18 +111,14 @@ const _fetchNarrative = unstable_cache(
     void syncStamp
     return resolveNarrative(IG_NARRATIVE, args)
   },
-  // v2: the pull-quote prompt — a new key prefix orphans the long v1 texts so
-  // every client regenerates in the short voice on first view after deploy.
-  // The network is named explicitly: this callback and Facebook's are now the same
-  // two lines, so the key literal is the only thing keeping the two caches apart.
+  // The prefix is versioned because a cached narrative outlives the prompt that wrote it: a new
+  // key orphans the old texts instead of serving them (v2 = the pull-quote prompt). The network is
+  // named too — see `narrative-shared.ts` for why the two call sites stay in their own modules.
   ['analytics-narrative-v2', 'instagram'],
   { revalidate: 86_400, tags: [IG_METRICS_TAG] }
 )
 
-/**
- * The narrative for one client and period, cached until the next nightly sync
- * or an explicit regenerate.
- */
+/** The narrative for one client and period, cached until the next nightly sync. */
 export async function getNarrative(
   clientId: string,
   clientName: string,

@@ -9,21 +9,16 @@ import type { AnalyticsPeriod } from '../compute/period'
 import type { FollowerSummary } from '../compute/report-sections'
 
 /**
- * What the two networks' narrative modules share — extracted when Facebook's arrived
- * (2026-09-07), the same split `sync-shared.ts` made for the syncs.
+ * What the two networks' narrative modules share: the archive-then-generate sequence, the part of
+ * a fact sheet that reads the same either way, the fallback one-liner and the failure guard. What
+ * stays per network is what that network can honestly say about itself — its own fact sheet, and
+ * its own cache identity.
  *
- * The line has moved since. It was drawn at "the vocabulary and the one query", which left the
- * archive-then-generate sequence, the fact-sheet spine, the fallback one-liner and the failure
- * guard written out twice — three of them differing only in which two metrics a network leads
- * with. Those are here now. What stays per network is what a network can honestly SAY about
- * itself: the fact sheets themselves (Facebook has no reach, no audience, no formats to
- * narrate), and each network's own cache identity.
- *
- * The two `unstable_cache` call sites deliberately stay in their own modules. Next derives a
- * cache key partly from the callback's source text, so one shared call site would be one cache
- * for both networks; and after this extraction both callbacks reduce to near-identical
- * one-liners, which is why each `keyParts` now names its network explicitly rather than
- * trusting those texts to differ.
+ * The two `unstable_cache` call sites deliberately stay in their own modules. Next builds the
+ * cache key as `cb.toString()` joined with `keyParts` (next/dist/server/web/spec-extension/
+ * unstable-cache.js), so one shared call site would be one cache for both networks — and the two
+ * callbacks are now the same two lines, which is why each `keyParts` names its network
+ * explicitly rather than trusting those texts to differ.
  */
 
 const CAPTION_FACT_CHARS = 120
@@ -37,9 +32,10 @@ export interface NarrativeResult {
 /**
  * The stored wording of an exported report for exactly this window, or null.
  *
- * Account- AND platform-scoped: both networks archive into `analytics_reports`, so a lookup
- * without the platform filter could hand one network's words to the other's document — and a
- * report exported for a previously connected account must never resurface after a reconnect.
+ * Account- AND platform-scoped: both networks archive into `analytics_reports`, so without the
+ * platform filter a lookup could hand one network's words to the other's document, and without
+ * the account filter a report exported for a previously connected account resurfaces after a
+ * reconnect.
  */
 async function fetchArchivedSummary(
   admin: SupabaseClient,
@@ -55,7 +51,7 @@ async function fetchArchivedSummary(
     .eq('period_end', scope.end)
     .maybeSingle()
   if (error) throw new Error(`archived summary lookup failed: ${error.message}`)
-  // WHY as: the shared admin client is untyped, so the projection does not infer.
+  // WHY as: the shared SupabaseClient param is untyped, so the projection does not infer.
   return (data as { ai_summary: string } | null)?.ai_summary ?? null
 }
 
@@ -69,9 +65,9 @@ export function factCaption(caption: string | null | undefined): string | null {
  * compared against, the follower ledger, and how many posts went out.
  *
  * Deliberately NOT the whole sheet. Each network's headline metrics and per-post shape stay in
- * its own builder — and `facebook-narrative.test.ts` asserts Facebook's exact key set, which is
- * the pin that keeps a well-meaning "harmonisation" from quietly teaching the model about
- * metrics Meta does not serve for Pages.
+ * its own builder, and `facebook-narrative.test.ts` asserts Facebook's exact key set — the pin
+ * that keeps a well-meaning "harmonisation" from teaching the model about metrics Meta does not
+ * serve for Pages.
  */
 export function narrativeSpine(
   period: AnalyticsPeriod,
@@ -123,11 +119,10 @@ export function buildFallbackSentence(input: {
 /**
  * Everything a network must supply to have a narrative written for it.
  *
- * Every function here is declared with METHOD SHORTHAND at the call site, never as a property
- * pointing at an imported binding. A property reference is resolved once, when the spec object
- * is evaluated at module load; an import cycle reaching back into that module would freeze it as
- * `undefined`, and `guardNarrative` below would turn the resulting TypeError into a permanent,
- * silent fallback that no test covers. Shorthand defers the lookup to call time.
+ * Declare every function here with METHOD SHORTHAND, never as a property pointing at an imported
+ * binding. A property reference resolves once, when the spec object is evaluated at module load;
+ * an import cycle reaching that module would leave it `undefined`, and `guardNarrative` below
+ * turns the resulting TypeError into a permanent silent fallback that no test covers.
  */
 export interface NarrativeSpec<Report extends { hasHistory: boolean }> {
   /** As `analytics_reports.platform` stores it, and as the connection lookup filters on. */
@@ -140,7 +135,6 @@ export interface NarrativeSpec<Report extends { hasHistory: boolean }> {
   facts(report: Report): Record<string, unknown>
 }
 
-/** The arguments a narrative is written from, as one object rather than nine loose strings. */
 export interface NarrativeArgs {
   clientId: string
   clientName: string
@@ -151,9 +145,9 @@ export interface NarrativeArgs {
 /**
  * Archive first, then generate — the sequence both networks follow.
  *
- * Only an archive-linked window (from/to in the URL, i.e. `preset === 'custom'`) reuses stored
- * wording. Preset views are live and must never be pinned by an earlier export — that pin is
- * exactly the "can't generate a new report" trap.
+ * Only an archive-linked window reuses stored wording: `preset === 'custom'` is exactly the case
+ * where from/to came off the URL (`resolvePeriod`). Preset views are live, and pinning one to an
+ * earlier export would leave a client unable to see a newer report for the same range.
  */
 export async function resolveNarrative<Report extends { hasHistory: boolean }>(
   spec: NarrativeSpec<Report>,

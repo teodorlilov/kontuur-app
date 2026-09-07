@@ -3,9 +3,9 @@ import type { AnalyticsReportRow } from '@/types'
 /**
  * One row of the report archive, as every surface that lists them needs it.
  *
- * Lives here rather than in `report-archive.tsx` because it crosses the page boundary: the
- * analytics page constructs these and hands them down, so a server page was reaching into a
- * component module for a type. The four other features with a `types.ts` set the precedent.
+ * Here rather than in `report-archive.tsx` because it crosses the page boundary: the analytics
+ * page fetches these (`fetchReportArchive`) and hands them to both documents, so keeping the
+ * type in a component module would have a server page importing from one.
  */
 export type ArchiveEntry = Pick<
   AnalyticsReportRow,

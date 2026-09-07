@@ -25,7 +25,7 @@ describe('bestTimeFromOnline', () => {
     const result = bestTimeFromOnline(online)
     const entry = result.platforms[0]!
     expect(entry.platform).toBe('Instagram')
-    // Full weekday names — suggestWeekSlots matches them lowercased.
+    // Full names, because slot-picker.ts matches best_days lowercased against its own list.
     expect(entry.best_days).toEqual(['Tuesday', 'Wednesday', 'Sunday'])
     expect(entry.best_time_windows.map((window) => window.time)).toEqual(['21:00', '20:00'])
     expect(entry.confidence).toBe('observed')

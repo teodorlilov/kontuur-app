@@ -7,12 +7,9 @@ import type { AnalyticsPeriod } from '../../lib/compute/period'
  * The whole-document state while a window is still pulling from Meta: the report's silhouette
  * instead of numbers that are about to change.
  *
- * One component because it was two, in two different layers — Instagram decided and rendered it
- * inside its view, Facebook decided and rendered it in the page — and the copies had already
- * drifted. The Facebook branch carried no masthead and no sync line, so a filling Facebook
- * window showed a bare skeleton: no client name, no period range, no "last synced" footer, and
- * nothing to print. Both views now hold their own decision and hand the chrome here, so the two
- * cannot diverge again.
+ * `masthead` and `syncLine` are passed in rather than built here so that a filling document
+ * keeps the client name, the period range and the "last synced" footer of the finished one —
+ * and so neither network's view can quietly drop them.
  */
 export function FillingReport({
   masthead,

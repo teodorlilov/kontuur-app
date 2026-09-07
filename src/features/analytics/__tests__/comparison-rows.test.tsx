@@ -4,7 +4,7 @@ import { MIN_VISIBLE_PCT } from '../lib/compute/bar-scale'
 import type { ComparisonRow } from '../lib/instagram/build-report'
 import { ComparisonRows } from '../components/instagram/comparison-rows'
 
-/** The live shape: a huge paid row beside a previous period of 3. */
+/** The extreme the floor exists for: a 32,340 paid row beside a previous period of 3. */
 const ROWS: ComparisonRow[] = [
   {
     key: 'AD',
@@ -34,10 +34,8 @@ const ROWS: ComparisonRow[] = [
 describe('ComparisonRows', () => {
   it('keeps a real value visible however small its share of the scale', () => {
     const { container } = render(<ComparisonRows rows={ROWS} ariaLabel="Reach by format" />)
-    // 3 against a 32,340 maximum computes to 0.008% of the track. Asserted on
-    // the rendered width rather than on a `min-w-` class: the floor moved from
-    // CSS to bar-scale, and a test that pins HOW it is applied breaks on a
-    // restyle that keeps the behaviour intact.
+    // 3 against a 32,340 maximum is 0.008% of the track (the span is 82). Asserted on the
+    // rendered width, not on a utility class, so a restyle that keeps the behaviour passes.
     const bars = Array.from(container.querySelectorAll<HTMLElement>('i[style*="width"]'))
     expect(bars).toHaveLength(4)
     const widths = bars.map((bar) => Number.parseFloat(bar.style.width))
@@ -56,7 +54,7 @@ describe('ComparisonRows', () => {
 
     // Every number arrives under its own name — the point of the card.
     expect(screen.getByText('Reached this period')).toBeInTheDocument()
-    // Once on the bar, once in the card beneath its label.
+    // Once as the bar's inline value, once in the card.
     expect(screen.getAllByText('991')).toHaveLength(2)
     expect(screen.getByText('Reached last period')).toBeInTheDocument()
     expect(screen.getByText('Change')).toBeInTheDocument()
@@ -102,8 +100,6 @@ describe('ComparisonRows', () => {
   })
 
   it('reads the rows out of the chart itself, so the label and the bars cannot disagree', () => {
-    // Each caller used to build this string by hand — three near-identical map/join chains over
-    // rows the component already holds, each with its own copy of the null handling.
     render(<ComparisonRows rows={ROWS} ariaLabel="Reach by format" unit="Reached" />)
     const label = screen.getByRole('img').getAttribute('aria-label') ?? ''
 

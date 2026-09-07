@@ -3,17 +3,16 @@ import { toDateKey } from '@/utils/date-helpers'
 import { parseTimestamp } from '@/utils/format'
 
 /**
- * The section math BOTH networks' report builders compose from — extracted from
- * `build-report.ts` when Facebook analytics arrived (2026-09-06), because the alternative was
- * either copying this logic into a second builder or teaching one builder a network branch.
+ * The section math BOTH networks' report builders compose from, in place of a second copy or a
+ * network branch inside one builder.
  *
- * Everything here is network-neutral BY CONSTRUCTION: generic over any daily row carrying
- * `metric_date`, fed values through picker functions, and never naming a platform. Instagram
- * feeds `stripCell` reach; Facebook feeds it page views — the function cannot tell.
+ * Network-neutral BY CONSTRUCTION: generic over any daily row carrying `metric_date`, fed
+ * values through picker functions, and never naming a platform. Instagram feeds `stripCell`
+ * reach, Facebook feeds it page views — the function cannot tell.
  *
- * The probe's rule travels through unchanged: NULL means "the API had nothing for this day",
- * 0 means it said zero. Sums are null only when EVERY day was null; deltas are null whenever
- * either side can't be computed.
+ * The probe's rule travels through unchanged (sync-metrics.ts): NULL means "the API had nothing
+ * for this day", 0 means it said zero. Sums are null only when EVERY day was null; deltas are
+ * null whenever either side can't be computed.
  */
 
 // ── Output shapes ──
@@ -21,7 +20,6 @@ import { parseTimestamp } from '@/utils/format'
 export interface ComparisonValue {
   now: number | null
   then: number | null
-  /** Percent change vs the previous period; null when either side is unknowable. */
   deltaPct: number | null
 }
 
@@ -31,23 +29,21 @@ export interface StripCell extends ComparisonValue {
 }
 
 /**
- * Why a post row has no metrics: 'pending' = the nightly sync has not run
- * since it published; 'removed' = a completed sync no longer found it on
- * the network (deleted after publish). Null = the metrics are real.
+ * Why a post row has no metrics: 'pending' = no clean sync has run since it published;
+ * 'removed' = one has, and did not find it on the network. Null = the metrics are real.
  */
 export type PostMissing = 'pending' | 'removed' | null
 
 /** The slice of a post the trend tooltip names — enough to answer "what caused this". */
 export interface TrendPost {
-  /** The network's own id for the post — `platform_post_metrics.external_post_id`. */
   externalPostId: string
   caption: string | null
   mediaType: string | null
   reach: number | null
   /**
-   * Carried because a network may have no per-post reach at all: Meta's 2025-11-15 purge left
-   * Facebook Pages without it, so a card that can only speak reach has nothing to say about a
-   * Facebook post and used to promise the number was still coming.
+   * Carried because a network may have no per-post reach at all — Meta's 2025-11-15 purge left
+   * Facebook Pages without it (lib/meta/facebook/insights.ts). A card that can only speak reach
+   * has nothing true to say about a Facebook post.
    */
   interactions: number | null
   follows: number | null
@@ -64,7 +60,7 @@ export interface ReachDay {
    * "13 Aug · previous 3,948" and assumes both numbers describe 13 Aug.
    */
   thenDate: string
-  /** That day's views — the tooltip pairs the two ways a day was seen. Null when unmeasured. */
+  /** The day's second lens — Instagram's views, Facebook's page views. Null when unmeasured. */
   views: number | null
   /** Posts published that day, strongest first. */
   posts: TrendPost[]
@@ -86,9 +82,8 @@ export interface FollowerSummary {
   net: { now: number | null; then: number | null }
   /** Latest known account total, not a period sum. */
   total: number | null
-  /** followers_count by day for the sparkline. */
+  /** The anchored curve from `deriveFollowerCurve`, not raw counts — feeds the strip sparkline. */
   series: Array<number | null>
-  /** Day-by-day gains and losses — the flow timeline. */
   byDay: FollowerFlowDay[]
   /** Follows the network itself attributes to this period's posts (per-media metric). */
   fromPosts: number | null
@@ -101,10 +96,7 @@ export interface ReportPostRow {
   postId: string | null
   caption: string | null
   postedAt: string | null
-  /**
-   * The agency-calendar day this post belongs to — the same clock the period's
-   * day keys are resolved in. Null when the row carries no timestamp.
-   */
+  /** The agency-calendar day this post belongs to — the clock the period's day keys use. */
   postedDayKey: string | null
   mediaType: string | null
   mediaProductType: string | null
@@ -129,10 +121,10 @@ export interface ReportPostRow {
 /**
  * A value against the period's median, or null when the comparison cannot be made.
  *
- * Guarded on three things, all of which matter: an unmeasured value has no ratio, a period with
- * no median has nothing to compare against, and a median of zero would divide to Infinity and
- * render as "Infinity× median". Instagram rates reach this way and Facebook interactions — the
- * measure differs, the rule does not, and the Facebook table used to keep its own copy.
+ * All three guards matter: an unmeasured value has no ratio, a period with no median has nothing
+ * to compare against, and a median of zero would divide to Infinity and render as "Infinity×
+ * median". Instagram rates reach this way, Facebook interactions — the measure differs, the rule
+ * does not.
  */
 export function ratioToMedian(value: number | null, median: number | null): number | null {
   if (value === null || median === null || median <= 0) return null
@@ -163,11 +155,16 @@ export function median(values: number[]): number | null {
 }
 
 /**
- * Neither network serves historical follower TOTALS reliably — the nightly sync captures one
- * per night, so a fresh account has few points and no curve. But every day's gains and losses
- * are stored, and one known total anchors the rest: walk outward from each captured count
- * applying the daily net change. Days whose gains are unknown stay null — the line breaks
- * honestly.
+ * Instagram serves no historical follower TOTALS: `followers_count` is a reading of the account
+ * as it stands, which only the nightly run can take (sync-metrics.ts), so a window holds one
+ * point per night it ran and a fresh account has no curve. Every day's gains and losses ARE
+ * stored, though, and one known total anchors the rest — walk outward from each captured count
+ * applying the daily net change. Days whose gains are unknown stay null, so the line breaks
+ * honestly rather than interpolating.
+ *
+ * Facebook's `page_follows` is a level series per day, so these loops usually have nothing to
+ * fill — but `zipPageDays` leaves a metric absent on any day Meta did not serve it, so a day
+ * with gains and no level still walks.
  */
 function deriveFollowerCurve(
   counts: Array<number | null>,
@@ -200,7 +197,6 @@ interface DayAlignedRows<Row> {
   byDay: Array<Row | null>
 }
 
-/** Generic over the daily-row shape: each network's table qualifies by carrying metric_date. */
 export function alignRows<Row extends { metric_date: string }>(
   rows: Row[],
   dayKeys: string[]
@@ -232,20 +228,22 @@ export function stripCell<Row>(
 /** A sync this much newer than a publish had every chance to see the media. */
 const SYNC_GRACE_MS = 60 * 60 * 1000
 
+/** posts.post_type ('single' | 'carousel') in the network vocabulary `postTypeMeta` keys on. */
 const APP_MEDIA_TYPE: Record<string, string> = { carousel: 'CAROUSEL_ALBUM' }
 
 /**
- * The agency-calendar day a timestamp falls on. The period's day keys are
- * resolved in the agency's clock, so reading the UTC prefix off an instant put
- * every post published in the first hours of local morning one column early —
- * and, on the window's opening day, pushed it out of the window altogether, so
- * a live post arrived through the ledger arm instead and was labelled as no
- * longer on the network.
+ * The agency-calendar day a timestamp falls on.
+ *
+ * The period's day keys are resolved in the agency's clock, so slicing the UTC prefix off an
+ * instant puts every post published in the first hours of local morning one column early — and
+ * on the window's opening day, out of the window altogether, whereupon the ledger arm re-adds
+ * it as a pin marked "removed": a live post reported as deleted. build-report.test.ts pins the
+ * Europe/Sofia case that catches this.
  */
 export function dayKeyOf(iso: string | null, timezone: string): string | null {
   if (!iso) return null
-  // parseTimestamp, not `new Date(iso)`: posts.published_at is a naive UTC
-  // timestamp, which JS would otherwise read in the runtime's zone.
+  // parseTimestamp, not `new Date(iso)`: it appends Z to a stored timestamp that carries no
+  // offset, which JS would otherwise read in the runtime's zone.
   const date = parseTimestamp(iso)
   return Number.isNaN(date.getTime()) ? null : toDateKey(date, timezone)
 }
@@ -261,15 +259,11 @@ export function buildPosts(
   lastSyncAt: string | null,
   timezone: string,
   /**
-   * The current window's first day. Pins outside it are dropped.
-   *
-   * This file has always CLAIMED that "the app ledger's pins are scoped to the current window"
-   * (see previousTrendPostsByDay), but only the callers' queries enforced it — and Facebook's
-   * bounded its ledger read at the PREVIOUS window's start, so every publication from the
-   * comparison window arrived here, matched none of the current window's metric rows, and was
-   * pushed with every measure null and a "removed" verdict. A 30-day Facebook window showed the
-   * preceding 30 days of posts as deleted from the Page. The query is fixed; the invariant is
-   * enforced here so a third network cannot rediscover it.
+   * The current window's first day. Pins outside it are dropped HERE, not only in the callers'
+   * queries: a publication from the comparison window matches none of the current window's
+   * metric rows, so it is pushed with every measure null and — its publish time being far past
+   * the sync grace — a "removed" verdict. That reads as a whole preceding period of posts
+   * deleted from the network. build-facebook-report.test.ts pins it.
    */
   periodStart: string
 ): {
@@ -307,8 +301,6 @@ export function buildPosts(
   for (const publication of publishedPosts) {
     const post = publication.posts
     if (!publication.published_at) continue
-    // Current window only — the pin fills what the sync could not see for THIS period, not a
-    // post the reader is looking at the comparison line for.
     const pinnedDay = dayKeyOf(publication.published_at, timezone)
     if (!pinnedDay || pinnedDay < periodStart) continue
     if (publication.external_post_id && knownMedia.has(publication.external_post_id)) continue
@@ -348,8 +340,8 @@ export function buildPosts(
 // ── Trend pins ──
 
 /**
- * Publications keyed by calendar day; `buildPosts` already ordered them strongest first, so
- * each day's list keeps that order.
+ * Publications keyed by calendar day, preserving the caller's ranking within each day —
+ * Instagram hands these over sorted by reach, Facebook by interactions.
  */
 export function groupTrendPostsByDay(posts: ReportPostRow[]): Map<string, TrendPost[]> {
   const postsByDate = new Map<string, TrendPost[]>()
@@ -372,9 +364,9 @@ export function groupTrendPostsByDay(posts: ReportPostRow[]): Map<string, TrendP
 }
 
 /**
- * The previous window's publications, from synced metrics only — the app ledger's pins are
- * scoped to the current window, so a previous-period post the network never returned simply
- * has no pin rather than a guessed one.
+ * The previous window's publications, from synced metrics only. The app ledger's pins are scoped
+ * to the current window (see `buildPosts`), so a previous-period post the network never returned
+ * simply has no pin rather than a guessed one.
  */
 export function previousTrendPostsByDay(
   postRows: PlatformPostMetricColumns[],
@@ -404,17 +396,16 @@ export function previousTrendPostsByDay(
 }
 
 /**
- * The compared daily trend: one row per current-period day, paired with the previous-period
- * day sharing its axis position. Instagram feeds reach (with views riding as the secondary
- * series); Facebook feeds post engagements with no secondary — this function never knows
- * which.
+ * The compared daily trend: one row per current-period day, paired with the previous-period day
+ * sharing its axis position. Instagram feeds reach with views as the secondary series, Facebook
+ * post engagements with page views — this function never knows which.
  */
 export function buildDailyTrend(args: {
   currentKeys: string[]
   previousKeys: string[]
   nowSeries: Array<number | null>
   thenSeries: Array<number | null>
-  /** The tooltip's second lens on a day (Instagram's views). All-null when there is none. */
+  /** The tooltip's second lens on a day. All-null is legitimate: the row renders without it. */
   secondarySeries: Array<number | null>
   postsByDate: Map<string, TrendPost[]>
   previousPostsByDate: Map<string, TrendPost[]>
@@ -437,9 +428,9 @@ export function buildDailyTrend(args: {
 
 /**
  * The whole follower story — gained/lost/net, the anchored curve, the flow timeline, churn —
- * from whichever columns a network stores its counts in. `fromPosts` is the per-media follows
- * the network attributes to the period's posts; a network that serves none passes posts whose
- * follows are all null and gets an honest null back.
+ * from whichever columns a network stores its counts in. `fromPosts` is the network's OWN
+ * per-media attribution, a separate basis from the account-level gained total; a network that
+ * serves none (Facebook, since the purge) passes all-null follows and gets an honest null back.
  */
 export function buildFollowerSummary<Row>(args: {
   current: DayAlignedRows<Row>
@@ -481,8 +472,8 @@ export function buildFollowerSummary<Row>(args: {
     posts: args.postsByDate.get(date) ?? [],
   }))
 
-  // Followers at the period's start: the first anchored end-of-day total
-  // minus that day's own net change. Null when the curve never anchors.
+  // Followers at the period's START: the first day's end-of-day total, backed out over that
+  // day's own net change. Null when the curve never anchored, so churn stays null too.
   const startTotal =
     followerCurve[0] !== null && followerCurve[0] !== undefined
       ? followerCurve[0] - (gainedSeries[0] ?? 0) + (lostSeries[0] ?? 0)

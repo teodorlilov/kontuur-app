@@ -8,12 +8,10 @@ import { postTypeMeta } from '../../lib/compute/post-display'
 /**
  * The post's own image, with the lettered badge as its fallback.
  *
- * Instagram signs these CDN urls with an expiry, so a stored one outlives its
- * row by days, not months. The nightly re-sync refreshes them for thirty days
- * after publish, which covers everything this table normally shows — but an
- * older window WILL hold dead links, and a broken-image glyph in a client
- * report is worse than no image at all. So a failed load falls back to the
- * badge the table used before, and nothing announces the difference.
+ * Meta signs these CDN urls with an expiry, and the nightly re-sync only refreshes them for
+ * `MEDIA_LOOKBACK_DAYS` (30) after publish — so any older window WILL hold dead links. The
+ * onError fallback is not defensive padding: without it a client report renders broken-image
+ * glyphs, which is worse than no image at all.
  */
 export function PostThumb({
   thumbnailUrl,

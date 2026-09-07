@@ -7,10 +7,8 @@ import { fillPeriodData } from '../../actions/report-actions'
 import type { AnalyticsPeriod } from '../../lib/compute/period'
 
 /**
- * Mounted only when the selected window has days never asked of Meta: fires
- * the fill once, then re-renders the page when it lands. This is what makes
- * a period filter behave like the Instagram app — selecting a window IS the
- * request for that window's data; no button in between.
+ * Mounted only when the selected window has days never asked of Meta. Selecting a period IS
+ * the request for that period's data — there is no fetch button anywhere in this document.
  */
 export function AutoFill({
   clientId,
@@ -33,9 +31,9 @@ export function AutoFill({
   // new key fires the next run. A run that moves nothing produces the same key
   // and the chain stops — guaranteed termination.
   const key = `${clientId}:${network}:${period.start}:${period.end}:${unfilledDays}`
-  // Carries its key rather than being cleared when one changes: a synchronous
-  // reset inside the effect is the cascading render the lint rule names, and
-  // "belongs to a run that is no longer current" is a render-time question.
+  // Carries its key rather than being cleared when the key changes: a synchronous reset
+  // inside the effect is what `react-hooks/set-state-in-effect` forbids, and "belongs to a
+  // run that is no longer current" is answerable at render time anyway.
   const [stalled, setStalled] = useState<{ key: string; kind: 'throttled' | 'failed' } | null>(null)
 
   useEffect(() => {
@@ -50,9 +48,8 @@ export function AutoFill({
     }).then((result) => {
       if (!result.ok) return setStalled({ key, kind: 'failed' })
       if (result.data.filled) return router.refresh()
-      // Nothing landed and re-running will not help: say which, so the reader
-      // is not left watching a silhouette that has stopped advancing. The
-      // outcome used to be discarded here, which is how that happened.
+      // Nothing landed and re-running will not help. Saying which is what stops the reader
+      // watching a silhouette that has quietly stopped advancing.
       if (result.data.stalled) {
         setStalled({ key, kind: result.data.rateLimited ? 'throttled' : 'failed' })
       }

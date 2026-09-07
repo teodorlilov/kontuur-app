@@ -1,7 +1,6 @@
 /**
- * Shared display vocabulary for a published post: the type-chip letters the
- * posts table and the reach trend's publish pins both speak, and the caption
- * first-line that stands in for a title wherever a post is named.
+ * Shared display vocabulary for a published post — the type chip and the caption first line
+ * that stands in for a title, spoken by the posts tables and both timelines' day cards.
  */
 
 const TYPE_META: Record<string, { letter: string; label: string; tone: 'sage' | 'marker' }> = {
@@ -13,10 +12,10 @@ const TYPE_META: Record<string, { letter: string; label: string; tone: 'sage' | 
 /**
  * The chip for a media type, or null when the network never said what the post was.
  *
- * Facebook's post list offers no media-type vocabulary, so its sync stores null on purpose —
- * and every renderer used to answer that null with `?? TYPE_META.IMAGE`, printing "single" and
- * an "S" badge on every Facebook row including videos and link posts. A guess substituted at
- * render time for a null the writer chose deliberately is worse than showing nothing.
+ * That null is a deliberate write, not a gap: Facebook's post list carries no media-type
+ * vocabulary, so its sync stores null (sync-facebook-metrics.ts). Defaulting it here would put
+ * "single" and an "S" badge on every Facebook row, videos and link posts included —
+ * facebook-posts-table.test.ts pins that no such label appears. Callers render `·` instead.
  */
 export function postTypeMeta(mediaType: string | null | undefined) {
   return (mediaType && TYPE_META[mediaType]) || null

@@ -21,7 +21,7 @@ interface CellSpec {
   spoken: string
 }
 
-/** One count-shaped cell: value, verdict, last period's line, trace — both networks' grammar. */
+/** The count-shaped cell both networks build from; the grammar is shared, the metrics are not. */
 export function countCellSpec(
   label: string,
   cell: {
@@ -106,19 +106,14 @@ function cellSpecs(data: AnalyticsReportData): CellSpec[] {
   ]
 }
 
-/**
- * The five-cell hairline strip (direction-01 idiom, comparison grammar):
- * Label over Metric, delta chip, last period's value, thirty-day trace.
- * Day-one cells hold the exact height of their occupied twins.
- */
+/** Instagram's five cells. Day-one cells hold the exact height of their occupied twins. */
 export function SummaryStrip({ data }: { data: AnalyticsReportData }) {
   return <StripCells cells={cellSpecs(data)} hasHistory={data.hasHistory} />
 }
 
 /**
- * The strip's rendering, cell-agnostic: the Instagram wrapper above feeds it five cells,
- * Facebook's view feeds it three — the grammar (label over metric, chip, last period, trace)
- * is the shared part, and which metrics exist is each network's own truth.
+ * The rendering, cell-agnostic: five cells from the wrapper above, three from Facebook's view.
+ * The grammar is the shared part; which metrics exist at all is each network's own truth.
  */
 export function StripCells({
   cells,

@@ -58,8 +58,6 @@ describe('AutoFill', () => {
   })
 
   it('says a throttled run has stopped rather than leaving the skeleton silent', async () => {
-    // The outcome used to be discarded, so this state was indistinguishable
-    // from a run that filled sixty days — and the chain simply stopped.
     fillPeriodData.mockResolvedValue({
       ok: true,
       data: { filled: false, stalled: true, rateLimited: true },

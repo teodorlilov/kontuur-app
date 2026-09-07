@@ -1,12 +1,12 @@
 import type { AnalyticsPeriod, RangePreset } from './period'
 
 /**
- * URL builders for the console's period navigation. The client id always
- * travels explicitly so a shared link shows the same client it was copied on.
+ * URL builders for the console's period navigation.
  *
- * `network` rides the same way once a page has two: absent means Instagram (existing links
- * stay valid), 'facebook' pins the Facebook view. Every builder takes it so a period click,
- * an archive row and the partial escape hatch all stay on the network the reader is on.
+ * The client id always travels explicitly: with no `?client=` the page falls back to the
+ * first client alphabetically, so a link copied off one report would open on another's.
+ * `network` is left off for Instagram on purpose — the page defaults an absent param to
+ * Instagram, so links written before Facebook existed still resolve.
  */
 
 function withNetwork(params: URLSearchParams, network?: string): string {
@@ -42,11 +42,11 @@ export function analyticsClientHref(
 }
 
 /**
- * The window as it is, mid-fill. The filling state hides the whole document,
- * so any condition that stops the fill advancing — a rate limit, a dead token,
- * a run that writes days the unfilled count does not track — would otherwise
- * leave the reader on a silhouette over data that is already stored. This is
- * the way out, and it is a plain URL so it survives a reload.
+ * The way out of the filling state, which hides the whole document until every day of the
+ * window has been asked for. A fill can stop advancing for reasons no run reports — a rate
+ * limit, or days written outside what `countUnfilledDays` tracks, since it skips today and
+ * the consolidation tail — leaving the reader on a silhouette drawn over stored data. A
+ * plain URL, so it survives a reload.
  */
 export function analyticsPartialHref(
   clientId: string,

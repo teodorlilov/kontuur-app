@@ -3,11 +3,9 @@ import type { PlatformPostMetricColumns, PublishedPostPin } from '@/lib/queries/
 /**
  * Row shapes the analytics tests build on.
  *
- * `platform_post_metrics` carries seventeen columns and both networks' builder tests need one,
- * so both had written the whole skeleton out — the Facebook copy made when its builder arrived.
- * A shared skeleton with everything null is the honest base: a test that cares about a column
- * names it, and one that does not says nothing, which is exactly the NULL-means-unmeasured rule
- * the production code is written to.
+ * Everything nullable starts null, which is the NULL-means-unmeasured rule the builders are
+ * written to: a case that cares about a column names it, and one that does not says nothing —
+ * so a fixture can never accidentally assert a zero the network never served.
  */
 export function postMetricRow(
   overrides: Partial<PlatformPostMetricColumns> = {}
@@ -50,11 +48,11 @@ export const EMPTY_PAGE_SERIES = {
 }
 
 /**
- * A published destination with the post it carried.
+ * A published destination with the post it carried — the shape the pin query returns.
  *
- * The pin used to be a `posts` row with `external_post_id` and `published_at` on it. Both moved
- * onto `post_publications` — a media id and a publish time belong to the destination that
- * produced them — so the fixture takes them at the top level and nests what is left.
+ * `external_post_id` and `published_at` are the destination's (`post_publications`, migration
+ * 20260838); only caption and post type come from `posts`. The nesting mirrors the embed, so a
+ * caller passes both at the top level and this splits them.
  */
 export function publishedPost(
   overrides: Partial<{

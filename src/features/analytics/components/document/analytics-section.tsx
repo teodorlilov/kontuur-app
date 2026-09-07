@@ -9,7 +9,6 @@ interface AnalyticsSectionProps {
   children: React.ReactNode
 }
 
-/** One clearing of the document: title, quiet subtitle, optional legend, chart. */
 export function AnalyticsSection({
   title,
   sub,
@@ -52,8 +51,8 @@ const SWATCH_CLASS = {
 type LegendSwatch = keyof typeof SWATCH_CLASS
 
 /**
- * The two-series legend. Decorative (the charts carry sr-only sentences), so
- * it is hidden from readers rather than narrated twice.
+ * aria-hidden: every chart under a legend carries its own `role="img"` aria-label naming the
+ * same series, so a read legend would state them twice.
  */
 export function ChartLegend({ items }: { items: Array<{ swatch: LegendSwatch; label: string }> }) {
   return (

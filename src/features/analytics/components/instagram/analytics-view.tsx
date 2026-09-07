@@ -39,9 +39,9 @@ interface AnalyticsViewProps {
   hasConnection: boolean
   timezone: string
   /**
-   * The last sync ATTEMPT, from the cron's own stamp — clean or not, since this
-   * line's copy says which. Deliberately not `data.lastSyncAt`, which only a
-   * clean run may date because it decides whether a post reads "removed".
+   * The last sync ATTEMPT, from the cron's own stamp — clean or not. Deliberately not
+   * `data.lastSyncAt`, which only a clean run may date, because that one decides whether a
+   * post reads "removed" or "pending".
    */
   lastSyncAt: string | null
   /** The last nightly run's verdict — null after a clean one. */
@@ -89,8 +89,6 @@ export function AnalyticsView({
     />
   )
 
-  // Nothing partial: while this window still pulls from Instagram, the page
-  // holds the report's silhouette instead of numbers that are about to change.
   if (filling) {
     return (
       <FillingReport
@@ -313,10 +311,10 @@ export function AnalyticsView({
       <div className="mt-7">
         <AnalyticsSection
           title="Who follows, who engages"
-          // The windows are Instagram's, not ours: follower demographics come
-          // back on `this_month` and engaged demographics on `last_90_days`
-          // (insights.ts DEMOGRAPHIC_TIMEFRAME). Saying "this period" claimed a
-          // responsiveness to the filter that this panel has never had.
+          // The windows are Instagram's, not ours: follower demographics come back on
+          // `this_month` and engaged demographics on `last_90_days` (insights.ts
+          // DEMOGRAPHIC_TIMEFRAME). The sub must not say "this period" — this panel is the
+          // one part of the document the period filter does not move.
           sub="Your follower mix this month against who engaged over the last 90 days — Instagram fixes both windows, so this panel alone does not follow the period filter."
           ariaLabel="Audience"
           legend={

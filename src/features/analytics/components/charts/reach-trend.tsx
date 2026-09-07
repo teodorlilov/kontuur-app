@@ -20,14 +20,14 @@ const PAD = { top: 16, right: 12, bottom: 62, left: 12 }
 const THEN_PIN_DROP = 16
 
 /**
- * The hero comparison: daily reach as two 2px lines — this period in Deep Pine
- * over an 8% wash, the previous period in the sage stroke — with the best day
- * marked by the Living Green now-dot, and every publish day pinned on the
- * baseline so a spike can be read against the post that caused it. Hovering
- * (or tapping) a day raises a crosshair and the day card: reach against the
- * previous period, that day's views, and the posts that went out. The now-line
- * draws in over the already-visible then-line (the page's one motion moment;
- * reduced-motion and print both get the finished state).
+ * The hero comparison: daily reach as two 2px lines — this period in Deep Pine over a faint
+ * wash, the previous period in the then-stroke — with the best day marked by the Living Green
+ * now-dot and every publish day pinned on the baseline, so a spike can be read against the
+ * post that caused it.
+ *
+ * The now-line draws in over the already-visible then-line via `.chart-draw-in`, which
+ * globals.css cancels under both `prefers-reduced-motion` and `@media print` — either way the
+ * finished state is what renders.
  */
 /** The chart's words, so a network that feeds it a different metric can say so. */
 export interface TrendLabels {
@@ -77,12 +77,11 @@ export function ReachTrend({
   const nowSegments = lineSegments(nowValues, x, y)
   const thenSegments = lineSegments(thenValues, x, y)
 
-  // The wash under the now-line: the connected outline closed to the baseline.
   const nowPoints = nowSegments.flat()
   const washPath =
     nowPoints.length > 1
-      ? // One polyline through every real point — the same point formatting the line itself
-        // uses, rather than a second copy of it inline.
+      ? // Closed through `segmentsToPath` rather than a second inline point formatter, so the
+        // wash edge and the line it fills under can never round differently.
         `${segmentsToPath([nowPoints])} L${nowPoints[nowPoints.length - 1]!.x.toFixed(1)},${baseline} L${nowPoints[0]!.x.toFixed(1)},${baseline} Z`
       : null
 
@@ -296,10 +295,9 @@ export function ReachTrend({
 }
 
 /**
- * The day card beside the crosshair — one block per window, each under its
- * OWN date. The two windows share an x-axis that can only be labelled once,
- * so a card reading "13 Aug · Previous 3,948" invited exactly the wrong
- * conclusion: that 3,948 also described 13 Aug. It came from 6 Aug.
+ * One block per window, each under its OWN date. The two windows share an x-axis that can be
+ * labelled only once, so a single-dated card ("13 Aug · Previous 3,948") reads as though the
+ * comparison number described 13 Aug when it came from `day.thenDate`.
  */
 function TrendTooltip({
   day,

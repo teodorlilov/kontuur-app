@@ -3,9 +3,9 @@ import { EMPTY_PAGE_SERIES } from './fixtures'
 
 /**
  * The Facebook window fill — Instagram's auto-fill capability in Facebook's shape. What
- * `npm run check` cannot see: the 90-day chunking (Meta refuses 120 days per call, probed),
- * the marker rows that make an asked-but-unserved day stop counting as unfilled, and the
- * bleed filter that keeps a series bucket from writing outside the asked window.
+ * `npm run check` cannot see: the 90-day chunking (120 answered `Invalid parameter` when
+ * probed), the marker rows that make an asked-but-unserved day stop counting as unfilled, and
+ * the bleed filter that keeps a series bucket from writing outside the asked window.
  */
 
 const fetchPageDaySeries = vi.fn()
@@ -41,7 +41,7 @@ beforeEach(() => {
   upsertFbPageMetricDays.mockReset()
   readMarkerRows.mockReset()
   fetchPageDaySeries.mockResolvedValue(EMPTY_PAGE_SERIES)
-  // Nothing asked of Meta yet — the state every existing case here assumes.
+  // Nothing asked of Meta yet: the default every case assumes unless it says otherwise.
   readMarkerRows.mockResolvedValue([])
 })
 
@@ -109,9 +109,8 @@ describe('fillPageWindow', () => {
     expect(rows.every((row) => (row.metric_date as string) <= '2026-09-03')).toBe(true)
   })
   it('skips a chunk whose every day was already asked of Meta, and reports no new days', async () => {
-    // `wroteDays` used to count every row upserted, which on a re-run is the whole window — so
-    // `wroteDays === 0` was unreachable and the caller's "stalled" signal, the thing that stops
-    // the auto-fill chain re-firing, could never be true.
+    // wroteDays must exclude already-marked days: it is the caller's only "stalled" signal, and
+    // counting every upserted row makes zero unreachable, so the AutoFill chain never stops.
     readMarkerRows.mockResolvedValue([
       { metric_date: '2026-09-04', totals_synced_at: '2026-09-07T03:30:00Z' },
       { metric_date: '2026-09-05', totals_synced_at: '2026-09-07T03:30:00Z' },

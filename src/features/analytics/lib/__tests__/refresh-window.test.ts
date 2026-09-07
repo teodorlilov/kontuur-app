@@ -29,7 +29,7 @@ describe('selectRefillDays', () => {
       '2026-08-19'
     )
     expect(targets).toEqual([
-      '2026-08-18', // tail re-ask (within 3 days of today)
+      '2026-08-18', // inside REFRESH_TAIL_DAYS (3) of today, so re-asked despite its marker
       '2026-08-17',
       '2026-08-16',
       '2026-08-15',

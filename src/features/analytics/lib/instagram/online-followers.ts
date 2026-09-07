@@ -10,19 +10,12 @@ import { upsertAccountMetricDays, type IGAccountMetricsInsert } from './account-
 /**
  * Hourly follower-online data: the one way it is fetched, stored, and turned into posting times.
  *
- * There were two of each. `syncOnlineFollowers` in the nightly sync asked Meta for four days and
- * upserted them; the online branch of `refreshWindowMetrics` asked for up to ninety, chunked, and
- * upserted the same column on the same conflict key. Two fetch-and-store paths for one column, with
- * different windows — and only the nightly one went on to derive anything, so a user could refresh
- * their analytics, fill the exact gap blocking their posting times, and still wait for the cron.
- *
- * That split also set the product's behaviour by accident. Nothing backfilled this column, so a
- * newly connected account gained one day per night and the derivation answered as soon as it had
- * five — a weekday-by-hour grid where most cells held a single observation. The ninety-day capability
- * existed the whole time, in the caller that never derived.
+ * Fetch-and-store lives here rather than in each caller because three paths write the column over
+ * different windows — the nightly sync, the OAuth callback and the analytics window refill — and
+ * only a shared entry point keeps a capture from landing without the derivation that reads it.
  */
 
-/** How far back a capture reaches when it has no better instruction — see `MIN_BEST_TIME_DAYS`. */
+/** Matches `OBSERVED_LOOKBACK_DAYS`, the window the derivation actually reads back. */
 export const ONLINE_FOLLOWERS_BACKFILL_DAYS = 28
 
 /** A connected account, as every function here needs it. */
@@ -78,11 +71,9 @@ function backfillWindow(days = ONLINE_FOLLOWERS_BACKFILL_DAYS): {
 /**
  * Re-derive this client's posting times from whatever is stored, and write the result.
  *
- * Called after ANY capture, so the two are never out of step. It used to live inline in the nightly
- * sync's "online hours" phase, which is why the analytics refill could write the input and leave the
- * output stale.
+ * Called after ANY capture, so input and output are never out of step.
  *
- * Writes only on success. A client who drops below the threshold — a reconnect to a different
+ * Writes only on success. A client who drops below the evidence floor — a reconnect to a different
  * account, say — keeps their last measured times rather than having them silently blanked, and the
  * stamp says when they were measured.
  */
@@ -105,11 +96,11 @@ export async function refreshObservedBestTime(
 }
 
 /**
- * Capture and derive in one call — what every caller outside the analytics refill actually wants.
+ * Capture and derive in one call — what every caller outside the analytics refill wants.
  *
- * The nightly sync, a fresh connection and a reconnect all mean the same thing: get the hours, then
- * work out the times. Keeping them together is what stops a fourth caller appearing that does the
- * first half only, which is the defect this module was built to remove.
+ * The nightly sync and the OAuth callback both mean the same thing: get the hours, then work out
+ * the times. Keeping them paired is what stops a caller appearing that does the first half only and
+ * leaves the stored times stale.
  */
 export async function captureAndDeriveBestTime(
   admin: SupabaseClient,

@@ -73,7 +73,8 @@ describe('sumOrNull', () => {
     expect(sumOrNull([])).toBeNull()
     expect(sumOrNull([null, null])).toBeNull()
     expect(sumOrNull([null, 2, 3])).toBe(5)
-    // The probe's contract: an explicit 0 is data, not absence.
+    // The rule every capture is written to: NULL is "the API had nothing", 0 is "the API
+    // said 0". Collapsing them is the Graph API's silent-empty-200 failure mode.
     expect(sumOrNull([0, null])).toBe(0)
   })
 })
@@ -112,9 +113,8 @@ describe('buildAnalyticsReport', () => {
     expect(report.reach.deltaPct).toBeCloseTo(100)
     expect(report.reach.series).toEqual([150, null, null, 250])
     expect(report.views.now).toBe(400)
-    // Day-by-day pairs align by index: day 1 of now against day 1 of then.
-    // thenDate carries the previous-period day each column is measured
-    // against — the axis and the day card both name it.
+    // Pairs align by INDEX, not by date: day 1 of now against day 1 of then. thenDate carries
+    // the day the comparison value came from, because the axis and the day card both print it.
     expect(report.reachByDay[0]).toEqual({
       date: '2026-08-15',
       now: 150,
@@ -178,9 +178,9 @@ describe('buildAnalyticsReport', () => {
         }),
       ],
     })
-    // The table and the medians stay current-window only.
     expect(report.posts.map((post) => post.externalPostId)).toEqual(['now'])
-    // …but the trend can now explain the dashed line's shape.
+    // The comparison post is reachable only through thenPosts, so the dashed line can be
+    // explained without the table claiming a post from outside its window.
     expect(report.reachByDay[0]!.thenDate).toBe('2026-08-11')
     expect(report.reachByDay[0]!.thenPosts.map((post) => post.caption)).toEqual(['Last week'])
     expect(report.reachByDay[1]!.posts.map((post) => post.externalPostId)).toEqual(['now'])
@@ -198,7 +198,6 @@ describe('buildAnalyticsReport', () => {
           id: 'gone',
           external_post_id: '404',
           caption: 'Deleted later',
-          // Naive UTC timestamp, exactly as posts.published_at stores it.
           published_at: '2026-08-16T18:57:17.192',
           post_type: 'carousel',
         }),
@@ -220,17 +219,16 @@ describe('buildAnalyticsReport', () => {
     const fresh = report.posts.find((post) => post.postId === 'fresh')!
     expect(fresh.missing).toBe('pending')
     expect(fresh.externalPostId).toBe('post-fresh')
-    // Each lands on its calendar day beside the synced pins.
     expect(report.reachByDay[0]!.posts.map((p) => p.externalPostId)).toEqual(['m-live'])
     expect(report.reachByDay[1]!.posts.map((p) => p.caption)).toEqual(['Deleted later'])
     expect(report.reachByDay[3]!.posts[0]!.missing).toBe('pending')
   })
 
   it('buckets posts by the agency calendar day, not the UTC one', () => {
-    // Sofia is UTC+3, so 22:30Z on the 14th is 01:30 on the 15th locally — the
-    // window's opening day. Reading the UTC prefix dropped this row out of the
-    // current window entirely, whereupon the ledger arm re-added it as a pin
-    // marked "removed": a live post reported as deleted from Instagram.
+    // Sofia is UTC+3, so 22:30Z on the 14th is 01:30 on the 15th locally — the window's
+    // opening day. Slicing the UTC prefix instead of bucketing through the agency timezone
+    // drops this row out of the window, and the ledger arm then re-adds it as a pin marked
+    // "removed": a live post reported as deleted from Instagram.
     const report = build({
       timezone: 'Europe/Sofia',
       postRows: [
@@ -261,7 +259,7 @@ describe('buildAnalyticsReport', () => {
   })
 
   it('keeps a late-evening post on its own local day', () => {
-    // 21:00Z on the 16th is already 00:00 on the 17th in Sofia.
+    // The other edge: 21:00Z on the 16th is already 00:00 on the 17th in Sofia.
     const report = build({
       timezone: 'Europe/Sofia',
       postRows: [
@@ -301,9 +299,10 @@ describe('buildAnalyticsReport', () => {
     })
     expect(report.followers.byDay.map((d) => d.gained)).toEqual([5, 12, null, null])
     expect(report.followers.byDay.map((d) => d.posts.length)).toEqual([0, 2, 0, 0])
-    // The flow day names its posts, strongest reach first — the hover card reads them.
+    // Strongest reach first — the day card lists the top few, so the order decides which.
     expect(report.followers.byDay[1]!.posts.map((p) => p.externalPostId)).toEqual(['a', 'b'])
-    // Instagram's own per-media attribution; the null-follows post doesn't poison it.
+    // Instagram's own per-media attribution; a null-follows post contributes nothing rather
+    // than counting as zero.
     expect(report.followers.fromPosts).toBe(4)
     // Start = first anchored total (830) minus that day's net (+3) → 827; lost 2 of 827.
     expect(report.followers.churnPct).toBeCloseTo((2 / 827) * 100)
@@ -340,7 +339,8 @@ describe('buildAnalyticsReport', () => {
     // Link taps and the separate website_clicks column sum into one stage.
     expect(taps).toMatchObject({ now: 5, then: 1, rateBasis: 'per 100 profile visits' })
     expect(taps!.per100).toBeCloseTo(12.5)
-    // Follows rate against profile views, NEVER per tap — most follows skip links.
+    // Follows rate against profile views, NEVER per tap: most follows never touch a link, so
+    // a per-tap denominator would invent a conversion the account did not have.
     expect(follows).toMatchObject({ now: 9, then: 4, rateBasis: 'per 100 profile visits' })
     expect(follows!.per100).toBeCloseTo(22.5)
   })
@@ -392,8 +392,8 @@ describe('buildAnalyticsReport', () => {
       accountRows: [
         accountRow({
           metric_date: '2026-08-15',
-          // Instagram omits CAROUSEL_CONTAINER here, and its POST figures
-          // divide to an impossible 127% — the live shapes this replaces.
+          // Instagram omits CAROUSEL_CONTAINER from this breakdown, and its POST figures
+          // divide to an impossible 127% (356 over 279) — the two counted on different bases.
           reach_by_media_product_type: { POST: 279, CAROUSEL_CONTAINER: 1842 },
           interactions_by_media_product_type: { POST: 356 },
         }),
@@ -422,8 +422,8 @@ describe('buildAnalyticsReport', () => {
     expect(report.formats.find((row) => row.key === 'CAROUSEL_CONTAINER')!.meta).toBe(
       '2 published · 13.8% engagement rate'
     )
-    // POST has media rows too, so the impossible 127% is never reached for:
-    // our own sample is too thin to print, and that is the honest answer.
+    // POST has media rows too, so it never falls back to that 127%: our own sample is under
+    // the floor, and no rate is the honest answer.
     expect(report.formats.find((row) => row.key === 'POST')!.meta).toBeUndefined()
   })
 
@@ -435,8 +435,8 @@ describe('buildAnalyticsReport', () => {
           reach_by_media_product_type: { AD: 4000 },
           interactions_by_media_product_type: { AD: 20 },
         }),
-        // Reach captured, interactions not yet — the lag that used to be
-        // divided straight through.
+        // Reach captured, interactions not yet: the consolidation lag a naive
+        // window-total ÷ window-total would divide straight through.
         accountRow({ metric_date: '2026-08-16', reach_by_media_product_type: { AD: 2000 } }),
       ],
     })
@@ -456,12 +456,12 @@ describe('buildAnalyticsReport', () => {
           reach_by_media_product_type: { AD: 5000 },
           interactions_by_media_product_type: { AD: 25 },
         }),
-        // The live shape that produced "under 0.1%": one rated day against a
-        // window five times its size.
+        // One rated day (5,000) against a 32,000 window: 16% coverage, under the 50% floor,
+        // so the rate cannot stand for the period.
         accountRow({ metric_date: '2026-08-16', reach_by_media_product_type: { AD: 27000 } }),
       ],
     })
-    // The reach still totals and still renders; only the fiction is withheld.
+    // The reach still totals and renders; only the rate is withheld.
     expect(report.formats.find((row) => row.key === 'AD')!.now).toBe(32000)
     expect(report.formats.find((row) => row.key === 'AD')!.meta).toBeUndefined()
   })
@@ -509,17 +509,16 @@ describe('buildAnalyticsReport', () => {
       now: 300,
       meta: '75% of interactions',
     })
-    // A measured zero keeps its row — and carries no share line.
+    // A measured zero keeps its row; "0% of interactions" would be noise, so no share line.
     const comments = report.interactionKinds.find((row) => row.key === 'comments')!
     expect(comments).toMatchObject({ now: 0, then: null })
     expect(comments.meta).toBeUndefined()
   })
 
   it('converts Pacific-anchored online hours into the agency clock, gated on sample size', () => {
-    // 2026-08-15 is a Saturday. Hour 14 in America/Los_Angeles (PDT, UTC-7)
-    // is 21:00 UTC the same day.
-    // The maps ride the ordinary account rows — the whole fetched span
-    // (previous window included) counts as evidence.
+    // The stored hour keys are Pacific-anchored (build-report.ts records the probe). 2026-08-15
+    // is a Saturday; hour 14 in PDT (UTC-7) is 21:00 UTC the same day, hence grid[5][21].
+    // The maps ride the ordinary account rows, so the previous window counts as evidence too.
     const day = (date: string) =>
       accountRow({ metric_date: date, online_followers_by_hour: { '14': 100 } })
     const fiveDays = ['2026-08-11', '2026-08-12', '2026-08-13', '2026-08-14', '2026-08-15'].map(day)
@@ -530,7 +529,6 @@ describe('buildAnalyticsReport', () => {
     const report = build({ accountRows: fiveDays })
     const online = report.audienceOnline!
     expect(online.sampleDays).toBe(5)
-    // Saturday (index 5) at 21:00 UTC carries the 15 Aug sample.
     expect(online.grid[5]![21]).toBe(100)
     expect(online.grid[5]![14]).toBe(0)
     expect(online.peaks[0]).toMatchObject({ hour: 21, avg: 100 })
@@ -550,7 +548,7 @@ describe('buildAnalyticsReport', () => {
     const morning = report.publishWindows.find((bucket) => bucket.key === 'morning')!
     expect(morning.postCount).toBe(3)
     expect(morning.medianReach).toBe(200)
-    // Overall median across a,b,c,d = 250 → morning at 0.8×.
+    // Overall median across a,b,c,d = 250; morning's own median is 200, so 0.8×.
     expect(morning.vsMedian).toBeCloseTo(200 / 250)
     const evening = report.publishWindows.find((bucket) => bucket.key === 'evening')!
     expect(evening.postCount).toBe(1)
@@ -605,7 +603,7 @@ describe('buildAnalyticsReport', () => {
           metric_date: '2026-08-16',
           reach_by_media_product_type: { POST: 5, REEL: 20 },
         }),
-        // A corrupted map must not poison the sum.
+        // A corrupted map must not poison the sum, and must not throw either.
         accountRow({
           metric_date: '2026-08-17',
           // WHY as: deliberately malformed jsonb to prove the zod guard drops it.
@@ -691,7 +689,7 @@ describe('buildAnalyticsReport', () => {
       followerPct: 20,
       engagedPct: 44,
       prevFollowerPct: 10,
-      // 44% of engagement from 20% of followers: engaging at 2.2× its share.
+      // 44% of engagement from 20% of followers: engaging at 2.2× its share of the audience.
       engagedIndex: 2.2,
     })
     // Localized "City, Province" strings keep only the city, top 3 by share.
@@ -699,7 +697,6 @@ describe('buildAnalyticsReport', () => {
     expect(audience.cities[0]!.pct).toBeCloseTo(50)
     expect(audience.cities[0]!.prevPct).toBeCloseTo(60)
     expect(audience.genders[0]).toMatchObject({ label: 'Women', pct: 61 })
-    // ISO country codes spell out as names.
     expect(audience.countries).toEqual([{ label: 'Bulgaria', pct: 100, prevPct: 100 }])
   })
 
@@ -760,7 +757,8 @@ describe('deriveFollowerCurve', () => {
         accountRow({ metric_date: '2026-08-18', follows: 5, unfollows: 0, followers_count: 832 }),
       ],
     })
-    // Each point is the total at that day's END: 832 ← −5 → 827 ← +(−2) → 829 ← −2 → 827.
+    // Each point is the total at that day's END, walked backwards from the one capture:
+    // 832 − 5 = 827, 827 − (0−2) = 829, 829 − 2 = 827.
     expect(report.followers.series).toEqual([827, 829, 827, 832])
     expect(report.followers.total).toBe(832)
   })

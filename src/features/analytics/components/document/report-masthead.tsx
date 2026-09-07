@@ -4,14 +4,12 @@ import { formatPeriodRange, formatShortRange } from '../../lib/compute/format'
 import type { AnalyticsPeriod } from '../../lib/compute/period'
 
 /**
- * The head of the printed report, shared by both networks' documents.
+ * The head of the printed report, and where the two period marks are named: Deep Pine for this
+ * period, sage for the previous one. The charts below reuse those two through `ChartLegend`
+ * (other legends add their own marks). One component rather than two that happen to match,
+ * because a key written twice can drift.
  *
- * It is also the colour key: the two swatches here are the ones every legend below echoes, so
- * they must be the same two marks on both documents or the key stops meaning anything. That is
- * the reason this is one component rather than two that happen to match — a masthead written
- * twice is a colour key that can drift.
- *
- * `note` is where a network says something about its own limits; only Facebook has one.
+ * `note` is where a network states its own limits; only Facebook passes one.
  */
 export function ReportMasthead({
   clientName,
@@ -41,7 +39,6 @@ export function ReportMasthead({
         </div>
         {/* The sticky page header carries the screen title; print has no header. */}
         <h2 className="mt-2 hidden text-headline text-ink print:block">Analytics</h2>
-        {/* The masthead IS the color key: every legend below echoes these two. */}
         <p className="mt-2.5 flex flex-wrap items-center gap-x-5 gap-y-1 text-body">
           <span className="flex items-center gap-2">
             <i aria-hidden="true" className="h-0.5 w-3.5 flex-none rounded-full bg-forest" />

@@ -6,10 +6,9 @@ import { AnalyticsNavProvider } from '../components/chrome/analytics-nav'
 import type { AnalyticsPeriod } from '../lib/compute/period'
 
 /**
- * The operator chrome of the comparison console. What matters: the range
- * buttons navigate by URL (the page is server-rendered), Custom validates its
- * bounds before navigating, and Export archives BEFORE printing so the
- * archive row matches what the printed report said.
+ * The console's operator chrome. Two orderings matter here: navigation goes through the URL
+ * because the document is server-rendered, and Export archives BEFORE printing so the archived
+ * row is the report that came out of the printer.
  */
 const push = vi.fn()
 const refresh = vi.fn()
@@ -114,7 +113,6 @@ describe('MastheadControls', () => {
 
     await user.click(screen.getByRole('button', { name: 'Custom' }))
     const from = screen.getByLabelText('From')
-    // Clear "To" so from > to — fireEvent path because max= blocks typing beyond it.
     const to = screen.getByLabelText('To')
     await user.clear(to)
     await user.clear(from)

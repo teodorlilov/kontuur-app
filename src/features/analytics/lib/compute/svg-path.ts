@@ -1,7 +1,7 @@
 /**
- * Line-path building shared by the sparkline and the reach trend. A null day
- * is the API's silence, so paths BREAK at nulls instead of lying across them —
- * each contiguous run of real values becomes its own segment.
+ * Line and scale helpers shared by the console's charts. A null day is the API's silence, so
+ * paths BREAK at nulls rather than lying across them — each contiguous run of real values
+ * becomes its own segment.
  */
 
 interface LinePoint {
@@ -9,7 +9,6 @@ interface LinePoint {
   y: number
 }
 
-/** Contiguous non-null runs as point lists, using the given scales. */
 export function lineSegments(
   values: Array<number | null>,
   x: (index: number) => number,
@@ -29,7 +28,7 @@ export function lineSegments(
   return segments
 }
 
-/** One SVG path `d` covering every segment (gaps become pen lifts). */
+/** One `d` covering every segment: gaps become pen lifts, not straight lines. */
 export function segmentsToPath(segments: LinePoint[][]): string {
   return segments
     .filter((segment) => segment.length > 1)
@@ -41,13 +40,13 @@ export function segmentsToPath(segments: LinePoint[][]): string {
     .join(' ')
 }
 
-/** The last real point — where the "now" dot sits. */
+/** The last real point — where the sparkline puts its now-dot. */
 export function lastPoint(segments: LinePoint[][]): LinePoint | null {
   const tail = segments[segments.length - 1]
   return tail ? (tail[tail.length - 1] ?? null) : null
 }
 
-/** Rounds a chart ceiling up to a clean step of its own magnitude. */
+/** A chart ceiling rounded up to a clean step of its own magnitude: 4,213 → 5,000. */
 export function niceCeil(value: number): number {
   if (value <= 0) return 1
   const unit = 10 ** Math.floor(Math.log10(value))

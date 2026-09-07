@@ -4,16 +4,13 @@ import { analyticsPartialHref } from '../../lib/compute/analytics-href'
 import type { AnalyticsPeriod } from '../../lib/compute/period'
 
 /**
- * The whole-document loading state while a period pulls from Instagram: the
- * report's silhouette in hatched absence, one live pill naming the work.
- * Nothing partial is presented — the real document appears only when the
- * window's days have all been asked for.
+ * The report's silhouette while a period is still pulling. Nothing partial is shown: the real
+ * document appears only once every day in the window has been asked for.
  *
- * The way out is offered unconditionally rather than only when a run reports
- * itself stuck. A fill can stall for reasons no run can report — days written
- * that the unfilled count does not track, a chain that refreshes into an
- * identical state — and any of them would otherwise strand the reader on a
- * silhouette drawn over data already in the tables.
+ * The escape link is offered unconditionally, not only when a run reports itself stuck. A fill
+ * can stall for reasons no run can report — days written that the unfilled count does not
+ * track, a chain that refreshes into an identical state — and each of those would otherwise
+ * strand the reader on a silhouette drawn over data the tables already hold.
  */
 export function FillingDocument({
   unfilledDays,

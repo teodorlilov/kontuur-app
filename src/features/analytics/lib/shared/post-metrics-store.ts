@@ -3,45 +3,30 @@ import 'server-only'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/types'
 
-/** A media row as any writer of one describes it. */
 export type PlatformPostMetricsInsert =
   Database['public']['Tables']['platform_post_metrics']['Insert']
 
 /**
- * The upsert target, matching `platform_post_metrics_client_account_post_key`.
+ * The upsert target, matching `platform_post_metrics_client_account_post_key` (20260845).
  *
- * Named once for the same reason `account-metrics-store` names its day key: two passes writing
- * different columns of the same media must land on the same row, and a typo here would silently
- * create a second one instead of failing. `platform` is in it because two networks issuing the
- * same post id would otherwise overwrite each other here, silently — this function writes
- * through the key blind.
+ * Named once: passes writing different columns of the same media must land on the same row, and
+ * a typo here silently creates a second one instead of failing. `platform` is in the key because
+ * two networks that ever issued the same post id would otherwise overwrite each other.
  */
 const MEDIA_KEY = 'client_id,platform,platform_account_id,external_post_id'
 
 /**
  * Write media rows. The ONE way `platform_post_metrics` is written.
  *
- * PARTIAL ROWS ARE DELIBERATE, and they are the reason this exists. An upsert only
- * touches the columns it is given, so a pass never nulls a column another pass owns.
- * Two callers rely on that:
+ * PARTIAL ROWS ARE DELIBERATE, and they are the reason this exists. An upsert only touches the
+ * columns it is given, so a pass never nulls a column another pass owns: the nightly syncs write
+ * identity AND measurements, while the half-hourly comments sync writes identity ONLY, so the
+ * queue can render a post commented on this morning instead of waiting for the 03:30 run. That
+ * identity-only pass must NOT touch the measurement columns — a zero written there would be
+ * indistinguishable from a measured zero on the analytics page.
  *
- *   - the nightly metrics sync writes whole rows — identity AND measurements
- *   - the half-hourly comments sync writes identity ONLY: what a media is (its
- *     caption, permalink, thumbnail, when it was posted, which Kontuur post it is)
- *
- * The second exists because the comments queue renders the post a comment sits under,
- * and depending on the nightly job for that meant a post commented on this morning
- * showed as an untitled grey box until 03:30 the next day. The comments sync already
- * holds those fields — `MEDIA_FIELDS` returns them on the same call it uses to
- * compare comment counts — so it records them rather than discarding them and
- * waiting.
- *
- * It must NOT write the measurement columns. Reach, views and the rest are the
- * nightly job's to establish; a zero written here would be indistinguishable from a
- * measured zero on the analytics page.
- *
- * `context` names the pass in the thrown message, required rather than optional
- * because "which write failed" is otherwise unanswerable from the log.
+ * `context` names the pass in the thrown message: four call sites reach this, and "which write
+ * failed" is otherwise unanswerable from the log.
  */
 export async function upsertPostMetricRows(
   admin: SupabaseClient,

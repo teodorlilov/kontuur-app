@@ -2,9 +2,9 @@ import { describe, expect, it, vi } from 'vitest'
 import type { FacebookReportData } from '../facebook/build-facebook-report'
 
 /**
- * The Facebook narrative's two pure pieces. The facts builder is the one that matters: it is
- * the model's whole view of the period, and a fact sheet carrying empty reach/audience slots
- * would invite prose about metrics Meta deleted for Pages.
+ * The Facebook narrative's two pure pieces. The facts builder is the one that matters: it is the
+ * model's whole view of the period, and an empty `reach` or `audience` slot on the sheet is an
+ * invitation to write prose about a metric Pages do not have.
  */
 
 vi.mock('next/cache', () => ({ unstable_cache: (fn: unknown) => fn }))

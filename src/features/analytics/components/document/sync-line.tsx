@@ -22,13 +22,12 @@ function failedPhases(syncError: string): string | null {
 }
 
 /**
- * The document's closing line: when the numbers were last true. Living Green
- * while the nightly sync is landing; Amber once it has missed two nights —
- * the stale state the mock names in its footer — or when the last run came
- * back incomplete. That last case is the one this line used to get wrong: it
- * dated itself from the day rows, a stamp the on-demand refill also wrote, so
- * a sync failing every night still looked freshly landed. It reads the cron's
- * own verdict now, which is why the stale branch is reachable at all.
+ * The document's closing line: when the numbers were last true. Living Green while the nightly
+ * sync is landing; Amber once it has missed two nights or the last run came back incomplete.
+ *
+ * Freshness alone cannot answer the incomplete case — `lastSyncAt` stamps every ATTEMPT — so
+ * that branch keys on `syncError`, not on the stamp. `sync-line.test.tsx` pins a current
+ * stamp beside a partial-sync error.
  */
 export function SyncLine({
   lastSyncAt,

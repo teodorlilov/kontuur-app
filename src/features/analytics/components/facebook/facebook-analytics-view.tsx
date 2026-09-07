@@ -48,9 +48,8 @@ interface FacebookAnalyticsViewProps {
 /**
  * The Facebook report — the same visual language as the Instagram document, deliberately
  * shorter: the sections Meta's 2025-11-15 purge left standing (engagements, page views,
- * follower flow, the posts table) and nothing pretending to be the ones it killed (reach,
- * funnel, formats, audience, when-to-post). A section that cannot be true is absent, never
- * empty.
+ * follower flow, the posts table) and none of the ones it killed for Pages (reach, funnel,
+ * formats, audience, when-to-post). A section that cannot be true is absent, never empty.
  */
 export function FacebookAnalyticsView({
   data,
@@ -92,8 +91,6 @@ export function FacebookAnalyticsView({
     />
   )
 
-  // The decision lives HERE now, beside Instagram's. It used to sit in the page, which is how
-  // the Facebook skeleton lost its masthead and sync line without anyone noticing.
   if (filling) {
     return (
       <FillingReport

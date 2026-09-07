@@ -7,11 +7,9 @@ import { PostsTable } from '../components/instagram/posts-table'
 /**
  * What a Facebook row may claim about itself.
  *
- * Facebook's post list offers no media-type vocabulary, so the sync stores null deliberately
- * (sync-facebook-metrics.ts). Every shared renderer used to answer that null with
- * `?? TYPE_META.IMAGE`, so each row read "6 Sep · single" and wore an "S" badge — videos and
- * link posts included. The builder's null already means "unknown"; only the renderer was
- * overriding it.
+ * `mediaType: null` is the load-bearing field: Facebook's post list carries no media-type
+ * vocabulary, so `toPostMetricRow` stores null on purpose and `postTypeMeta` must answer it with
+ * nothing. Any renderer defaulting that null to IMAGE labels every Page video a "single".
  */
 function row(overrides: Partial<ReportPostRow> = {}): ReportPostRow {
   return {

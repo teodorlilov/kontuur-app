@@ -84,14 +84,11 @@ const _fetchFacebookReport = unstable_cache(
         .gte('posted_at', postedFromPrev)
         .lt('posted_at', postedTo),
       // Kontuur's own ledger: pins posts the sync cannot see — removed from the Page after
-      // publishing, or published since the last sync ran. The mirror of Instagram's pin, which
-      // it was written as and finally is: bounded at the CURRENT window's start.
-      //
-      // It used to be bounded at `postedFromPrev`, reaching back a whole extra period. Those
-      // publications matched none of the current window's metric rows, so each was pushed with
-      // every measure null and — its publish time being far past the sync grace — labelled
-      // `missing: 'removed'`. A 30-day Facebook window rendered every post from the preceding
-      // 30 days as "no longer on Facebook", all columns "—", and counted them in the footer.
+      // publishing, or published since the last sync ran. The mirror of Instagram's pin,
+      // bounded at the CURRENT window's start: a publication from the comparison window matches
+      // no current metric row, so it would be pushed with every measure null and — its publish
+      // time being far past the sync grace — labelled "no longer on Facebook". `buildPosts`
+      // enforces the same bound itself; keeping the query in step is what keeps it cheap.
       admin
         .from('post_publications')
         .select(`external_post_id, published_at, posts!inner(${PUBLISHED_POST_PIN_COLUMNS})`)

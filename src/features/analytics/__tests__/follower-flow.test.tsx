@@ -3,7 +3,7 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import type { FollowerFlowDay, FollowerSummary } from '../lib/instagram/build-report'
 import { FollowerFlow } from '../components/charts/follower-flow'
 
-/** Mirrors the chart's own geometry so a test can aim at a specific day. */
+/** follower-flow.tsx's own W and PAD.left — jsdom has no layout, so a hover has to be aimed. */
 const W = 560
 const PAD_X = 8
 
@@ -11,7 +11,6 @@ function flowDay(date: string, overrides: Partial<FollowerFlowDay> = {}): Follow
   return { date, gained: 2, lost: 1, posts: [], ...overrides }
 }
 
-/** 4 days; day index 1 carries the publish pin, day index 2 never synced. */
 const DAYS: FollowerFlowDay[] = [
   flowDay('2026-08-15'),
   flowDay('2026-08-16', {
@@ -65,9 +64,8 @@ function hoverDay(container: HTMLElement, index: number): SVGSVGElement {
 
 describe('FollowerFlow', () => {
   it('says a quiet period in a sentence instead of drawing an empty plot', () => {
-    // Every day measured, nothing moved: the axis would clamp to "+1" over a full-height
-    // void, which reads as a broken chart. The stats still headline the zeros — real data —
-    // and the plot collapses into words.
+    // Every day measured, nothing moved. `gainCeil` clamps to 1, so an SVG here would be a
+    // full-height plot of air under a "+1" axis — a broken chart, not a quiet week.
     const quiet: FollowerSummary = {
       ...FOLLOWERS,
       gained: { now: 0, then: null, deltaPct: null },
@@ -86,8 +84,8 @@ describe('FollowerFlow', () => {
   })
 
   it('names where the data begins when the window reaches past the first stored day', () => {
-    // A 90-day window over a 30-day backfill: unmeasured days and measured zeros are
-    // different facts, and the sentence separates them.
+    // A window reaching past the first stored day: unmeasured days and measured zeros are
+    // different facts, and the sentence has to separate them.
     const partial: FollowerSummary = {
       ...FOLLOWERS,
       gained: { now: 0, then: null, deltaPct: null },
@@ -115,9 +113,9 @@ describe('FollowerFlow', () => {
     expect(screen.getByText('13')).toBeInTheDocument()
     expect(screen.getByText('+105')).toBeInTheDocument()
     expect(screen.getByText('was 12 last period')).toBeInTheDocument()
-    // Net prints signed on both sides of the comparison.
+    // Net keeps its sign on the comparison side too — "was −6", never "was 6".
     expect(screen.getByText('was −6 last period')).toBeInTheDocument()
-    // Attribution names who is doing the crediting, in the reader's terms.
+    // The claim is Instagram's, and the copy says so rather than presenting it as ours.
     expect(
       screen.getByText(/Instagram credits 1 of these follows to your posts/)
     ).toBeInTheDocument()

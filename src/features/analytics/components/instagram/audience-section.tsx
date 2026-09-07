@@ -3,10 +3,9 @@ import type { AudienceReport, AudienceShare } from '../../lib/instagram/build-re
 import { formatSharePct } from '../../lib/compute/format'
 
 /**
- * The plot's height in pixels — the tallest column fills it exactly. It must
- * match the `h-48` well below: when the two disagreed (the whole chart, labels
- * included, was one h-36 box) the tallest column consumed every pixel and the
- * band labels overflowed onto the caption beneath them.
+ * The tallest column fills the plot exactly, so this MUST stay equal to the `h-48` well
+ * below it. If this grows past that height the columns overflow their box and land on the
+ * band labels stacked underneath.
  */
 const COLUMN_MAX_PX = 192
 
@@ -14,10 +13,9 @@ const COLUMN_MAX_PX = 192
 const BAR_SPAN_FULL_TRACK = 88
 
 /**
- * Who follows against who actually engaged: paired columns by age band with
- * last period's follower share as a sage tick, then cities and gender as
- * labeled tracks with was-values. Followers wear Deep Pine, the engaged
- * audience Living Green — two series within ONE period, never "then".
+ * Who follows against who actually engaged. Followers wear Deep Pine and the engaged audience
+ * Living Green: two series within ONE period, never the now/then pair the rest of the
+ * document uses. The previous snapshot's follower share appears as the then-line tick instead.
  */
 export function AudienceSection({ audience }: { audience: AudienceReport }) {
   const maxPct = Math.max(
@@ -40,9 +38,8 @@ export function AudienceSection({ audience }: { audience: AudienceReport }) {
     (band) => band.engagedIndex !== null && (band.engagedIndex >= 1.25 || band.engagedIndex <= 0.75)
   )
 
-  // items-center: the columns-and-caption block is shorter than the three
-  // lists beside it, so top-aligned it hung from the top of the card with the
-  // whole lower half empty.
+  // items-center: the columns-and-caption block is shorter than the three place lists beside
+  // it, and top-aligned it hangs from the card's top edge over an empty lower half.
   return (
     <div className="mt-4 grid items-center gap-8 lg:grid-cols-[1.4fr_1fr]">
       <div>
@@ -54,13 +51,11 @@ export function AudienceSection({ audience }: { audience: AudienceReport }) {
         >
           {audience.ages.map((band) => (
             <div key={band.band} className="grid gap-2">
-              {/* The plot well: a fixed height the columns rise in, with the
-                  labels stacked BELOW it rather than sharing its box. */}
               <div className="flex h-48 items-end justify-center gap-1.5">
                 <span className="relative flex h-full items-end">
                   <i
                     className="block w-5 rounded-t bg-forest"
-                    // Computed heights/positions — shares of the tallest band.
+                    // Computed height — this band's share of the tallest one.
                     style={{ height: `${px(band.followerPct).toFixed(0)}px` }}
                   />
                   {band.prevFollowerPct !== null && (
@@ -131,8 +126,8 @@ function PlaceList({ label, shares }: { label: string; shares: AudienceShare[] }
             <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-sunken">
               <i
                 className="block h-full rounded-full bg-forest"
-                // Computed width — the label sits in its own column, so this bar
-                // reserves nothing and the largest share nearly fills the track.
+                // Computed width. The label has its own column, so the bar reserves no room
+                // for it and the largest share runs nearly the whole track.
                 style={{
                   width: `${barWidthPct(share.pct, maxPct, BAR_SPAN_FULL_TRACK).toFixed(1)}%`,
                 }}

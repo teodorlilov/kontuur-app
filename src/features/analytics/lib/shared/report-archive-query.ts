@@ -10,9 +10,7 @@ const ARCHIVE_LIMIT = 12
  * Both networks archive into `analytics_reports`, so the platform AND account filters are
  * load-bearing: without the first a Facebook export lists under the Instagram document, and
  * without the second a report exported for a previously connected account resurfaces after a
- * reconnect. Written out once per network in the page before this, each with its own copy of
- * both filters, its own error log and its own cast — so a third network would have copied them
- * a third time.
+ * reconnect.
  *
  * Reads through whichever client the caller holds; the page passes its RLS-scoped one. A failed
  * read logs and yields an empty archive: the report itself is worth rendering without its list
@@ -36,6 +34,6 @@ export async function fetchReportArchive(
     console.error(`[analytics] ${platform} archive list failed`, error)
     return []
   }
-  // WHY as: the server client is untyped for this projection, so it does not infer.
+  // WHY as: the shared SupabaseClient param is untyped, so the projection does not infer.
   return (data ?? []) as ArchiveEntry[]
 }

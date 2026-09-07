@@ -3,13 +3,13 @@ import { parseParam } from '@/utils/parse-param'
 import { minDateKey, shiftDateKey, toDateKey } from '@/utils/date-helpers'
 
 /**
- * Period math for the comparison console. Every number on the page reads
- * against the previous period, so a period is always resolved as a pair:
- * [start, end] and the equal-length window immediately before it.
+ * Period math for the comparison console. Every number on the page reads against the previous
+ * period, so a period is always resolved as a pair: [start, end] and the equal-length window
+ * immediately before it.
  *
- * Periods end YESTERDAY in the agency's timezone — the nightly sync captures
- * yesterday's row at 03:30, so today can never have data and including it
- * would end every chart on a hole.
+ * Periods end YESTERDAY in the agency's timezone. /api/cron/metrics runs at 03:30 (vercel.json)
+ * and captures the day that just closed, so today can never hold a full day's data and
+ * including it would end every chart on a hole.
  */
 
 export const RANGE_PRESETS = ['7d', '30d', '90d'] as const
@@ -20,8 +20,8 @@ const DEFAULT_RANGE: RangePreset = '30d'
 const PRESET_DAYS: Record<RangePreset, number> = { '7d': 7, '30d': 30, '90d': 90 }
 /** A custom range longer than a year is a typo, not a report. */
 export const CUSTOM_MAX_DAYS = 366
-/** A calendar day key. Exported so the action schema validates against the same shape
- * `resolvePeriod` parses URLs with, rather than its own copy of the regex. */
+/** A calendar day key. Exported so schemas.ts validates the action against the same shape
+ * `resolvePeriod` accepts from a URL, rather than keeping a second copy of the regex. */
 export const DATE_KEY_PATTERN = /^\d{4}-\d{2}-\d{2}$/
 
 export interface AnalyticsPeriod {
@@ -44,14 +44,13 @@ export function dayCount(start: string, end: string): number {
  * An inclusive [start, end] span cut into consecutive chunks of at most `chunkDays`, the last
  * one clamped to `end`.
  *
- * Meta caps how much of a series one insights call may span, and the cap differs per network
- * (30 days for an Instagram series, 90 for a Facebook Page one — both probed). The WALK does
- * not: advance by the chunk length, clamp the tail, never overshoot the window. Both syncs had
- * their own copy of it, one returning unix seconds and one returning day keys, which is why the
- * duplication read as two different things.
+ * Meta caps how much of a series one insights call may span, and the cap differs per network —
+ * 30 days for an Instagram series (refresh-window.ts), 90 for a Facebook Page one, where 120
+ * answered `Invalid parameter` when probed (sync-facebook-metrics.ts). The WALK does not
+ * differ, which is why it lives here and takes the cap as an argument.
  *
  * Day keys out, not timestamps: a caller that wants Graph's `since`/`until` converts with
- * `dayKeyToUnixSeconds`, and a caller that wants to write a row per day already has the keys.
+ * `dayKeyToUnixSeconds`, and a caller that writes a row per day already has the keys.
  */
 export function dayChunks(
   start: string,
@@ -105,9 +104,9 @@ export function resolvePeriod(
 }
 
 /**
- * Rebuilds the full period pair from explicit bounds — the archive action's
- * path, where the client names the exact window it was looking at and the
- * server re-derives the previous window rather than trusting one.
+ * Rebuilds the full period pair from explicit bounds. Every report action takes this path: the
+ * client names the exact window it was looking at, and the server re-derives the comparison
+ * window rather than trusting one off the wire.
  */
 export function periodFromBounds(
   preset: AnalyticsPeriod['preset'],

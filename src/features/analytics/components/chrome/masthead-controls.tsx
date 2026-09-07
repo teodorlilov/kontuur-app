@@ -41,9 +41,9 @@ interface MastheadControlsProps {
 }
 
 /**
- * The operator chrome the print stylesheet leaves home: client scope, the
- * reporting period (the active range is the page's one lime — the standing
- * place in time), and Export, which archives the period then prints it.
+ * The operator chrome, which never reaches paper — the analytics page wraps this in
+ * `.print-hide`. Export archives the period first and only then calls `window.print()`, so
+ * what prints is a report that exists in the archive.
  */
 export function MastheadControls({
   clientId,
@@ -203,8 +203,8 @@ export function MastheadControls({
 
 const RANGE_BUTTON =
   'rounded-chip px-3 py-1 text-caption font-medium text-text2 transition-colors hover:bg-sunken'
-// The one lime in the frame: where the reader stands in time. Lime is never
-// empty — it carries Pine Deep type — and as a control it takes the 45% pine
-// inset edge so its boundary clears 1.4.11 without leaning on hue.
+// DESIGN.md:261 — a lime area that is also a control takes the Pine Deep 45% inset edge
+// (3.33:1 on paper) so its boundary clears WCAG 1.4.11 instead of relying on hue, and it
+// always carries dark type, since the plate's own silhouette is 1.35:1.
 const RANGE_ACTIVE =
   'bg-accent font-semibold text-forest-deep shadow-[inset_0_0_0_1px_rgba(12,46,32,0.45)] hover:bg-accent'

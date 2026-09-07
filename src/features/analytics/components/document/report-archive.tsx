@@ -5,9 +5,9 @@ import { ArchiveRowDelete } from './archive-row-delete'
 import type { ArchiveEntry } from '../../types'
 
 /**
- * Every exported period, kept as it was written. A row is a link back into
- * the console pinned to that window — the stored narrative rides along, so
- * the page re-reads history without a separate report viewer.
+ * Every exported period, kept as it was written. A row links back into the console pinned to
+ * that window and the stored narrative comes with it, which is why there is no separate
+ * report viewer to build.
  */
 export function ReportArchive({
   entries,

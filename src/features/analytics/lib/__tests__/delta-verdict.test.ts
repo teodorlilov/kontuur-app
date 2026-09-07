@@ -27,7 +27,7 @@ describe('countDeltaVerdict', () => {
     expect(countDeltaVerdict(11, 5)).toEqual({ kind: 'move', diff: 6, pct: null })
     // Comments 5 → 0: stated as −5, never as "▼ 100.0%" theatrics.
     expect(countDeltaVerdict(0, 5)).toEqual({ kind: 'move', diff: -5, pct: null })
-    // A zero base can still move — the old deltaPct rendered nothing here.
+    // A zero base still moves: the band is 2√max(0,1) = 2, and no percent exists off zero.
     expect(countDeltaVerdict(52, 0)).toEqual({ kind: 'move', diff: 52, pct: null })
   })
 
