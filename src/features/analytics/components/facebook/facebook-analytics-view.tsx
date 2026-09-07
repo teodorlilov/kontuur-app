@@ -5,6 +5,7 @@ import { EmptyFill } from '../empty-fill'
 import { FacebookPostsTable } from './facebook-posts-table'
 import { FollowerFlowSection } from '../follower-flow-section'
 import { NarrativeBlock } from '../narrative-block'
+import { FillingReport } from '../filling-report'
 import { ReportMasthead } from '../report-masthead'
 import { ReachTrend, type TrendLabels } from '../reach-trend'
 import { ReportArchive } from '../report-archive'
@@ -38,6 +39,10 @@ interface FacebookAnalyticsViewProps {
   archive: ArchiveEntry[]
   /** Rides every archive link so an opened report stays on the Facebook view. */
   network: string
+  /** Days of this window never asked of Meta — triggers the automatic fill. */
+  unfilledDays: number
+  /** ?partial=1 — the reader asked to see the stored days without waiting. */
+  showPartial?: boolean
 }
 
 /**
@@ -60,18 +65,52 @@ export function FacebookAnalyticsView({
   syncError = null,
   archive,
   network,
+  unfilledDays,
+  showPartial = false,
 }: FacebookAnalyticsViewProps) {
   const { hasHistory, followers } = data
+  const filling = hasConnection && unfilledDays > 0 && !showPartial
+
+  const masthead = (
+    <ReportMasthead
+      clientName={clientName}
+      networkLabel={PLATFORM_NAMES.facebook}
+      accountName={pageName}
+      period={data.period}
+      note={`${PLATFORM_NAMES.facebook} serves no reach, audience or posting-time data for Pages, so this report tells the story it can prove.`}
+    />
+  )
+
+  const syncLine = (
+    <SyncLine
+      lastSyncAt={lastSyncAt}
+      hasHistory={hasHistory}
+      hasConnection={hasConnection}
+      timezone={timezone}
+      syncError={syncError}
+      networkLabel={PLATFORM_NAMES.facebook}
+    />
+  )
+
+  // The decision lives HERE now, beside Instagram's. It used to sit in the page, which is how
+  // the Facebook skeleton lost its masthead and sync line without anyone noticing.
+  if (filling) {
+    return (
+      <FillingReport
+        masthead={masthead}
+        syncLine={syncLine}
+        clientId={clientId}
+        period={data.period}
+        unfilledDays={unfilledDays}
+        network="facebook"
+        networkLabel={PLATFORM_NAMES.facebook}
+      />
+    )
+  }
 
   return (
     <div id="analytics-print-area">
-      <ReportMasthead
-        clientName={clientName}
-        networkLabel={PLATFORM_NAMES.facebook}
-        accountName={pageName}
-        period={data.period}
-        note={`${PLATFORM_NAMES.facebook} serves no reach, audience or posting-time data for Pages, so this report tells the story it can prove.`}
-      />
+      {masthead}
 
       <NarrativeBlock narrative={narrative} archived={narrativeArchived} hasHistory={hasHistory} />
 
@@ -151,14 +190,7 @@ export function FacebookAnalyticsView({
         </AnalyticsSection>
       </div>
 
-      <SyncLine
-        lastSyncAt={lastSyncAt}
-        hasHistory={hasHistory}
-        hasConnection={hasConnection}
-        timezone={timezone}
-        syncError={syncError}
-        networkLabel={PLATFORM_NAMES.facebook}
-      />
+      {syncLine}
     </div>
   )
 }

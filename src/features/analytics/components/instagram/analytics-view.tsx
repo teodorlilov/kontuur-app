@@ -8,10 +8,9 @@ import { firstLine } from '../../lib/compute/post-display'
 import { AnalyticsSection, ChartLegend } from '../analytics-section'
 import { AudienceSection } from './audience-section'
 import { AudienceCapture } from './audience-capture'
-import { AutoFill } from '../auto-fill'
 import { ComparisonRows } from './comparison-rows'
 import { EmptyFill } from '../empty-fill'
-import { FillingDocument } from '../filling-document'
+import { FillingReport } from '../filling-report'
 import { FollowerFlowSection } from '../follower-flow-section'
 import { FunnelSection } from './funnel-section'
 import { NarrativeBlock } from '../narrative-block'
@@ -94,18 +93,21 @@ export function AnalyticsView({
   // holds the report's silhouette instead of numbers that are about to change.
   if (filling) {
     return (
-      <div id="analytics-print-area">
-        <AutoFill clientId={clientId} period={data.period} unfilledDays={unfilledDays} />
-        {masthead}
-        <FillingDocument unfilledDays={unfilledDays} clientId={clientId} period={data.period} />
-        <SyncLine
-          lastSyncAt={lastSyncAt}
-          hasHistory={hasHistory}
-          hasConnection={hasConnection}
-          timezone={timezone}
-          syncError={syncError}
-        />
-      </div>
+      <FillingReport
+        masthead={masthead}
+        syncLine={
+          <SyncLine
+            lastSyncAt={lastSyncAt}
+            hasHistory={hasHistory}
+            hasConnection={hasConnection}
+            timezone={timezone}
+            syncError={syncError}
+          />
+        }
+        clientId={clientId}
+        period={data.period}
+        unfilledDays={unfilledDays}
+      />
     )
   }
 

@@ -18,9 +18,6 @@ import {
   ConnectPrompt,
 } from '@/features/analytics/components/instagram/analytics-view'
 import { FacebookAnalyticsView } from '@/features/analytics/components/facebook/facebook-analytics-view'
-import { AutoFill } from '@/features/analytics/components/auto-fill'
-import { FillingDocument } from '@/features/analytics/components/filling-document'
-import { PLATFORM_NAMES } from '@/lib/validation'
 import { getFacebookAnalyticsReport } from '@/features/analytics/lib/facebook/facebook-report-data'
 import {
   buildFacebookFallbackNarrative,
@@ -131,7 +128,6 @@ export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps
       // the comparison column had no way to ever be asked for.
       countUnfilledDays(supabase, fbMarkers(clientId, facebook!.account_id), period, todayKey),
     ])
-    const fbFilling = fbUnfilledDays > 0 && params.partial !== '1'
 
     const fbNarrativeResult = fbData.hasHistory
       ? await getFacebookNarrative(clientId, client.name, period, timezone, fbData.lastSyncAt)
@@ -159,39 +155,22 @@ export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps
         </div>
         <div className={cn(PAGE_SHELL, 'pb-12 pt-5')}>
           <PendingVeil>
-            {fbFilling ? (
-              <div id="analytics-print-area">
-                <AutoFill
-                  clientId={clientId}
-                  period={period}
-                  unfilledDays={fbUnfilledDays}
-                  network="facebook"
-                  networkLabel={PLATFORM_NAMES.facebook}
-                />
-                <FillingDocument
-                  unfilledDays={fbUnfilledDays}
-                  clientId={clientId}
-                  period={period}
-                  network="facebook"
-                  networkLabel={PLATFORM_NAMES.facebook}
-                />
-              </div>
-            ) : (
-              <FacebookAnalyticsView
-                data={fbData}
-                narrative={fbNarrative}
-                narrativeArchived={fbNarrativeResult?.archived ?? false}
-                clientId={clientId}
-                clientName={client.name}
-                pageName={facebook!.account_name}
-                hasConnection={hasFacebook}
-                timezone={timezone}
-                lastSyncAt={fbSyncAt}
-                syncError={fbSyncError}
-                archive={fbArchive}
-                network="facebook"
-              />
-            )}
+            <FacebookAnalyticsView
+              data={fbData}
+              narrative={fbNarrative}
+              narrativeArchived={fbNarrativeResult?.archived ?? false}
+              clientId={clientId}
+              clientName={client.name}
+              pageName={facebook!.account_name}
+              hasConnection={hasFacebook}
+              timezone={timezone}
+              lastSyncAt={fbSyncAt}
+              syncError={fbSyncError}
+              archive={fbArchive}
+              network="facebook"
+              unfilledDays={fbUnfilledDays}
+              showPartial={params.partial === '1'}
+            />
           </PendingVeil>
         </div>
       </AnalyticsNavProvider>
