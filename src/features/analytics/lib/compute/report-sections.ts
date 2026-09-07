@@ -43,6 +43,12 @@ export interface TrendPost {
   caption: string | null
   mediaType: string | null
   reach: number | null
+  /**
+   * Carried because a network may have no per-post reach at all: Meta's 2025-11-15 purge left
+   * Facebook Pages without it, so a card that can only speak reach has nothing to say about a
+   * Facebook post and used to promise the number was still coming.
+   */
+  interactions: number | null
   follows: number | null
   missing: PostMissing
 }
@@ -339,6 +345,7 @@ export function groupTrendPostsByDay(posts: ReportPostRow[]): Map<string, TrendP
       caption: post.caption,
       mediaType: post.mediaType,
       reach: post.reach,
+      interactions: post.interactions,
       follows: post.follows,
       missing: post.missing,
     })
@@ -367,6 +374,7 @@ export function previousTrendPostsByDay(
       caption: row.caption,
       mediaType: row.media_type,
       reach: row.reach,
+      interactions: row.total_interactions,
       follows: row.follows,
       missing: null,
     })

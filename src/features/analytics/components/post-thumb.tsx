@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import Image from 'next/image'
 import { cn } from '@/utils/cn'
-import { TYPE_META } from '../lib/compute/post-display'
+import { postTypeMeta } from '../lib/compute/post-display'
 
 /**
  * The post's own image, with the lettered badge as its fallback.
@@ -23,7 +23,7 @@ export function PostThumb({
   mediaType: string | null
 }) {
   const [failed, setFailed] = useState(false)
-  const type = TYPE_META[mediaType ?? ''] ?? TYPE_META.IMAGE!
+  const type = postTypeMeta(mediaType)
 
   if (!thumbnailUrl || failed) {
     return (
@@ -31,10 +31,12 @@ export function PostThumb({
         aria-hidden="true"
         className={cn(
           'grid size-10 flex-none place-items-center rounded-panel text-label tracking-normal text-forest',
-          type.tone === 'marker' ? 'bg-marker' : 'bg-sage'
+          type?.tone === 'marker' ? 'bg-marker' : 'bg-sage'
         )}
       >
-        {type.letter}
+        {/* No letter when the type is unknown: the badge still stands in for the image,
+            it just does not claim to know what kind of post this is. */}
+        {type?.letter ?? '·'}
       </span>
     )
   }

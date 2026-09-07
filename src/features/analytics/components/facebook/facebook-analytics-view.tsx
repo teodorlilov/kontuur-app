@@ -103,7 +103,12 @@ export function FacebookAnalyticsView({
           {!hasHistory ? (
             <EmptyFill className="mt-3.5">The trend appears after the first sync</EmptyFill>
           ) : (
-            <ReachTrend days={data.engagementByDay} bestDay={null} labels={ENGAGEMENT_LABELS} />
+            <ReachTrend
+              days={data.engagementByDay}
+              bestDay={null}
+              labels={ENGAGEMENT_LABELS}
+              networkLabel={PLATFORM_NAMES.facebook}
+            />
           )}
         </AnalyticsSection>
       </div>

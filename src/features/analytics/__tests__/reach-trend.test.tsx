@@ -26,6 +26,7 @@ const DAYS: ReachDay[] = [
         caption: 'Launch day\nrest',
         mediaType: 'CAROUSEL_ALBUM',
         reach: 900,
+        interactions: null,
         follows: 3,
         missing: null,
       },
@@ -34,6 +35,7 @@ const DAYS: ReachDay[] = [
         caption: 'Second post',
         mediaType: 'IMAGE',
         reach: 200,
+        interactions: null,
         follows: 0,
         missing: null,
       },
@@ -43,6 +45,7 @@ const DAYS: ReachDay[] = [
         caption: 'Third post',
         mediaType: 'VIDEO',
         reach: null,
+        interactions: null,
         follows: null,
         missing: 'removed',
       },
@@ -51,6 +54,7 @@ const DAYS: ReachDay[] = [
         caption: 'Fourth post',
         mediaType: 'IMAGE',
         reach: 10,
+        interactions: null,
         follows: 0,
         missing: null,
       },
@@ -104,6 +108,43 @@ describe('ReachTrend', () => {
     expect(screen.getByText('+1 more in the posts table below')).toBeInTheDocument()
   })
 
+  it('names the network a post was removed from, and speaks the measure that network has', () => {
+    // Facebook's shape: Meta's 2025-11-15 purge left Pages no per-post reach and no media-type
+    // vocabulary, so every card here used to read "metrics after the next sync" about a number
+    // that is never coming, under a chip claiming the post was a "single".
+    const days = [...DAYS]
+    days[2] = day('2026-08-13', {
+      now: 1840,
+      posts: [
+        {
+          igMediaId: 'fb-live',
+          caption: 'A Page post',
+          mediaType: null,
+          reach: null,
+          interactions: 42,
+          follows: null,
+          missing: null,
+        },
+        {
+          igMediaId: 'fb-gone',
+          caption: 'Deleted from the Page',
+          mediaType: null,
+          reach: null,
+          interactions: null,
+          follows: null,
+          missing: 'removed',
+        },
+      ],
+    })
+    const { container } = render(<ReachTrend days={days} bestDay={null} networkLabel="Facebook" />)
+    hoverDay(container, 2)
+
+    expect(screen.getByText('42 interactions')).toBeInTheDocument()
+    expect(screen.getByText('no longer on Facebook')).toBeInTheDocument()
+    expect(screen.queryByText('no longer on Instagram')).not.toBeInTheDocument()
+    expect(screen.queryByText(/metrics after the next sync/)).not.toBeInTheDocument()
+  })
+
   it('files each window under its own date, so the comparison cannot be misread', () => {
     const days = [...DAYS]
     days[2] = day('2026-08-13', {
@@ -116,6 +157,7 @@ describe('ReachTrend', () => {
           caption: 'Last week’s winner',
           mediaType: 'IMAGE',
           reach: 900,
+          interactions: null,
           follows: 1,
           missing: null,
         },
@@ -145,6 +187,7 @@ describe('ReachTrend', () => {
                 caption: 'Earlier',
                 mediaType: 'IMAGE',
                 reach: 10,
+                interactions: null,
                 follows: 0,
                 missing: null,
               },

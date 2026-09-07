@@ -244,7 +244,7 @@ export function FollowerFlow({
                     format={(value) => `−${formatCount(value)}`}
                   />
                 </dl>
-                <DayCardPosts posts={hoveredDay.posts} />
+                <DayCardPosts posts={hoveredDay.posts} networkLabel={networkLabel} />
               </DayCard>
             )}
           </div>

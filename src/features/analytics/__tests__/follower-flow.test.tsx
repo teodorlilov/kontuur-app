@@ -23,6 +23,7 @@ const DAYS: FollowerFlowDay[] = [
         caption: 'Launch day\nrest',
         mediaType: 'IMAGE',
         reach: 200,
+        interactions: null,
         follows: 4,
         missing: null,
       },

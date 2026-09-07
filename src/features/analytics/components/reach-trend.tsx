@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { PLATFORM_NAMES } from '@/lib/validation'
 import type { BestDay, ReachDay } from '../lib/instagram/build-report'
 import { CHART_COLORS } from '../lib/compute/chart-config'
 import { formatCount, formatDayMonth } from '../lib/compute/format'
@@ -50,10 +51,13 @@ export function ReachTrend({
   days,
   bestDay,
   labels = REACH_LABELS,
+  networkLabel = PLATFORM_NAMES.instagram,
 }: {
   days: ReachDay[]
   bestDay: BestDay | null
   labels?: TrendLabels
+  /** Threaded to the hover card, which names the network a removed post is gone FROM. */
+  networkLabel?: string
 }) {
   const [hover, setHover] = useState<number | null>(null)
 
@@ -278,7 +282,12 @@ export function ReachTrend({
             ))}
           </svg>
           {hover !== null && hoveredDay && (
-            <TrendTooltip day={hoveredDay} frac={x(hover) / W} labels={labels} />
+            <TrendTooltip
+              day={hoveredDay}
+              frac={x(hover) / W}
+              labels={labels}
+              networkLabel={networkLabel}
+            />
           )}
         </div>
       </div>
@@ -292,7 +301,17 @@ export function ReachTrend({
  * so a card reading "13 Aug · Previous 3,948" invited exactly the wrong
  * conclusion: that 3,948 also described 13 Aug. It came from 6 Aug.
  */
-function TrendTooltip({ day, frac, labels }: { day: ReachDay; frac: number; labels: TrendLabels }) {
+function TrendTooltip({
+  day,
+  frac,
+  labels,
+  networkLabel,
+}: {
+  day: ReachDay
+  frac: number
+  labels: TrendLabels
+  networkLabel: string
+}) {
   return (
     <DayCard frac={frac}>
       <div className="flex items-center gap-1.5">
@@ -303,7 +322,7 @@ function TrendTooltip({ day, frac, labels }: { day: ReachDay; frac: number; labe
         <DayCardRow label={labels.metricRow} value={day.now} />
         {day.views !== null && <DayCardRow label={labels.secondaryRow} value={day.views} />}
       </dl>
-      <DayCardPosts posts={day.posts} divided={false} />
+      <DayCardPosts posts={day.posts} divided={false} networkLabel={networkLabel} />
 
       <div className="mt-2.5 border-t border-ink/[0.05] pt-2">
         <div className="flex items-center gap-1.5">
@@ -316,7 +335,12 @@ function TrendTooltip({ day, frac, labels }: { day: ReachDay; frac: number; labe
         <dl className="mt-1.5 space-y-1">
           <DayCardRow label={labels.metricRow} value={day.then} />
         </dl>
-        <DayCardPosts posts={day.thenPosts} label="Published that day" divided={false} />
+        <DayCardPosts
+          posts={day.thenPosts}
+          label="Published that day"
+          divided={false}
+          networkLabel={networkLabel}
+        />
       </div>
     </DayCard>
   )

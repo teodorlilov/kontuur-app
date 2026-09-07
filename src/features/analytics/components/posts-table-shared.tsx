@@ -3,7 +3,7 @@ import { cn } from '@/utils/cn'
 import { PLATFORM_NAMES } from '@/lib/validation'
 import type { ReportPostRow } from '../lib/instagram/build-report'
 import { formatCount, formatDayMonth } from '../lib/compute/format'
-import { firstLine, TYPE_META } from '../lib/compute/post-display'
+import { firstLine, postTypeMeta } from '../lib/compute/post-display'
 import { PostThumb } from './post-thumb'
 
 /**
@@ -120,7 +120,15 @@ export function PostCell({
   top: boolean
   networkLabel?: string
 }) {
-  const type = TYPE_META[post.mediaType ?? ''] ?? TYPE_META.IMAGE!
+  const type = postTypeMeta(post.mediaType)
+  // Joined rather than concatenated: with an unknown type the day would otherwise be followed
+  // by a dangling separator.
+  const meta = [
+    post.postedDayKey ? formatDayMonth(post.postedDayKey) : null,
+    type?.label ?? null,
+    post.missing === 'removed' ? `no longer on ${networkLabel}` : null,
+    post.missing === 'pending' ? 'metrics after the next sync' : null,
+  ].filter((part): part is string => part !== null)
   return (
     <td
       className={cn(
@@ -149,12 +157,7 @@ export function PostCell({
               {firstLine(post.caption)}
             </span>
           )}
-          <span className="block text-micro text-text3">
-            {post.postedDayKey ? `${formatDayMonth(post.postedDayKey)} · ` : ''}
-            {type.label}
-            {post.missing === 'removed' && ` · no longer on ${networkLabel}`}
-            {post.missing === 'pending' && ' · metrics after the next sync'}
-          </span>
+          <span className="block text-micro text-text3">{meta.join(' · ')}</span>
         </span>
       </div>
     </td>
