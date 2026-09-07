@@ -332,7 +332,7 @@ function assemble(
     const post = row.post_id ? context.posts.get(row.post_id) : undefined
     const facts = context.mediaFacts.get(row.external_post_id)
     groups.set(row.external_post_id, {
-      igMediaId: row.external_post_id,
+      externalPostId: row.external_post_id,
       platform: row.platform,
       postId: row.post_id,
       clientId: row.client_id,

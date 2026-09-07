@@ -215,18 +215,7 @@ export function AnalyticsView({
             </p>
           ) : (
             <>
-              <ComparisonRows
-                ariaLabel={`Bar chart. ${data.formats
-                  .map(
-                    (row) =>
-                      `${row.label} reached ${row.now === null ? 'unknown' : formatCount(row.now)} accounts this period versus ${
-                        row.then === null ? 'unknown' : formatCount(row.then)
-                      } last period`
-                  )
-                  .join('. ')}.`}
-                rows={data.formats}
-                unit="Reached"
-              />
+              <ComparisonRows ariaLabel="Reach by format" rows={data.formats} unit="Reached" />
               {adReach !== null && adReach > 0 && (
                 <p className="mt-3.5 text-caption text-text2">
                   Paid placement reached{' '}
@@ -268,14 +257,7 @@ export function AnalyticsView({
         >
           {hasHistory ? (
             <ComparisonRows
-              ariaLabel={`Bar chart. ${data.interactionKinds
-                .map(
-                  (row) =>
-                    `${row.label} ${row.now === null ? 'unknown' : formatCount(row.now)} this period versus ${
-                      row.then === null ? 'unknown' : formatCount(row.then)
-                    } last period`
-                )
-                .join('. ')}.`}
+              ariaLabel="Interactions by kind"
               rows={data.interactionKinds}
               unit="Count"
             />
@@ -320,18 +302,7 @@ export function AnalyticsView({
               </div>
             </div>
           ) : (
-            <ComparisonRows
-              ariaLabel={`Bar chart of link taps by button. ${data.tapButtons
-                .map(
-                  (row) =>
-                    `${row.label} ${row.now === null ? 'unknown' : formatCount(row.now)}, was ${
-                      row.then === null ? 'unknown' : formatCount(row.then)
-                    }`
-                )
-                .join('. ')}.`}
-              rows={data.tapButtons}
-              unit="Taps"
-            />
+            <ComparisonRows ariaLabel="Link taps by button" rows={data.tapButtons} unit="Taps" />
           )}
         </AnalyticsSection>
       </div>

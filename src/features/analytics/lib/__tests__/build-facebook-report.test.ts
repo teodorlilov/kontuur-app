@@ -113,7 +113,7 @@ describe('buildFacebookReport', () => {
         ],
       })
     )
-    expect(report.posts.map((post) => post.igMediaId)).toEqual(['p_loud', 'p_quiet'])
+    expect(report.posts.map((post) => post.externalPostId)).toEqual(['p_loud', 'p_quiet'])
     expect(report.posts[0]!.likeCount).toBe(5)
     expect(report.posts[0]!.shares).toBe(1)
     expect(report.medianInteractions).toBe(4.5)

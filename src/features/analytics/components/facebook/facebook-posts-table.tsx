@@ -53,7 +53,7 @@ export function FacebookPostsTable({
           // shared helper, so the two networks cannot disagree about what "× median" means.
           const ratio = ratioToMedian(post.interactions, medianInteractions)
           return (
-            <tr key={post.igMediaId}>
+            <tr key={post.externalPostId}>
               <PostCell post={post} top={top} networkLabel={PLATFORM_NAMES.facebook} />
               <td className={cn(BODY_CELL, top && 'bg-wash')}>
                 {post.likeCount === null ? '—' : formatCount(post.likeCount)}

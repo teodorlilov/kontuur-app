@@ -162,7 +162,7 @@ export interface QueuedCommentReply {
  * still render, from `thumbnailUrl` and the comments themselves.
  */
 export interface CommentGroup {
-  igMediaId: string
+  externalPostId: string
   /** Which network the conversation happened on — the header names it. */
   platform: string
   postId: string | null

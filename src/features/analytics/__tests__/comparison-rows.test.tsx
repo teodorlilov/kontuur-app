@@ -100,4 +100,29 @@ describe('ComparisonRows', () => {
     expect(printed.className).toContain('print:block')
     expect(printed.className).toContain('hidden')
   })
+
+  it('reads the rows out of the chart itself, so the label and the bars cannot disagree', () => {
+    // Each caller used to build this string by hand — three near-identical map/join chains over
+    // rows the component already holds, each with its own copy of the null handling.
+    render(<ComparisonRows rows={ROWS} ariaLabel="Reach by format" unit="Reached" />)
+    const label = screen.getByRole('img').getAttribute('aria-label') ?? ''
+
+    expect(label).toMatch(/^Reach by format\./)
+    for (const row of ROWS) {
+      expect(label).toContain(`${row.label} reached`)
+    }
+    expect(label).toContain('32,340 this period versus 3 last period')
+  })
+
+  it('reads an unmeasured value as unknown, never as a number the chart does not have', () => {
+    render(
+      <ComparisonRows
+        rows={[{ key: 'k', label: 'Reels', now: null, then: 40 }]}
+        ariaLabel="Reach by format"
+      />
+    )
+    expect(screen.getByRole('img').getAttribute('aria-label')).toContain(
+      'Reels reached unknown this period versus 40 last period'
+    )
+  })
 })

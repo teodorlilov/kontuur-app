@@ -22,7 +22,7 @@ const DAYS: ReachDay[] = [
     views: 1898,
     posts: [
       {
-        igMediaId: 'big',
+        externalPostId: 'big',
         caption: 'Launch day\nrest',
         mediaType: 'CAROUSEL_ALBUM',
         reach: 900,
@@ -31,7 +31,7 @@ const DAYS: ReachDay[] = [
         missing: null,
       },
       {
-        igMediaId: 'mid',
+        externalPostId: 'mid',
         caption: 'Second post',
         mediaType: 'IMAGE',
         reach: 200,
@@ -41,7 +41,7 @@ const DAYS: ReachDay[] = [
       },
       // Published through Kontuur, later deleted from Instagram.
       {
-        igMediaId: 'low',
+        externalPostId: 'low',
         caption: 'Third post',
         mediaType: 'VIDEO',
         reach: null,
@@ -50,7 +50,7 @@ const DAYS: ReachDay[] = [
         missing: 'removed',
       },
       {
-        igMediaId: 'tail',
+        externalPostId: 'tail',
         caption: 'Fourth post',
         mediaType: 'IMAGE',
         reach: 10,
@@ -117,7 +117,7 @@ describe('ReachTrend', () => {
       now: 1840,
       posts: [
         {
-          igMediaId: 'fb-live',
+          externalPostId: 'fb-live',
           caption: 'A Page post',
           mediaType: null,
           reach: null,
@@ -126,7 +126,7 @@ describe('ReachTrend', () => {
           missing: null,
         },
         {
-          igMediaId: 'fb-gone',
+          externalPostId: 'fb-gone',
           caption: 'Deleted from the Page',
           mediaType: null,
           reach: null,
@@ -153,7 +153,7 @@ describe('ReachTrend', () => {
       views: 1898,
       thenPosts: [
         {
-          igMediaId: 'prev',
+          externalPostId: 'prev',
           caption: 'Last week’s winner',
           mediaType: 'IMAGE',
           reach: 900,
@@ -183,7 +183,7 @@ describe('ReachTrend', () => {
             ...entry,
             thenPosts: [
               {
-                igMediaId: 'p',
+                externalPostId: 'p',
                 caption: 'Earlier',
                 mediaType: 'IMAGE',
                 reach: 10,

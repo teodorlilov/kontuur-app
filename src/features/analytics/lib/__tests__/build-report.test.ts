@@ -156,10 +156,12 @@ describe('buildAnalyticsReport', () => {
       ],
     })
     const day = report.reachByDay[1]!
-    expect(day.posts.map((post) => post.igMediaId)).toEqual(['b', 'a'])
+    expect(day.posts.map((post) => post.externalPostId)).toEqual(['b', 'a'])
     expect(day.posts[0]).toMatchObject({ caption: 'Big', reach: 900, follows: 3 })
     expect(report.reachByDay[0]!.posts).toEqual([])
-    expect(report.reachByDay.flatMap((d) => d.posts).some((p) => p.igMediaId === 'c')).toBe(false)
+    expect(report.reachByDay.flatMap((d) => d.posts).some((p) => p.externalPostId === 'c')).toBe(
+      false
+    )
     expect(report.posts).toHaveLength(3)
   })
 
@@ -177,11 +179,11 @@ describe('buildAnalyticsReport', () => {
       ],
     })
     // The table and the medians stay current-window only.
-    expect(report.posts.map((post) => post.igMediaId)).toEqual(['now'])
+    expect(report.posts.map((post) => post.externalPostId)).toEqual(['now'])
     // …but the trend can now explain the dashed line's shape.
     expect(report.reachByDay[0]!.thenDate).toBe('2026-08-11')
     expect(report.reachByDay[0]!.thenPosts.map((post) => post.caption)).toEqual(['Last week'])
-    expect(report.reachByDay[1]!.posts.map((post) => post.igMediaId)).toEqual(['now'])
+    expect(report.reachByDay[1]!.posts.map((post) => post.externalPostId)).toEqual(['now'])
     expect(report.reachByDay[1]!.thenPosts).toEqual([])
   })
 
@@ -212,14 +214,14 @@ describe('buildAnalyticsReport', () => {
       lastSyncAt: '2026-08-18T03:30:00Z',
     })
     expect(report.posts).toHaveLength(3)
-    const gone = report.posts.find((post) => post.igMediaId === '404')!
+    const gone = report.posts.find((post) => post.externalPostId === '404')!
     expect(gone.missing).toBe('removed')
     expect(gone.mediaType).toBe('CAROUSEL_ALBUM')
     const fresh = report.posts.find((post) => post.postId === 'fresh')!
     expect(fresh.missing).toBe('pending')
-    expect(fresh.igMediaId).toBe('post-fresh')
+    expect(fresh.externalPostId).toBe('post-fresh')
     // Each lands on its calendar day beside the synced pins.
-    expect(report.reachByDay[0]!.posts.map((p) => p.igMediaId)).toEqual(['m-live'])
+    expect(report.reachByDay[0]!.posts.map((p) => p.externalPostId)).toEqual(['m-live'])
     expect(report.reachByDay[1]!.posts.map((p) => p.caption)).toEqual(['Deleted later'])
     expect(report.reachByDay[3]!.posts[0]!.missing).toBe('pending')
   })
@@ -254,7 +256,7 @@ describe('buildAnalyticsReport', () => {
     expect(report.posts[0]!.missing).toBeNull()
     expect(report.posts[0]!.postedDayKey).toBe('2026-08-15')
     // And it pins on the window's first column, not off the left edge.
-    expect(report.reachByDay[0]!.posts.map((post) => post.igMediaId)).toEqual(['early'])
+    expect(report.reachByDay[0]!.posts.map((post) => post.externalPostId)).toEqual(['early'])
     expect(report.reachByDay[0]!.thenPosts).toEqual([])
   })
 
@@ -268,7 +270,7 @@ describe('buildAnalyticsReport', () => {
     })
     expect(report.posts[0]!.postedDayKey).toBe('2026-08-17')
     expect(report.reachByDay[1]!.posts).toEqual([])
-    expect(report.reachByDay[2]!.posts.map((post) => post.igMediaId)).toEqual(['late'])
+    expect(report.reachByDay[2]!.posts.map((post) => post.externalPostId)).toEqual(['late'])
   })
 
   it('builds the follower flow timeline with pins, attribution and churn', () => {
@@ -300,7 +302,7 @@ describe('buildAnalyticsReport', () => {
     expect(report.followers.byDay.map((d) => d.gained)).toEqual([5, 12, null, null])
     expect(report.followers.byDay.map((d) => d.posts.length)).toEqual([0, 2, 0, 0])
     // The flow day names its posts, strongest reach first — the hover card reads them.
-    expect(report.followers.byDay[1]!.posts.map((p) => p.igMediaId)).toEqual(['a', 'b'])
+    expect(report.followers.byDay[1]!.posts.map((p) => p.externalPostId)).toEqual(['a', 'b'])
     // Instagram's own per-media attribution; the null-follows post doesn't poison it.
     expect(report.followers.fromPosts).toBe(4)
     // Start = first anchored total (830) minus that day's net (+3) → 827; lost 2 of 827.
@@ -639,7 +641,7 @@ describe('buildAnalyticsReport', () => {
         postRow({ external_post_id: 'c', reach: 200, posted_at: '2026-08-15T15:00:00Z' }),
       ],
     })
-    expect(report.posts.map((post) => post.igMediaId)).toEqual(['b', 'c', 'a'])
+    expect(report.posts.map((post) => post.externalPostId)).toEqual(['b', 'c', 'a'])
     expect(report.medianReach).toBe(200)
     expect(report.posts[0]!.medianRatio).toBeCloseTo(3)
     expect(report.bestDay).toEqual({

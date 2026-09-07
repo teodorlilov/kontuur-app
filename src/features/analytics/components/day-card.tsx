@@ -76,7 +76,7 @@ export function DayCardPosts({
       <div className="text-micro font-medium text-text3">{label}</div>
       <ul className="mt-1.5 space-y-1.5">
         {posts.slice(0, DAY_CARD_POSTS).map((post) => (
-          <DayCardPost key={post.igMediaId} post={post} networkLabel={networkLabel} />
+          <DayCardPost key={post.externalPostId} post={post} networkLabel={networkLabel} />
         ))}
       </ul>
       {extra > 0 && (

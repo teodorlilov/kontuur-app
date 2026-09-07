@@ -110,7 +110,7 @@ export function CommentsView({
     const first = visible[0]
     const fallback = first?.comments[0] ? { group: first.group, comment: first.comments[0] } : null
     if (!selection) return fallback
-    const group = scoped.find((candidate) => candidate.igMediaId === selection.groupId)
+    const group = scoped.find((candidate) => candidate.externalPostId === selection.groupId)
     const comment = group?.comments.find((candidate) => candidate.id === selection.commentId)
     return group && comment ? { group, comment } : fallback
   }, [scoped, visible, selection])
@@ -330,7 +330,7 @@ export function CommentsView({
               ) : (
                 visible.map((entry) => (
                   <PostGroup
-                    key={entry.group.igMediaId}
+                    key={entry.group.externalPostId}
                     group={entry.group}
                     comments={entry.comments}
                     // The EFFECTIVE selection, not the raw one: with the fallback
@@ -338,7 +338,7 @@ export function CommentsView({
                     // the row it belongs to has to look selected or the two disagree.
                     selectedCommentId={active?.comment.id ?? null}
                     onSelect={(comment, group) =>
-                      setSelection({ groupId: group.igMediaId, commentId: comment.id })
+                      setSelection({ groupId: group.externalPostId, commentId: comment.id })
                     }
                     now={now}
                   />

@@ -19,7 +19,7 @@ const DAYS: FollowerFlowDay[] = [
     lost: 2,
     posts: [
       {
-        igMediaId: 'a',
+        externalPostId: 'a',
         caption: 'Launch day\nrest',
         mediaType: 'IMAGE',
         reach: 200,

@@ -39,7 +39,8 @@ export type PostMissing = 'pending' | 'removed' | null
 
 /** The slice of a post the trend tooltip names — enough to answer "what caused this". */
 export interface TrendPost {
-  igMediaId: string
+  /** The network's own id for the post — `platform_post_metrics.external_post_id`. */
+  externalPostId: string
   caption: string | null
   mediaType: string | null
   reach: number | null
@@ -96,7 +97,7 @@ export interface FollowerSummary {
 }
 
 export interface ReportPostRow {
-  igMediaId: string
+  externalPostId: string
   postId: string | null
   caption: string | null
   postedAt: string | null
@@ -279,7 +280,7 @@ export function buildPosts(
     postRows.map((row) => row.reach).filter((reach): reach is number => reach !== null)
   )
   const posts: ReportPostRow[] = postRows.map((row) => ({
-    igMediaId: row.external_post_id,
+    externalPostId: row.external_post_id,
     postId: row.post_id,
     caption: row.caption,
     postedAt: row.posted_at,
@@ -317,7 +318,7 @@ export function buildPosts(
       parseTimestamp(lastSyncAt).getTime() - parseTimestamp(publication.published_at).getTime() >
         SYNC_GRACE_MS
     posts.push({
-      igMediaId: publication.external_post_id ?? `post-${post.id}`,
+      externalPostId: publication.external_post_id ?? `post-${post.id}`,
       postId: post.id,
       caption: post.caption,
       postedAt: publication.published_at,
@@ -357,7 +358,7 @@ export function groupTrendPostsByDay(posts: ReportPostRow[]): Map<string, TrendP
     if (!date) continue
     const list = postsByDate.get(date) ?? []
     list.push({
-      igMediaId: post.igMediaId,
+      externalPostId: post.externalPostId,
       caption: post.caption,
       mediaType: post.mediaType,
       reach: post.reach,
@@ -386,7 +387,7 @@ export function previousTrendPostsByDay(
     if (!date || date > prevEnd) continue
     const list = previousPostsByDate.get(date) ?? []
     list.push({
-      igMediaId: row.external_post_id,
+      externalPostId: row.external_post_id,
       caption: row.caption,
       mediaType: row.media_type,
       reach: row.reach,

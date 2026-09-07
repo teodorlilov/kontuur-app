@@ -15,7 +15,7 @@ import { PostsTable } from '../components/posts-table'
  */
 function row(overrides: Partial<ReportPostRow> = {}): ReportPostRow {
   return {
-    igMediaId: 'p1',
+    externalPostId: 'p1',
     postId: null,
     caption: 'A Page post',
     postedAt: '2026-09-06T10:00:00Z',

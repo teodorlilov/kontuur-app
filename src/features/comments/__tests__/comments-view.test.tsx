@@ -70,7 +70,7 @@ function comment(over: Partial<QueuedComment> = {}): QueuedComment {
 
 function group(over: Partial<CommentGroup> = {}): CommentGroup {
   return {
-    igMediaId: 'media-1',
+    externalPostId: 'media-1',
     platform: 'instagram',
     postId: 'post-1',
     clientId: 'client-1',

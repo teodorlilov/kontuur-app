@@ -8,6 +8,10 @@ import { formatCount, signedCount } from '../../lib/compute/format'
 interface ComparisonRowsProps {
   rows: ComparisonRow[]
   /** The chart restated in words — this element is one image to a reader. */
+  /**
+   * What the chart IS — "Reach by format", "Bar chart of link taps by button". The per-row
+   * readout is appended from the rows themselves; a caller never writes it.
+   */
   ariaLabel: string
   /** What these rows measure — leads the hover card's own lines. */
   unit?: string
@@ -15,6 +19,25 @@ interface ComparisonRowsProps {
 
 /** Bars stop here so the value, printed inline after them, has room at the row's end. */
 const BAR_SPAN_BEFORE_VALUE = 82
+
+/**
+ * The chart's readout for a screen reader: what it is, then every row's pair.
+ *
+ * Each of the three callers used to build this itself — three near-identical map/join chains
+ * over rows the component already holds, phrased three slightly different ways, each with its
+ * own copy of the null handling. A caller now says only what the chart IS; the numbers are read
+ * off the same `rows` the bars are drawn from, so the two cannot disagree.
+ */
+function describeRows(rows: ComparisonRow[], ariaLabel: string, unit: string): string {
+  const value = (amount: number | null) => (amount === null ? 'unknown' : formatCount(amount))
+  const sentences = rows
+    .map(
+      (row) =>
+        `${row.label} ${unit.toLowerCase()} ${value(row.now)} this period versus ${value(row.then)} last period`
+    )
+    .join('. ')
+  return sentences ? `${ariaLabel}. ${sentences}.` : ariaLabel
+}
 
 /**
  * The one paired-bar chart: a labeled row, this period's bar over last
@@ -32,7 +55,7 @@ export function ComparisonRows({ rows, ariaLabel, unit = 'Reached' }: Comparison
   const [hover, setHover] = useState<string | null>(null)
   const max = Math.max(1, ...rows.flatMap((row) => [row.now ?? 0, row.then ?? 0]))
   return (
-    <div role="img" aria-label={ariaLabel} className="mt-3 grid gap-3.5">
+    <div role="img" aria-label={describeRows(rows, ariaLabel, unit)} className="mt-3 grid gap-3.5">
       {rows.map((row, index) => {
         return (
           <div

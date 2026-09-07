@@ -53,7 +53,7 @@ export function PostsTable({
         {posts.map((post, index) => {
           const top = index === 0 && posts.length > 1
           return (
-            <tr key={post.igMediaId}>
+            <tr key={post.externalPostId}>
               <PostCell post={post} top={top} />
               <td className={cn(BODY_CELL, top && 'bg-wash')}>
                 {post.reach === null ? '—' : formatCount(post.reach)}
