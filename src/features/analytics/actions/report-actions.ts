@@ -212,7 +212,9 @@ interface FillOutcome {
  * (and again per run while the unfilled count keeps dropping). Same pull as
  * Regenerate, but silent, and it never rewrites archived reports or
  * narratives — it only completes the stored data and busts the caches.
- * Repeat calls are cheap by construction: marked days are never re-asked.
+ * Repeat calls are cheap by construction: marked days are never re-asked. That holds on both
+ * branches — Instagram's `selectRefillDays` skips them, and Facebook's fill reads the window's
+ * markers before deciding whether a chunk is worth a call.
  */
 export async function fillPeriodData(
   input: ArchiveReportInput
@@ -238,7 +240,11 @@ export async function fillPeriodData(
         clientId: scope.client.id,
         pageId: connection.account_id,
         accessToken: connection.access_token,
-        fromDate: scope.period.start,
+        // BOTH windows, like Instagram's refill. The Facebook reader builds every "then"
+        // number and delta chip from days at or after prevStart, so a fill that stopped at
+        // period.start left the comparison column with whatever the initial backfill happened
+        // to reach — and nothing ever asked for the rest.
+        fromDate: scope.period.prevStart,
         // Never ask past today: the period can end in the future on a custom window.
         toDate: scope.period.end < today ? scope.period.end : today,
       })

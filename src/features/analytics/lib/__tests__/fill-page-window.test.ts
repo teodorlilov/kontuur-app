@@ -25,16 +25,24 @@ vi.mock('@/lib/queries/posts-by-media-id', () => ({
 vi.mock(import('../shared/post-metrics-store'), () => ({
   upsertPostMetricRows: vi.fn(),
 }))
+const readMarkerRows = vi.fn()
+vi.mock(import('../shared/unfilled-days'), async (importOriginal) => ({
+  ...(await importOriginal()),
+  readMarkerRows: (...args: unknown[]) => readMarkerRows(...args),
+}))
 
 const { fillPageWindow } = await import('../facebook/sync-facebook-metrics')
 
-// The admin client is never reached by these paths (stores are mocked).
+// Only the marker read reaches it, and that is mocked.
 const admin = {} as never
 
 beforeEach(() => {
   fetchPageDaySeries.mockReset()
   upsertFbPageMetricDays.mockReset()
+  readMarkerRows.mockReset()
   fetchPageDaySeries.mockResolvedValue(EMPTY_PAGE_SERIES)
+  // Nothing asked of Meta yet — the state every existing case here assumes.
+  readMarkerRows.mockResolvedValue([])
 })
 
 describe('fillPageWindow', () => {
@@ -99,5 +107,45 @@ describe('fillPageWindow', () => {
     })
     const rows = upsertFbPageMetricDays.mock.calls[0]![1] as Array<Record<string, unknown>>
     expect(rows.every((row) => (row.metric_date as string) <= '2026-09-03')).toBe(true)
+  })
+  it('skips a chunk whose every day was already asked of Meta, and reports no new days', async () => {
+    // `wroteDays` used to count every row upserted, which on a re-run is the whole window — so
+    // `wroteDays === 0` was unreachable and the caller's "stalled" signal, the thing that stops
+    // the auto-fill chain re-firing, could never be true.
+    readMarkerRows.mockResolvedValue([
+      { metric_date: '2026-09-04', totals_synced_at: '2026-09-07T03:30:00Z' },
+      { metric_date: '2026-09-05', totals_synced_at: '2026-09-07T03:30:00Z' },
+      { metric_date: '2026-09-06', totals_synced_at: '2026-09-07T03:30:00Z' },
+    ])
+
+    const outcome = await fillPageWindow(admin, {
+      clientId: 'client-1',
+      pageId: 'page-1',
+      accessToken: 'tok',
+      fromDate: '2026-09-04',
+      toDate: '2026-09-06',
+    })
+
+    expect(fetchPageDaySeries).not.toHaveBeenCalled()
+    expect(upsertFbPageMetricDays).not.toHaveBeenCalled()
+    expect(outcome.wroteDays).toBe(0)
+  })
+
+  it('counts only the days it actually adds when part of the window is already marked', async () => {
+    readMarkerRows.mockResolvedValue([
+      { metric_date: '2026-09-04', totals_synced_at: '2026-09-07T03:30:00Z' },
+    ])
+
+    const outcome = await fillPageWindow(admin, {
+      clientId: 'client-1',
+      pageId: 'page-1',
+      accessToken: 'tok',
+      fromDate: '2026-09-04',
+      toDate: '2026-09-06',
+    })
+
+    expect(fetchPageDaySeries).toHaveBeenCalledTimes(1)
+    // Three rows are written (the marked day is re-upserted harmlessly), two are new.
+    expect(outcome.wroteDays).toBe(2)
   })
 })

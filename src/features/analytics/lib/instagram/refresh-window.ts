@@ -9,6 +9,12 @@ import { captureDayTotals, syncDemographicsWeekly, syncPostMetrics } from './syn
 import { dayKeyToUnixSeconds, shiftDateKey } from '@/utils/date-helpers'
 import { dayChunks, type AnalyticsPeriod } from '../compute/period'
 import {
+  igMarkers,
+  readMarkerRows,
+  REFRESH_TAIL_DAYS,
+  type MarkerRow,
+} from '../shared/unfilled-days'
+import {
   toReachRows,
   upsertAccountMetricDays,
   type IGAccountMetricsInsert,
@@ -34,18 +40,6 @@ const REFILL_DAYS_CAP = 62
 /** Insights time ranges cap at 30 days per request — series calls are chunked. */
 const SERIES_CHUNK_DAYS = 30
 const REFILL_CONCURRENCY = 3
-/**
- * Recent days re-ask even when already marked: Meta consolidates fresh
- * numbers for a day or two after capture, and an explicit refresh should
- * reflect that at three extra days' cost.
- */
-const REFRESH_TAIL_DAYS = 3
-
-interface MarkerRow {
-  metric_date: string
-  /** When this day's totals were last asked of Meta; null = never asked. */
-  totals_synced_at: string | null
-}
 
 interface RefreshOutcome {
   /** Days whose totals were (re)written this run. */
@@ -81,47 +75,6 @@ export function selectRefillDays(
   return targets.slice(0, cap)
 }
 
-/** How many days of the period's two windows have never been asked of Meta. Reads through whichever client the caller holds — the page passes its RLS-scoped one. */
-export async function countUnfilledDays(
-  db: SupabaseClient,
-  clientId: string,
-  accountId: string,
-  period: AnalyticsPeriod,
-  todayKey: string
-): Promise<number> {
-  const rows = await readMarkerRows(db, clientId, accountId, period)
-  const tailStart = shiftDateKey(todayKey, -REFRESH_TAIL_DAYS)
-  // The tail's re-asks are consolidation, not absence — they don't count.
-  const markerByDate = new Map(rows.map((row) => [row.metric_date, row.totals_synced_at]))
-  let unfilled = 0
-  for (let key = period.end; key >= period.prevStart; key = shiftDateKey(key, -1)) {
-    if (key >= todayKey || key >= tailStart) continue
-    const marker = markerByDate.get(key)
-    if (marker === undefined || marker === null) unfilled++
-  }
-  return unfilled
-}
-
-async function readMarkerRows(
-  admin: SupabaseClient,
-  clientId: string,
-  accountId: string,
-  period: AnalyticsPeriod
-): Promise<MarkerRow[]> {
-  const { data, error } = await admin
-    .from('ig_account_metrics')
-    .select('metric_date, totals_synced_at')
-    .eq('client_id', clientId)
-    // Only THIS account's markers: the old account's asked-days must not
-    // suppress the refill a freshly connected account needs.
-    .eq('ig_account_id', accountId)
-    .gte('metric_date', period.prevStart)
-    .lte('metric_date', period.end)
-  if (error) throw new Error(`window refresh read failed: ${error.message}`)
-  // WHY as: the shared admin client is untyped, so the projection does not infer.
-  return (data ?? []) as MarkerRow[]
-}
-
 /** UTC [start, end] inclusive day keys → ≤30-day unix-second windows. */
 function seriesChunks(start: string, end: string): Array<{ sinceTs: number; untilTs: number }> {
   return dayChunks(start, end, SERIES_CHUNK_DAYS).map((chunk) => ({
@@ -147,7 +100,7 @@ export async function refreshWindowMetrics(
   const { clientId, accountId, accessToken } = connection
   const spanEnd = period.end < todayKey ? period.end : shiftDateKey(todayKey, -1)
 
-  const existing = await readMarkerRows(admin, clientId, accountId, period)
+  const existing = await readMarkerRows(admin, igMarkers(clientId, accountId), period)
   const targets = selectRefillDays(existing, period, todayKey)
 
   let rateLimited = false

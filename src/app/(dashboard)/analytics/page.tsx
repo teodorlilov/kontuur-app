@@ -30,8 +30,12 @@ import { MastheadControls } from '@/features/analytics/components/masthead-contr
 import { fetchReportArchive } from '@/features/analytics/lib/shared/report-archive-query'
 import { buildFallbackNarrative } from '@/features/analytics/lib/instagram/narrative'
 import { getNarrative } from '@/features/analytics/lib/instagram/narrative'
-import { periodDayKeys, resolvePeriod } from '@/features/analytics/lib/compute/period'
-import { countUnfilledDays } from '@/features/analytics/lib/instagram/refresh-window'
+import { resolvePeriod } from '@/features/analytics/lib/compute/period'
+import {
+  countUnfilledDays,
+  fbMarkers,
+  igMarkers,
+} from '@/features/analytics/lib/shared/unfilled-days'
 import { getAnalyticsReport } from '@/features/analytics/lib/instagram/report-data'
 import { toDateKey } from '@/utils/date-helpers'
 
@@ -117,32 +121,16 @@ export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps
       'facebook'
     )
     const todayKey = toDateKey(new Date(), timezone)
-    const [fbData, fbArchive, fbStoredDaysResult] = await Promise.all([
+    const [fbData, fbArchive, fbUnfilledDays] = await Promise.all([
       getFacebookAnalyticsReport(clientId, period, timezone),
       fetchReportArchive(supabase, clientId, 'facebook', facebook!.account_id),
-      // Uncached, like Instagram's unfilled count: this is the auto-fill trigger AND its
-      // terminator — a stale count would either re-pull forever or never pull at all.
-      supabase
-        .from('fb_page_metrics')
-        .select('metric_date')
-        .eq('client_id', clientId)
-        .eq('page_id', facebook!.account_id)
-        .gte('metric_date', period.start)
-        .lte('metric_date', period.end),
+      // Uncached, like Instagram's: this is the auto-fill trigger AND its terminator — a stale
+      // count would either re-pull forever or never pull at all. Through the SHARED counter, so
+      // both networks measure the same thing: both windows, minus today and the consolidation
+      // tail. This arm counted only the current window while the reader read from prevStart, so
+      // the comparison column had no way to ever be asked for.
+      countUnfilledDays(supabase, fbMarkers(clientId, facebook!.account_id), period, todayKey),
     ])
-    /**
-     * Days of the window never ASKED of Meta — no row at all. A day asked and unserved
-     * carries a marker row (fillPageWindow writes it), so old windows fill once and stay
-     * settled instead of re-pulling on every visit.
-     */
-    const fbStoredDays = new Set(
-      ((fbStoredDaysResult.data ?? []) as Array<{ metric_date: string }>).map(
-        (row) => row.metric_date
-      )
-    )
-    const fbUnfilledDays = periodDayKeys(period.start, period.days).filter(
-      (day) => day <= todayKey && !fbStoredDays.has(day)
-    ).length
     const fbFilling = fbUnfilledDays > 0 && params.partial !== '1'
 
     const fbNarrativeResult = fbData.hasHistory
@@ -223,7 +211,12 @@ export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps
     // Uncached on purpose: this is the auto-fill trigger AND its terminator —
     // a stale count would either re-pull forever or never pull at all.
     accountId
-      ? countUnfilledDays(supabase, clientId, accountId, period, toDateKey(new Date(), timezone))
+      ? countUnfilledDays(
+          supabase,
+          igMarkers(clientId, accountId),
+          period,
+          toDateKey(new Date(), timezone)
+        )
       : Promise.resolve(0),
   ])
   const hasConnection = instagram !== null

@@ -9,6 +9,7 @@ import { MS_PER_DAY, SECONDS_PER_DAY } from '@/utils/constants'
 import { dayKeyToUnixSeconds, shiftDateKey } from '@/utils/date-helpers'
 import { upsertFbPageMetricDays, type FbPageMetricsInsert } from './fb-page-metrics-store'
 import { dayChunks } from '../compute/period'
+import { fbMarkers, readMarkerRows } from '../shared/unfilled-days'
 import { upsertPostMetricRows, type PlatformPostMetricsInsert } from '../shared/post-metrics-store'
 import {
   runSyncPhases,
@@ -129,6 +130,11 @@ const FILL_CHUNK_DAYS = 90
  * identity and `totals_synced_at` only, every measure absent — recording "asked, nothing
  * there" so the unfilled count stops counting them and the auto-fill chain terminates.
  * The same both-null-row pattern the audience snapshot writes, for the same reason.
+ *
+ * `wroteDays` counts days that were NOT already stored. It used to count every row upserted,
+ * which on a re-run is the whole window — so `wroteDays === 0` was unreachable and the caller's
+ * "stalled" signal, the thing that stops the auto-fill chain re-firing, could never be true. A
+ * chunk whose every day is already marked is skipped entirely rather than re-asked.
  */
 export async function fillPageWindow(
   admin: SupabaseClient,
@@ -143,7 +149,32 @@ export async function fillPageWindow(
   const now = new Date().toISOString()
   let wroteDays = 0
 
+  const marked = new Set(
+    (
+      await readMarkerRows(
+        admin,
+        fbMarkers(clientId, pageId),
+        // readMarkerRows spans prevStart→end; this window is already the span to cover.
+        {
+          preset: 'custom',
+          start: fromDate,
+          end: toDate,
+          prevStart: fromDate,
+          prevEnd: toDate,
+          days: 0,
+        }
+      )
+    )
+      .filter((row) => row.totals_synced_at !== null)
+      .map((row) => row.metric_date)
+  )
+
   for (const chunk of dayChunks(fromDate, toDate, FILL_CHUNK_DAYS)) {
+    // Every day already asked of Meta: nothing here to fetch.
+    const chunkDays: string[] = []
+    for (let day = chunk.start; day <= chunk.end; day = shiftDateKey(day, 1)) chunkDays.push(day)
+    if (chunkDays.every((day) => marked.has(day))) continue
+
     const sinceTs = dayKeyToUnixSeconds(chunk.start)
     // `until` is exclusive-ish at Meta's end; one day past the chunk's last day covers it.
     const untilTs = dayKeyToUnixSeconds(shiftDateKey(chunk.end, 1))
@@ -151,7 +182,7 @@ export async function fillPageWindow(
     const rows = zipPageDays(clientId, pageId, series)
 
     const served = new Set(rows.map((row) => row.metric_date))
-    for (let day = chunk.start; day <= chunk.end; day = shiftDateKey(day, 1)) {
+    for (const day of chunkDays) {
       if (served.has(day)) continue
       rows.push({ client_id: clientId, page_id: pageId, metric_date: day, totals_synced_at: now })
     }
@@ -160,7 +191,7 @@ export async function fillPageWindow(
       (row) => row.metric_date >= chunk.start && row.metric_date <= chunk.end
     )
     await upsertFbPageMetricDays(admin, inWindow, 'facebook window fill')
-    wroteDays += inWindow.length
+    wroteDays += inWindow.filter((row) => !marked.has(row.metric_date)).length
   }
 
   // The window's posts, identity and tallies together — the same single read the nightly

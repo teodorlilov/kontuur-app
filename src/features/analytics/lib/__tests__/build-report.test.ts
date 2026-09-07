@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest'
 import type {
   IGAccountMetricColumns,
   PlatformPostMetricColumns,
-  PublishedPostPin,
 } from '@/lib/queries/select-columns'
 import {
   buildAnalyticsReport,
