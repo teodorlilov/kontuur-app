@@ -307,6 +307,15 @@ export async function fillPeriodData(
  * nightly sync has not yet written a snapshot would otherwise sit on "no
  * snapshot exists" forever. Cadence-gated inside (one a week per account), so
  * a repeat call costs a single lookup.
+ *
+ * INSTAGRAM ONLY, and it says so now. This takes the same `ArchiveReportInput` as its two
+ * siblings, whose `network` field is parsed and defaulted by `resolveReportScope` — and then
+ * never read it, going straight to the Instagram connection, `syncDemographicsWeekly` and
+ * IG_METRICS_TAG. A caller passing `network: 'facebook'` got a validated request that quietly
+ * captured Instagram demographics and busted the Instagram cache while the reader sat on the
+ * Facebook document. Meta serves no audience data for Pages at all, so there is no Facebook
+ * behaviour to add here; the honest answer is to refuse. A parameter that validates and is then
+ * ignored is worse than one that was never offered.
  */
 export async function ensureAudienceSnapshot(
   input: ArchiveReportInput
@@ -314,6 +323,9 @@ export async function ensureAudienceSnapshot(
   const resolved = await resolveReportScope(input)
   if (!resolved.ok) return { ok: false, error: resolved.error }
   const { scope } = resolved
+  if (scope.network !== 'instagram') {
+    return { ok: false, error: 'Audience demographics are an Instagram-only capability' }
+  }
 
   const credentials = await usableIgCredentials(scope)
   if (!credentials) return { ok: true, data: { captured: false } }

@@ -10,6 +10,9 @@ import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import { storeConnection } from '@/lib/meta/connection-store'
 import { fetchFacebookPages, type FacebookPage } from '@/lib/meta/facebook/auth'
 import { FACEBOOK_USER_PLATFORM } from '@/lib/meta/oauth-networks'
+import { fetchConnection } from '@/lib/queries/db'
+import { purgeAccountAnalytics } from '@/features/analytics/lib/shared/purge-account-metrics'
+import { FB_METRICS_TAG } from '@/features/analytics/lib/facebook/facebook-report-data'
 
 /** A Page id is Facebook's, so it is digits — never a uuid, which parseActionId would demand. */
 const facebookPageIdSchema = z.string().regex(/^\d{1,32}$/)
@@ -131,7 +134,26 @@ export async function connectFacebookPage(clientId: string, pageId: string): Pro
     return { ok: false, error: 'Kontuur does not have permission to publish to that Page' }
   }
 
-  await storeConnection(createAdminSupabaseClient(), {
+  const admin = createAdminSupabaseClient()
+
+  // The outgoing Page, read BEFORE the upsert overwrites it.
+  //
+  // `storeConnection` upserts on (client_id, platform), so after this line the previous Page id
+  // is unrecoverable — the same in-place overwrite the Instagram callback documents. Instagram
+  // has always purged the superseded account here; this path never did, so repointing a client
+  // at a different Page left the old Page's day rows, post metrics, comments and stamped
+  // reports behind, unreachable by every account-scoped read and deletable by nothing.
+  //
+  // Best-effort like the read on the Instagram side: a failure to LOOK UP the previous Page is
+  // not a reason to fail a connect that is otherwise fine.
+  const previousPageId = await fetchConnection(admin, clientId, 'facebook')
+    .then((connection) => connection?.account_id ?? null)
+    .catch((readErr: unknown) => {
+      console.error('[connections] previous-page read failed, skipping purge:', readErr)
+      return null
+    })
+
+  await storeConnection(admin, {
     clientId,
     platform: 'facebook',
     accountId: page.id,
@@ -141,6 +163,24 @@ export async function connectFacebookPage(clientId: string, pageId: string): Pro
     // docs/META-FB-PROBE.md, where /me/accounts returns no expiry field at all.
     tokenExpiresAt: null,
   })
+
+  if (previousPageId && previousPageId !== page.id) {
+    try {
+      await purgeAccountAnalytics(admin, clientId, previousPageId)
+    } catch (purgeErr) {
+      // Logged with both ids because a retry cannot fix it: on a second attempt the previous
+      // Page IS the new one, the guard above can never fire again, and these rows need a human.
+      console.error(
+        `[connections] facebook analytics purge failed, orphaned rows for client=${clientId} ` +
+          `page=${previousPageId}:`,
+        purgeErr
+      )
+    } finally {
+      // On attempt, not on success: a partly-completed purge still changed the data, and a
+      // cache serving half-deleted rows is worse than a wasted bust.
+      revalidateTag(FB_METRICS_TAG, 'max')
+    }
+  }
 
   revalidateTag('agency-clients', 'max')
   return { ok: true, data: undefined }

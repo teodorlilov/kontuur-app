@@ -73,11 +73,18 @@ export async function deriveObservedBestTime(
   const { accountId } = await fetchIgConnectionState(db, clientId)
   if (!accountId) return null
 
-  const { data: clientRow } = await db
+  // `error` is destructured, and a failed read abandons the derivation rather than defaulting.
+  // It used to be dropped: a transient failure here silently became UTC, and since this timezone
+  // is what buckets every hourly map into a weekday x hour grid, the whole recommendation
+  // rotated — a wrong answer that looks exactly like a right one, written into best_time_json
+  // and published against. An ABSENT timezone is still UTC; that is a real answer about a client
+  // with no agency setting, and the same default every other reader of this column uses.
+  const { data: clientRow, error: clientError } = await db
     .from('clients')
     .select('agencies(timezone)')
     .eq('id', clientId)
     .maybeSingle()
+  if (clientError) return null
   // WHY as: nested relation shape depends on the FK's cardinality inference.
   const agencies = (
     clientRow as {

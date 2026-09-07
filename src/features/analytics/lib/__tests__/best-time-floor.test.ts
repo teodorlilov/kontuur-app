@@ -37,14 +37,17 @@ function daysOfHistory(count: number) {
 }
 
 /** Just enough Supabase to answer the two reads `deriveObservedBestTime` makes. */
-function dbWith(rows: ReturnType<typeof daysOfHistory>) {
+function dbWith(rows: ReturnType<typeof daysOfHistory>, options: { timezoneError?: boolean } = {}) {
   return {
     from(table: string) {
       if (table === 'clients') {
         const builder = {
           select: () => builder,
           eq: () => builder,
-          maybeSingle: async () => ({ data: { agencies: { timezone: 'Europe/Sofia' } } }),
+          maybeSingle: async () =>
+            options.timezoneError
+              ? { data: null, error: { message: 'connection reset' } }
+              : { data: { agencies: { timezone: 'Europe/Sofia' } }, error: null },
         }
         return builder
       }
@@ -82,5 +85,16 @@ describe('deriveObservedBestTime — the evidence floor', () => {
     // The reasoning is shown to a user as the justification, so it has to name the real number
     // rather than the window that was asked for.
     expect(result!.platforms[0]!.reasoning_summary).toContain('20 days')
+  })
+
+  it('abandons the derivation when the timezone read fails, rather than assuming UTC', async () => {
+    // The timezone buckets every hourly map into the weekday x hour grid the recommendation is
+    // read off. Defaulting a FAILED read to UTC rotates the whole grid and produces a wrong
+    // answer indistinguishable from a right one — which then gets written to best_time_json.
+    const result = await deriveObservedBestTime(
+      dbWith(daysOfHistory(20), { timezoneError: true }),
+      'c1'
+    )
+    expect(result).toBeNull()
   })
 })

@@ -5,13 +5,17 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 /**
  * Erasure of everything a network told us about one account, for one client.
  *
- * Two callers need exactly this and nothing else: Meta's mandated data-deletion
- * callback, and the OAuth callback when a client is repointed at a DIFFERENT
- * account. Neither can lean on the `clients` cascade — no client row is being
- * deleted in either case — and before this function nothing in the codebase
- * issued a DELETE against the three ig_* tables at all, which is why an account
- * switch left rows that every read hid (`.eq('ig_account_id', …)`) and no code
- * path could reach.
+ * Three callers need exactly this and nothing else: Meta's mandated data-deletion callback, the
+ * Instagram OAuth callback when a client is repointed at a different account, and — since
+ * 2026-09-07 — `connectFacebookPage` for the same reason. Facebook's connect path had never
+ * called it, so repointing a client at a different Page left that Page's rows behind exactly as
+ * an Instagram switch used to: hidden from every account-scoped read and reachable by nothing.
+ * None of the three can lean on the `clients` cascade, because no client row is being deleted.
+ *
+ * The account id may therefore be an Instagram account OR a Facebook Page. That is safe because
+ * the id spaces do not overlap: a Page id matches no ig_* row and an Instagram account id
+ * matches no fb_page_metrics row, so each caller's network simply finds its own tables and the
+ * other lines are no-ops.
  *
  * Deliberately NOT used by `deleteClient`: every table here cascades from
  * `clients` (20260822, 20260823, 20260846), and re-implementing that in
