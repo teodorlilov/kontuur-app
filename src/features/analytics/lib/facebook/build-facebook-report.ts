@@ -87,7 +87,8 @@ export function buildFacebookReport(input: BuildFacebookReportInput): FacebookRe
     currentPostRows,
     input.publishedPosts,
     input.lastSyncAt,
-    input.timezone
+    input.timezone,
+    period.start
   )
   /**
    * Re-ranked by interactions: `buildPosts` orders by reach, which every Facebook row lacks

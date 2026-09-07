@@ -60,11 +60,11 @@ const _fetchFacebookReport = unstable_cache(
     const period: AnalyticsPeriod = { preset, start, end, prevStart, prevEnd, days }
 
     // Post timestamps are instants; the period is agency-calendar days.
-    // Only the two edges this reader uses. `from` — the CURRENT window's start, which Instagram
-    // binds its ledger pin at — is deliberately not destructured here, so that the divergence
-    // documented at the pin below stays a decision someone has to make rather than a name
-    // already in scope.
-    const { to: postedTo, fromPrevious: postedFromPrev } = postedWindow(period, timezone)
+    const {
+      from: postedFrom,
+      to: postedTo,
+      fromPrevious: postedFromPrev,
+    } = postedWindow(period, timezone)
 
     const [pageRes, postRes, publishedRes, historyRes] = await Promise.all([
       admin
@@ -84,20 +84,14 @@ const _fetchFacebookReport = unstable_cache(
         .gte('posted_at', postedFromPrev)
         .lt('posted_at', postedTo),
       // Kontuur's own ledger: pins posts the sync cannot see — removed from the Page after
-      // publishing, or published since the last sync ran.
+      // publishing, or published since the last sync ran. The mirror of Instagram's pin, which
+      // it was written as and finally is: bounded at the CURRENT window's start.
       //
-      // NOT the mirror of Instagram's pin, though it was written as one. Instagram bounds this
-      // at the CURRENT window's start (report-data.ts); this bounds it at the PREVIOUS window's,
-      // so the pin reaches back a whole extra period. `buildPosts` builds its dedupe sets from
-      // the current window's metric rows, so a publication from the comparison window matches
-      // nothing, is pushed with every measure null, and — its publish time being far past the
-      // sync grace — renders as `missing: 'removed'`. On a 30-day Facebook window that means
-      // every post from the preceding 30 days shown as "no longer on Facebook", with an
-      // inflated "{n} posts this period" footer. Instagram cannot do this.
-      //
-      // Left as-is here on purpose: this is a behaviour fix, not a relocation, and it needs a
-      // test in build-facebook-report.test.ts (which today only ever passes `publishedPosts: []`)
-      // plus a look at the rendered table. Changing the bound below to `posted.from` is the fix.
+      // It used to be bounded at `postedFromPrev`, reaching back a whole extra period. Those
+      // publications matched none of the current window's metric rows, so each was pushed with
+      // every measure null and — its publish time being far past the sync grace — labelled
+      // `missing: 'removed'`. A 30-day Facebook window rendered every post from the preceding
+      // 30 days as "no longer on Facebook", all columns "—", and counted them in the footer.
       admin
         .from('post_publications')
         .select(`external_post_id, published_at, posts!inner(${PUBLISHED_POST_PIN_COLUMNS})`)
@@ -105,7 +99,7 @@ const _fetchFacebookReport = unstable_cache(
         .eq('account_id', pageId)
         .eq('status', 'published')
         .eq('posts.client_id', clientId)
-        .gte('published_at', postedFromPrev)
+        .gte('published_at', postedFrom)
         .lt('published_at', postedTo),
       admin
         .from('fb_page_metrics')

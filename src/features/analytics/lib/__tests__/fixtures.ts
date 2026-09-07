@@ -1,4 +1,4 @@
-import type { PlatformPostMetricColumns } from '@/lib/queries/select-columns'
+import type { PlatformPostMetricColumns, PublishedPostPin } from '@/lib/queries/select-columns'
 
 /**
  * Row shapes the analytics tests build on.
@@ -47,4 +47,35 @@ export const EMPTY_PAGE_SERIES = {
   page_daily_unfollows_unique: [],
   page_post_engagements: [],
   page_views_total: [],
+}
+
+/**
+ * A published destination with the post it carried.
+ *
+ * The pin used to be a `posts` row with `external_post_id` and `published_at` on it. Both moved
+ * onto `post_publications` — a media id and a publish time belong to the destination that
+ * produced them — so the fixture takes them at the top level and nests what is left.
+ */
+export function publishedPost(
+  overrides: Partial<{
+    id: string
+    external_post_id: string | null
+    caption: string | null
+    published_at: string | null
+    post_type: string
+  }> = {}
+): PublishedPostPin {
+  const { id, caption, post_type, ...publication } = {
+    id: 'p1',
+    external_post_id: null,
+    caption: null,
+    published_at: null,
+    post_type: 'single',
+    ...overrides,
+  }
+  return {
+    external_post_id: publication.external_post_id,
+    published_at: publication.published_at,
+    posts: { id, caption, post_type },
+  }
 }

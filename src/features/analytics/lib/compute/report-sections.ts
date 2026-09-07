@@ -258,7 +258,19 @@ export function buildPosts(
   postRows: PlatformPostMetricColumns[],
   publishedPosts: PublishedPostPin[],
   lastSyncAt: string | null,
-  timezone: string
+  timezone: string,
+  /**
+   * The current window's first day. Pins outside it are dropped.
+   *
+   * This file has always CLAIMED that "the app ledger's pins are scoped to the current window"
+   * (see previousTrendPostsByDay), but only the callers' queries enforced it — and Facebook's
+   * bounded its ledger read at the PREVIOUS window's start, so every publication from the
+   * comparison window arrived here, matched none of the current window's metric rows, and was
+   * pushed with every measure null and a "removed" verdict. A 30-day Facebook window showed the
+   * preceding 30 days of posts as deleted from the Page. The query is fixed; the invariant is
+   * enforced here so a third network cannot rediscover it.
+   */
+  periodStart: string
 ): {
   posts: ReportPostRow[]
   medianReach: number | null
@@ -294,6 +306,10 @@ export function buildPosts(
   for (const publication of publishedPosts) {
     const post = publication.posts
     if (!publication.published_at) continue
+    // Current window only — the pin fills what the sync could not see for THIS period, not a
+    // post the reader is looking at the comparison line for.
+    const pinnedDay = dayKeyOf(publication.published_at, timezone)
+    if (!pinnedDay || pinnedDay < periodStart) continue
     if (publication.external_post_id && knownMedia.has(publication.external_post_id)) continue
     if (knownPostIds.has(post.id)) continue
     const syncSawIt =
@@ -305,7 +321,7 @@ export function buildPosts(
       postId: post.id,
       caption: post.caption,
       postedAt: publication.published_at,
-      postedDayKey: dayKeyOf(publication.published_at, timezone),
+      postedDayKey: pinnedDay,
       mediaType: APP_MEDIA_TYPE[post.post_type ?? ''] ?? 'IMAGE',
       mediaProductType: null,
       permalink: null,

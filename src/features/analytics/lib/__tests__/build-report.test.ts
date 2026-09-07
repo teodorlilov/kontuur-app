@@ -12,7 +12,7 @@ import {
   type BuildReportInput,
 } from '../instagram/build-report'
 import type { AnalyticsPeriod } from '../compute/period'
-import { postMetricRow } from './fixtures'
+import { postMetricRow, publishedPost } from './fixtures'
 
 /** A 4-day period (Aug 15–18) against the 4 days before it (Aug 11–14). */
 const PERIOD: AnalyticsPeriod = {
@@ -52,37 +52,6 @@ function accountRow(overrides: Partial<IGAccountMetricColumns>): IGAccountMetric
 function postRow(overrides: Partial<PlatformPostMetricColumns>): PlatformPostMetricColumns {
   // Instagram's defaults over the shared skeleton: a plain feed image unless a case says otherwise.
   return postMetricRow({ media_type: 'IMAGE', media_product_type: 'FEED', ...overrides })
-}
-
-/**
- * A published destination with the post it carried.
- *
- * The pin used to be a `posts` row with `external_post_id` and `published_at` on it. Both moved
- * onto `post_publications` — a media id and a publish time belong to the destination that
- * produced them — so the fixture takes them at the top level and nests what is left.
- */
-function publishedPost(
-  overrides: Partial<{
-    id: string
-    external_post_id: string | null
-    caption: string | null
-    published_at: string | null
-    post_type: string
-  }>
-): PublishedPostPin {
-  const { id, caption, post_type, ...publication } = {
-    id: 'p1',
-    external_post_id: null,
-    caption: null,
-    published_at: null,
-    post_type: 'single',
-    ...overrides,
-  }
-  return {
-    external_post_id: publication.external_post_id,
-    published_at: publication.published_at,
-    posts: { id, caption, post_type },
-  }
 }
 
 function build(input: Partial<BuildReportInput>): ReturnType<typeof buildAnalyticsReport> {

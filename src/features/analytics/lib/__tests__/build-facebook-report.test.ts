@@ -9,7 +9,7 @@ import {
   type BuildFacebookReportInput,
 } from '../facebook/build-facebook-report'
 import type { AnalyticsPeriod } from '../compute/period'
-import { postMetricRow } from './fixtures'
+import { postMetricRow, publishedPost } from './fixtures'
 
 /**
  * The Facebook document's assembly — what `npm run check` cannot see. The builder composes
@@ -138,5 +138,36 @@ describe('buildFacebookReport', () => {
     expect(first.thenDate).toBe('2026-09-01')
     expect(first.then).toBe(9)
     expect(first.posts).toHaveLength(1)
+  })
+})
+
+describe('the app ledger pin', () => {
+  it("does not pull the comparison window's publications into this period", () => {
+    // The reader used to bound this query at the PREVIOUS window's start, so a post published
+    // during the comparison period arrived here, matched none of the current window's metric
+    // rows, and rendered with every column "—" and "no longer on Facebook" — on a 30-day window,
+    // the whole preceding month shown as deleted from the Page.
+    const report = buildFacebookReport(
+      input({
+        publishedPosts: [
+          publishedPost({
+            id: 'old',
+            caption: 'Published during the comparison window',
+            published_at: '2026-09-02T10:00:00Z',
+          }),
+          publishedPost({
+            id: 'new',
+            caption: 'Published during this window',
+            published_at: '2026-09-05T10:00:00Z',
+          }),
+        ],
+        lastSyncAt: '2026-09-07T03:30:00Z',
+      })
+    )
+
+    const captions = report.posts.map((post) => post.caption)
+    expect(captions).toContain('Published during this window')
+    expect(captions).not.toContain('Published during the comparison window')
+    expect(report.posts).toHaveLength(1)
   })
 })

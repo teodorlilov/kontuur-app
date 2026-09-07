@@ -495,7 +495,8 @@ export function buildAnalyticsReport(input: BuildReportInput): AnalyticsReportDa
     currentPostRows,
     input.publishedPosts,
     input.lastSyncAt,
-    input.timezone
+    input.timezone,
+    period.start
   )
   const postsByDate = groupTrendPostsByDay(posts)
   const previousPostsByDate = previousTrendPostsByDay(
