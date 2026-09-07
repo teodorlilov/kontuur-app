@@ -76,16 +76,17 @@ const FB_NARRATIVE: NarrativeSpec<FacebookReportData> = {
   },
 }
 
+/**
+ * The cached generation. `syncStamp` is a parameter purely so it lands in the CACHE KEY — a new
+ * nightly sync writes a new stamp and the wording regenerates. The key parts are versioned and
+ * name the network explicitly for the reason `narrative-shared.ts` records: Next builds the key
+ * from the callback's own source text, and this callback is line-for-line Instagram's.
+ */
 const _fetchFacebookNarrative = unstable_cache(
-  async (
-    args: NarrativeArgs,
-    // Part of the cache key on purpose: a new nightly sync writes a new stamp.
-    syncStamp: string
-  ): Promise<NarrativeResult | null> => {
+  async (args: NarrativeArgs, syncStamp: string): Promise<NarrativeResult | null> => {
     void syncStamp
     return resolveNarrative(FB_NARRATIVE, args)
   },
-  // Versioned and network-named for the reasons the Instagram site records.
   ['facebook-narrative-v1', 'facebook'],
   { revalidate: 86_400, tags: [FB_METRICS_TAG] }
 )

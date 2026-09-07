@@ -10,6 +10,9 @@ import type { AnalyticsPeriod } from '../../lib/compute/period'
  * because a key written twice can drift.
  *
  * `note` is where a network states its own limits; only Facebook passes one.
+ *
+ * The screen title lives in the sticky page header, which print leaves behind — so the printed
+ * report grows its own "Analytics" heading here.
  */
 export function ReportMasthead({
   clientName,
@@ -37,7 +40,6 @@ export function ReportMasthead({
             </span>
           )}
         </div>
-        {/* The sticky page header carries the screen title; print has no header. */}
         <h2 className="mt-2 hidden text-headline text-ink print:block">Analytics</h2>
         <p className="mt-2.5 flex flex-wrap items-center gap-x-5 gap-y-1 text-body">
           <span className="flex items-center gap-2">

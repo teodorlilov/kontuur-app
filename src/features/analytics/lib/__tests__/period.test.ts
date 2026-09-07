@@ -2,9 +2,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { periodDayKeys, resolvePeriod } from '../compute/period'
 
 describe('resolvePeriod', () => {
+  /** Noon UTC, so every zone in the tests below still agrees on the calendar date. */
   beforeEach(() => {
     vi.useFakeTimers()
-    // Noon UTC, so every zone in the tests below still agrees on the calendar date.
     vi.setSystemTime(new Date('2026-08-19T12:00:00Z'))
   })
   afterEach(() => {
@@ -55,15 +55,15 @@ describe('resolvePeriod', () => {
     expect(period.preset).toBe('custom')
   })
 
+  /** Including a range longer than a year, which is a typo rather than a report. */
   it('falls back to the preset on malformed or inverted custom bounds', () => {
     expect(resolvePeriod({ from: 'nope', to: '2026-08-10' }, 'UTC').preset).toBe('30d')
     expect(resolvePeriod({ from: '2026-08-10', to: '2026-08-01' }, 'UTC').preset).toBe('30d')
-    // Longer than a year is a typo, not a report.
     expect(resolvePeriod({ from: '2020-01-01', to: '2026-08-01' }, 'UTC').preset).toBe('30d')
   })
 
+  /** 2026-08-19 01:00 UTC is still 2026-08-18 in Los Angeles, so yesterday there is the 17th. */
   it('resolves yesterday in the agency timezone, not UTC', () => {
-    // 2026-08-19 01:00 UTC is still 2026-08-18 in Los Angeles → yesterday there is the 17th.
     vi.setSystemTime(new Date('2026-08-19T01:00:00Z'))
     expect(resolvePeriod({}, 'America/Los_Angeles').end).toBe('2026-08-17')
     expect(resolvePeriod({}, 'UTC').end).toBe('2026-08-18')

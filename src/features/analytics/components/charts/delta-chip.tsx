@@ -11,9 +11,12 @@ interface DeltaChipProps {
   className?: string
 }
 
+/**
+ * The absolute, signed. Never reached with a zero diff: `move` needs |diff| past the ±2√N band
+ * (≥2) and `quiet` prints an em dash below 0.05, so signedCount's `>= 0` rule can never render
+ * "+0".
+ */
 function signedAbs(diff: number, unit: 'count' | 'pt'): string {
-  // Never called with a zero diff: `move` needs |diff| past the ±2√N band (≥2) and `quiet`
-  // prints an em dash below 0.05, so signedCount's `>= 0` rule can never render "+0".
   if (unit === 'count') return signedCount(Math.round(diff))
   return `${diff > 0 ? '+' : '−'}${Math.abs(diff).toFixed(1)} pt`
 }

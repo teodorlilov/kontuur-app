@@ -36,26 +36,29 @@ const { fillPageWindow } = await import('../facebook/sync-facebook-metrics')
 // Only the marker read reaches it, and that is mocked.
 const admin = {} as never
 
+/** The default every case starts from: nothing asked of Meta yet, and every series empty. */
 beforeEach(() => {
   fetchPageDaySeries.mockReset()
   upsertFbPageMetricDays.mockReset()
   readMarkerRows.mockReset()
   fetchPageDaySeries.mockResolvedValue(EMPTY_PAGE_SERIES)
-  // Nothing asked of Meta yet: the default every case assumes unless it says otherwise.
   readMarkerRows.mockResolvedValue([])
 })
 
 describe('fillPageWindow', () => {
+  /**
+   * 91 inclusive days — one past the cap — so chunk one covers exactly 90 and chunk two picks up
+   * the remainder, its `since` continuing from the first chunk's `until`.
+   */
   it('splits a window longer than 90 days into chunks Meta accepts', async () => {
     await fillPageWindow(admin, {
       clientId: 'client-1',
       pageId: 'page-1',
       accessToken: 'tok',
       fromDate: '2026-06-08',
-      toDate: '2026-09-06', // 91 days inclusive — one day past the cap
+      toDate: '2026-09-06',
     })
     expect(fetchPageDaySeries).toHaveBeenCalledTimes(2)
-    // Chunk one covers exactly 90 days; chunk two picks up the remainder.
     const [, , since1, until1] = fetchPageDaySeries.mock.calls[0] as [
       string,
       string,
@@ -67,6 +70,7 @@ describe('fillPageWindow', () => {
     expect(since2).toBe(until1)
   })
 
+  /** Meta serves one of the three days: that one is a measurement, the others markers. */
   it('writes marker rows for asked days Meta served nothing for, so the fill settles', async () => {
     fetchPageDaySeries.mockResolvedValue({
       ...EMPTY_PAGE_SERIES,
@@ -82,17 +86,16 @@ describe('fillPageWindow', () => {
     const rows = upsertFbPageMetricDays.mock.calls[0]![1] as Array<Record<string, unknown>>
     const dates = rows.map((row) => row.metric_date).sort()
     expect(dates).toEqual(['2026-09-01', '2026-09-02', '2026-09-03'])
-    // The served day is a measurement; the other two are markers — asked, nothing there.
     const marker = rows.find((row) => row.metric_date === '2026-09-01')!
     expect('followers_count' in marker).toBe(false)
     expect(marker.totals_synced_at).toBeTruthy()
     expect(outcome.wroteDays).toBe(3)
   })
 
+  /** Meta's `until` is loose: a bucket one day past the asked window can arrive in the series. */
   it('drops series buckets that bleed outside the asked window', async () => {
     fetchPageDaySeries.mockResolvedValue({
       ...EMPTY_PAGE_SERIES,
-      // Meta's until is loose: a bucket one day past the window can arrive.
       page_views_total: [
         { date: '2026-09-02', value: 5 },
         { date: '2026-09-04', value: 9 },
@@ -108,9 +111,11 @@ describe('fillPageWindow', () => {
     const rows = upsertFbPageMetricDays.mock.calls[0]![1] as Array<Record<string, unknown>>
     expect(rows.every((row) => (row.metric_date as string) <= '2026-09-03')).toBe(true)
   })
+  /**
+   * `wroteDays` must exclude already-marked days: it is the caller's only "stalled" signal, and
+   * counting every upserted row would make zero unreachable, so the AutoFill chain never stops.
+   */
   it('skips a chunk whose every day was already asked of Meta, and reports no new days', async () => {
-    // wroteDays must exclude already-marked days: it is the caller's only "stalled" signal, and
-    // counting every upserted row makes zero unreachable, so the AutoFill chain never stops.
     readMarkerRows.mockResolvedValue([
       { metric_date: '2026-09-04', totals_synced_at: '2026-09-07T03:30:00Z' },
       { metric_date: '2026-09-05', totals_synced_at: '2026-09-07T03:30:00Z' },
@@ -130,6 +135,7 @@ describe('fillPageWindow', () => {
     expect(outcome.wroteDays).toBe(0)
   })
 
+  /** Three rows are written — the marked day is re-upserted harmlessly — and two are new. */
   it('counts only the days it actually adds when part of the window is already marked', async () => {
     readMarkerRows.mockResolvedValue([
       { metric_date: '2026-09-04', totals_synced_at: '2026-09-07T03:30:00Z' },
@@ -144,7 +150,6 @@ describe('fillPageWindow', () => {
     })
 
     expect(fetchPageDaySeries).toHaveBeenCalledTimes(1)
-    // Three rows are written (the marked day is re-upserted harmlessly), two are new.
     expect(outcome.wroteDays).toBe(2)
   })
 })

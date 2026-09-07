@@ -44,6 +44,10 @@ function describeRows(rows: ComparisonRow[], ariaLabel: string, unit: string): s
  * `row.details` names each fact in the hover card, because the compact `row.meta` fragment
  * ("8 published · 13.7% engagement rate") makes the reader work out what kind of thing each
  * half is. Print keeps the fragment — paper cannot be hovered.
+ *
+ * Both bars floor through `barWidthPct`: the live extreme is 3 against a 32,340 maximum, 0.008%
+ * of the track, which would draw a bar the reader cannot see beside a number they can.
+ * `comparison-rows.test.tsx` pins that case.
  */
 export function ComparisonRows({ rows, ariaLabel, unit = 'Reached' }: ComparisonRowsProps) {
   const [hover, setHover] = useState<string | null>(null)
@@ -60,7 +64,6 @@ export function ComparisonRows({ rows, ariaLabel, unit = 'Reached' }: Comparison
           >
             <div className="text-caption font-medium text-ink">
               {row.label}
-              {/* Screen reads this from the card; paper has no hover. */}
               {row.meta && (
                 <span className="hidden text-micro font-normal text-text3 print:block">
                   {row.meta}
@@ -72,9 +75,6 @@ export function ComparisonRows({ rows, ariaLabel, unit = 'Reached' }: Comparison
                 {row.now !== null && row.now > 0 && (
                   <i
                     className="block h-full rounded-r bg-forest"
-                    // Computed width, floored by barWidthPct: the live shape is 3 against a
-                    // 32,340 maximum, 0.008% of the track — a bar the reader cannot see
-                    // beside a number they can. `comparison-rows.test.tsx` pins that case.
                     style={{
                       width: `${barWidthPct(row.now, max, BAR_SPAN_BEFORE_VALUE).toFixed(1)}%`,
                     }}
@@ -100,8 +100,6 @@ export function ComparisonRows({ rows, ariaLabel, unit = 'Reached' }: Comparison
                 </span>
               </div>
             </div>
-            {/* Every row earns a card, `details` or not: value and change are worth naming
-                on their own, and Stories carry neither a post count nor a rate. */}
             {hover === row.key && (
               <RowCard row={row} unit={unit} above={index === rows.length - 1 && rows.length > 1} />
             )}

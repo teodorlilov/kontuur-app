@@ -15,7 +15,7 @@ const TYPE_META: Record<string, { letter: string; label: string; tone: 'sage' | 
  * That null is a deliberate write, not a gap: Facebook's post list carries no media-type
  * vocabulary, so its sync stores null (sync-facebook-metrics.ts). Defaulting it here would put
  * "single" and an "S" badge on every Facebook row, videos and link posts included —
- * facebook-posts-table.test.ts pins that no such label appears. Callers render `·` instead.
+ * facebook-posts-table.test.tsx pins that no such label appears. Callers render `·` instead.
  */
 export function postTypeMeta(mediaType: string | null | undefined) {
   return (mediaType && TYPE_META[mediaType]) || null

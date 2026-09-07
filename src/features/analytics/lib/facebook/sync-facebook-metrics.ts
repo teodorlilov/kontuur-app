@@ -55,7 +55,13 @@ export async function syncAllFacebookMetrics(
   })
 }
 
-/** One client's Page capture: the day series, then the posts — each phase isolated. */
+/**
+ * One client's Page capture: the day series, then the posts — each phase isolated.
+ *
+ * A Page with no stored day yet takes the 30-day backfill, which rides the SAME five calls a
+ * nightly capture costs, so a just-connected client has a follower curve tomorrow morning
+ * instead of in a month. An established Page re-captures only the short consolidation window.
+ */
 async function syncClientPageMetrics(
   admin: SupabaseClient,
   connection: SyncableConnection & { client_id: string }
@@ -67,12 +73,6 @@ async function syncClientPageMetrics(
   const phases: SyncPhase[] = [
     {
       name: 'page days',
-      /**
-       * A fresh Page gets the 30-day backfill in the SAME five calls a nightly capture
-       * costs — the range rides the request — so a just-connected client has a follower
-       * curve tomorrow morning, not in a month. An established Page re-captures the short
-       * trailing window, which is all Meta's consolidation lag needs.
-       */
       run: async () => {
         const days = hadHistory ? FB_CONSOLIDATION_DAYS : FB_BACKFILL_DAYS
         const untilTs = Math.floor(Date.now() / 1000)
@@ -128,11 +128,20 @@ const FILL_CHUNK_DAYS = 90
  * identity and `totals_synced_at` only, every measure absent — recording "asked, nothing
  * there" so the unfilled count stops counting them and the auto-fill chain terminates.
  * The same both-null-row pattern the audience snapshot writes, for the same reason.
+ * `readMarkerRows` spans `prevStart`→`end`, so the period handed to it puts this one window
+ * in both halves rather than describing two.
+ *
+ * Two Graph-shaped traps in the chunk loop: Meta treats `until` loosely, so a chunk asks one day
+ * PAST its last to keep that day; and the returned series can bucket a point outside the span
+ * that was asked for, so rows are filtered back to the chunk before anything is written.
  *
  * `wroteDays` must count only days that were NOT already stored: the caller reads
  * `wroteDays === 0` as "stalled" and stops re-firing the chain on it, and counting every row
  * upserted would make that unreachable on any re-run. A chunk whose every day is already
  * marked is skipped rather than re-asked.
+ *
+ * The window's posts come from one further call — the same read the nightly capture makes,
+ * anchored at the window's start.
  */
 export async function fillPageWindow(
   admin: SupabaseClient,
@@ -149,32 +158,25 @@ export async function fillPageWindow(
 
   const marked = new Set(
     (
-      await readMarkerRows(
-        admin,
-        fbMarkers(clientId, pageId),
-        // readMarkerRows spans prevStart→end; this window is already the span to cover.
-        {
-          preset: 'custom',
-          start: fromDate,
-          end: toDate,
-          prevStart: fromDate,
-          prevEnd: toDate,
-          days: 0,
-        }
-      )
+      await readMarkerRows(admin, fbMarkers(clientId, pageId), {
+        preset: 'custom',
+        start: fromDate,
+        end: toDate,
+        prevStart: fromDate,
+        prevEnd: toDate,
+        days: 0,
+      })
     )
       .filter((row) => row.totals_synced_at !== null)
       .map((row) => row.metric_date)
   )
 
   for (const chunk of dayChunks(fromDate, toDate, FILL_CHUNK_DAYS)) {
-    // Every day already asked of Meta: nothing here to fetch.
     const chunkDays: string[] = []
     for (let day = chunk.start; day <= chunk.end; day = shiftDateKey(day, 1)) chunkDays.push(day)
     if (chunkDays.every((day) => marked.has(day))) continue
 
     const sinceTs = dayKeyToUnixSeconds(chunk.start)
-    // `until` is exclusive-ish at Meta's end; one day past the chunk's last day covers it.
     const untilTs = dayKeyToUnixSeconds(shiftDateKey(chunk.end, 1))
     const series = await fetchPageDaySeries(pageId, accessToken, sinceTs, untilTs)
     const rows = zipPageDays(clientId, pageId, series)
@@ -184,7 +186,6 @@ export async function fillPageWindow(
       if (served.has(day)) continue
       rows.push({ client_id: clientId, page_id: pageId, metric_date: day, totals_synced_at: now })
     }
-    // Only rows inside the asked window count — the series can bleed a bucket past it.
     const inWindow = rows.filter(
       (row) => row.metric_date >= chunk.start && row.metric_date <= chunk.end
     )
@@ -192,8 +193,6 @@ export async function fillPageWindow(
     wroteDays += inWindow.filter((row) => !marked.has(row.metric_date)).length
   }
 
-  // The window's posts, identity and tallies together — the same single read the nightly
-  // capture uses, just anchored at the window's start.
   const posts = await fetchPagePostMeasurements(pageId, accessToken, `${fromDate}T00:00:00Z`)
   if (posts.length > 0) {
     const postIdByExternal = await fetchPostIdsByMediaId(
@@ -232,6 +231,10 @@ async function hasPageHistory(
  * a metric absent for that date stays absent from the row — the upsert only touches the keys
  * it is given, so absence never overwrites a value a fuller capture stored.
  *
+ * `page_follows` carries the follower LEVEL at each day's close, not a daily change: the
+ * `page_fans` insight is dead (400 when probed) and the level rides this series instead
+ * (docs/META-FB-PROBE.md).
+ *
  * Exported for `sync-facebook-mapping.test.ts`: a series zipped into the wrong column is
  * type-correct in every direction, so nothing but a test can catch it.
  */
@@ -254,8 +257,6 @@ export function zipPageDays(
     byDate.set(date, created)
     return created
   }
-  // page_follows is the follower LEVEL at each day's close — the page_fans insight is dead
-  // and the probe recorded the level riding this series (docs/META-FB-PROBE.md).
   for (const point of series.page_follows) rowFor(point.date).followers_count = point.value
   for (const point of series.page_daily_follows_unique) rowFor(point.date).follows = point.value
   for (const point of series.page_daily_unfollows_unique) rowFor(point.date).unfollows = point.value
@@ -265,20 +266,30 @@ export function zipPageDays(
   return [...byDate.values()]
 }
 
-/** One Page post's identity and tallies in the neutral table's vocabulary. Exported for the same test. */
+/**
+ * One Page post's identity and tallies in the neutral table's vocabulary. Exported for the same
+ * test.
+ *
+ * Everything comes from the post's own fields: `post_impressions` and `post_impressions_unique`
+ * both answered 400 when probed, so reach and views stay ABSENT rather than zero, and
+ * `total_interactions` is summed from the three tallies this call carries, because no per-post
+ * total is served.
+ *
+ * Three traps. `like_count` carries REACTIONS — the tally spans every reaction type, this call
+ * serves no like-only count, and reactions are what a person means by "likes" here. An absent
+ * `shares` key means ZERO, unlike the insights envelopes this feature otherwise reads as
+ * absence: the probe watched a live post omit the key while genuinely having none. And
+ * `media_type` stays null because the post list offers no media-type vocabulary, exactly as the
+ * Facebook comments adapter leaves it — a guess would sit in a column the report reads.
+ */
 export function toPostMetricRow(
   clientId: string,
   pageId: string,
   post: Awaited<ReturnType<typeof fetchPagePostMeasurements>>[number],
   postIdByExternal: Map<string, string>
 ): PlatformPostMetricsInsert {
-  // WHY reactions, not likes alone: Facebook's tally spans every reaction type and serves no
-  // like-only count on this call. Reactions are what a person means by "likes" here, and the
-  // column is the nearest honest fit.
   const reactions = post.reactions?.summary?.total_count ?? null
   const comments = post.comments?.summary?.total_count ?? null
-  // Absent means zero for THIS field, probed: the live post's envelope carried no `shares`
-  // key while genuinely having none. Unlike the insights envelopes, absence here is an answer.
   const shares = post.shares?.count ?? 0
   return {
     client_id: clientId,
@@ -289,20 +300,14 @@ export function toPostMetricRow(
     caption: post.message ?? null,
     permalink: post.permalink_url ?? null,
     thumbnail_url: post.full_picture ?? null,
-    // Facebook's post list offers no media_type vocabulary; a guess would sit in a column
-    // the report reads (the same reasoning as the comments adapter's identity write).
     media_type: null,
     media_product_type: null,
     posted_at: post.created_time ?? null,
     like_count: reactions,
     comments_count: comments,
     shares,
-    // Computed, because Meta serves no per-post total for Pages: the three tallies this call
-    // carries, summed. Null only when nothing at all was served.
     total_interactions:
       reactions === null && comments === null ? null : (reactions ?? 0) + (comments ?? 0) + shares,
-    // Dead at Meta's end for Pages (2025-11-15 purge) — stored as the truth, never zero:
-    // reach, views, saved, follows, profile_visits stay absent.
     last_synced_at: new Date().toISOString(),
   }
 }

@@ -77,11 +77,16 @@ export function selectRefillDays(
   return targets.slice(0, cap)
 }
 
-/** UTC [start, end] inclusive day keys → ≤30-day unix-second windows. */
+/**
+ * UTC [start, end] inclusive day keys → ≤30-day unix-second windows.
+ *
+ * Each chunk's `until` lands one day PAST its last day. Meta's handling of that bound is loose
+ * — the series can also return a bucket outside the asked span, which is why callers filter
+ * results back to the window — so the shift is what keeps a chunk's final day.
+ */
 function seriesChunks(start: string, end: string): Array<{ sinceTs: number; untilTs: number }> {
   return dayChunks(start, end, SERIES_CHUNK_DAYS).map((chunk) => ({
     sinceTs: dayKeyToUnixSeconds(chunk.start),
-    // `until` is exclusive-ish at Meta's end; one day past the chunk's last day covers it.
     untilTs: dayKeyToUnixSeconds(shiftDateKey(chunk.end, 1)),
   }))
 }
@@ -92,6 +97,15 @@ function seriesChunks(start: string, end: string): Array<{ sinceTs: number; unti
  * totals for the capped target days, and the period's post metrics. Writes are
  * per-column batches so a refreshed value never nulls out a column another pass
  * owns. A rate limit stops the run and reports it; what landed stays.
+ *
+ * A day whose capture fails for any other reason is COUNTED, never rethrown: a rejection inside
+ * the day loop would take the whole `Promise.all` with it and skip the upsert that follows,
+ * discarding every day already fetched because one failed.
+ *
+ * Two further passes run here rather than waiting for the nightly cron: the posting times derived
+ * from the hours just stored, and the demographics snapshot the audience panel needs, that panel
+ * being the one section no day row can produce. Both are best-effort — neither may cost the
+ * refill its day totals.
  */
 export async function refreshWindowMetrics(
   admin: SupabaseClient,
@@ -109,13 +123,11 @@ export async function refreshWindowMetrics(
   let refilledDays = 0
   let failedDays = 0
 
-  // The series the API serves for past days as one ranged call — chunked, both windows.
   const reachRows: IGAccountMetricsInsert[] = []
   try {
     for (const chunk of seriesChunks(period.prevStart, spanEnd)) {
       const [reach] = await Promise.all([
         fetchDailyReachSeries(accountId, accessToken, chunk.sinceTs, chunk.untilTs),
-        // Through the shared capture, which stores as it goes rather than returning rows.
         captureOnlineFollowers(
           admin,
           { clientId, accountId, accessToken },
@@ -129,16 +141,12 @@ export async function refreshWindowMetrics(
     else throw err
   }
   await upsertAccountMetricDays(admin, reachRows, 'window refresh reach')
-  // The hours just stored may be exactly what was blocking this client's posting times, so the
-  // derivation runs here rather than waiting for the nightly cron. Best-effort on purpose:
-  // posting times are an enhancement and must never cost the refill its day totals.
   try {
     await refreshObservedBestTime(admin, clientId)
   } catch (err) {
     console.error('[analytics] best-time refresh after refill failed:', err)
   }
 
-  // Day totals, newest first, under the call budget.
   if (!rateLimited && targets.length > 0) {
     const semaphore = createSemaphore(REFILL_CONCURRENCY)
     const totalsRows: IGAccountMetricsInsert[] = []
@@ -147,16 +155,12 @@ export async function refreshWindowMetrics(
         const release = await semaphore.acquire()
         try {
           if (rateLimited) return
-          // The same full-day capture the nightly sync writes, so every
-          // section the period filter drives refills — not just headline totals.
           totalsRows.push(await captureDayTotals(clientId, accountId, accessToken, dateKey))
         } catch (err) {
           if (err instanceof GraphApiError && err.failure === 'rate_limited') {
             rateLimited = true
             return
           }
-          // Counted, not thrown: a rejection here takes the whole Promise.all with it, and the
-          // upsert below would never run — every day already fetched discarded for one failure.
           failedDays++
           console.error(`[analytics] day capture failed for ${dateKey}:`, err)
         } finally {
@@ -168,7 +172,6 @@ export async function refreshWindowMetrics(
     refilledDays = totalsRows.length
   }
 
-  // The period's posts re-sync too — reach/saves/follows on rows the table shows.
   if (!rateLimited) {
     try {
       await syncPostMetrics(admin, clientId, accountId, accessToken, `${period.start}T00:00:00Z`)
@@ -178,12 +181,6 @@ export async function refreshWindowMetrics(
     }
   }
 
-  // "Who follows, who engages" is the one section no day row can produce: it
-  // needs a demographics snapshot, so a refill that skipped this could fill the
-  // whole document and still leave the audience panel saying none exists. The
-  // call is cadence-gated inside (a snapshot within the week makes it a single
-  // cheap lookup) and best-effort: its eight breakdown calls must never cost
-  // the refill its totals.
   if (!rateLimited) {
     try {
       await syncDemographicsWeekly(admin, clientId, accountId, accessToken)

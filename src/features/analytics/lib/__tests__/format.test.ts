@@ -29,8 +29,8 @@ describe('formatSharePct', () => {
     expect(formatSharePct(62)).toBe('62%')
   })
 
+  /** A third-place country at 0.4%: "0%" would read as measured absence, which it is not. */
   it('never rounds a real share down to a measured zero', () => {
-    // A third-place country at 0.4%: "0%" would read as measured absence, which it is not.
     expect(formatSharePct(0.4)).toBe('<1%')
     expect(formatSharePct(0.04)).toBe('<1%')
   })

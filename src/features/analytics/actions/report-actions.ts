@@ -98,6 +98,15 @@ async function resolveReportScope(
   }
 }
 
+/**
+ * The one write both networks share: the shown period stored under the account and platform it
+ * describes.
+ *
+ * WHY as: the report is stringified and re-parsed so what reaches the jsonb column is plain
+ * JSON, and `JSON.parse` answers `any` — the assertion names the column's type. The report
+ * cannot simply be assigned to `Json` instead: `Json`'s object member is an index-signature
+ * type, and the report interfaces have no index signature.
+ */
 async function upsertReportRow(
   scope: ReportScope,
   accountId: string,
@@ -112,7 +121,6 @@ async function upsertReportRow(
       platform,
       period_start: scope.period.start,
       period_end: scope.period.end,
-      // WHY as: the round-trip strips `undefined`, which `Json` has no member for.
       metrics_json: JSON.parse(JSON.stringify(report)) as Json,
       ai_summary: narrative,
     },
@@ -125,14 +133,20 @@ async function upsertReportRow(
 /**
  * Writes the currently displayed period into the report archive exactly as shown — the same
  * stored-table data and the same narrative the reader is looking at, never a fresh pull.
+ *
+ * Both branches refuse without a connected account, because the row is stamped with the account
+ * it describes and `fetchReportArchive` filters on `platform_account_id`: an unstamped row would
+ * be invisible to the very list that offers it.
+ *
+ * A branch per network rather than one body with holes: the reader, the narrative source and the
+ * report shape all differ, and only the row write is common — which is why that, and only that,
+ * is `upsertReportRow`.
  */
 export async function archiveReport(input: ArchiveReportInput): Promise<ActionResult> {
   const resolved = await resolveReportScope(input)
   if (!resolved.ok) return { ok: false, error: resolved.error }
   const { scope } = resolved
 
-  // A branch per network rather than one body with holes: reader, narrative source and report
-  // shape all differ, and only the row write is common — which is why THAT is the shared function.
   if (scope.network === 'facebook') {
     const { accountId } = await fetchConnectionSyncState(
       scope.supabase,
@@ -161,8 +175,6 @@ export async function archiveReport(input: ArchiveReportInput): Promise<ActionRe
     return upsertReportRow(scope, accountId, 'facebook', report, narrative)
   }
 
-  // The row is stamped with the account it describes: `fetchReportArchive` filters on
-  // `platform_account_id`, so an unstamped row is invisible to the list that offers it.
   const { accountId } = await fetchIgConnectionState(scope.supabase, scope.client.id)
   if (!accountId) {
     return { ok: false, error: 'Connect Instagram before exporting a report' }
@@ -204,7 +216,14 @@ interface FillOutcome {
  *
  * Repeat calls are cheap by construction, because a day marked "asked" is never re-asked:
  * Instagram's `selectRefillDays` skips them and Facebook's fill drops a chunk whose every day is
- * marked before spending a call on it.
+ * marked before spending a call on it. A run that throws still answers `ok` — the page has
+ * already rendered from stored data.
+ *
+ * The network decides the fill's shape. Instagram walks days; Facebook's is a ranged fetch, so a
+ * 90-day chunk costs the same five calls (one per `PAGE_DAY_METRICS` entry) a single night does.
+ * It is handed BOTH windows, because the Facebook reader selects rows from `prevStart` and builds
+ * every "then" number out of them, and an end clamped to today, because a period arriving at this
+ * action — unlike one `resolvePeriod` produced — can still end in the future.
  */
 export async function fillPeriodData(
   input: ArchiveReportInput
@@ -214,11 +233,6 @@ export async function fillPeriodData(
   const { scope } = resolved
   const admin = createAdminSupabaseClient()
 
-  /**
-   * Facebook's fill is a ranged fetch, not Instagram's day walk: the API serves native day
-   * series, so a 90-day chunk costs the same five calls (one per `PAGE_DAY_METRICS` entry) that
-   * a single night does. Same action, same AutoFill loop; the network decides the shape.
-   */
   if (scope.network === 'facebook') {
     const connection = await fetchConnection(admin, scope.client.id, 'facebook')
     if (!connection?.access_token || isTokenExpired(connection.token_expires_at)) {
@@ -230,16 +244,10 @@ export async function fillPeriodData(
         clientId: scope.client.id,
         pageId: connection.account_id,
         accessToken: connection.access_token,
-        // BOTH windows, like Instagram's refill: the Facebook reader selects rows from
-        // prevStart and builds every "then" number from them, so a fill starting at
-        // period.start would leave the comparison column to whatever the backfill reached.
         fromDate: scope.period.prevStart,
-        // Never ask past today: the period can end in the future on a custom window.
         toDate: scope.period.end < today ? scope.period.end : today,
       })
       revalidateTag(FB_METRICS_TAG, 'max')
-      // Marker rows count as filled: they are what makes the unfilled count drop, and the
-      // refreshed page renders the stored days with honest gaps for the rest.
       return { ok: true, data: { filled: outcome.wroteDays > 0, stalled: outcome.wroteDays === 0 } }
     } catch (err) {
       console.error('[analytics] facebook period fill failed', { clientId: scope.client.id, err })
@@ -270,14 +278,11 @@ export async function fillPeriodData(
       toDateKey(new Date(), scope.timezone)
     )
   } catch (err) {
-    // Best-effort by design: the page already rendered from stored data.
     console.error('[analytics] automatic period fill failed', { clientId: scope.client.id, err })
     return { ok: true, data: { filled: false, stalled: true } }
   }
 
   revalidateTag(IG_METRICS_TAG, 'max')
-  // A throttled run and a run that filled sixty days must not look alike to the caller: with no
-  // stalled signal the AutoFill chain waits on a run that can no longer advance.
   return {
     ok: true,
     data: {
@@ -292,7 +297,8 @@ export async function fillPeriodData(
  * Captures the audience snapshot on demand — the one section a period fill cannot produce. The
  * window refill only asks for days and stops once every day is marked, so an account whose
  * nightly sync has not written a snapshot would otherwise sit on "no snapshot exists" forever.
- * `syncDemographicsWeekly` is cadence-gated per account, so a repeat call is one lookup.
+ * `syncDemographicsWeekly` is cadence-gated per account, so a repeat call is one lookup, and a
+ * capture that throws still answers `ok` — the rest of the page is already rendered.
  *
  * It refuses a Facebook request rather than ignoring the field: everything below is the
  * Instagram connection, Instagram demographics and IG_METRICS_TAG, and Meta serves no
@@ -319,7 +325,6 @@ export async function ensureAudienceSnapshot(
       credentials.accessToken
     )
   } catch (err) {
-    // Best-effort by design: the page already rendered from stored data.
     console.error('[analytics] audience snapshot capture failed', {
       clientId: scope.client.id,
       err,
@@ -331,6 +336,12 @@ export async function ensureAudienceSnapshot(
   return { ok: true, data: { captured: true } }
 }
 
+/**
+ * Removes one archived report, after proving it belongs to the caller's agency.
+ *
+ * No `revalidateTag`: `fetchReportArchive` is an uncached read the page makes on every render,
+ * and `ArchiveRowDelete` refreshes the route once this returns.
+ */
 export async function deleteReport(reportId: string): Promise<ActionResult> {
   const parsed = parseActionId(reportId, 'reportId')
   if (!parsed.ok) return parsed.result
@@ -352,7 +363,5 @@ export async function deleteReport(reportId: string): Promise<ActionResult> {
   const { error } = await supabase.from('analytics_reports').delete().eq('id', reportId)
   if (error) return { ok: false, error: error.message }
 
-  // No revalidateTag: the archive list is read fresh on each render and `ArchiveRowDelete`
-  // refreshes the route.
   return { ok: true, data: undefined }
 }

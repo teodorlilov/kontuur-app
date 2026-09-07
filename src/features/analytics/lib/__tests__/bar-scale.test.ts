@@ -12,11 +12,13 @@ describe('barWidthPct', () => {
     expect(barWidthPct(100, 100, 82)).toBeCloseTo(82)
   })
 
+  /**
+   * Both live shapes: the audience place lists (span 88), where a 0.4% country against a 62%
+   * leader is 0.57% of the track, and the comparison rows (span 82), where 3 reached against a
+   * 32,340 maximum is 0.008% of it.
+   */
   it('floors a value too small to see rather than drawing nothing', () => {
-    // The audience place lists (span 88): a 0.4% country against a 62% leader is 0.57% of
-    // the track.
     expect(barWidthPct(0.4, 62, 88)).toBe(MIN_VISIBLE_PCT)
-    // The comparison rows (span 82): 3 reached against a 32,340 maximum is 0.008%.
     expect(barWidthPct(3, 32_340, 82)).toBe(MIN_VISIBLE_PCT)
   })
 
@@ -29,9 +31,11 @@ describe('barWidthPct', () => {
     expect(barWidthPct(0, 0, 82)).toBe(0)
   })
 
+  /**
+   * 78 is the smallest of the three spans (funnel-section); a floored bar must still read as
+   * small against even that one.
+   */
   it('never floors a value up past its own span', () => {
-    // 78 is the smallest of the three spans (funnel-section); a floored bar must still read
-    // as small against even that one.
     expect(MIN_VISIBLE_PCT).toBeLessThan(78)
   })
 })

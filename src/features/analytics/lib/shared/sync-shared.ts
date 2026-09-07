@@ -60,6 +60,8 @@ export interface SyncPhase {
  * `recordSyncHealth` runs on both outcomes, so the run's own verdict is stored rather than
  * inferred later from the metric day rows — which the on-demand refill writes too, and so cannot
  * distinguish a sync that landed from a phase that has been failing nightly.
+ *
+ * The roster projection is cast because the shared `SupabaseClient` parameter is untyped.
  */
 export async function syncRoster(
   admin: SupabaseClient,
@@ -83,7 +85,6 @@ export async function syncRoster(
     .not('access_token', 'is', null)
     .not('account_id', 'is', null)
   if (error) throw new Error(`${platform} connection roster query failed: ${error.message}`)
-  // WHY as: the shared SupabaseClient param is untyped, so the projection does not infer.
   const connections = (data ?? []) as SyncableConnection[]
 
   const noteNotifyFailure = (clientId: string, err: unknown) =>

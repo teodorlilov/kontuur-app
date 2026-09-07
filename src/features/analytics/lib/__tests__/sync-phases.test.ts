@@ -28,7 +28,6 @@ describe('runSyncPhases', () => {
       phase('demographics', demographics),
     ])
 
-    // The phase that used to be starved still ran.
     expect(demographics).toHaveBeenCalledTimes(1)
     expect(failures).toEqual(['post metrics: media 9004'])
   })
@@ -59,9 +58,12 @@ describe('runSyncPhases', () => {
 })
 
 describe('consolidationWindow', () => {
+  /**
+   * Yesterday belongs to `syncAccountDay`, which wrote it in full minutes ago; re-asking it here
+   * would spend six extra calls to overwrite fresh values. The reach series is asked across the
+   * same span, so `oldest` has to reach the oldest day the totals pass touched — not one short.
+   */
   it('re-asks days 2..7 back, newest first, and never yesterday', () => {
-    // Yesterday belongs to syncAccountDay, which wrote it in full minutes ago;
-    // re-asking it here would spend six extra calls to overwrite fresh values.
     const { dayKeys, oldest } = consolidationWindow('2026-08-19')
     expect(dayKeys).toEqual([
       '2026-08-18',
@@ -72,8 +74,6 @@ describe('consolidationWindow', () => {
       '2026-08-13',
     ])
     expect(dayKeys).not.toContain('2026-08-19')
-    // The reach series is asked across the same span, so its lower bound has to
-    // reach the oldest day the totals pass touched — not one short of it.
     expect(oldest).toBe('2026-08-13')
   })
 

@@ -78,17 +78,16 @@ export async function syncAllClientMetrics(
  * recorded and the next phase still runs; only account-wide conditions abort.
  * The aggregate throw at the end keeps the failure VISIBLE in the cron's
  * per-client errors — silence is what lets this hide.
+ *
+ * The history flag has to be read BEFORE the first phase writes yesterday's row, or it is never
+ * zero and no account ever earns its backfill. It is scoped to THIS account: after a reconnect
+ * the new account has no history of its own, whatever the old one left behind.
  */
 async function syncClientMetrics(
   admin: SupabaseClient,
-  // The caller has already skipped connections with no client, so the guarantee travels in the
-  // type rather than being re-tested here.
   connection: SyncableConnection & { client_id: string }
 ): Promise<void> {
   const { client_id: clientId, account_id: accountId, access_token: accessToken } = connection
-  // Read the history flag BEFORE writing yesterday's row, or it is never zero.
-  // Scoped to THIS account: after a reconnect the new account has no history
-  // and must get its own backfill, whatever the old account left behind.
   const hadHistory = await hasAccountHistory(admin, clientId, accountId)
 
   const phases: SyncPhase[] = [
@@ -107,13 +106,6 @@ async function syncClientMetrics(
     },
     {
       name: 'online hours',
-      /**
-       * An account with no history asks for the whole backfill window at once, not four days:
-       * Meta serves the range on request, so a new client clears the derivation's evidence
-       * floor on its first night rather than gaining one day per night for weeks. An account
-       * that already has history keeps the short trailing window, which is all the
-       * consolidation lag needs.
-       */
       run: async () => {
         await captureAndDeriveBestTime(
           admin,
@@ -135,6 +127,10 @@ async function syncClientMetrics(
 /**
  * Meta serves empty maps for the freshest day or two, so each night re-asks a
  * short trailing window and keeps whatever has consolidated since.
+ *
+ * Only an account that already has history gets this window. One with none asks for the whole
+ * backfill span at once — Meta serves the range on request, so a new client clears the
+ * derivation's evidence floor on its first night instead of gaining one day per night for weeks.
  */
 const ONLINE_FOLLOWERS_LOOKBACK_DAYS = 4
 
@@ -149,6 +145,9 @@ const ONLINE_FOLLOWERS_LOOKBACK_DAYS = 4
  * window's reach and calling it an engagement rate. A breakdown and the reach
  * it is rated against must be captured by the same call, or the ratio is
  * fiction.
+ *
+ * The row is stamped `totals_synced_at` whatever came back, so the on-demand refill counts the
+ * day as asked and stops spending calls on it once it leaves that refill's consolidation tail.
  */
 export async function captureDayTotals(
   clientId: string,
@@ -186,8 +185,6 @@ export async function captureDayTotals(
     link_taps_by_button_type: linkTaps.byButton,
     reach_by_media_product_type: reachByType,
     interactions_by_media_product_type: interactionsByType,
-    // Stamped whatever came back, so the on-demand refill counts this day as asked and stops
-    // spending calls on it once it leaves that refill's short consolidation tail.
     totals_synced_at: new Date().toISOString(),
   }
 }
@@ -232,7 +229,6 @@ async function recaptureConsolidatingDays(
   }
   await upsertAccountMetricDays(admin, rows, 'consolidation recapture')
 
-  // Yesterday is excluded: syncAccountDay wrote its reach minutes ago.
   const reachSeries = await fetchDailyReachSeries(
     accountId,
     accessToken,
@@ -272,8 +268,15 @@ function yesterdayUtcWindow(): { date: string; sinceTs: number; untilTs: number 
   }
 }
 
-/** Writes yesterday's full account row: the account snapshot, the reach series and the shared
- *  day capture, run together. */
+/**
+ * Writes yesterday's full account row: the account snapshot, the reach series and the shared
+ * day capture, run together.
+ *
+ * The three snapshot columns (followers, follows, media count) are the ones only this run can
+ * see: an account snapshot is a NOW reading, not a day's history, so no per-day capture can
+ * produce them. Reach is summed from the series rather than read per day, and an empty series is
+ * the API's silent-empty — null, never 0.
+ */
 async function syncAccountDay(
   admin: SupabaseClient,
   clientId: string,
@@ -284,20 +287,14 @@ async function syncAccountDay(
   const [account, reachSeries, dayTotals] = await Promise.all([
     fetchAccountFields(accountId, accessToken),
     fetchDailyReachSeries(accountId, accessToken, window.sinceTs, window.untilTs),
-    // The same capture the consolidation recapture and the analytics refill use — eighteen
-    // columns, so a second literal here would be eighteen chances to drift.
     captureDayTotals(clientId, accountId, accessToken, window.date),
   ])
 
   const row: IGAccountMetricsInsert = {
     ...dayTotals,
-    // The three the nightly run alone can see: an account snapshot is a NOW reading, not a day's
-    // history, so no per-day capture can produce it.
     followers_count: account.followers_count,
     follows_count: account.follows_count,
     media_count: account.media_count,
-    // Summed from the series rather than taken per day. An empty series is the API's silent-empty —
-    // null, never 0.
     reach: reachSeries.length > 0 ? reachSeries.reduce((sum, day) => sum + day.reach, 0) : null,
   }
   await upsertAccountMetricDays(admin, [row], 'day totals')
@@ -309,6 +306,9 @@ async function syncAccountDay(
  * totals are not reconstructable. Yesterday already has its full row, so it is
  * excluded, and ignoreDuplicates keeps this from ever downgrading a richer row
  * in a race.
+ *
+ * The rows are built through a Map so every one of them carries the same keys: PostgREST rejects
+ * a ragged bulk insert.
  */
 async function backfillAccountHistory(
   admin: SupabaseClient,
@@ -320,7 +320,6 @@ async function backfillAccountHistory(
   const sinceTs = window.untilTs - BACKFILL_DAYS * SECONDS_PER_DAY
   const reachSeries = await fetchDailyReachSeries(accountId, accessToken, sinceTs, window.untilTs)
 
-  // Uniform keys per row — PostgREST rejects ragged bulk inserts.
   const byDate = new Map<string, IGAccountMetricsInsert>()
   const rowFor = (date: string): IGAccountMetricsInsert => {
     let row = byDate.get(date)
@@ -339,7 +338,6 @@ async function backfillAccountHistory(
   byDate.delete(window.date)
   if (byDate.size === 0) return
 
-  // ignoreDuplicates: a first sync must not overwrite a day another pass already captured in full.
   await upsertAccountMetricDays(admin, [...byDate.values()], 'backfill', { ignoreDuplicates: true })
 }
 
@@ -347,6 +345,9 @@ async function backfillAccountHistory(
  * Refreshes lifetime insights for media since `sinceIso` (the nightly default
  * is 30 days; the analytics window refresh passes the selected period's start)
  * and links them to Postflow posts.
+ *
+ * `thumbnail_url ?? media_url`: /media returns thumbnail_url for VIDEO only, so without the
+ * fallback every non-video post loses its thumb.
  */
 export async function syncPostMetrics(
   admin: SupabaseClient,
@@ -375,7 +376,6 @@ export async function syncPostMetrics(
     const insights = insightsList[index]!
     return {
       client_id: clientId,
-      // The discriminator: this table holds both networks' post rows.
       platform: 'instagram',
       platform_account_id: accountId,
       post_id: postIdByMediaId.get(item.id) ?? null,
@@ -383,7 +383,6 @@ export async function syncPostMetrics(
       media_type: item.media_type ?? null,
       media_product_type: item.media_product_type ?? null,
       permalink: item.permalink ?? null,
-      // thumbnail_url is video-only on /media; the image itself fills in elsewhere.
       thumbnail_url: item.thumbnail_url ?? item.media_url ?? null,
       caption: item.caption ?? null,
       posted_at: item.timestamp ?? null,
@@ -408,6 +407,11 @@ export async function syncPostMetrics(
  * free. Shared with the on-demand refill: the audience section is the one
  * panel a period filter cannot compute from day rows, so the refill asks for
  * a snapshot too rather than leaving the section empty until tonight.
+ *
+ * The cadence check is account-scoped, so a freshly connected account earns its own first
+ * snapshot whatever the previous account's cadence left behind. A both-NULL row is still
+ * written: it records "checked, the API had nothing" and is what holds accounts under the
+ * demographics floor to one eight-call probe a week.
  */
 export async function syncDemographicsWeekly(
   admin: SupabaseClient,
@@ -422,8 +426,6 @@ export async function syncDemographicsWeekly(
     .from('ig_audience_snapshots')
     .select('id')
     .eq('client_id', clientId)
-    // Account-scoped: a freshly connected account earns its own first snapshot
-    // regardless of what the previous account's cadence left behind.
     .eq('ig_account_id', accountId)
     .gte('snapshot_date', cutoff)
     .limit(1)
@@ -435,8 +437,6 @@ export async function syncDemographicsWeekly(
     fetchDemographics(accountId, accessToken, 'engaged_audience_demographics'),
   ])
 
-  // A both-NULL row is still written: it records "checked, the API had nothing"
-  // and spaces the eight-call probe to weekly for under-floor accounts.
   const row: {
     client_id: string
     ig_account_id: string

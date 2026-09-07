@@ -44,6 +44,10 @@ interface MastheadControlsProps {
  * The operator chrome, which never reaches paper — the analytics page wraps this in
  * `.print-hide`. Export archives the period first and only then calls `window.print()`, so
  * what prints is a report that exists in the archive.
+ *
+ * Every filter navigates through `useAnalyticsNav` rather than `router.push`: the document
+ * below shares that one transition and veils while it runs, so the old period's numbers are
+ * never left posing as the newly selected window's.
  */
 export function MastheadControls({
   clientId,
@@ -58,8 +62,6 @@ export function MastheadControls({
   const [customFrom, setCustomFrom] = useState(period.start)
   const [customTo, setCustomTo] = useState(period.end)
   const [exporting, startExport] = useTransition()
-  // Shared with the document's veil: while this transition runs, the old
-  // period's data is dimmed instead of posing as the newly selected one.
   const { pending: navigating, navigate } = useAnalyticsNav()
 
   function handleExport(): void {

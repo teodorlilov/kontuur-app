@@ -63,7 +63,21 @@ export function bestTimeFromOnline(online: AudienceOnline): ObservedBestTime {
   }
 }
 
-/** Reads the last 28 days of hourly maps for the client's CURRENT account. */
+/**
+ * Reads the last 28 days of hourly maps for the client's CURRENT account.
+ *
+ * Two refusals are load-bearing, both pinned by `best-time-floor.test.ts`. A FAILED timezone read
+ * abandons the derivation rather than falling through to the default: this timezone buckets every
+ * hourly map into the weekday × hour grid, so defaulting on a transient failure rotates the whole
+ * recommendation — a wrong answer shaped exactly like a right one, written to `best_time_json` and
+ * published against. An ABSENT timezone is still UTC: that is a real answer about a client whose
+ * agency set none. And below `MIN_BEST_TIME_DAYS` sampled days the grid is a handful of single
+ * observations, where one busy Tuesday reads exactly like a habit.
+ *
+ * WHY as: PostgREST returns an embedded relation as an object for a one-to-one and an array
+ * for a one-to-many, and which it is depends on the FK's cardinality inference — so the union
+ * here has two real arms and dropping either compiles but breaks at runtime.
+ */
 export async function deriveObservedBestTime(
   db: SupabaseClient,
   clientId: string
@@ -71,19 +85,12 @@ export async function deriveObservedBestTime(
   const { accountId } = await fetchIgConnectionState(db, clientId)
   if (!accountId) return null
 
-  // A FAILED timezone read abandons the derivation; it must never fall through to the default.
-  // This timezone buckets every hourly map into the weekday × hour grid, so defaulting on a
-  // transient failure rotates the whole recommendation — a wrong answer shaped exactly like a
-  // right one, written to best_time_json and published against. An ABSENT timezone is still UTC:
-  // that is a real answer about a client whose agency set none. Pinned by `best-time-floor.test.ts`
-  // ("abandons the derivation when the timezone read fails").
   const { data: clientRow, error: clientError } = await db
     .from('clients')
     .select('agencies(timezone)')
     .eq('id', clientId)
     .maybeSingle()
   if (clientError) return null
-  // WHY as: nested relation shape depends on the FK's cardinality inference.
   const agencies = (
     clientRow as {
       agencies: { timezone: string | null } | Array<{ timezone: string | null }> | null
@@ -107,8 +114,6 @@ export async function deriveObservedBestTime(
     timezone
   )
   if (!online || online.peaks.length === 0) return null
-  // Enough history to call it a pattern. Below this the grid is a handful of single observations —
-  // one busy Tuesday reads exactly like a habit, and the caller would publish against it.
   if (online.sampleDays < MIN_BEST_TIME_DAYS) return null
   return bestTimeFromOnline(online)
 }

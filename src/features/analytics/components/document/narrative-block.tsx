@@ -9,6 +9,9 @@ import { splitLeadSentence } from '../../lib/compute/format'
  *
  * `hasCyrillic` gates every serif run: DESIGN.md:313, the Latin-Only Serif Rule — Instrument
  * Serif ships no Cyrillic glyphs, and this text is AI-written from a client's own words.
+ *
+ * The `ink-inv/85` on the supporting half is the one alpha ink here: the Legible Tint Rule
+ * (DESIGN.md:271) bans those on LIGHT tints; over Pine Deep this pair measures about 10:1.
  */
 export function NarrativeBlock({
   narrative,
@@ -54,9 +57,6 @@ export function NarrativeBlock({
           “{lead}”
         </p>
         {rest && (
-          // One voice for the whole summary; only the scale drops, so the lead still leads.
-          // The Legible Tint Rule (DESIGN.md:271) bans alpha inks on LIGHT tints — over Pine
-          // Deep, ink-inv at 85% still measures about 10:1.
           <p
             className={cn(
               'text-display text-ink-inv/85 print:text-text2',

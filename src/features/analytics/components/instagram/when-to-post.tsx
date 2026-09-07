@@ -51,6 +51,9 @@ interface HoverCell {
  * own hourly counts, averaged and read in the agency's clock) and what each publish window's
  * posts earned. Both state their evidence — sampled days, post counts — and neither
  * editorializes from a thin sample.
+ *
+ * The hovered hour reads out above the grid rather than in a floating tooltip: a tooltip covers
+ * the cells it describes, and it has nothing to say on touch.
  */
 export function WhenToPost({
   online,
@@ -90,8 +93,6 @@ export function WhenToPost({
           </p>
         ) : (
           <figure role="img" aria-label={spoken} className="mt-3">
-            {/* The readout replaces a floating tooltip on purpose: it never
-                covers the cells it describes, and it works on touch. */}
             <div aria-hidden="true" className="flex min-h-5 items-baseline gap-2 text-caption">
               {hover && reading !== null ? (
                 <>
@@ -146,7 +147,6 @@ export function WhenToPost({
                         >
                           <i
                             className="block h-full w-full rounded-[3px] bg-forest"
-                            // Computed intensity — this cell's rank in the week.
                             style={{ opacity: avg > NO_DATA ? 0.08 + 0.92 * shadeOf(avg) : 0.04 }}
                           />
                           {isPeak && (
@@ -170,8 +170,6 @@ export function WhenToPost({
               </div>
             </div>
             <figcaption className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2">
-              {/* The scale key: shading is relative to this account's own week,
-                  so both ends carry their real count. */}
               <span aria-hidden="true" className="flex items-center gap-1.5">
                 <span className="text-micro tabular-nums text-text3">~{formatCount(quietest)}</span>
                 <span className="flex gap-[2px]">

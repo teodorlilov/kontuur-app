@@ -15,21 +15,23 @@ const PERIOD: AnalyticsPeriod = {
 const ASKED = '2026-08-19T03:30:00Z'
 
 describe('selectRefillDays', () => {
+  /**
+   * The three marker states, one row each: 18 Aug asked but inside REFRESH_TAIL_DAYS (3) of
+   * today, so re-asked despite its marker; 13 Aug asked and outside that tail, never re-spent on
+   * even if Meta had nothing; 16 Aug a backfill row whose totals were never asked, so refillable.
+   */
   it('targets never-asked days across BOTH windows, newest first', () => {
     const targets = selectRefillDays(
       [
-        // Asked (nightly sync) — inside the consolidation tail, so re-asked.
         { metric_date: '2026-08-18', totals_synced_at: ASKED },
-        // Asked, outside the tail — never re-spent on, even if Meta had nothing.
         { metric_date: '2026-08-13', totals_synced_at: ASKED },
-        // Backfill row: present but totals never asked — refillable.
         { metric_date: '2026-08-16', totals_synced_at: null },
       ],
       PERIOD,
       '2026-08-19'
     )
     expect(targets).toEqual([
-      '2026-08-18', // inside REFRESH_TAIL_DAYS (3) of today, so re-asked despite its marker
+      '2026-08-18',
       '2026-08-17',
       '2026-08-16',
       '2026-08-15',

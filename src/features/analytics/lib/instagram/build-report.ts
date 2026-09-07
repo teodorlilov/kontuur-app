@@ -167,18 +167,31 @@ export interface AnalyticsReportData {
   engagementRate: EngagementRateCell
   reachByDay: ReachDay[]
   bestDay: BestDay | null
-  /** The conversion path: reached → profile views → taps → new follows. */
+  /**
+   * The conversion path: reached → profile views → taps → new follows. Taps and follows are BOTH
+   * downstream of a profile view rather than of each other, so both rate against profile views —
+   * "follows per tap" would exceed 100 and mislead.
+   */
   funnel: FunnelStage[]
   formats: ComparisonRow[]
   interactionKinds: ComparisonRow[]
   profileViews: ComparisonValue
+  /**
+   * The contact-button breakdown plus the bio website link, which Instagram reports in its own
+   * legacy `website_clicks` column: without merging it an account whose only link is the bio one
+   * shows an empty row set while its taps sit uncounted in another column.
+   */
   tapButtons: ComparisonRow[]
   audience: AudienceReport | null
   /** A snapshot exists for this window — audience null then means "under the floor". */
   hasAudienceSnapshot: boolean
   posts: ReportPostRow[]
   medianReach: number | null
-  /** Null below `MIN_ONLINE_DAYS` sampled days — a thin sample must not speak. */
+  /**
+   * Null below `MIN_ONLINE_DAYS` sampled days — a thin sample must not speak. Built from the full
+   * fetched span rather than the current window: when followers are online is a habit, not a
+   * comparison, so every sampled day strengthens it.
+   */
   audienceOnline: AudienceOnline | null
   publishWindows: PublishWindowBucket[]
 }
@@ -214,8 +227,12 @@ function sumBreakdownMaps(
 
 // ── Assembly ──
 
+/**
+ * The insights breakdown vocabulary (POST / CAROUSEL_CONTAINER / REEL / STORY / AD), which is NOT
+ * /media's FEED-REELS plus media_type. The two enums are bridged key by key where a post's format
+ * is resolved below, never joined wholesale — the rule migration 20260822 states at the column.
+ */
 const FORMAT_LABELS: Record<string, string> = {
-  // The insights breakdown vocabulary (POST/REEL/AD/…), NOT /media's FEED/REELS.
   POST: 'Posts',
   CAROUSEL_CONTAINER: 'Carousels',
   REEL: 'Reels',
@@ -253,6 +270,14 @@ function comparisonRows(
   return rows.sort((a, b) => (b.now ?? 0) - (a.now ?? 0))
 }
 
+/**
+ * The audience panel from one snapshot and the one before it: age bands with their engagement
+ * index, and gender, city and country shares.
+ *
+ * The breakdown keys arrive as Instagram writes them — cities as localized "City, Province"
+ * strings, countries as ISO-3166 alpha-2 — so only the city part is kept and codes are spelled
+ * out, with anything unrecognized passing through as itself rather than being dropped.
+ */
 function buildAudience(
   current: AudienceSnapshotInput | null,
   previous: AudienceSnapshotInput | null
@@ -304,13 +329,11 @@ function buildAudience(
     .sort(([, a], [, b]) => b - a)
     .slice(0, 3)
     .map(([name]) => ({
-      // City strings arrive localized ("Varna, Varna Province") — keep the city part.
       label: name.split(',')[0]!.trim(),
       pct: cityPct(name) ?? 0,
       prevPct: prevCityPct ? prevCityPct(name) : null,
     }))
 
-  // Countries arrive as ISO codes ("BG") — spell them out; unknown keys pass through.
   const regionNames = new Intl.DisplayNames(['en'], { type: 'region' })
   const countryPct = pctOf(follower.data.country)
   const prevCountryPct = prev?.success ? pctOf(prev.data.country) : null
@@ -359,7 +382,6 @@ export function buildAudienceOnline(
         `${String(hour).padStart(2, '0')}:00`,
         'America/Los_Angeles'
       )
-      // One formatter pass for both halves, and a cached formatter rather than a private one.
       const { weekday: weekdayName, hour: localHour } = getZonedParts(instant, timezone)
       const weekday = mondayFirstIndex(weekdayName)
       if (weekday < 0 || !Number.isInteger(localHour) || localHour > 23) continue
@@ -391,6 +413,9 @@ const DAYPARTS = [
  * agency-local hour they went out, medians per bucket against the period's
  * overall median (medians, never means — one viral post must not crown its
  * hour forever). The view refuses to editorialize buckets under 3 posts.
+ *
+ * Each timestamp is anchored to UTC by `parseTimestamp` before its hour is read: `new Date(iso)`
+ * on a naive stored timestamp resolves in the runtime's zone instead, which is a different hour.
  */
 function buildPublishWindows(
   posts: ReportPostRow[],
@@ -405,8 +430,6 @@ function buildPublishWindows(
   const reachesByPart = new Map<string, number[]>()
   for (const post of posts) {
     if (post.missing !== null || !post.postedAt || post.reach === null) continue
-    // Anchored, not `new Date(iso)`: a naive timestamp would otherwise parse in
-    // the runtime's zone rather than UTC, which is a different hour entirely.
     const hour = Number(hourFmt.format(parseTimestamp(post.postedAt)))
     if (!Number.isInteger(hour)) continue
     const part = DAYPARTS.find((candidate) => candidate.match(hour))
@@ -435,7 +458,11 @@ export interface BuildReportInput {
   period: AnalyticsPeriod
   /** Rows spanning prevStart..end — the builder splits them. */
   accountRows: IGAccountMetricColumns[]
-  /** Posts published inside the current period, as the sync captured them. */
+  /**
+   * Posts spanning BOTH windows, as the sync captured them. Only current-window rows reach the
+   * table and the medians; the comparison window's exist so the trend can say which posts moved
+   * the previous line.
+   */
   postRows: PlatformPostMetricColumns[]
   /**
    * Kontuur's own published ledger for the same window — fills what the sync
@@ -452,13 +479,23 @@ export interface BuildReportInput {
   lastSyncAt: string | null
 }
 
-/** Assembles everything the comparison console renders from the stored rows. */
+/**
+ * Assembles everything the comparison console renders from the stored rows.
+ *
+ * Two rules about engagement rates are load-bearing here, and both were settled against live
+ * numbers. For the formats Instagram itemises we hold the posts, so the rate is summed from them
+ * and NEVER falls back to the account breakdown — that breakdown attributed 356 interactions to
+ * 279 reached accounts, 127%, the two counted on different bases — and it is what lets carousels
+ * have a rate at all, since the breakdown omits CAROUSEL_CONTAINER entirely. Stories and ads have
+ * no media rows, so there the breakdown is the only source: its rate is computed from the days
+ * carrying BOTH halves, because reach accumulates from every captured day while the interactions
+ * breakdown can lag, and dividing across that gap reported ads as "under 0.1%" where the paired
+ * days read 0.3% over thirty and 0.7% over ninety.
+ */
 export function buildAnalyticsReport(input: BuildReportInput): AnalyticsReportData {
   const { period } = input
   const currentKeys = periodDayKeys(period.start, period.days)
   const previousKeys = periodDayKeys(period.prevStart, period.days)
-  // No pre-filter: `alignRows` selects by EXACT day key, so a row outside the window is never
-  // picked up and filtering first only walks the array twice more for the same answer.
   const current = alignRows(input.accountRows, currentKeys)
   const previous = alignRows(input.accountRows, previousKeys)
 
@@ -466,7 +503,6 @@ export function buildAnalyticsReport(input: BuildReportInput): AnalyticsReportDa
   const reach = stripCell(current, previous, (row) => row.reach)
   const interactions = stripCell(current, previous, (row) => row.total_interactions)
 
-  // Engagement rate: period interactions over period reach, in percent.
   const rateOf = (i: number | null, r: number | null): number | null =>
     i !== null && r !== null && r > 0 ? (i / r) * 100 : null
   const erNow = rateOf(interactions.now, reach.now)
@@ -478,12 +514,8 @@ export function buildAnalyticsReport(input: BuildReportInput): AnalyticsReportDa
     series: current.byDay.map((row) => (row ? rateOf(row.total_interactions, row.reach) : null)),
   }
 
-  // Only the CURRENT window feeds the table and the medians; the previous
-  // window's rows exist solely to explain the shape of the comparison line.
   const currentPostRows = input.postRows.filter((row) => {
     const date = dayKeyOf(row.posted_at, input.timezone)
-    // A row without a timestamp has no day to belong to, so it can never be a
-    // comparison-window pin — but the table still lists it.
     return date === null || date >= period.start
   })
   const { posts, medianReach } = buildPosts(
@@ -518,8 +550,6 @@ export function buildAnalyticsReport(input: BuildReportInput): AnalyticsReportDa
     unfollowsOf: (row) => row.unfollows,
     followersCountOf: (row) => row.followers_count,
     postsByDate,
-    // Per-media follows, straight from Instagram's own attribution — a separate
-    // basis from the account-level gained total, stated as its own fact.
     fromPosts: sumOrNull(posts.map((post) => post.follows)),
   })
 
@@ -535,9 +565,6 @@ export function buildAnalyticsReport(input: BuildReportInput): AnalyticsReportDa
     bestDay.caption = dayPost?.caption ?? null
   }
 
-  // The one deliberate bridge between /media's vocabulary (FEED/REELS +
-  // media_type) and the insights breakdown's (POST/REEL/CAROUSEL_CONTAINER).
-  // Mapped key by key, never joined wholesale; STORY and AD have no media rows.
   const formatOfMedia = (post: ReportPostRow): string | null =>
     post.mediaType === 'CAROUSEL_ALBUM'
       ? 'CAROUSEL_CONTAINER'
@@ -547,20 +574,8 @@ export function buildAnalyticsReport(input: BuildReportInput): AnalyticsReportDa
           ? 'POST'
           : null
   const postCountByFormat = new Map<string, number>()
-  /**
-   * Our own rate for the formats Instagram itemises: every post's own
-   * interactions over its own reach, summed per format. Doing the arithmetic
-   * ourselves is what lets carousels have a rate at all — the account
-   * breakdown omits CAROUSEL_CONTAINER entirely — and it repairs feed posts,
-   * where that breakdown attributed 356 interactions to 279 reached accounts
-   * (127%, the two counted on different bases). Where both sources exist they
-   * agree closely: reels read 6.7% here against Instagram's 7.8%, a little
-   * lower because summing per-post reach counts a person once per post that
-   * reached them, while the account figure counts them once.
-   */
   const ownRateByFormat = new Map<string, { reach: number; interactions: number }>()
   for (const post of posts) {
-    // Only media the sync verified — removed/pending rows carry no format truth.
     if (post.missing !== null) continue
     const key = formatOfMedia(post)
     if (!key) continue
@@ -572,14 +587,6 @@ export function buildAnalyticsReport(input: BuildReportInput): AnalyticsReportDa
     ownRateByFormat.set(key, tally)
   }
 
-  // A rate is only honest when both halves were measured on the SAME days.
-  // Reach accumulates from every captured day while the interactions
-  // breakdown can lag a few (a day backfilled before it was captured, a
-  // failed sync phase); dividing across that gap turned a real 0.45% ad rate
-  // into "under 0.1%". So the rate is computed from the PAIRED days alone,
-  // which keeps numerator and denominator on the same footing, and the
-  // solidity floor guards the denominator the rate actually used rather than
-  // the window total beside it.
   const pairedDays = current.byDay.filter(
     (row): row is IGAccountMetricColumns =>
       row !== null &&
@@ -601,9 +608,6 @@ export function buildAnalyticsReport(input: BuildReportInput): AnalyticsReportDa
     ),
     (key) => FORMAT_LABELS[key] ?? humanizeDimension(key)
   ).map((row) => {
-    // Every fragment here answers one question the section header asks, and
-    // names its own unit — "8 published · 0.4% engagement rate" reads without
-    // a key.
     const metaParts: string[] = []
     const details: Array<{ label: string; value: string }> = []
     const count = postCountByFormat.get(row.key)
@@ -612,25 +616,15 @@ export function buildAnalyticsReport(input: BuildReportInput): AnalyticsReportDa
       details.push({ label: 'Posts published', value: String(count) })
     }
 
-    // A rate per format only when the denominator is solid — one off a few
-    // hundred reached accounts is arithmetic, not evidence.
     let interactions: number | null = null
     let base: number | null = null
     const own = ownRateByFormat.get(row.key)
     if (own) {
-      // We hold the posts, so we do the sum ourselves. A format we can itemise
-      // NEVER falls back to the account breakdown, even when our own sample is
-      // too thin to print: the breakdown's answer for those formats has
-      // already proved untrustworthy.
       if (own.reach >= RATE_BASE_FLOOR) {
         interactions = own.interactions
         base = own.reach
       }
     } else {
-      // Stories and ads have no media rows, so Instagram's own breakdown is
-      // the only source — read from paired days, and only when those days
-      // speak for the period on show. Half the window's reach is the line:
-      // below it they are a corner of the period, not a sample of it.
       const fromBreakdown = interactionsByTypeNow?.[row.key]
       const breakdownBase = pairedReachByType?.[row.key] ?? null
       if (
@@ -646,9 +640,6 @@ export function buildAnalyticsReport(input: BuildReportInput): AnalyticsReportDa
     }
     if (interactions !== null && base !== null) {
       const pct = (interactions / base) * 100
-      // A real 0.05% rounded to "0.0%" reads as a measured zero, which it is
-      // not — and as a broken number, which it looks like. Only an actual
-      // zero may say none.
       const rate = interactions === 0 ? 'none' : pct < 0.1 ? 'under 0.1%' : `${pct.toFixed(1)}%`
       metaParts.push(interactions === 0 ? 'no interactions' : `${rate} engagement rate`)
       details.push({ label: 'Interactions', value: formatCount(interactions) })
@@ -664,16 +655,12 @@ export function buildAnalyticsReport(input: BuildReportInput): AnalyticsReportDa
     ['shares', 'Shares'],
     ['replies', 'Replies'],
   ] as const
-  // Each kind's share of the period's interactions — the mix is the story
-  // (saves and shares are high-intent), not just the counts.
   const shareOfInteractions = (part: number | null): string | undefined => {
     if (part === null || part <= 0 || interactions.now === null || interactions.now <= 0) {
       return undefined
     }
     return `${formatSharePct((part / interactions.now) * 100)} of interactions`
   }
-  // Sorted by size: these render as shared-scale rows, largest first. A
-  // measured zero keeps its row — 0 comments is data, not absence.
   const interactionKinds: ComparisonRow[] = INTERACTION_LABELS.map(([key, label]) => {
     const now = sumOrNull(dailyValues(current, (row) => row[key]))
     const meta = shareOfInteractions(now)
@@ -697,17 +684,9 @@ export function buildAnalyticsReport(input: BuildReportInput): AnalyticsReportDa
     ),
     humanizeDimension
   )
-  // The bio website link reports as the separate legacy website_clicks metric —
-  // the contact_button_type breakdown covers only contact buttons, so an
-  // account with a bio link would otherwise show an empty funnel while its
-  // website taps sit uncounted in another column.
   const websiteNow = sumOrNull(dailyValues(current, (row) => row.website_clicks))
   const websiteThen = sumOrNull(dailyValues(previous, (row) => row.website_clicks))
 
-  // The conversion path. Taps and follows are BOTH downstream of a profile
-  // view, not of each other (most follows never touch a link), so both rates
-  // read against profile views — never "follows per tap", which would exceed
-  // 100 and mislead. Rates are ratios of events, not shares of people.
   const linkTapsNow = sumOrNull(dailyValues(current, (row) => row.profile_links_taps))
   const linkTapsThen = sumOrNull(dailyValues(previous, (row) => row.profile_links_taps))
   const tapsTotalNow = sumOrNull([linkTapsNow, websiteNow])
@@ -717,8 +696,6 @@ export function buildAnalyticsReport(input: BuildReportInput): AnalyticsReportDa
   const funnel: FunnelStage[] = [
     {
       key: 'reached',
-      // Instagram's own wording throughout these labels, so a manager can
-      // hold this panel beside the app's Insights screen and match them up.
       label: 'Accounts reached',
       unit: 'accounts',
       now: reach.now,
@@ -793,9 +770,6 @@ export function buildAnalyticsReport(input: BuildReportInput): AnalyticsReportDa
     hasAudienceSnapshot: input.currentSnapshot !== null,
     posts,
     medianReach,
-    // The full fetched span (prevStart..end), not just the current window:
-    // "when are followers online" is a habit, not a comparison, so every
-    // sampled day strengthens it — and the panel prints the honest count.
     audienceOnline: buildAudienceOnline(input.accountRows, input.timezone),
     publishWindows: buildPublishWindows(posts, medianReach, input.timezone),
   }

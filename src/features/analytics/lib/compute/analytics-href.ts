@@ -43,10 +43,10 @@ export function analyticsClientHref(
 
 /**
  * The way out of the filling state, which hides the whole document until every day of the
- * window has been asked for. A fill can stop advancing for reasons no run reports — a rate
- * limit, or days written outside what `countUnfilledDays` tracks, since it skips today and
- * the consolidation tail — leaving the reader on a silhouette drawn over stored data. A
- * plain URL, so it survives a reload.
+ * window has been asked for. A fill can stop advancing without any run saying so — days
+ * written outside what `countUnfilledDays` tracks, since it skips today and the consolidation
+ * tail — leaving the reader on a silhouette drawn over stored data. A plain URL, so it
+ * survives a reload.
  */
 export function analyticsPartialHref(
   clientId: string,

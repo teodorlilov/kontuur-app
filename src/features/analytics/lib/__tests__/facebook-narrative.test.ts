@@ -13,10 +13,10 @@ vi.mock('@/lib/queries/db', () => ({ fetchConnectionSyncState: vi.fn() }))
 vi.mock('@/ai/analytics/generate-summary', () => ({ generateAnalyticsSummary: vi.fn() }))
 // The import() form, not a bare string: a vi.mock path that stops resolving is a SILENT no-op, and
 // this one would fail green — the real module loads cleanly under the mocks above and the two pure
-// builders under test still pass, so nothing would ever say the isolation was gone.
+// builders under test still pass, so nothing would ever say the isolation was gone. WHY as const:
+// the typed form checks this factory against the real module, where FB_METRICS_TAG is the literal
+// 'fb-metrics' rather than string, and that strictness is the point.
 vi.mock(import('../facebook/facebook-report-data'), () => ({
-  // `as const` because the typed form checks the factory against the real module, and the real
-  // FB_METRICS_TAG is the literal 'fb-metrics', not string. That strictness is the point.
   FB_METRICS_TAG: 'fb-metrics' as const,
   getFacebookAnalyticsReport: vi.fn(),
 }))
@@ -94,7 +94,6 @@ describe('buildFacebookNarrativeFacts', () => {
       'topPosts',
     ])
     expect(facts.postEngagements).toEqual({ now: 18, previous: 2 })
-    // The exact absences that keep the model honest.
     expect(facts).not.toHaveProperty('reach')
     expect(facts).not.toHaveProperty('audience')
     expect(facts).not.toHaveProperty('reachByFormat')

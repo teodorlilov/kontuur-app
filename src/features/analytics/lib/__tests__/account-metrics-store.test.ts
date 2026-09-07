@@ -15,6 +15,10 @@ function fakeAdmin(error: { message: string } | null = null) {
 }
 
 describe('upsertAccountMetricDays', () => {
+  /**
+   * Per-column batching only works if partial rows land on the SAME row. A different conflict
+   * target creates a second row per pass instead, and every read silently halves.
+   */
   it('resolves every write against the same day key', async () => {
     const { client, upsert } = fakeAdmin()
 
@@ -24,14 +28,16 @@ describe('upsertAccountMetricDays', () => {
       'day totals'
     )
 
-    // Per-column batching only works if partial rows land on the SAME row. A different conflict
-    // target here creates a second row per pass instead, and every read silently halves.
     expect(upsert).toHaveBeenCalledWith(expect.anything(), {
       onConflict: 'client_id,ig_account_id,metric_date',
       ignoreDuplicates: undefined,
     })
   })
 
+  /**
+   * Without it the 30-day seed runs in replace mode and overwrites a day another pass already
+   * captured in full, with the one measure history still serves — reach.
+   */
   it('passes ignoreDuplicates through for the first-sync backfill', async () => {
     const { client, upsert } = fakeAdmin()
 
@@ -42,8 +48,6 @@ describe('upsertAccountMetricDays', () => {
       { ignoreDuplicates: true }
     )
 
-    // Without it the 30-day seed runs in replace mode and overwrites a day another pass
-    // already captured in full, with the one measure history still serves — reach.
     expect(upsert.mock.calls[0]?.[1]).toEqual({
       onConflict: 'client_id,ig_account_id,metric_date',
       ignoreDuplicates: true,
@@ -72,6 +76,7 @@ describe('upsertAccountMetricDays', () => {
 })
 
 describe('toReachRows', () => {
+  /** The window refill fetches whole chunks, but must not write past the period it refreshed. */
   it('drops days past the span end', async () => {
     const rows = toReachRows(
       'c',
@@ -84,7 +89,6 @@ describe('toReachRows', () => {
       '2026-08-02'
     )
 
-    // The window refill fetches whole chunks but must not write past the period it refreshed.
     expect(rows.map((r) => r.metric_date)).toEqual(['2026-08-01', '2026-08-02'])
   })
 
@@ -96,11 +100,13 @@ describe('toReachRows', () => {
     ])
   })
 
+  /**
+   * A reach row carrying `followers_count: null` would erase the nightly snapshot on every
+   * window refill. The key set IS the contract.
+   */
   it('writes only reach, so a pass cannot null a column it does not own', () => {
     const [row] = toReachRows('c', 'a', [{ date: '2026-08-01', reach: 0 }])
 
-    // A reach row carrying `followers_count: null` would erase the nightly snapshot on every
-    // window refill. The key set IS the contract.
     expect(Object.keys(row!).sort()).toEqual(['client_id', 'ig_account_id', 'metric_date', 'reach'])
   })
 })

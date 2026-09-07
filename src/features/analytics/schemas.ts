@@ -1,20 +1,24 @@
 import { z } from 'zod'
 import { CUSTOM_MAX_DAYS, DATE_KEY_PATTERN, dayCount, RANGE_PRESETS } from './lib/compute/period'
 
-/** Input for archiving the currently displayed period into analytics_reports. */
+/**
+ * Input for archiving the currently displayed period into analytics_reports.
+ *
+ * `network` carries a default because `AudienceCapture` sends no network field at all.
+ *
+ * The day-count refine is the same clamp `resolvePeriod` puts on a URL range: `fillPeriodData`
+ * turns whatever window it is handed into chunked Graph series calls with no cap on that loop,
+ * so a window wider than the UI can produce would spend the account's quota on it.
+ */
 export const archiveReportInputSchema = z
   .object({
     clientId: z.string().uuid(),
     preset: z.enum([...RANGE_PRESETS, 'custom']),
     start: z.string().regex(DATE_KEY_PATTERN),
     end: z.string().regex(DATE_KEY_PATTERN),
-    // Optional, defaulting to Instagram: `AudienceCapture` still sends no network at all.
     network: z.enum(['instagram', 'facebook']).default('instagram'),
   })
   .refine((input) => input.start <= input.end, { message: 'start must not be after end' })
-  // The same clamp `resolvePeriod` puts on a URL range, so the action boundary is never
-  // wider than the one the UI can produce. `fillPeriodData` chunks the whole window into
-  // Graph calls with no cap on the series loop, so window width sets the call count.
   .refine((input) => dayCount(input.start, input.end) <= CUSTOM_MAX_DAYS, {
     message: `a reporting period may not exceed ${CUSTOM_MAX_DAYS} days`,
   })

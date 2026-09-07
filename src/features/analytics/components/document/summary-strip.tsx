@@ -85,8 +85,6 @@ function cellSpecs(data: AnalyticsReportData): CellSpec[] {
     {
       label: 'Engagement rate',
       value: engagementRate.now === null ? null : `${engagementRate.now.toFixed(1)}%`,
-      // The rate's floor sits on its denominator: points only color when both
-      // windows measured real reach (the ▼12.6pt-off-644-reach case).
       verdict: rateDeltaVerdict(engagementRate.deltaPt, data.reach.now, data.reach.then),
       unit: 'pt',
       thenLine:
@@ -125,8 +123,6 @@ export function StripCells({
   gridClass?: string
 }) {
   return (
-    // One clearing, not five floating columns: the strip is a Card like every
-    // other section, and the hairlines divide cells INSIDE its surface.
     <Card className="px-6 py-1.5">
       <section aria-label="Headline metrics">
         <h3 className="sr-only">Headline metrics, this period against the previous period</h3>

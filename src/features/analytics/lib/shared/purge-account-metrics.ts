@@ -16,6 +16,25 @@ import type { SupabaseClient } from '@supabase/supabase-js'
  * Instagram account id no fb_page_metrics row, leaving those lines as no-ops for the other
  * network. `api/meta/data-deletion` makes the same bet on its `social_connections` delete.
  *
+ * THE ACCOUNT COLUMN DIFFERS PER TABLE, and it is the live hazard: `ig_account_id` on the two
+ * ig_* tables, `page_id` on `fb_page_metrics` (20260846), `platform_account_id` on the three
+ * renamed when they went network-neutral (`platform_comments` 20260844,
+ * `platform_post_metrics` 20260845, `analytics_reports` 20260847). Getting one wrong shipped
+ * broken: this purge failed `platform_post_metrics` on every run and no gate saw it. Hence no
+ * shared `scoped(table)` helper — `.eq` is typed per table, and a literal `.from('table')` is
+ * also the only thing `npm run writers` can see.
+ *
+ * `includeUnstampedReports` additionally sweeps archive rows whose `platform_account_id` is NULL
+ * (20260826 left pre-stamp deliverables that way): the account-scoped delete strands them, and
+ * `fetchReportArchive` filters on the account, so no list `deleteReport` is reachable from ever
+ * shows them. A legal erasure has to take them; an account switch must not, because a NULL row
+ * cannot be proven to belong to the account being left. Two statements rather than `.or()` — the
+ * account id comes from Meta, and it is not going anywhere near a PostgREST filter string.
+ *
+ * `platform_comments` is the one table here holding data about people who are neither the agency
+ * nor its client — the audience. That is what makes it a line in this function rather than a
+ * second purge, and the part of Meta's callback that actually erases third parties.
+ *
  * Deliberately NOT used by `deleteClient`: every table here cascades from
  * `clients` (20260822, 20260823, 20260846), and re-implementing that in
  * TypeScript is precisely what its docblock refuses to do.
@@ -33,10 +52,6 @@ export async function purgeAccountAnalytics(
   accountId: string,
   options?: { includeUnstampedReports?: boolean }
 ): Promise<void> {
-  // No shared `scoped(table)` helper: these seven span three account columns (`ig_account_id`,
-  // `platform_account_id`, `page_id`) and one null check, and `.eq` is typed per table, so a
-  // helper handed the wrong column fails on an unknown one. Literal `.from('table')` also lets
-  // `npm run writers` see these deletes — its scan keys on that call and nothing else.
   const [accountRes, postRes, snapshotRes, reportRes, commentRes, unstampedRes, fbPageRes] =
     await Promise.all([
       admin
@@ -44,8 +59,6 @@ export async function purgeAccountAnalytics(
         .delete()
         .eq('client_id', clientId)
         .eq('ig_account_id', accountId),
-      // `platform_account_id`, not `ig_account_id`: this table renamed the column when it became
-      // network-neutral (20260845). Getting this wrong shipped broken once.
       admin
         .from('platform_post_metrics')
         .delete()
@@ -56,31 +69,16 @@ export async function purgeAccountAnalytics(
         .delete()
         .eq('client_id', clientId)
         .eq('ig_account_id', accountId),
-      // `platform_account_id`: the archive renamed the column when Facebook reports joined it
-      // (20260847).
       admin
         .from('analytics_reports')
         .delete()
         .eq('client_id', clientId)
         .eq('platform_account_id', accountId),
-      // Comments are the one table here holding data about people who are not the
-      // agency and not its client — the audience. That makes this line the part of
-      // Meta's data-deletion callback that actually erases third parties, and the
-      // reason it is a line here rather than a second purge function.
-      // `platform_account_id`: like platform_post_metrics above, this table renamed the column
-      // when it became network-neutral (20260844).
       admin
         .from('platform_comments')
         .delete()
         .eq('client_id', clientId)
         .eq('platform_account_id', accountId),
-      // analytics_reports.platform_account_id is nullable where the ig_* columns are NOT NULL
-      // (20260826 left pre-stamp deliverables NULL on purpose), so the `.eq` above strands them —
-      // and `fetchReportArchive` filters on the account, so they never reach a list `deleteReport`
-      // could be called from either. A legal erasure has to sweep them; an account switch must
-      // not, because a NULL row cannot be proven to belong to the account being left.
-      // A second statement rather than `.or()`: the account id comes from Meta, and it is not
-      // going anywhere near a PostgREST filter string.
       options?.includeUnstampedReports
         ? admin
             .from('analytics_reports')
@@ -88,12 +86,9 @@ export async function purgeAccountAnalytics(
             .eq('client_id', clientId)
             .is('platform_account_id', null)
         : Promise.resolve({ error: null }),
-      // Facebook's daily Page series — its own table (20260846), scoped by `page_id`.
       admin.from('fb_page_metrics').delete().eq('client_id', clientId).eq('page_id', accountId),
     ])
 
-  // Every table is attempted before anything throws — a partial purge is better
-  // than one that stops at the first failure and leaves the rest untouched.
   const failures = [
     { table: 'ig_account_metrics', error: accountRes.error },
     { table: 'platform_post_metrics', error: postRes.error },

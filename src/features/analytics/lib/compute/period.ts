@@ -79,8 +79,9 @@ function withPreviousPeriod(
 
 /**
  * Resolves the reporting period from untrusted URL params. A valid from/to
- * pair wins as a custom range (clamped to yesterday); anything malformed
- * falls back to the range preset, and a bad preset falls back to 30 days.
+ * pair wins as a custom range, clamped to yesterday by string comparison —
+ * ISO date keys order correctly as strings. Anything malformed falls back to
+ * the range preset, and a bad preset falls back to 30 days.
  */
 export function resolvePeriod(
   params: Record<string, string | string[] | undefined>,
@@ -91,7 +92,6 @@ export function resolvePeriod(
   const from = typeof params.from === 'string' ? params.from : undefined
   const to = typeof params.to === 'string' ? params.to : undefined
   if (from && to && DATE_KEY_PATTERN.test(from) && DATE_KEY_PATTERN.test(to)) {
-    // ISO date keys compare correctly as strings.
     const end = to > yesterday ? yesterday : to
     if (from <= end && dayCount(from, end) <= CUSTOM_MAX_DAYS) {
       return withPreviousPeriod('custom', from, end)

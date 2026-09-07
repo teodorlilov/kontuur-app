@@ -36,6 +36,8 @@ export interface NarrativeResult {
  * platform filter a lookup could hand one network's words to the other's document, and without
  * the account filter a report exported for a previously connected account resurfaces after a
  * reconnect.
+ *
+ * The projection is cast because the shared `SupabaseClient` parameter is untyped.
  */
 async function fetchArchivedSummary(
   admin: SupabaseClient,
@@ -51,7 +53,6 @@ async function fetchArchivedSummary(
     .eq('period_end', scope.end)
     .maybeSingle()
   if (error) throw new Error(`archived summary lookup failed: ${error.message}`)
-  // WHY as: the shared SupabaseClient param is untyped, so the projection does not infer.
   return (data as { ai_summary: string } | null)?.ai_summary ?? null
 }
 

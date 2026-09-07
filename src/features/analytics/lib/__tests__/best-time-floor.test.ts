@@ -71,23 +71,29 @@ describe('deriveObservedBestTime — the evidence floor', () => {
     expect(result!.platforms[0]!.confidence).toBe('observed')
   })
 
+  /**
+   * A hard 5 rather than an expression on MIN_BEST_TIME_DAYS: lowering the constant back to five
+   * would leave the two cases above passing, and only this one would object.
+   */
   it('still refuses at the old five-day floor', async () => {
-    // A hard 5 rather than an expression on MIN_BEST_TIME_DAYS: lowering the constant back to
-    // five would leave the two cases above passing, and only this one would object.
     expect(await deriveObservedBestTime(dbWith(daysOfHistory(5)), 'c1')).toBeNull()
   })
 
+  /**
+   * A user reads the reasoning as the justification, so it names the days actually found — not
+   * OBSERVED_LOOKBACK_DAYS (28), the window that was asked for.
+   */
   it('reports the sample size it actually used', async () => {
     const result = await deriveObservedBestTime(dbWith(daysOfHistory(20)), 'c1')
-    // A user reads the reasoning as the justification, so it names the days actually found,
-    // not OBSERVED_LOOKBACK_DAYS (28), the window that was asked for.
     expect(result!.platforms[0]!.reasoning_summary).toContain('20 days')
   })
 
+  /**
+   * The timezone buckets every hourly map into the weekday × hour grid. Defaulting a FAILED read
+   * to UTC rotates the whole grid and produces a wrong answer indistinguishable from a right
+   * one — which then gets written to best_time_json.
+   */
   it('abandons the derivation when the timezone read fails, rather than assuming UTC', async () => {
-    // The timezone buckets every hourly map into the weekday x hour grid. Defaulting a FAILED
-    // read to UTC rotates the whole grid and produces a wrong answer indistinguishable from a
-    // right one — which then gets written to best_time_json.
     const result = await deriveObservedBestTime(
       dbWith(daysOfHistory(20), { timezoneError: true }),
       'c1'

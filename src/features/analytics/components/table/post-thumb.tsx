@@ -6,7 +6,8 @@ import { cn } from '@/utils/cn'
 import { postTypeMeta } from '../../lib/compute/post-display'
 
 /**
- * The post's own image, with the lettered badge as its fallback.
+ * The post's own image, with the lettered badge as its fallback — a dot when the media type is
+ * unknown, since the badge stands in for the image without claiming to know the kind of post.
  *
  * Meta signs these CDN urls with an expiry, and the nightly re-sync only refreshes them for
  * `MEDIA_LOOKBACK_DAYS` (30) after publish — so any older window WILL hold dead links. The
@@ -32,8 +33,6 @@ export function PostThumb({
           type?.tone === 'marker' ? 'bg-marker' : 'bg-sage'
         )}
       >
-        {/* No letter when the type is unknown: the badge still stands in for the image,
-            it just does not claim to know what kind of post this is. */}
         {type?.letter ?? '·'}
       </span>
     )

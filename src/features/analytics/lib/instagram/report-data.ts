@@ -48,11 +48,32 @@ function emptyReport(period: AnalyticsPeriod, timezone: string): AnalyticsReport
   })
 }
 
+/**
+ * The cached read behind every report. Its arguments are its cache key, which is why the account
+ * id and the sync stamp are passed in rather than looked up inside.
+ *
+ * INVARIANT: this report never shows another account's data. Every store it reads — metrics,
+ * posts ledger, snapshots — records the client, but a client can be reconnected to a different
+ * Instagram account, so every query below claims ONLY rows stamped (migration 20260826) with the
+ * account this client is connected to right now. The rows this hides do not outlive the switch:
+ * the OAuth callback purges the superseded account's metrics, snapshots and stamped reports
+ * (shared/purge-account-metrics.ts). Published posts DO survive — they are the agency's own
+ * ledger, so the pin filters rather than assumes.
+ *
+ * Snapshots are claimed one day PAST the window's end: a snapshot dated D is taken the morning
+ * after and describes the audience through D−1, so without the +1 today's snapshot matches no
+ * window (they all end yesterday) and the audience section sits empty.
+ *
+ * BUMP THE KEY PREFIX ON EVERY SHAPE CHANGE. The cached VALUE is a whole report object, so
+ * entries written by the previous deploy keep being served and silently lack whatever field was
+ * just added — a row rendering without its hover card until someone revisits that window.
+ *
+ * WHY as: the admin client is constructed without the `Database` generic, so no projection in
+ * here infers — every read below narrows through an assertion to the shape select-columns names.
+ */
 const _fetchAnalyticsReport = unstable_cache(
   async (
     clientId: string,
-    // Part of the cache key on purpose: a reconnect changes the account id
-    // and must never serve the previous account's cached report.
     accountId: string,
     preset: AnalyticsPeriod['preset'],
     start: string,
@@ -61,30 +82,13 @@ const _fetchAnalyticsReport = unstable_cache(
     prevEnd: string,
     days: number,
     timezone: string,
-    // The cron's own verdict, passed in rather than derived from the rows so it
-    // keys the cache — a fresh sync yields a fresh report rather than waiting
-    // on the tag.
     lastSyncAt: string | null
   ): Promise<AnalyticsReportData> => {
     const admin = createAdminSupabaseClient()
     const period: AnalyticsPeriod = { preset, start, end, prevStart, prevEnd, days }
 
-    // Post timestamps are instants; the period is agency-calendar days.
-    // `fromPrevious` reaches back over the comparison window too: the trend chart draws both
-    // lines, so it must be able to say which posts moved the previous one.
-    // The builder splits them — only current-window rows reach the table.
     const posted = postedWindow(period, timezone)
 
-    // INVARIANT: this report never shows another account's data. Every store
-    // it reads — metrics, posts ledger, snapshots — records the client, but a
-    // client can be reconnected to a different Instagram account. So every
-    // query below claims ONLY rows stamped (migration 20260826) with the
-    // account id this client is connected to right now.
-    //
-    // The rows this hides do not outlive the switch: the OAuth callback purges
-    // the superseded account's metrics, snapshots and stamped reports
-    // (shared/purge-account-metrics.ts). Published posts DO survive — they are
-    // the agency's own ledger, so the pin below filters rather than assumes.
     const [accountRes, postRes, publishedRes, snapshotRes, latestRes] = await Promise.all([
       admin
         .from('ig_account_metrics')
@@ -98,17 +102,9 @@ const _fetchAnalyticsReport = unstable_cache(
         .from('platform_post_metrics')
         .select(PLATFORM_POST_METRIC_COLUMNS)
         .eq('client_id', clientId)
-        // The account id is the network partition: each network issues its own ids, so no
-        // platform filter is needed for this to stay an Instagram-only read (20260845).
         .eq('platform_account_id', accountId)
         .gte('posted_at', posted.fromPrevious)
         .lt('posted_at', posted.to),
-      // Kontuur's own ledger: pins posts the sync cannot see — removed from Instagram
-      // after publishing, or published since the last sync ran.
-      //
-      // Reads publications, not posts: "published to Instagram, at this time, as this
-      // media" is one destination's fact, and a post reaching two networks has two of
-      // them. `account_id` here is what scopes the pin to the current account.
       admin
         .from('post_publications')
         .select(`external_post_id, published_at, posts!inner(${PUBLISHED_POST_PIN_COLUMNS})`)
@@ -123,14 +119,9 @@ const _fetchAnalyticsReport = unstable_cache(
         .select(IG_AUDIENCE_SNAPSHOT_COLUMNS)
         .eq('client_id', clientId)
         .eq('ig_account_id', accountId)
-        // A snapshot dated D is taken the morning after and describes the
-        // audience through D−1 — so a window ending E may use a snapshot
-        // dated E+1. Without the +1, today's snapshot never matches any
-        // window (they all end yesterday) and the section sits empty.
         .lte('snapshot_date', shiftDateKey(end, 1))
         .order('snapshot_date', { ascending: false })
         .limit(12),
-      // Existence only — "has any day ever been captured for this account".
       admin
         .from('ig_account_metrics')
         .select('metric_date')
@@ -142,14 +133,10 @@ const _fetchAnalyticsReport = unstable_cache(
       if (res.error) throw new Error(`analytics report read failed: ${res.error.message}`)
     }
 
-    // WHY as: this shared admin client is untyped, so projections do not infer.
     const accountRows = (accountRes.data ?? []) as unknown as IGAccountMetricColumns[]
     const postRows = (postRes.data ?? []) as unknown as PlatformPostMetricColumns[]
     const publishedPosts = (publishedRes.data ?? []) as unknown as PublishedPostPin[]
     let snapshots = (snapshotRes.data ?? []) as unknown as IGAudienceSnapshotColumns[]
-    // No snapshot covers this window (weekly capture may postdate an older
-    // period): fall back to the account's LATEST snapshot. The view labels it
-    // with its date — audiences drift slowly, and a dated picture beats none.
     if (snapshots.length === 0) {
       const fallback = await admin
         .from('ig_audience_snapshots')
@@ -173,7 +160,6 @@ const _fetchAnalyticsReport = unstable_cache(
       publishedPosts,
       timezone,
       currentSnapshot,
-      // Strictly older than the current one, or the "was" ticks fake a flat period.
       previousSnapshot:
         snapshots.find(
           (row) => row !== currentSnapshot && row.snapshot_date <= shiftDateKey(prevEnd, 1)
@@ -182,11 +168,6 @@ const _fetchAnalyticsReport = unstable_cache(
       lastSyncAt,
     })
   },
-  // BUMP THIS ON EVERY SHAPE CHANGE. The cached VALUE is a whole report object, so entries
-  // written by the previous deploy keep being served and silently lack whatever field was just
-  // added — a row rendering without its hover card until someone happens to revisit that window.
-  // A stale report costs more than a rebuild. (Next also derives the key partly from the
-  // callback's source text, so an edit in there orphans entries whether or not this changes.)
   ['analytics-report-v7'],
   { revalidate: 3600, tags: [IG_METRICS_TAG] }
 )
@@ -196,6 +177,11 @@ const _fetchAnalyticsReport = unstable_cache(
  * connection lookup stays OUTSIDE the cache so the account id is always
  * current — a client with no Instagram connection has nothing attributable
  * to show and gets the day-one report.
+ *
+ * Only a sync that finished every phase may date the report. That stamp gates the "no longer on
+ * Instagram" verdict, and the two mistakes are not equal: a false "pending" says come back
+ * tomorrow, a false "removed" tells the reader a live post was deleted. A half-failed sync proves
+ * nothing about what Instagram still holds, so it dates nothing.
  */
 export const getAnalyticsReport = cache(
   async (
@@ -219,11 +205,6 @@ export const getAnalyticsReport = cache(
       period.prevEnd,
       period.days,
       timezone,
-      // Only a run that finished every phase may date this. It gates the
-      // "no longer on Instagram" verdict, and the two mistakes are not equal:
-      // a false "pending" says come back tomorrow, a false "removed" tells the
-      // reader a live post was deleted. A half-failed sync proves nothing about
-      // what Instagram still holds, so it dates nothing.
       lastSyncError === null ? lastSyncAt : null
     )
   }

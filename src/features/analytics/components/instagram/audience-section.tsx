@@ -16,6 +16,10 @@ const BAR_SPAN_FULL_TRACK = 88
  * Who follows against who actually engaged. Followers wear Deep Pine and the engaged audience
  * Living Green: two series within ONE period, never the now/then pair the rest of the
  * document uses. The previous snapshot's follower share appears as the then-line tick instead.
+ *
+ * The two halves centre against each other (`items-center`, not the `items-start` the document's
+ * paired cards use): whichever is shorter would otherwise hang from the card's top edge with an
+ * empty lower half under it.
  */
 export function AudienceSection({ audience }: { audience: AudienceReport }) {
   const maxPct = Math.max(
@@ -38,8 +42,6 @@ export function AudienceSection({ audience }: { audience: AudienceReport }) {
     (band) => band.engagedIndex !== null && (band.engagedIndex >= 1.25 || band.engagedIndex <= 0.75)
   )
 
-  // items-center: the columns-and-caption block is shorter than the three place lists beside
-  // it, and top-aligned it hangs from the card's top edge over an empty lower half.
   return (
     <div className="mt-4 grid items-center gap-8 lg:grid-cols-[1.4fr_1fr]">
       <div>
@@ -55,7 +57,6 @@ export function AudienceSection({ audience }: { audience: AudienceReport }) {
                 <span className="relative flex h-full items-end">
                   <i
                     className="block w-5 rounded-t bg-forest"
-                    // Computed height — this band's share of the tallest one.
                     style={{ height: `${px(band.followerPct).toFixed(0)}px` }}
                   />
                   {band.prevFollowerPct !== null && (
@@ -112,6 +113,11 @@ export function AudienceSection({ audience }: { audience: AudienceReport }) {
   )
 }
 
+/**
+ * One share list — cities, countries or gender. The label sits in a fixed column so every bar
+ * starts at the same x; the width is set for the longest country name `Intl.DisplayNames`
+ * returns, and anything past it truncates.
+ */
 function PlaceList({ label, shares }: { label: string; shares: AudienceShare[] }) {
   if (shares.length === 0) return null
   const maxPct = Math.max(1, ...shares.map((share) => share.pct))
@@ -121,13 +127,10 @@ function PlaceList({ label, shares }: { label: string; shares: AudienceShare[] }
       <div className="mt-2.5 grid gap-2">
         {shares.map((share) => (
           <div key={share.label} className="flex items-center gap-2.5 text-caption">
-            {/* Wide enough for "United Kingdom" — at w-20 it truncated. */}
             <span className="w-28 flex-none truncate text-ink">{share.label}</span>
             <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-sunken">
               <i
                 className="block h-full rounded-full bg-forest"
-                // Computed width. The label has its own column, so the bar reserves no room
-                // for it and the largest share runs nearly the whole track.
                 style={{
                   width: `${barWidthPct(share.pct, maxPct, BAR_SPAN_FULL_TRACK).toFixed(1)}%`,
                 }}

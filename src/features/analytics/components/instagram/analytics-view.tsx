@@ -53,6 +53,14 @@ interface AnalyticsViewProps {
  * The comparison console: one document in presentation order, no tabs, every
  * number read against the previous period. Print produces the client report —
  * the operator chrome lives in the page header, outside this tree.
+ *
+ * "Who followed, who left" stands where the mock drew views by follower type: the probe found
+ * `breakdown=follower_type` does not exist (commit 91959de), so the follows/unfollows split is
+ * the story the stored data can tell.
+ *
+ * The audience panel is the one section the period filter does not move: Instagram fixes its
+ * own windows (`this_month` for followers, `last_90_days` for engaged — insights.ts
+ * DEMOGRAPHIC_TIMEFRAME), which is why its sub says so and must never say "this period".
  */
 export function AnalyticsView({
   data,
@@ -71,8 +79,6 @@ export function AnalyticsView({
 }: AnalyticsViewProps) {
   const { hasHistory, followers } = data
   const filling = hasConnection && unfilledDays > 0 && !showPartial
-  // Paid vs organic, from the format-attributed reach — stated side by side,
-  // never summed to the period total (accounts can appear in several formats).
   const adReach = data.formats.find((row) => row.key === 'AD')?.now ?? null
   const organicReach = data.formats.some((row) => row.key !== 'AD')
     ? data.formats
@@ -175,9 +181,6 @@ export function AnalyticsView({
       </div>
 
       <div className="mt-7 grid items-start gap-7 md:grid-cols-2">
-        {/* The mock drew views by follower type here; the live probe proved the
-            API has no such breakdown (breakdown=follower_type does not exist).
-            The follows/unfollows split is the story the stored data can tell. */}
         <FollowerFlowSection
           followers={followers}
           hasHistory={hasHistory}
@@ -236,9 +239,6 @@ export function AnalyticsView({
         </AnalyticsSection>
       </div>
 
-      {/* Two bar-row lists of the same family, side by side. items-start on
-          purpose: a three-row card must not stretch to a six-row neighbour's
-          height — the empty half reads as missing data. */}
       <div className="mt-7 grid items-start gap-7 md:grid-cols-2">
         <AnalyticsSection
           title="What people did"
@@ -288,7 +288,6 @@ export function AnalyticsView({
           {!hasHistory ? (
             <EmptyFill className="mt-3.5">Tap detail appears after the first sync</EmptyFill>
           ) : data.tapButtons.length === 0 ? (
-            // A measured zero, not an absence — a sunken well, never the hatch.
             <div className="mt-3.5 grid min-h-28 place-items-center rounded-panel bg-sunken p-5 text-center">
               <div>
                 <div className="text-metric tabular-nums text-text2">0</div>
@@ -305,16 +304,9 @@ export function AnalyticsView({
         </AnalyticsSection>
       </div>
 
-      {/* Full width on purpose: the age columns and the places/gender lists sit
-          side by side inside this card, which needs the whole measure to keep
-          seven band labels legible. */}
       <div className="mt-7">
         <AnalyticsSection
           title="Who follows, who engages"
-          // The windows are Instagram's, not ours: follower demographics come back on
-          // `this_month` and engaged demographics on `last_90_days` (insights.ts
-          // DEMOGRAPHIC_TIMEFRAME). The sub must not say "this period" — this panel is the
-          // one part of the document the period filter does not move.
           sub="Your follower mix this month against who engaged over the last 90 days — Instagram fixes both windows, so this panel alone does not follow the period filter."
           ariaLabel="Audience"
           legend={
@@ -322,7 +314,6 @@ export function AnalyticsView({
               items={[
                 { swatch: 'dot-now', label: 'Followers' },
                 { swatch: 'dot-second', label: 'Engaged' },
-                // The tick only draws when an older snapshot exists to compare against.
                 ...(data.audience?.ages.some((band) => band.prevFollowerPct !== null)
                   ? ([{ swatch: 'tick', label: 'Previous share' }] as const)
                   : []),
@@ -341,8 +332,6 @@ export function AnalyticsView({
                 snapshots begin then.
               </p>
             ) : hasConnection ? (
-              // No snapshot stored and an account to ask: fetch one now rather
-              // than making the reader wait for the nightly sync.
               <AudienceCapture clientId={clientId} period={data.period} />
             ) : (
               <p className="mt-4 text-caption text-text3">
@@ -351,7 +340,6 @@ export function AnalyticsView({
             )
           ) : (
             <>
-              {/* A snapshot dated past end+1 is the fallback picture — say so. */}
               {data.audience.snapshotDate > shiftDateKey(data.period.end, 1) && (
                 <p className="mt-2 text-micro text-text3">
                   Audience as of {formatDayMonth(data.audience.snapshotDate)} — the earliest

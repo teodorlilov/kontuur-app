@@ -39,8 +39,11 @@ function pageRow(overrides: Partial<FbPageMetricColumns>): FbPageMetricColumns {
   }
 }
 
+/**
+ * A Page post: its Meta id and a publish instant over the shared skeleton. `media_type` stays
+ * null, because Meta serves none for Page posts.
+ */
 function postRow(overrides: Partial<PlatformPostMetricColumns>): PlatformPostMetricColumns {
-  // A Page post id and a publish instant. media_type stays null — Meta serves none for these.
   return postMetricRow({
     external_post_id: '723701000827665_1',
     posted_at: '2026-09-04T12:00:00Z',
@@ -62,6 +65,7 @@ function input(overrides: Partial<BuildFacebookReportInput>): BuildFacebookRepor
 }
 
 describe('buildFacebookReport', () => {
+  /** The NULL contract rides the series out: a day the API skipped is a gap, never a zero. */
   it('feeds engagements and page views into the strip, split across the two windows', () => {
     const report = buildFacebookReport(
       input({
@@ -76,10 +80,10 @@ describe('buildFacebookReport', () => {
     expect(report.engagements.then).toBe(5)
     expect(report.pageViews.now).toBe(7)
     expect(report.pageViews.then).toBe(10)
-    // The NULL contract: a day the API skipped is a gap, never a zero.
     expect(report.engagements.series).toEqual([3, 4, null])
   })
 
+  /** Day 2 captured no level: the anchored walk derives it from day 1's 64 plus that day's net. */
   it('anchors the follower curve on the level and tells the flow story', () => {
     const report = buildFacebookReport(
       input({
@@ -92,11 +96,11 @@ describe('buildFacebookReport', () => {
     expect(report.followers.gained.now).toBe(3)
     expect(report.followers.lost.now).toBe(1)
     expect(report.followers.net.now).toBe(2)
-    // Day 2 has no captured level; the anchored walk derives it from day 1's 64 + net 1.
     expect(report.followers.series).toEqual([64, 65, null])
     expect(report.followersTotal).toBe(64)
   })
 
+  /** What Meta does not serve for a Page post stays null on every row — never zero. */
   it('ranks posts by interactions, because per-post reach is dead for Pages', () => {
     const report = buildFacebookReport(
       input({
@@ -116,7 +120,6 @@ describe('buildFacebookReport', () => {
     expect(report.posts[0]!.likeCount).toBe(5)
     expect(report.posts[0]!.shares).toBe(1)
     expect(report.medianInteractions).toBe(4.5)
-    // What Meta does not serve stays null on every row — never zero.
     expect(report.posts[0]!.reach).toBeNull()
     expect(report.posts[0]!.follows).toBeNull()
   })
@@ -141,11 +144,13 @@ describe('buildFacebookReport', () => {
 })
 
 describe('the app ledger pin', () => {
+  /**
+   * A pin from the comparison window matches none of the current window's metric rows, so
+   * `buildPosts` would push it with every measure null and a "removed" verdict — a 30-day window
+   * showing the preceding month as deleted from the Page. Enforced in `buildPosts` rather than
+   * left to each caller's query bounds, so a third network cannot rediscover it.
+   */
   it("does not pull the comparison window's publications into this period", () => {
-    // A pin from the comparison window matches none of the current window's metric rows, so
-    // buildPosts would push it with every measure null and a "removed" verdict — a 30-day
-    // window showing the preceding month as deleted from the Page. Enforced in buildPosts
-    // rather than left to each caller's query bounds, so a third network cannot rediscover it.
     const report = buildFacebookReport(
       input({
         publishedPosts: [

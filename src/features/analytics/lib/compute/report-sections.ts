@@ -239,11 +239,12 @@ const APP_MEDIA_TYPE: Record<string, string> = { carousel: 'CAROUSEL_ALBUM' }
  * on the window's opening day, out of the window altogether, whereupon the ledger arm re-adds
  * it as a pin marked "removed": a live post reported as deleted. build-report.test.ts pins the
  * Europe/Sofia case that catches this.
+ *
+ * The instant is read with `parseTimestamp`, which appends Z to a stored timestamp carrying no
+ * offset; plain `new Date` would read that same string in the runtime's zone.
  */
 export function dayKeyOf(iso: string | null, timezone: string): string | null {
   if (!iso) return null
-  // parseTimestamp, not `new Date(iso)`: it appends Z to a stored timestamp that carries no
-  // offset, which JS would otherwise read in the runtime's zone.
   const date = parseTimestamp(iso)
   return Number.isNaN(date.getTime()) ? null : toDateKey(date, timezone)
 }
@@ -431,6 +432,9 @@ export function buildDailyTrend(args: {
  * from whichever columns a network stores its counts in. `fromPosts` is the network's OWN
  * per-media attribution, a separate basis from the account-level gained total; a network that
  * serves none (Facebook, since the purge) passes all-null follows and gets an honest null back.
+ *
+ * Churn is measured against the followers the period STARTED with — the anchored curve's first
+ * day backed out over its own net change — so it stays null when the curve never anchored.
  */
 export function buildFollowerSummary<Row>(args: {
   current: DayAlignedRows<Row>
@@ -472,8 +476,6 @@ export function buildFollowerSummary<Row>(args: {
     posts: args.postsByDate.get(date) ?? [],
   }))
 
-  // Followers at the period's START: the first day's end-of-day total, backed out over that
-  // day's own net change. Null when the curve never anchored, so churn stays null too.
   const startTotal =
     followerCurve[0] !== null && followerCurve[0] !== undefined
       ? followerCurve[0] - (gainedSeries[0] ?? 0) + (lostSeries[0] ?? 0)

@@ -28,9 +28,9 @@ export function formatCount(value: number): string {
 /**
  * A count with its direction stated: "+1,204", "−37".
  *
- * The minus is U+2212, not a hyphen — every caller (DeltaChip, the strip's net cell, the flow
- * chart's totals, the comparison card) renders it in tabular figures, where only the true minus
- * shares the digits' advance width.
+ * The minus is U+2212, not a hyphen: the chips and tables that print it (DeltaChip, the flow
+ * chart's totals, the comparison card's change row) set tabular figures, where only the true
+ * minus shares the digits' advance width.
  */
 export function signedCount(value: number): string {
   return `${value >= 0 ? '+' : '−'}${formatCount(Math.abs(value))}`

@@ -39,11 +39,23 @@ function emptyReport(period: AnalyticsPeriod, timezone: string): FacebookReportD
   })
 }
 
+/**
+ * One window's stored Facebook rows, read and composed inside the data cache.
+ *
+ * `pageId` and `lastSyncAt` are parameters so they land in the CACHE KEY: repointing a client at
+ * a different Page must never serve the previous Page's cached report, and a finished sync must
+ * yield a fresh report rather than waiting on the tag.
+ *
+ * The published-post pin is bounded at the CURRENT window's start, mirroring Instagram's. It is
+ * `buildPosts` that enforces that bound — an earlier publication matches no current metric row
+ * and would render with every measure null and a "no longer on Facebook" verdict — so keeping
+ * this query in step with it is what keeps the read cheap.
+ *
+ * Projections are cast because the shared admin client is untyped.
+ */
 const _fetchFacebookReport = unstable_cache(
   async (
     clientId: string,
-    // Part of the cache key on purpose: repointing a client at a different Page must never
-    // serve the previous Page's cached report.
     pageId: string,
     preset: AnalyticsPeriod['preset'],
     start: string,
@@ -52,14 +64,11 @@ const _fetchFacebookReport = unstable_cache(
     prevEnd: string,
     days: number,
     timezone: string,
-    // The cron's own verdict, passed in so it keys the cache — a fresh sync yields a fresh
-    // report rather than waiting on the tag.
     lastSyncAt: string | null
   ): Promise<FacebookReportData> => {
     const admin = createAdminSupabaseClient()
     const period: AnalyticsPeriod = { preset, start, end, prevStart, prevEnd, days }
 
-    // Post timestamps are instants; the period is agency-calendar days.
     const {
       from: postedFrom,
       to: postedTo,
@@ -83,12 +92,6 @@ const _fetchFacebookReport = unstable_cache(
         .eq('platform_account_id', pageId)
         .gte('posted_at', postedFromPrev)
         .lt('posted_at', postedTo),
-      // Kontuur's own ledger: pins posts the sync cannot see — removed from the Page after
-      // publishing, or published since the last sync ran. The mirror of Instagram's pin,
-      // bounded at the CURRENT window's start: a publication from the comparison window matches
-      // no current metric row, so it would be pushed with every measure null and — its publish
-      // time being far past the sync grace — labelled "no longer on Facebook". `buildPosts`
-      // enforces the same bound itself; keeping the query in step is what keeps it cheap.
       admin
         .from('post_publications')
         .select(`external_post_id, published_at, posts!inner(${PUBLISHED_POST_PIN_COLUMNS})`)
@@ -109,7 +112,6 @@ const _fetchFacebookReport = unstable_cache(
       if (res.error) throw new Error(`facebook report read failed: ${res.error.message}`)
     }
 
-    // WHY as: this shared admin client is untyped, so projections do not infer.
     const pageRows = (pageRes.data ?? []) as unknown as FbPageMetricColumns[]
     const postRows = (postRes.data ?? []) as unknown as PlatformPostMetricColumns[]
     const publishedPosts = (publishedRes.data ?? []) as unknown as PublishedPostPin[]
@@ -132,6 +134,10 @@ const _fetchFacebookReport = unstable_cache(
 /**
  * Fetches (or serves from cache) the Facebook report for one client and period. A client
  * with no Facebook connection has nothing attributable to show and gets the day-one report.
+ *
+ * Only a run that finished every phase may date the report: `lastSyncAt` is passed on solely
+ * when the connection carries no sync error, because it is what gates the posts table's
+ * "removed" verdict against "pending" — exactly as on the Instagram side.
  */
 export const getFacebookAnalyticsReport = cache(
   async (
@@ -156,8 +162,6 @@ export const getFacebookAnalyticsReport = cache(
       period.prevEnd,
       period.days,
       timezone,
-      // Only a run that finished every phase may date this — it gates the posts table's
-      // "removed" vs "pending" verdict, exactly as on the Instagram side.
       lastSyncError === null ? lastSyncAt : null
     )
   }

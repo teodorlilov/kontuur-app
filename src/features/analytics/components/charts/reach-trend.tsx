@@ -19,16 +19,6 @@ const PAD = { top: 16, right: 12, bottom: 62, left: 12 }
 /** How far under the baseline the comparison window's pins sit. */
 const THEN_PIN_DROP = 16
 
-/**
- * The hero comparison: daily reach as two 2px lines — this period in Deep Pine over a faint
- * wash, the previous period in the then-stroke — with the best day marked by the Living Green
- * now-dot and every publish day pinned on the baseline, so a spike can be read against the
- * post that caused it.
- *
- * The now-line draws in over the already-visible then-line via `.chart-draw-in`, which
- * globals.css cancels under both `prefers-reduced-motion` and `@media print` — either way the
- * finished state is what renders.
- */
 /** The chart's words, so a network that feeds it a different metric can say so. */
 export interface TrendLabels {
   /** Lowercase, mid-sentence: "Daily reach…". */
@@ -47,6 +37,23 @@ const REACH_LABELS: TrendLabels = {
   empty: 'No daily reach captured for this period yet — the nightly sync fills this in.',
 }
 
+/**
+ * The hero comparison: daily reach as two 2px lines — this period in Deep Pine over a faint
+ * wash, the previous period in the then-stroke — with the best day marked by the Living Green
+ * now-dot and every publish day pinned on the baseline, so a spike can be read against the
+ * post that caused it.
+ *
+ * The now-line draws in over the already-visible then-line via `.chart-draw-in`, which
+ * globals.css cancels under both `prefers-reduced-motion` and `@media print` — either way the
+ * finished state is what renders.
+ *
+ * One x-axis carries two windows, so nothing may rest on hue alone: the previous period is
+ * dashed, both windows' dates print under every tick, and its publish days pin on their own row
+ * at the ALIGNED x — the day card is where their real date is named.
+ *
+ * The wash under the now-line closes through `segmentsToPath` rather than a second inline point
+ * formatter, so its edge and the line it fills under cannot round differently.
+ */
 export function ReachTrend({
   days,
   bestDay,
@@ -80,9 +87,7 @@ export function ReachTrend({
   const nowPoints = nowSegments.flat()
   const washPath =
     nowPoints.length > 1
-      ? // Closed through `segmentsToPath` rather than a second inline point formatter, so the
-        // wash edge and the line it fills under can never round differently.
-        `${segmentsToPath([nowPoints])} L${nowPoints[nowPoints.length - 1]!.x.toFixed(1)},${baseline} L${nowPoints[0]!.x.toFixed(1)},${baseline} Z`
+      ? `${segmentsToPath([nowPoints])} L${nowPoints[nowPoints.length - 1]!.x.toFixed(1)},${baseline} L${nowPoints[0]!.x.toFixed(1)},${baseline} Z`
       : null
 
   const peakIndex = bestDay ? days.findIndex((day) => day.date === bestDay.date) : -1
@@ -156,9 +161,6 @@ export function ReachTrend({
                 </g>
               )
             })}
-            {/* Both dates under every tick. One axis carries two windows, so
-                naming only the current one left the reader to assume the
-                dashed line described the same day it sits above. */}
             {tickIndexes.map((index, position) => {
               const anchor =
                 position === 0 ? 'start' : position === tickIndexes.length - 1 ? 'end' : 'middle'
@@ -186,8 +188,6 @@ export function ReachTrend({
               )
             })}
             {washPath && <path d={washPath} fill={CHART_COLORS.now} opacity={0.06} />}
-            {/* Dashed, not merely paler: the two windows must be tellable
-                apart without relying on two greens alone. */}
             <path
               d={segmentsToPath(thenSegments)}
               fill="none"
@@ -263,10 +263,6 @@ export function ReachTrend({
                     strokeWidth={2}
                   />
                 )}
-                {/* The comparison window's publications, on its own row: they
-                    explain the dashed line the way the row above explains the
-                    solid one. Their x is the ALIGNED day, and the day card
-                    names the real date so the two are never confused. */}
                 {day.thenPosts.length > 0 && (
                   <circle
                     cx={x(index)}

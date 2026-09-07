@@ -12,9 +12,9 @@ const ARCHIVE_LIMIT = 12
  * without the second a report exported for a previously connected account resurfaces after a
  * reconnect.
  *
- * Reads through whichever client the caller holds; the page passes its RLS-scoped one. A failed
- * read logs and yields an empty archive: the report itself is worth rendering without its list
- * of past exports.
+ * Reads through whichever client the caller holds; the page passes its RLS-scoped one — which is
+ * untyped here, so the projection is cast. A failed read logs and yields an empty archive: the
+ * report itself is worth rendering without its list of past exports.
  */
 export async function fetchReportArchive(
   db: SupabaseClient,
@@ -34,6 +34,5 @@ export async function fetchReportArchive(
     console.error(`[analytics] ${platform} archive list failed`, error)
     return []
   }
-  // WHY as: the shared SupabaseClient param is untyped, so the projection does not infer.
   return (data ?? []) as ArchiveEntry[]
 }

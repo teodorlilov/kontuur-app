@@ -7,8 +7,8 @@ import { ReachTrend } from '../components/charts/reach-trend'
 const W = 1120
 const PAD_X = 12
 
+/** One day of the pair. `thenDate` is the aligned previous-period day — 7 days back here. */
 function day(date: string, overrides: Partial<ReachDay> = {}): ReachDay {
-  // thenDate is the aligned previous-period day — 7 days back in this fixture.
   const thenDate = `2026-08-${String(Number(date.slice(8)) - 7).padStart(2, '0')}`
   return { date, now: 100, then: 80, thenDate, views: 150, posts: [], thenPosts: [], ...overrides }
 }
@@ -38,7 +38,6 @@ const DAYS: ReachDay[] = [
         follows: 0,
         missing: null,
       },
-      // A ledger pin: published through Kontuur, then deleted from Instagram.
       {
         externalPostId: 'low',
         caption: 'Third post',
@@ -85,12 +84,13 @@ function hoverDay(container: HTMLElement, index: number): SVGSVGElement {
 }
 
 describe('ReachTrend', () => {
+  /** With no hover and no best day, the single circle can only be the one publish pin. */
   it('pins publish days on the baseline', () => {
     const { container } = render(<ReachTrend days={DAYS} bestDay={null} />)
-    // No hover and no best day: the only circle is the one publish pin.
     expect(container.querySelectorAll('circle')).toHaveLength(1)
   })
 
+  /** The day publishes four posts and `DAY_CARD_POSTS` is 3: the fourth defers to the table. */
   it('raises the day card on hover: the pair, views, and the publications', () => {
     const { container } = render(<ReachTrend days={DAYS} bestDay={null} />)
     hoverDay(container, 2)
@@ -101,15 +101,16 @@ describe('ReachTrend', () => {
     expect(screen.getByText('Launch day')).toBeInTheDocument()
     expect(screen.getByText('900 reached · +3 follows')).toBeInTheDocument()
     expect(screen.getByText('no longer on Instagram')).toBeInTheDocument()
-    // DAY_CARD_POSTS is 3; the fourth defers to the table rather than growing the card.
     expect(screen.queryByText('Fourth post')).not.toBeInTheDocument()
     expect(screen.getByText('+1 more in the posts table below')).toBeInTheDocument()
   })
 
+  /**
+   * Facebook's shape: no per-post reach exists for Pages and the post list carries no media
+   * type, so both arrive null forever. "metrics after the next sync" would be a promise no sync
+   * can keep, and a type chip here would be a guess.
+   */
   it('names the network a post was removed from, and speaks the measure that network has', () => {
-    // Facebook's shape: no per-post reach exists for Pages and the post list carries no media
-    // type, so both arrive null forever. "metrics after the next sync" would be a promise no
-    // sync can keep, and a type chip here would be a guess.
     const days = [...DAYS]
     days[2] = day('2026-08-13', {
       now: 1840,
@@ -143,6 +144,10 @@ describe('ReachTrend', () => {
     expect(screen.queryByText(/metrics after the next sync/)).not.toBeInTheDocument()
   })
 
+  /**
+   * The axis names the comparison window's dates before anyone hovers, and the hovered card
+   * files the previous value under 6 Aug — the day it actually came from.
+   */
   it('files each window under its own date, so the comparison cannot be misread', () => {
     const days = [...DAYS]
     days[2] = day('2026-08-13', {
@@ -162,11 +167,9 @@ describe('ReachTrend', () => {
       ],
     })
     const { container } = render(<ReachTrend days={days} bestDay={null} />)
-    // The axis names the comparison window's dates before anyone hovers.
     expect(screen.getAllByText('6 Aug').length).toBeGreaterThan(0)
     hoverDay(container, 2)
 
-    // The previous value is filed under 6 Aug — the day it actually came from.
     expect(screen.getAllByText('6 Aug').length).toBeGreaterThan(1)
     expect(screen.getByText('· previous period')).toBeInTheDocument()
     expect(screen.getByText('4,068')).toBeInTheDocument()
@@ -174,6 +177,7 @@ describe('ReachTrend', () => {
     expect(screen.getByText('Last week’s winner')).toBeInTheDocument()
   })
 
+  /** Two circles: one pin for this period's posts, one for the previous period's. */
   it('pins the previous window’s posts on their own row', () => {
     const days = DAYS.map((entry) =>
       entry.date === '2026-08-15'
@@ -194,7 +198,6 @@ describe('ReachTrend', () => {
         : entry
     )
     const { container } = render(<ReachTrend days={days} bestDay={null} />)
-    // One pin for this period's posts, one for the previous period's.
     expect(container.querySelectorAll('circle')).toHaveLength(2)
   })
 

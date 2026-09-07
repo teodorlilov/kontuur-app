@@ -85,11 +85,14 @@ export function buildFallbackNarrative(data: AnalyticsReportData): string | null
   })
 }
 
+/**
+ * Instagram's half of the narrative contract. Every function here is declared with METHOD
+ * SHORTHAND: `NarrativeSpec`'s doc comment records why a property pointing at an imported binding
+ * would be a silent-failure hazard.
+ */
 const IG_NARRATIVE: NarrativeSpec<AnalyticsReportData> = {
   platform: 'instagram',
   platformName: PLATFORM_NAMES.instagram,
-  // Method shorthand throughout — see the NarrativeSpec doc comment for why a property
-  // reference to an imported binding would be a silent-failure hazard here.
   getReport(clientId, period, timezone) {
     return getAnalyticsReport(clientId, period, timezone)
   },
@@ -101,19 +104,20 @@ const IG_NARRATIVE: NarrativeSpec<AnalyticsReportData> = {
   },
 }
 
+/**
+ * The cached generation, keyed on three things that all have to be in the key.
+ *
+ * `syncStamp` is a parameter for that reason alone — a new nightly sync writes a new stamp, which
+ * is what "regenerates after each sync" means mechanically. The prefix is versioned because a
+ * cached narrative outlives the prompt that wrote it: a new key orphans the old texts instead of
+ * serving them (v2 = the pull-quote prompt). And the network is named explicitly, which is where
+ * `narrative-shared.ts` explains why the two call sites stay in their own modules.
+ */
 const _fetchNarrative = unstable_cache(
-  async (
-    args: NarrativeArgs,
-    // Part of the cache key on purpose: a new nightly sync writes a new stamp,
-    // which is what "regenerates after each sync" means mechanically.
-    syncStamp: string
-  ): Promise<NarrativeResult | null> => {
+  async (args: NarrativeArgs, syncStamp: string): Promise<NarrativeResult | null> => {
     void syncStamp
     return resolveNarrative(IG_NARRATIVE, args)
   },
-  // The prefix is versioned because a cached narrative outlives the prompt that wrote it: a new
-  // key orphans the old texts instead of serving them (v2 = the pull-quote prompt). The network is
-  // named too — see `narrative-shared.ts` for why the two call sites stay in their own modules.
   ['analytics-narrative-v2', 'instagram'],
   { revalidate: 86_400, tags: [IG_METRICS_TAG] }
 )

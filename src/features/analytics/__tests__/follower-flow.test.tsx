@@ -63,9 +63,11 @@ function hoverDay(container: HTMLElement, index: number): SVGSVGElement {
 }
 
 describe('FollowerFlow', () => {
+  /**
+   * Every day measured, nothing moved. `gainCeil` clamps to 1, so an SVG here would be a
+   * full-height plot of air under a "+1" axis — a broken chart, not a quiet week.
+   */
   it('says a quiet period in a sentence instead of drawing an empty plot', () => {
-    // Every day measured, nothing moved. `gainCeil` clamps to 1, so an SVG here would be a
-    // full-height plot of air under a "+1" axis — a broken chart, not a quiet week.
     const quiet: FollowerSummary = {
       ...FOLLOWERS,
       gained: { now: 0, then: null, deltaPct: null },
@@ -83,9 +85,8 @@ describe('FollowerFlow', () => {
     expect(container.querySelector('svg')).toBeNull()
   })
 
+  /** Unmeasured days and measured zeros are different facts, and the sentence separates them. */
   it('names where the data begins when the window reaches past the first stored day', () => {
-    // A window reaching past the first stored day: unmeasured days and measured zeros are
-    // different facts, and the sentence has to separate them.
     const partial: FollowerSummary = {
       ...FOLLOWERS,
       gained: { now: 0, then: null, deltaPct: null },
@@ -107,23 +108,25 @@ describe('FollowerFlow', () => {
     ).toBeInTheDocument()
   })
 
+  /**
+   * Net keeps its sign on the comparison side too — "was −6", never "was 6" — and the follows
+   * attribution is the network's claim, which the copy names rather than adopting as ours.
+   */
   it('headlines gained, lost and net with their last-period anchors', () => {
     render(<FollowerFlow followers={FOLLOWERS} />)
     expect(screen.getByText('118')).toBeInTheDocument()
     expect(screen.getByText('13')).toBeInTheDocument()
     expect(screen.getByText('+105')).toBeInTheDocument()
     expect(screen.getByText('was 12 last period')).toBeInTheDocument()
-    // Net keeps its sign on the comparison side too — "was −6", never "was 6".
     expect(screen.getByText('was −6 last period')).toBeInTheDocument()
-    // The claim is Instagram's, and the copy says so rather than presenting it as ours.
     expect(
       screen.getByText(/Instagram credits 1 of these follows to your posts/)
     ).toBeInTheDocument()
   })
 
+  /** The fixture publishes on one day only, so a single circle is the whole pin layer. */
   it('pins publish days and raises the day card with the posts on hover', () => {
     const { container } = render(<FollowerFlow followers={FOLLOWERS} />)
-    // The only circle is the one publish pin.
     expect(container.querySelectorAll('circle')).toHaveLength(1)
     hoverDay(container, 1)
     expect(screen.getByText('+12')).toBeInTheDocument()

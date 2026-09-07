@@ -25,6 +25,11 @@ const MIN_BAR = 2.5
  * Both zones share one px-per-follower unit but take their own ceiling, so a quiet loss row
  * never costs the gains half the plot. A day the API never answered draws no bar at all; a
  * measured zero is a flat day — the two are different facts and must not render alike.
+ *
+ * A period where nothing moved is said in a sentence rather than drawn: `gainCeil` clamps to 1,
+ * so the plot would be full-height air under a "+1" ceiling and read as broken. That sentence
+ * names where the network's data begins when the window reaches back past the first stored day,
+ * because an unmeasured day is not a measured zero.
  */
 export function FollowerFlow({
   followers,
@@ -37,12 +42,6 @@ export function FollowerFlow({
   const [hover, setHover] = useState<number | null>(null)
   const days = followers.byDay
 
-  /**
-   * A period where nothing moved is said in a sentence, not drawn: `gainCeil` clamps to 1,
-   * so the plot would be full-height air under a "+1" ceiling and read as broken. The
-   * sentence names where the network's data begins when the window reaches back past the
-   * first stored day, because an unmeasured day is not a measured zero.
-   */
   const moved = days.some((day) => (day.gained ?? 0) > 0 || (day.lost ?? 0) > 0)
   const measuredDays = days.filter((day) => day.gained !== null || day.lost !== null)
 
@@ -51,7 +50,6 @@ export function FollowerFlow({
   const lossCeil = lossMax > 0 ? niceCeil(lossMax) : 0
   const plotTop = PAD.top
   const plotBottom = H - PAD.bottom
-  // One shared unit: a follower is the same number of pixels above and below.
   const unit = (plotBottom - plotTop) / (gainCeil + lossCeil)
   const baseY = plotTop + gainCeil * unit
   const lossZone = plotBottom - baseY

@@ -55,7 +55,6 @@ export function FunnelSection({ stages }: { stages: FunnelStage[] }) {
                 {width > 0 && (
                   <i
                     className="block h-full rounded-r bg-forest"
-                    // Computed width — every stage as a share of the top one.
                     style={{ width: `${width.toFixed(1)}%` }}
                   />
                 )}

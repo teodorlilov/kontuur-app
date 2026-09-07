@@ -11,8 +11,8 @@ import { WhenToPost } from '../components/instagram/when-to-post'
 function realisticGrid(): number[][] {
   return Array.from({ length: 7 }, (_, weekday) =>
     Array.from({ length: 24 }, (_, hour) => {
-      if (hour < 6) return 20 + hour * 3 // the trough
-      const plateau = 250 + ((hour * 7 + weekday * 3) % 80) // 250–330
+      if (hour < 6) return 20 + hour * 3
+      const plateau = 250 + ((hour * 7 + weekday * 3) % 80)
       return plateau
     })
   )
@@ -35,27 +35,31 @@ function cellOpacities(container: HTMLElement): number[] {
 }
 
 describe('WhenToPost', () => {
+  /**
+   * Every plateau hour sits above 0.75 of the max, so a value/max ramp would bunch them all in
+   * the top quarter of the scale. Rank shading has to spread them out.
+   */
   it('spends the ramp on the plateau instead of flattening it', () => {
     const { container } = render(<WhenToPost online={ONLINE} windows={[]} />)
-    // Every plateau hour sits above 0.75 of the max, so a value/max ramp would
-    // bunch them all in the top quarter. Rank shading must spread them out.
     const plateau = cellOpacities(container).filter((opacity) => opacity > 0.4)
     expect(Math.max(...plateau) - Math.min(...plateau)).toBeGreaterThan(0.35)
   })
 
+  /**
+   * Both endpoints are the grid's real counts, so the reader can see how wide — or narrow — the
+   * range the shading spends itself on actually is.
+   */
   it('prints both ends of its own scale, so a flat week reads as flat', () => {
     const flat = ONLINE.grid.flat()
     render(<WhenToPost online={ONLINE} windows={[]} />)
-    // Both endpoints are the grid's real counts — the reader can see how wide
-    // (or narrow) the range the shading spends itself on actually is.
     expect(screen.getByText(`~${Math.min(...flat)}`)).toBeInTheDocument()
     expect(screen.getByText(`~${Math.max(...flat)} online`)).toBeInTheDocument()
     expect(screen.getByText(/averaged over 12 days/)).toBeInTheDocument()
   })
 
+  /** Before any hover, the panel names the busiest hours rather than standing empty. */
   it('reads out the hovered hour against the weekly average, without covering the grid', () => {
     const { container } = render(<WhenToPost online={ONLINE} windows={[]} />)
-    // Default state names the busiest hours.
     expect(screen.getByText(/Tue 18:00/)).toBeInTheDocument()
 
     const cells = container.querySelectorAll('span[class*="h-5"]')

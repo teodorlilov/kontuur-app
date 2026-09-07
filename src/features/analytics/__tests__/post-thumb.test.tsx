@@ -3,6 +3,7 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import { PostThumb } from '../components/table/post-thumb'
 
 describe('PostThumb', () => {
+  /** `alt=""` on purpose: the caption rendered beside the thumb already names the post. */
   it('shows the post’s own image when Instagram gave us one', () => {
     render(
       <PostThumb
@@ -10,16 +11,15 @@ describe('PostThumb', () => {
         mediaType="CAROUSEL_ALBUM"
       />
     )
-    // alt="" on purpose: the caption in the next cell already names the post.
     expect(screen.getByRole('presentation', { hidden: true })).toBeInTheDocument()
   })
 
+  /** A broken-image glyph in a client report is worse than no image at all. */
   it('falls back to the lettered badge when the signed url has expired', () => {
     const { container } = render(
       <PostThumb thumbnailUrl="https://expired.cdninstagram.com/gone.jpg" mediaType="VIDEO" />
     )
     fireEvent.error(container.querySelector('img')!)
-    // A broken-image glyph in a client report is worse than no image at all.
     expect(container.querySelector('img')).toBeNull()
     expect(screen.getByText('R')).toBeInTheDocument()
   })

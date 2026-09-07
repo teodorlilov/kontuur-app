@@ -63,17 +63,19 @@ beforeEach(() => {
 })
 
 describe('MastheadControls', () => {
+  /**
+   * With Facebook active a period click must not silently bounce the reader to Instagram — and
+   * Instagram is the default vocabulary, so its own links carry no network param at all.
+   */
   it('offers the network switch only when Facebook is connected, and keeps the network on navigation', async () => {
     const user = userEvent.setup()
     renderControls({ hasFacebook: true, network: 'facebook' })
 
-    // Facebook is active; period clicks must not silently bounce the reader to Instagram.
     expect(screen.getByRole('button', { name: 'Facebook' })).toHaveAttribute('aria-pressed', 'true')
     await user.click(screen.getByRole('button', { name: '7 days' }))
     expect(push).toHaveBeenCalledWith('/analytics?client=c1&range=7d&network=facebook')
 
     await user.click(screen.getByRole('button', { name: 'Instagram' }))
-    // Instagram is the default vocabulary: its links carry no network param at all.
     expect(push).toHaveBeenCalledWith('/analytics?client=c1&range=30d')
   })
 

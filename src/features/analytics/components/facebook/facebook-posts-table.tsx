@@ -16,7 +16,9 @@ import {
 /**
  * The columns Meta still serves for a Page post: reactions, comments, shares, and their sum.
  * Per-post reach died in the 2025-11-15 purge, so ranking and the median tag both stand on
- * interactions — the column `build-facebook-report` sorts the rows by.
+ * interactions — the column `build-facebook-report` sorts the rows by. The "× median" tag
+ * divides through the shared `ratioToMedian`, the same guarded division the builder applies to
+ * Instagram's reach, so the two networks cannot disagree about what the tag means.
  */
 export function FacebookPostsTable({
   posts,
@@ -48,8 +50,6 @@ export function FacebookPostsTable({
       >
         {posts.map((post, index) => {
           const top = index === 0 && posts.length > 1
-          // The same guarded division the builder applies to Instagram's reach — through the
-          // shared helper, so the two networks cannot disagree about what "× median" means.
           const ratio = ratioToMedian(post.interactions, medianInteractions)
           return (
             <tr key={post.externalPostId}>

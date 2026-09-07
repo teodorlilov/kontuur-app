@@ -64,21 +64,30 @@ export interface BuildFacebookReportInput {
   lastSyncAt: string | null
 }
 
-/** Assembles everything the Facebook report renders from the stored rows. */
+/**
+ * Assembles everything the Facebook report renders from the stored rows, which span BOTH
+ * windows: only the current window's posts reach the table, the earlier half is there to pin the
+ * comparison line — the same split the Instagram builder makes. The page rows need no pre-filter,
+ * because `alignRows` selects by EXACT day key: a row outside the window is never picked up, and
+ * filtering first only walks the array twice more for the same answer.
+ *
+ * The composed posts are re-ranked by interactions, because `buildPosts` orders by reach and no
+ * Facebook row has any. Re-sorting here keeps the ranking rule out of the shared function, where
+ * a rank parameter would be a mode two networks must agree on.
+ *
+ * The follower summary's from-posts sum is null by construction: `toPostMetricRow` writes no
+ * per-post follows, so every Facebook post carries null.
+ */
 export function buildFacebookReport(input: BuildFacebookReportInput): FacebookReportData {
   const { period } = input
   const currentKeys = periodDayKeys(period.start, period.days)
   const previousKeys = periodDayKeys(period.prevStart, period.days)
-  // No pre-filter: `alignRows` selects by EXACT day key, so a row outside the window is never
-  // picked up and filtering first only walks the array twice more for the same answer.
   const current = alignRows(input.pageRows, currentKeys)
   const previous = alignRows(input.pageRows, previousKeys)
 
   const engagements = stripCell(current, previous, (row) => row.post_engagements)
   const pageViews = stripCell(current, previous, (row) => row.page_views)
 
-  // Only current-window rows feed the table; the previous window's rows exist to pin the
-  // comparison line — the same split the Instagram builder makes.
   const currentPostRows = input.postRows.filter((row) => {
     const date = dayKeyOf(row.posted_at, input.timezone)
     return date === null || date >= period.start
@@ -90,11 +99,6 @@ export function buildFacebookReport(input: BuildFacebookReportInput): FacebookRe
     input.timezone,
     period.start
   )
-  /**
-   * Re-ranked by interactions: `buildPosts` orders by reach, which every Facebook row lacks
-   * (Meta serves none). Re-sorting the composed result keeps the ranking rule out of the
-   * shared function — a rank parameter there would be a mode two networks must agree on.
-   */
   posts.sort((a, b) => (b.interactions ?? -1) - (a.interactions ?? -1))
   const medianInteractions = median(
     currentPostRows
@@ -114,7 +118,6 @@ export function buildFacebookReport(input: BuildFacebookReportInput): FacebookRe
     previousKeys,
     nowSeries: engagements.series,
     thenSeries: dailyValues(previous, (row) => row.post_engagements),
-    // The tooltip's second lens on a day: views of the Page itself.
     secondarySeries: pageViews.series,
     postsByDate,
     previousPostsByDate,
@@ -128,8 +131,6 @@ export function buildFacebookReport(input: BuildFacebookReportInput): FacebookRe
     unfollowsOf: (row) => row.unfollows,
     followersCountOf: (row) => row.followers_count,
     postsByDate,
-    // Facebook attributes no per-post follows (the metric died with the purge); every post
-    // carries null and the sum is honestly null.
     fromPosts: sumOrNull(posts.map((post) => post.follows)),
   })
 

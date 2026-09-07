@@ -53,7 +53,7 @@ export const fbMarkers = (clientId: string, pageId: string): MarkerScope => ({
  * passes its RLS-scoped one.
  *
  * Account-scoped: the old account's asked-days must not suppress the refill a freshly connected
- * account needs.
+ * account needs. The projection is cast because that caller-held client is untyped.
  */
 export async function readMarkerRows(
   db: SupabaseClient,
@@ -68,7 +68,6 @@ export async function readMarkerRows(
     .gte('metric_date', period.prevStart)
     .lte('metric_date', period.end)
   if (error) throw new Error(`window marker read failed: ${error.message}`)
-  // WHY as: the shared client is untyped, so the projection does not infer.
   return (data ?? []) as MarkerRow[]
 }
 

@@ -109,6 +109,9 @@ export function PostsTableFooter({
 /**
  * The Post column both networks' tables share: thumb, caption (a link while the post is
  * live), and the meta line. `networkLabel` is who "removed" and "open on" refer to.
+ *
+ * The meta line is JOINED from the parts that exist rather than concatenated, so an unknown
+ * type leaves no dangling separator behind the day.
  */
 export function PostCell({
   post,
@@ -120,8 +123,6 @@ export function PostCell({
   networkLabel?: string
 }) {
   const type = postTypeMeta(post.mediaType)
-  // Joined rather than concatenated: with an unknown type the day would otherwise be followed
-  // by a dangling separator.
   const meta = [
     post.postedDayKey ? formatDayMonth(post.postedDayKey) : null,
     type?.label ?? null,
@@ -139,8 +140,6 @@ export function PostCell({
       <div className="flex min-w-0 items-center gap-3">
         <PostThumb thumbnailUrl={post.thumbnailUrl} mediaType={post.mediaType} />
         <span className="min-w-0">
-          {/* A post removed from the network keeps its caption but
-              loses its destination — a link to a 404 helps nobody. */}
           {post.permalink && post.missing !== 'removed' ? (
             <a
               href={post.permalink}
