@@ -108,6 +108,46 @@ const eslintConfig = defineConfig([
       // per site, which is a review, not a gate.
     },
   },
+  {
+    /**
+     * `lib/compute/` is the analytics feature's pure layer: period math, formatting, the
+     * section arithmetic and the URL builders. Six client components import from it, so it is
+     * the half of that feature that reaches the browser bundle.
+     *
+     * Placement was the one dimension of this codebase with no feedback signal, which is why it
+     * drifted furthest — and a four-folder convention introduced with nothing enforcing it just
+     * reintroduces that one level down. `module-ownership.mjs` cannot help: it reads only the
+     * first path segment after `features/`, so every folder here is identically "analytics".
+     * `next build` cannot either, because the types those components consume erase.
+     *
+     * So this states the layer's one rule where a machine can read it: compute imports nothing
+     * that does I/O. Adding `server-only` or a Supabase client to a module in here should fail
+     * the moment it is written, not the next time somebody reads the folder.
+     */
+    files: ['src/features/analytics/lib/compute/**/*.{ts,tsx}'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: [
+                'server-only',
+                '**/instagram/**',
+                '**/facebook/**',
+                '**/shared/**',
+                '@/lib/supabase/*',
+                '@/lib/meta/**',
+                '@/lib/queries/db',
+              ],
+              message:
+                'lib/compute/ is the pure layer: no server-only, no I/O, and no dependency on a network folder. Put anything that reads or writes in lib/shared/ (or the network folder that owns it).',
+            },
+          ],
+        },
+      ],
+    },
+  },
 ])
 
 export default eslintConfig
