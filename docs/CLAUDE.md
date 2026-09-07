@@ -221,8 +221,26 @@ pre-built variable, and a column-name grep finds none of them. Read the docblock
 - No silent failures. No empty catch blocks.
 
 ### Comments
-- Comments explain WHY (decisions, workarounds, constraints), never WHAT.
-- Every exported function gets a one-line JSDoc.
+**A comment sits ABOVE a function, a module, a type or an exported constant. Never inside one.**
+- The doc says what that thing is FOR in the feature, and the constraints a reader must know
+  before editing it. Not what the code does line by line — the code says that.
+- **No comments inside a function body.** No line comment, no block, no JSX `{/* … */}` inside a
+  return, no trailing comment after code on the same line. In-body commentary is noise: the
+  reader is already looking at the code. `npm run comments` fails on any of these.
+- Something a future editor genuinely needs — a trap, a rejected alternative, a probe result, a
+  reason an obvious simplification is wrong — goes UP into the doc, restated as part of the
+  purpose. Do not relocate the sentence; rewrite it as something the function is for.
+- **Edit the function, update its doc in the same change.** Every false comment found in the
+  2026-09-07 audit was true when written and survived an edit that nobody re-read it against.
+- A comment may assert freely about the code it sits on. **A claim about anything else — another
+  module, a column, a constant, a migration, an API's behaviour — needs a citation that
+  resolves** (`DESIGN.md:438`, `migration 20260845`, `docs/META-FB-PROBE.md:645`). Uncited
+  cross-file claims are where every lie in that audit lived.
+- Never remove a hedge you cannot replace with a measurement. "exclusive-ish" is a fact about
+  what was observed; "exclusive" is a claim about a contract nobody read.
+- Build history is not a constraint. "There were six of these", "extracted when X arrived" —
+  that is the commit message.
+- Every exported function gets a JSDoc.
 
 ### TypeScript
 - No `any`. Unknown shape → `unknown`, then narrow.
