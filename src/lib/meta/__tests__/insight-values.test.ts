@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import type { IGInsightEntry } from '../schemas'
-import { breakdownMapOf, dailySeriesOf, lifetimeValueOf, totalValueOf } from '../insight-values'
+import {
+  breakdownMapOf,
+  dailyPointsOf,
+  dailySeriesOf,
+  lifetimeValueOf,
+  totalValueOf,
+} from '../insight-values'
 
 /**
  * The envelope→value contract, pinned to the live probe's recordings
@@ -99,6 +105,17 @@ describe('dailySeriesOf', () => {
     ])
   })
 
+  it('dates a bucket by the date in its end_time, not the day before it', () => {
+    // Verified 2026-09-08 against Instagram's own media.timestamp: on an account publishing
+    // every two to three days, daily reach spikes land on the publish day under this reading
+    // and one day BEFORE the publish under `end_time - 1s` re-read in America/Los_Angeles.
+    // 07:00+0000 is midnight Pacific, which is what makes the other reading look plausible.
+    const data: IGInsightEntry[] = [
+      { name: 'reach', values: [{ value: 20, end_time: '2026-08-18T07:00:00+0000' }] },
+    ]
+    expect(dailySeriesOf(data, 'reach')).toEqual([{ date: '2026-08-18', value: 20 }])
+  })
+
   it('drops non-numeric values (online_followers returns {} on real accounts)', () => {
     const data: IGInsightEntry[] = [
       {
@@ -114,6 +131,50 @@ describe('dailySeriesOf', () => {
 
   it('returns an empty series for a silent-empty envelope', () => {
     expect(dailySeriesOf([], 'reach')).toEqual([])
+  })
+})
+
+describe('dailyPointsOf', () => {
+  /**
+   * The generic behind `dailySeriesOf`, and the reason `fetchOnlineFollowers` no longer dates
+   * its own buckets. Its values are hourly MAPS rather than numbers, so it could not reuse the
+   * scalar extractor — and the second loop written for it re-decided the date question too,
+   * wrongly, for as long as the feature existed. Only the value shape may vary.
+   */
+  it('applies one date rule across value shapes', () => {
+    const data: IGInsightEntry[] = [
+      {
+        name: 'online_followers',
+        values: [
+          { value: { '0': 4, '13': 9 }, end_time: '2026-08-18T07:00:00+0000' },
+          { value: {}, end_time: '2026-08-17T07:00:00+0000' },
+        ],
+      },
+    ]
+    const asMap = (raw: unknown) => {
+      const entries = Object.entries((raw ?? {}) as Record<string, number>)
+      return entries.length === 0 ? null : Object.fromEntries(entries)
+    }
+    // Same dates a scalar metric would get from the same stamps, and the empty map is dropped.
+    expect(dailyPointsOf(data, 'online_followers', asMap)).toEqual([
+      { date: '2026-08-18', value: { '0': 4, '13': 9 } },
+    ])
+  })
+
+  it('sorts ascending regardless of the order Meta served', () => {
+    const data: IGInsightEntry[] = [
+      {
+        name: 'reach',
+        values: [
+          { value: 2, end_time: '2026-08-19T07:00:00+0000' },
+          { value: 1, end_time: '2026-08-17T07:00:00+0000' },
+        ],
+      },
+    ]
+    expect(dailyPointsOf(data, 'reach', (raw) => raw).map((p) => p.date)).toEqual([
+      '2026-08-17',
+      '2026-08-19',
+    ])
   })
 })
 

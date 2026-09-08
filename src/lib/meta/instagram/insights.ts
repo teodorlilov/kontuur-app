@@ -12,8 +12,13 @@ import {
   type IGMediaItem,
   type IGMediaListPage,
 } from '../schemas'
-import { toDateKey } from '@/utils/date-helpers'
-import { breakdownMapOf, dailySeriesOf, lifetimeValueOf, totalValueOf } from '../insight-values'
+import {
+  breakdownMapOf,
+  dailyPointsOf,
+  dailySeriesOf,
+  lifetimeValueOf,
+  totalValueOf,
+} from '../insight-values'
 
 /**
  * Instagram insights fetch layer. Every call shape here is the EMPIRICAL Graph
@@ -59,10 +64,30 @@ export async function fetchDailyReachSeries(
 }
 
 /**
+ * One day's hourly counts, or null when the day carries nothing usable.
+ *
+ * An empty map is the Graph API being silent, never a day with nobody online, so it is
+ * dropped rather than stored as zeroes. Hour keys are validated because the map is the
+ * only place this response carries structure the schema cannot describe.
+ */
+function toHourMap(raw: unknown): Record<string, number> | null {
+  if (typeof raw !== 'object' || raw === null) return null
+  const byHour: Record<string, number> = {}
+  for (const [hour, count] of Object.entries(raw as Record<string, unknown>)) {
+    if (typeof count === 'number' && /^\d{1,2}$/.test(hour)) byHour[hour] = count
+  }
+  return Object.keys(byHour).length === 0 ? null : byHour
+}
+
+/**
  * Hourly follower-online maps, one per day (probe 2026-08-20: alive in v25,
  * but ONLY with explicit since/until — the default window serves empty {}
  * values, and the freshest day or two stay empty until Meta consolidates).
- * Empty maps are skipped: they are the API's silence, never data.
+ *
+ * Dated through `dailyPointsOf`, which is the same rule Instagram's reach series and
+ * Facebook's five page-day series already use. This function used to date its own buckets
+ * and got it wrong by a day for as long as it existed; the value shape was the only thing
+ * that ever needed to differ, and it is now the only thing that does.
  */
 export async function fetchOnlineFollowers(
   accountId: string,
@@ -75,23 +100,10 @@ export async function fetchOnlineFollowers(
     period: 'lifetime',
     ...rangeParams(sinceTs, untilTs),
   })
-  const entry = body.data.find((item) => item.name === 'online_followers')
-  const out: Array<{ date: string; byHour: Record<string, number> }> = []
-  for (const value of entry?.values ?? []) {
-    if (!value.end_time || typeof value.value !== 'object' || value.value === null) continue
-    const byHour: Record<string, number> = {}
-    for (const [hour, count] of Object.entries(value.value as Record<string, unknown>)) {
-      if (typeof count === 'number' && /^\d{1,2}$/.test(hour)) byHour[hour] = count
-    }
-    if (Object.keys(byHour).length === 0) continue
-    // A bucket ending at end_time (07:00Z = midnight Pacific) covered the
-    // Pacific day before it — one second back lands inside that day.
-    out.push({
-      date: toDateKey(new Date(Date.parse(value.end_time) - 1000), 'America/Los_Angeles'),
-      byHour,
-    })
-  }
-  return out
+  return dailyPointsOf(body.data, 'online_followers', toHourMap).map(({ date, value }) => ({
+    date,
+    byHour: value,
+  }))
 }
 
 /**

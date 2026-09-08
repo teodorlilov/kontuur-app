@@ -33,19 +33,54 @@ export function breakdownMapOf(
   return map
 }
 
-/** Daily time_series points bucketed to YYYY-MM-DD from end_time, ascending; non-numeric values are dropped. */
+/**
+ * The day a daily bucket describes, as YYYY-MM-DD.
+ *
+ * Meta labels a bucket by the instant its window ENDED, and the date in that stamp is the
+ * day it covers — verified 2026-09-08 against Instagram's own `media.timestamp`: on an
+ * account publishing every two to three days, reach spikes land on the publish day under
+ * this reading, and one day BEFORE the publish under the alternative (subtract a second,
+ * re-read in America/Los_Angeles). A spike the day before a post is impossible, which is
+ * what settles it.
+ *
+ * One function because the answer is one decision. `fetchOnlineFollowers` used to re-derive
+ * it, and re-derived it wrongly: it could not reuse `dailySeriesOf` — its values are hourly
+ * MAPS, not numbers — so a second loop was written, and the date rule was rewritten along
+ * with the value rule that was the only thing that actually differed. Every hourly map was
+ * then filed one day early for as long as the feature existed.
+ */
+function bucketDate(endTime: string | undefined): string | null {
+  return endTime?.split('T')[0] || null
+}
+
+/**
+ * One metric's daily points, ascending by date, with the value shape as a parameter.
+ *
+ * `readValue` returns null to drop a point, which is how each caller states what it counts
+ * as data: a scalar series drops anything non-numeric, and the hourly maps drop an empty
+ * `{}` because that is the Graph API being silent rather than a day with nobody online.
+ * Only the value shape is a caller's business — the date never is.
+ */
+export function dailyPointsOf<Value>(
+  data: IGInsightEntry[],
+  metric: string,
+  readValue: (raw: unknown) => Value | null
+): Array<{ date: string; value: Value }> {
+  const series: Array<{ date: string; value: Value }> = []
+  for (const point of entryOf(data, metric)?.values ?? []) {
+    const date = bucketDate(point.end_time)
+    const value = readValue(point.value)
+    if (date !== null && value !== null) series.push({ date, value })
+  }
+  return series.sort((a, b) => a.date.localeCompare(b.date))
+}
+
+/** Daily time_series points for a scalar metric; non-numeric values are dropped. */
 export function dailySeriesOf(
   data: IGInsightEntry[],
   metric: string
 ): Array<{ date: string; value: number }> {
-  const points = entryOf(data, metric)?.values ?? []
-  const series: Array<{ date: string; value: number }> = []
-  for (const point of points) {
-    if (typeof point.value !== 'number' || !point.end_time) continue
-    const date = point.end_time.split('T')[0]
-    if (date) series.push({ date, value: point.value })
-  }
-  return series.sort((a, b) => a.date.localeCompare(b.date))
+  return dailyPointsOf(data, metric, (raw) => (typeof raw === 'number' ? raw : null))
 }
 
 /** A lifetime media insight's single values[0].value, or null when absent or non-numeric. */
