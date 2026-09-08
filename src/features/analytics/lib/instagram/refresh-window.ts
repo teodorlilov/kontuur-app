@@ -3,7 +3,7 @@ import 'server-only'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { createSemaphore } from '@/lib/concurrency'
 import { GraphApiError } from '@/lib/meta/graph-errors'
-import { captureOnlineFollowers, refreshObservedBestTime } from './online-followers'
+import { captureOnlineFollowers } from './online-followers'
 import { fetchDailyReachSeries } from '@/lib/meta/instagram/insights'
 import { captureDayTotals, syncDemographicsWeekly, syncPostMetrics } from './sync-metrics'
 import { dayKeyToUnixSeconds, shiftDateKey } from '@/utils/date-helpers'
@@ -141,11 +141,6 @@ export async function refreshWindowMetrics(
     else throw err
   }
   await upsertAccountMetricDays(admin, reachRows, 'window refresh reach')
-  try {
-    await refreshObservedBestTime(admin, clientId)
-  } catch (err) {
-    console.error('[analytics] best-time refresh after refill failed:', err)
-  }
 
   if (!rateLimited && targets.length > 0) {
     const semaphore = createSemaphore(REFILL_CONCURRENCY)

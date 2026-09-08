@@ -245,9 +245,9 @@ export async function GET(request: NextRequest) {
       }
 
       // The batch is on disk — close the run before the follow-ups. The retry
-      // guard trusts 'failed' to mean "nothing saved", so a notify or
-      // best-time error past this point must not relabel a saved batch and
-      // trigger a duplicate next tick.
+      // guard trusts 'failed' to mean "nothing saved", so a failure in any
+      // follow-up past this point must not relabel a saved batch and trigger a
+      // duplicate next tick.
       if (runId) await finishGenerationRun(supabase, runId, 'complete')
 
       try {

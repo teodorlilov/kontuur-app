@@ -362,8 +362,13 @@ const MIN_ONLINE_DAYS = 5
  * `fetchOnlineFollowers` dates each day's bucket in the same zone. So each
  * (day, hour) is turned into a real instant there and re-read in the agency's
  * clock; `build-report.test.ts` pins one conversion end to end.
+ *
+ * Private again since the posting-time recommendation was removed (migration
+ * 20260848). The report's heat grid is the only reader: the grid DESCRIBES when
+ * an audience was online, which is honest, where the recommendation crossed its
+ * two axes into a claim about which day to post that the data could not carry.
  */
-export function buildAudienceOnline(
+function buildAudienceOnline(
   onlineByDay: Array<{ metric_date: string; online_followers_by_hour: unknown }>,
   timezone: string
 ): AudienceOnline | null {

@@ -17,13 +17,10 @@ import type { ReviewDraft } from '@/components/draft-editing/types'
  * with new props. `focused` falls back at render time, and the effect PERSISTS that
  * fallback; asserting the fallback alone would pass even if the effect were deleted.
  *
- * The six presentational children are mocked down to the one thing this test reads —
- * which draft the work column is showing. They render Konva, fetch best-times and own
- * their own state; none of that is the subject here.
+ * The presentational children are mocked down to the one thing this test reads — which draft
+ * the work column is showing. They render Konva and own their own state; none of that is the
+ * subject here.
  */
-vi.mock('@/components/posts/use-best-time', () => ({
-  useBestTime: () => ({ bestTimeData: null }),
-}))
 vi.mock('@/components/draft-editing/review-grid', () => ({
   ReviewGrid: () => <div data-testid="review-grid" />,
 }))

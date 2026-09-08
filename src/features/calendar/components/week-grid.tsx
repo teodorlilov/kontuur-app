@@ -3,7 +3,7 @@
 import { memo, useMemo, useState } from 'react'
 import { getWeekDayKeys, toDateKey } from '@/utils/date-helpers'
 import { DAYS_PER_WEEK } from '@/utils/constants'
-import { buildWeekLanes, type LaneClient } from '@/features/calendar/lib/week-model'
+import { buildWeekLanes } from '@/features/calendar/lib/week-model'
 import { useGridNavigation } from '@/features/calendar/hooks/use-grid-navigation'
 import { DayColumn } from './day-column'
 import { AgendaList } from './agenda-list'
@@ -19,37 +19,24 @@ import type { CalendarPost } from '@/types/api'
 export const WeekGrid = memo(function WeekGrid({
   weekStartISO,
   scheduledPosts,
-  clients,
   timeZone,
   onPostClick,
-  onSlotClick,
   onMovePost,
   onDropPost,
 }: {
   weekStartISO: string
   scheduledPosts: CalendarPost[]
-  clients: LaneClient[]
   timeZone: string
   onPostClick: (postId: string) => void
-  onSlotClick: (slot: { clientId: string; clientName: string; at: string }) => void
   /** Move the focused post by whole days. Negative is earlier. */
   onMovePost: (postId: string, days: number) => void
   /** Drop the dragged post onto a named day. */
   onDropPost: (postId: string, dayKey: string) => void
 }) {
   const dayKeys = useMemo(() => getWeekDayKeys(weekStartISO), [weekStartISO])
-  // `now` is read once per render rather than inside the builder, so every slot in a
-  // pass agrees about which side of the present it sits on.
   const lanes = useMemo(
-    () =>
-      buildWeekLanes({
-        posts: scheduledPosts,
-        clients,
-        weekStartISO,
-        timeZone,
-        now: new Date(),
-      }),
-    [scheduledPosts, clients, weekStartISO, timeZone]
+    () => buildWeekLanes({ posts: scheduledPosts, weekStartISO, timeZone }),
+    [scheduledPosts, weekStartISO, timeZone]
   )
   const todayKey = useMemo(() => toDateKey(new Date(), timeZone), [timeZone])
   const { gridRef, onKeyDown, onFocus, activeColumn, activeRow } = useGridNavigation(DAYS_PER_WEEK)
@@ -57,7 +44,7 @@ export const WeekGrid = memo(function WeekGrid({
   const [draggingId, setDraggingId] = useState<string | null>(null)
   const draggingFromDay = draggingId
     ? [...lanes.entries()].find(([, items]) =>
-        items.some((item) => item.kind === 'post' && item.post.id === draggingId)
+        items.some((item) => item.post.id === draggingId)
       )?.[0]
     : null
 
@@ -114,7 +101,6 @@ export const WeekGrid = memo(function WeekGrid({
               // -1 in every column but the one holding the grid's single tab stop.
               activeRow={activeColumn === index ? activeRow : -1}
               onPostClick={onPostClick}
-              onSlotClick={onSlotClick}
               onDropPost={onDropPost}
               onDragStateChange={setDraggingId}
             />
@@ -128,7 +114,6 @@ export const WeekGrid = memo(function WeekGrid({
         todayKey={todayKey}
         timeZone={timeZone}
         onPostClick={onPostClick}
-        onSlotClick={onSlotClick}
       />
     </>
   )

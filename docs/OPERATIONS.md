@@ -84,7 +84,7 @@ true.
 | Archive a report for a period | `archiveReport` | [features/analytics/actions/report-actions.ts](../src/features/analytics/actions/report-actions.ts) |
 | Delete an archived report | `deleteReport` | [features/analytics/actions/report-actions.ts](../src/features/analytics/actions/report-actions.ts) |
 | Purge an account's analytics | `purgeAccountAnalytics` | [features/analytics/lib/shared/purge-account-metrics.ts](../src/features/analytics/lib/shared/purge-account-metrics.ts) |
-| Record measured best posting times | `refreshObservedBestTime` | [features/analytics/lib/instagram/online-followers.ts](../src/features/analytics/lib/instagram/online-followers.ts) |
+| Capture a window of follower-online hours | `captureOnlineFollowers` | [features/analytics/lib/instagram/online-followers.ts](../src/features/analytics/lib/instagram/online-followers.ts) |
 | Sync a client's Instagram metrics | `syncAllClientMetrics` | [features/analytics/lib/instagram/sync-metrics.ts](../src/features/analytics/lib/instagram/sync-metrics.ts) |
 | Write a day of account metrics | `upsertAccountMetricDays` | [features/analytics/lib/instagram/account-metrics-store.ts](../src/features/analytics/lib/instagram/account-metrics-store.ts) |
 | Sync a client's Facebook Page metrics | `syncAllFacebookMetrics` | [features/analytics/lib/facebook/sync-facebook-metrics.ts](../src/features/analytics/lib/facebook/sync-facebook-metrics.ts) |

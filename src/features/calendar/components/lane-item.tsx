@@ -25,7 +25,7 @@ import { extractInitials } from '@/utils/format'
  * in, which could not have set the identity ground anyway — an inline style beats a
  * utility class, so a status tint handed down as a class would have lost silently.
  */
-export type LaneGround = 'identity' | 'ghost' | 'missed' | 'wash' | 'danger'
+export type LaneGround = 'identity' | 'wash' | 'danger'
 
 const GROUND_CLASS: Record<LaneGround, string> = {
   /**
@@ -38,11 +38,9 @@ const GROUND_CLASS: Record<LaneGround, string> = {
     'border-[var(--lane-edge)] bg-[var(--lane-bg)] hover:border-[var(--lane-edge-strong)] hover:bg-[var(--lane-bg-strong)]',
   // --hatch is the token DESIGN.md reserves for absence. Dashed, because an open slot
   // is an outline of something rather than a thing.
-  ghost: 'slot-open border-dashed border-line2 hover:border-forest hover:bg-wash',
   // Solid-edged and Amber: the time has passed, so this is a record of a gap rather
   // than an invitation. Not a hover target — there is nothing to do. The edge carries
   // it, because Amber Background is 1.04:1 against Surface and states nothing alone.
-  missed: 'cursor-default border-pending/[0.45] bg-pending-bg',
   // It happened; it recedes. No edge, because a published post is a record rather
   // than a thing still to do.
   wash: 'border-transparent bg-wash hover:bg-marker',

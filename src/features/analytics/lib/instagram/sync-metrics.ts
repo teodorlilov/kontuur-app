@@ -25,7 +25,7 @@ import { fetchPostIdsByMediaId } from '@/lib/queries/posts-by-media-id'
 import type { SyncableConnection } from '@/lib/queries/select-columns'
 import { MS_PER_DAY, SECONDS_PER_DAY } from '@/utils/constants'
 import { dayKeyToUnixSeconds, shiftDateKey } from '@/utils/date-helpers'
-import { captureAndDeriveBestTime, ONLINE_FOLLOWERS_BACKFILL_DAYS } from './online-followers'
+import { backfillOnlineFollowers, ONLINE_FOLLOWERS_BACKFILL_DAYS } from './online-followers'
 import {
   toReachRows,
   upsertAccountMetricDays,
@@ -107,7 +107,7 @@ async function syncClientMetrics(
     {
       name: 'online hours',
       run: async () => {
-        await captureAndDeriveBestTime(
+        await backfillOnlineFollowers(
           admin,
           { clientId, accountId, accessToken },
           hadHistory ? ONLINE_FOLLOWERS_LOOKBACK_DAYS : ONLINE_FOLLOWERS_BACKFILL_DAYS

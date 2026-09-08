@@ -14,7 +14,6 @@ import { fetchWeekSchedule, type WeekScheduledPost } from '@/features/review/lib
 import { getMondayISO } from '@/utils/date-helpers'
 import { ReviewQueue } from '@/features/review/components/review-queue'
 import type { QueueApproval, QueuePost } from '@/features/review/lib/queue-post'
-import { parseBestTimes, type MeasuredBestTimes } from '@/lib/suggested-times/schemas'
 
 export default async function ReviewPage() {
   const { agencyId } = await requireSessionUser()
@@ -28,11 +27,7 @@ export default async function ReviewPage() {
   // brand-profile fields the queue needs.
   type ClientRow = {
     id: string
-    brand_profiles: {
-      is_health_niche: boolean
-      best_time_json: unknown
-      best_time_updated_at: string | null
-    } | null
+    brand_profiles: { is_health_niche: boolean } | null
     social_connections: Array<{ platform: string }> | null
   }
 
@@ -41,9 +36,7 @@ export default async function ReviewPage() {
   const [{ data: clientRows }, { data: postRows }, weekSchedule] = await Promise.all([
     supabase
       .from('clients')
-      .select(
-        'id, brand_profiles(is_health_niche, best_time_json, best_time_updated_at), social_connections(platform)'
-      )
+      .select('id, brand_profiles(is_health_niche), social_connections(platform)')
       // Same embed-shaping filter as the calendar: a token-less connection is not a
       // destination, and the rule must match `resolveDestinations` without selecting the token.
       .not('social_connections.access_token', 'is', null)
@@ -56,7 +49,7 @@ export default async function ReviewPage() {
           .eq('status', 'pending_review')
           .order('created_at', { ascending: true })
       : Promise.resolve({ data: [] as unknown[] }),
-    // Week context powers the slot picker — worth degrading, never failing for.
+    // Week context fills the dialog's week strip — worth degrading, never failing for.
     fetchWeekSchedule(supabase, clientIds, getMondayISO()).catch((err: unknown) => {
       console.error('[review] week schedule failed:', err)
       return [] as WeekScheduledPost[]
@@ -74,19 +67,6 @@ export default async function ReviewPage() {
   const connectedByClient = new Map(
     clientList.map((c) => [c.id, (c.social_connections ?? []).map((conn) => conn.platform)])
   )
-
-  // Through `parseBestTimes`, like the calendar. This was the second of the three hand-rolled
-  // `Array.isArray(x) ? (x as BestTimePlatform[]) : null` checks that helper was written to replace —
-  // a check that proves the array is an array and nothing else, over model output nobody validated.
-  const bestTimeMap: Record<string, MeasuredBestTimes | null> = {}
-  for (const c of clientList) {
-    // Times and their date leave this row together — the dialog takes one value, so they cannot
-    // be paired with a different client's on the way through.
-    const platforms = parseBestTimes(c.brand_profiles?.best_time_json)
-    bestTimeMap[c.id] = platforms
-      ? { platforms, measuredAt: c.brand_profiles?.best_time_updated_at ?? null }
-      : null
-  }
 
   // `PostColumns`, not a local Pick: this restated 18 of the 23 columns POST_COLUMNS
   // selects, and disagreed with the calendar's list about three of them.
@@ -139,7 +119,6 @@ export default async function ReviewPage() {
     <ReviewQueue
       initialPosts={posts}
       clients={clients}
-      bestTimeMap={bestTimeMap}
       weekSchedule={weekSchedule}
       postsPerWeekByClient={postsPerWeekByClient}
       loadedAt={new Date().toISOString()}

@@ -11,8 +11,7 @@ import { isoToDateTimeFields } from '@/utils/date-helpers'
  * **Each chip carries its hour.** The mock specified it verbatim — the cell's text
  * content is the time — and shipping it empty left the strip answering only "is this day
  * covered", when the hour is the thing an agency is actually scheduling. An occupied cell
- * shows when the post goes out; a hatched one shows the suggested time nothing filled,
- * which the hatch already marks as a suggestion rather than a commitment.
+ * shows when its strongest post goes out; an empty day shows nothing.
  *
  * Cells encode **state only, never client identity**. Casa Ceramics' identity hue is
  * Clay (`#A2603F`) and the failure colour is `--danger` (`#b04a38`) — a hue-coded cell

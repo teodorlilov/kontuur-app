@@ -2,8 +2,6 @@
 
 import { memo, useMemo } from 'react'
 import { cn } from '@/utils/cn'
-import { MIN_BEST_TIME_DAYS } from '@/utils/constants'
-import { formatDate } from '@/utils/format'
 import { Avatar } from '@/components/ui/avatar'
 import { PILL_TONES, type PillTone } from '@/components/ui/status-pill'
 import { getWeekDayKeys, toDateKey } from '@/utils/date-helpers'
@@ -12,7 +10,6 @@ import {
   buildClientWeek,
   buildWeekLanes,
   type ClientWeek,
-  type LaneClient,
 } from '@/features/calendar/lib/week-model'
 import { CoverageStrip } from './coverage-strip'
 import type { ClientEntry } from '@/features/calendar/hooks/use-approval'
@@ -33,28 +30,19 @@ const ROW_GRID = 'md:grid-cols-[minmax(180px,1fr)_minmax(280px,2fr)_136px]'
  */
 export const ClientsView = memo(function ClientsView({
   clients,
-  laneClients,
   scheduledPosts,
   weekStartISO,
   timeZone,
 }: {
   clients: ClientEntry[]
-  laneClients: LaneClient[]
   scheduledPosts: CalendarPost[]
   weekStartISO: string
   timeZone: string
 }) {
   const rows = useMemo(() => {
     // The same lanes the week grid draws, transposed — never rebuilt, or the two views
-    // could disagree about which day a post near midnight belongs to, or about whether
-    // a slot has passed.
-    const lanes = buildWeekLanes({
-      posts: scheduledPosts,
-      clients: laneClients,
-      weekStartISO,
-      timeZone,
-      now: new Date(),
-    })
+    // could disagree about which day a post near midnight belongs to.
+    const lanes = buildWeekLanes({ posts: scheduledPosts, weekStartISO, timeZone })
     return clients.map((client) => ({
       client,
       coverage: buildClientWeek({
@@ -64,7 +52,7 @@ export const ClientsView = memo(function ClientsView({
         target: client.posts_per_week,
       }),
     }))
-  }, [clients, laneClients, scheduledPosts, weekStartISO, timeZone])
+  }, [clients, scheduledPosts, weekStartISO, timeZone])
 
   // -1 whenever the viewed week is not the current one, which is the answer the labels
   // want: no day in it is today.
@@ -105,15 +93,7 @@ export const ClientsView = memo(function ClientsView({
       </div>
 
       {rows.map(({ client, coverage }) => (
-        <ClientWeekRow
-          key={client.id}
-          name={client.name}
-          coverage={coverage}
-          timeZone={timeZone}
-          hasMeasuredTimes={(client.best_times?.length ?? 0) > 0}
-          instagramConnected={client.instagram_connected}
-          measuredAt={client.best_time_updated_at}
-        />
+        <ClientWeekRow key={client.id} name={client.name} coverage={coverage} timeZone={timeZone} />
       ))}
     </div>
   )
@@ -154,16 +134,10 @@ function ClientWeekRow({
   name,
   coverage,
   timeZone,
-  hasMeasuredTimes,
-  instagramConnected,
-  measuredAt,
 }: {
   name: string
   coverage: ClientWeek
   timeZone: string
-  hasMeasuredTimes: boolean
-  instagramConnected: boolean
-  measuredAt: string | null
 }) {
   const tone = toneFor(coverage.verdict)
   const hasTarget = coverage.target > 0
@@ -188,39 +162,12 @@ function ClientWeekRow({
         <Avatar name={name} />
         <span className="min-w-0">
           <span className="block truncate text-body font-medium text-ink">{name}</span>
-          {/* The cadence, and only the half a human set. `posts_per_week` is agency-set and can
-              be stated flatly; the days and hours are measured from Instagram and appear as
-              suggested slots in the hatched cells rather than as a pattern claimed here. */}
+          {/* The cadence, which a human set. It is the only half of "how often should this
+              client post" the product has ever known; the measured half was a posting-time
+              recommendation, removed once it turned out only its hour axis was real. */}
           <span className="block text-micro tabular-nums text-text3">
             {hasTarget ? `${coverage.target}× a week` : 'No cadence set'}
           </span>
-          {/* Why this client's row has no suggested slots in it.
-           *
-           * Said here rather than left to inference. The hatched cells simply do not appear
-           * without measured times, and an empty week reads as "nothing suggested for them"
-           * — a statement about the client — when it is a statement about what we have
-           * measured. Which of the two reasons it is matters: one is a setup step the agency
-           * can take now, the other is a wait. */}
-          {!hasMeasuredTimes && (
-            <span className="block truncate text-micro text-text3">
-              {instagramConnected
-                ? `Best time ready after ${MIN_BEST_TIME_DAYS} days of activity`
-                : 'Connect Instagram to get their best time to post'}
-            </span>
-          )}
-          {/* How old the measurement is.
-           *
-           * The column has no expiry: a client whose Instagram sync broke in June keeps showing
-           * June's hours, and the suggested slots go on looking exactly as current as a client
-           * synced last night. A date is the only thing that separates them. Absolute rather than
-           * "3d ago" — this is server-rendered, and `formatRelativeTime` says in its own docblock
-           * that a relative string needs a pinned instant or it disagrees with itself across
-           * hydration. A date also reads faster for a value that only ever moves once a night. */}
-          {hasMeasuredTimes && measuredAt && (
-            <span className="block truncate text-micro text-text3">
-              Last updated {formatDate(new Date(measuredAt))}
-            </span>
-          )}
         </span>
       </div>
 

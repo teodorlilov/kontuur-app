@@ -7,26 +7,18 @@ import { getMondayISO } from '@/utils/date-helpers'
 import { postsInWeek } from '@/features/calendar/lib/week-model'
 import { pluralise } from '@/utils/format'
 import type { CalendarPost } from '@/types/api'
-import type { BestTimePlatform } from '@/lib/suggested-times/schemas'
+import type { ClientRow } from '@/types'
 
-export interface ClientEntry {
-  id: string
-  name: string
-  contact_email: string | null
-  /** The agency's weekly target for this client. 0 means no cadence has been set. */
-  posts_per_week: number
-  /**
-   * Hours this client's Instagram followers were observed online, averaged over 28 days.
-   *
-   * Null means not measured — no connected account, or too few days collected. It never means
-   * "we guessed"; the writer that invented these was deleted, because nothing downstream could
-   * tell an invention from a measurement.
-   */
-  best_times: BestTimePlatform[] | null
-  /** Which of the two reasons a null `best_times` is, so a surface can say which. */
+/**
+ * One client, as every calendar surface reads it.
+ *
+ * The four columns are derived rather than restated — `posts_per_week` is the weekly target
+ * and 0 means no cadence has been set, which is the column's own meaning. `instagram_connected`
+ * is the one field no column carries: it is computed from the embedded connection rows, because
+ * a connection without an `account_id` cannot publish or sync.
+ */
+export type ClientEntry = Pick<ClientRow, 'id' | 'name' | 'contact_email' | 'posts_per_week'> & {
   instagram_connected: boolean
-  /** When `best_times` was last derived, so a surface can show its age. Null when never. */
-  best_time_updated_at: string | null
 }
 
 interface UseApprovalArgs {

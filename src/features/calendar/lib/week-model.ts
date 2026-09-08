@@ -1,8 +1,6 @@
 import { getWeekDayKeys, getWeekRange, isoToDateTimeFields, toDateKey } from '@/utils/date-helpers'
 import { WEEKDAY_LABELS } from '@/utils/constants'
 import type { CalendarPost } from '@/types/api'
-import type { BestTimePlatform } from '@/lib/suggested-times/schemas'
-import { suggestWeekSlots } from '@/lib/suggested-times/slot-picker'
 import { publishStateOf, type PublicationSummary } from '@/lib/posts/publish-state'
 
 /**
@@ -78,25 +76,23 @@ export function postsInWeek(
  *
  * Ordered weakest → strongest claim, which is also the precedence order below.
  *
- * `open` and `missed` describe a slot the client's cadence implies and nothing fills —
- * they are unreachable until slots are derived, and are declared now so the strip that
- * renders them is not rebuilt when they arrive. They are day states, not post states:
- * no post is ever "open".
+ * Every state is a fact about posts that exist. `open` and `missed` used to sit between
+ * `none` and `scheduled`, describing a suggested slot nothing filled; they went with the
+ * suggestions (migration 20260848). A day with no post is `none`, and whether that is a
+ * problem is the cadence verdict's question, not a colour's.
  */
-export type CoverageState = 'none' | 'open' | 'missed' | 'scheduled' | 'published' | 'failed'
+export type CoverageState = 'none' | 'scheduled' | 'published' | 'failed'
 
 const STATE_RANK: Record<CoverageState, number> = {
   none: 0,
-  open: 1,
-  missed: 2,
-  scheduled: 3,
-  published: 4,
+  scheduled: 1,
+  published: 2,
   /**
    * Failed outranks everything, including published. A day holding one published post
    * and one failure is a day that needs a human — surfacing the success would hide the
    * only thing on it that is asking for something.
    */
-  failed: 5,
+  failed: 3,
 }
 
 /**
@@ -127,9 +123,8 @@ function strongerOf(a: CoverageState, b: CoverageState): CoverageState {
 /**
  * How a day of posts reads as one state.
  *
- * Posts only — no slots. The month says what is *placed*; deriving open and missed
- * slots for six weeks across every client would be the deficit question, and that is
- * the Clients tab's job with a target to measure against.
+ * The month says what is *placed*. Whether a client is short of their cadence is a
+ * different question with a target behind it, and the Clients tab asks it.
  */
 export function strongestState(posts: CalendarPost[]): CoverageState {
   return posts.reduce<CoverageState>(
@@ -143,9 +138,7 @@ export function strongestState(posts: CalendarPost[]): CoverageState {
  *
  * The **time** rides along with the state, because a coverage cell that shows only a
  * tone answers "is this day covered" and not "at what hour" — and the hour is the fact
- * the agency is actually scheduling. For a placed post it is when it goes out; for an
- * open or missed slot it is the suggested time nothing filled, which the hatch already
- * marks as a suggestion rather than a commitment.
+ * the agency is actually scheduling. It is when the day's strongest post goes out.
  */
 export interface ClientDay {
   state: CoverageState
@@ -184,22 +177,15 @@ export function buildClientWeek(input: {
 
   let filled = 0
   const week = getWeekDayKeys(weekStartISO).map((dayKey) => {
-    const mine = (lanes.get(dayKey) ?? []).filter((item) =>
-      item.kind === 'post' ? item.post.client_id === clientId : item.clientId === clientId
-    )
-    filled += mine.filter((item) => item.kind === 'post').length
+    const mine = (lanes.get(dayKey) ?? []).filter((item) => item.post.client_id === clientId)
+    filled += mine.length
 
-    // The strongest item, and the time *it* sits at — not the first item's. A day
-    // holding a filled 09:00 and an unfilled 18:00 reads as scheduled, so it must show
-    // 09:00; showing the open slot's hour would label a covered day with a gap's time.
+    // The strongest item, and the time *it* sits at — not the first item's. A day holding
+    // a 09:00 that published and an 18:00 still scheduled reads as published, so it must
+    // show 09:00; the first item's time would label the day with the wrong post's hour.
     return mine.reduce<ClientDay>(
       (strongest, item) => {
-        const next: CoverageState =
-          item.kind === 'post'
-            ? stateOfPost(item.post.publications)
-            : item.missed
-              ? 'missed'
-              : 'open'
+        const next = stateOfPost(item.post.publications)
         // `strongerOf` returns the first argument on a tie, so an equal state keeps the
         // earlier item's time — which is the one the lane already sorted to the top.
         return strongerOf(strongest.state, next) === strongest.state
@@ -216,12 +202,10 @@ export function buildClientWeek(input: {
 /**
  * How many clients are short of their own weekly target.
  *
- * Counts posts directly rather than going through `buildWeekLanes` + `buildClientWeek`.
- * That is not just cheaper, it is what the question actually needs: suggested slots move
- * a day's *state*, never `filled` or the verdict, so building seven lanes and every
- * client's slot set to reach a number derived from post counts alone was work whose
- * result was discarded. The rail badge renders in all three modes, so it was paying for a
- * week's lanes even on the month.
+ * Counts posts directly rather than going through `buildWeekLanes` + `buildClientWeek`,
+ * which would build seven lanes to reach a number derived from post counts alone. The
+ * rail badge renders in all three modes, so it would be paying for a week's lanes even
+ * on the month.
  *
  * A client with no cadence set has no target to be behind and is never counted.
  */
@@ -253,8 +237,6 @@ function verdictFor(filled: number, target: number): ClientWeek['verdict'] {
 
 const STATE_WORDS: Record<CoverageState, string> = {
   none: 'nothing',
-  open: 'an open slot',
-  missed: 'a slot that passed unfilled',
   scheduled: 'scheduled',
   published: 'published',
   failed: 'failed to publish',
@@ -287,41 +269,29 @@ export function describeCoverage(week: ClientDay[], timeZone: string): string {
 // ---- Lanes ----
 
 /**
- * One thing in a day's lane: a post, or a slot nothing fills.
+ * One thing in a day's lane.
  *
- * A slot in the past is `missed` — a record that the cadence went unmet, not a task
- * anyone can still do. That distinction is why it is a separate state and not just an
- * open slot with an earlier timestamp.
+ * Still a tagged shape rather than a bare `CalendarPost`, because the lane sorts on `at`
+ * and every consumer switches on `kind`. It was a union — a post or a suggested slot —
+ * until the suggestions were removed (migration 20260848); a post is now the only thing
+ * a lane holds.
  */
-export type LaneItem =
-  | { kind: 'post'; at: string; post: CalendarPost }
-  | { kind: 'slot'; at: string; clientId: string; clientName: string; missed: boolean }
-
-export interface LaneClient {
-  id: string
-  name: string
-  bestTimes: BestTimePlatform[] | null
-}
+export type LaneItem = { kind: 'post'; at: string; post: CalendarPost }
 
 /**
- * Everything the week grid draws, bucketed by zoned day key and ordered by time.
+ * Every post of the week, bucketed by zoned day key and ordered by time.
  *
- * Slots are **suggestions**, not evidence — see `slot-picker.ts`. A client with nothing
- * stored contributes no slots at all rather than a guessed cadence.
- *
- * A suggested time is dropped when that client already has a post that day: the slot
- * exists to show a gap, and a day they are already posting on is not one. Matching on
- * the day rather than the exact time is deliberate — a post moved from 09:00 to 11:00
- * still fills that day's slot, and pairing on the timestamp would draw a ghost beside it.
+ * Kept as a builder rather than folded into `groupPostsByDate` because the grid needs
+ * every day of the week present — including the empty ones, which a group-by cannot
+ * produce — and because the day columns and the Clients tab read the same map, so a day
+ * cannot appear scheduled in one view and empty in the other.
  */
 export function buildWeekLanes(input: {
   posts: CalendarPost[]
-  clients: LaneClient[]
   weekStartISO: string
   timeZone: string
-  now: Date
 }): Map<string, LaneItem[]> {
-  const { posts, clients, weekStartISO, timeZone, now } = input
+  const { posts, weekStartISO, timeZone } = input
   const postsByDate = groupPostsByDate(posts, timeZone)
   const lanes = new Map<string, LaneItem[]>()
 
@@ -334,30 +304,6 @@ export function buildWeekLanes(input: {
         post,
       }))
     )
-  }
-
-  for (const client of clients) {
-    const daysTheyPost = new Set(
-      posts
-        .filter((p) => p.client_id === client.id && p.scheduled_at)
-        .map((p) => toDateKey(new Date(p.scheduled_at!), timeZone))
-    )
-
-    for (const at of suggestWeekSlots({
-      bestTimes: client.bestTimes,
-      weekStartISO,
-      timeZone,
-    })) {
-      const dayKey = toDateKey(new Date(at), timeZone)
-      if (daysTheyPost.has(dayKey)) continue
-      lanes.get(dayKey)?.push({
-        kind: 'slot',
-        at,
-        clientId: client.id,
-        clientName: client.name,
-        missed: new Date(at) < now,
-      })
-    }
   }
 
   for (const items of lanes.values()) {

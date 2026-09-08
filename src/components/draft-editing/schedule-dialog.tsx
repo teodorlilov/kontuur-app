@@ -1,10 +1,8 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import { Check } from 'lucide-react'
 import { cn } from '@/utils/cn'
-import { formatDate } from '@/utils/format'
-import { MIN_BEST_TIME_DAYS } from '@/utils/constants'
 import { Modal } from '@/components/ui/modal'
 import { Button } from '@/components/ui/button'
 import {
@@ -13,17 +11,10 @@ import {
   CONTROL_TEXT,
   LABEL_CLASS,
 } from '@/components/ui/form/control-classes'
-import {
-  formatPublishSlot,
-  formatScheduledAt,
-  getNextDateForDay,
-  toDateKey,
-} from '@/utils/date-helpers'
+import { formatScheduledAt, toDateKey } from '@/utils/date-helpers'
 import { WeekStrip } from './week-strip'
-import { entryFor } from '@/lib/suggested-times/slot-picker'
-import type { MeasuredBestTimes } from '@/lib/suggested-times/schemas'
 
-type ScheduleChoice = 'next' | 'best' | 'pick' | 'none'
+type ScheduleChoice = 'pick' | 'none'
 
 interface ScheduleWeekContext {
   /** Monday of the current week, YYYY-MM-DD. */
@@ -32,22 +23,15 @@ interface ScheduleWeekContext {
   countsByDay: number[]
   /** The client's posts-per-week target; 0 = no target. */
   target: number
-  /** The picker's recommendation, or null when best-time data cannot produce one. */
-  nextOpenSlot: string | null
 }
 
 interface ScheduleDialogProps {
   open: boolean
-  /** The client's measured times and when they were measured — one value, never two props. */
-  bestTime: MeasuredBestTimes | null
   /** Blocks confirm while a blocking approve runs. The queue omits it — its approve is optimistic. */
   approving?: boolean
-  /** The client's week — surfaces the strip and the "next open slot" default (queue only for now). */
+  /** The client's week, for the strip that shows how full it already is (queue only for now). */
   weekContext?: ScheduleWeekContext
-  /**
-   * The date a priority brief asked for, 'YYYY-MM-DD'. Preselects the manual pick,
-   * because a date the client named outranks any slot we would recommend.
-   */
+  /** The date a priority brief asked for, 'YYYY-MM-DD'. Preselects the manual pick. */
   requestedDate?: string | null
   /**
    * The agency zone, and required.
@@ -65,19 +49,16 @@ interface ScheduleDialogProps {
 }
 
 /**
- * Approve is also the moment the post gets (or declines) a slot, so the two
- * decisions share one dialog: the week's shape with a recommended open slot
- * when the caller supplies it, the client's measured best time, a manual pick,
- * or no slot at all.
+ * Approve is also the moment the post gets (or declines) a slot, so the two decisions share
+ * one dialog: the week's shape, a manual pick, or no slot at all.
  *
- * Which measurement to show used to arrive as a `platform` prop, read off the post —
- * a post was written for one network. It no longer is, so the answer comes from what
- * was actually measured, through `suggestionPlatform`: the same rule the calendar's
- * suggested slots already use, rather than a second one that could disagree with it.
+ * It used to offer two recommended slots as well — a "next open slot" and a "best time",
+ * both derived from `brand_profiles.best_time_json`. That column was removed (migration
+ * 20260848) once measurement showed only the hour half of it was real, so the reviewer
+ * picks against the week strip rather than against a suggestion.
  */
 export function ScheduleDialog({
   open,
-  bestTime,
   approving = false,
   weekContext,
   requestedDate,
@@ -85,41 +66,25 @@ export function ScheduleDialog({
   onConfirm,
   onClose,
 }: ScheduleDialogProps) {
-  const best = useMemo(() => {
-    // `entryFor` is the calendar's own rule for which measurement to draw, guards included.
-    const entry = bestTime && entryFor(bestTime.platforms)
-    const day = entry?.best_days[0]
-    const window = entry?.best_time_windows[0]
-    if (!entry || !day || !window) return null
-    return { day, time: window.time, platform: entry.platform, measuredAt: bestTime.measuredAt }
-  }, [bestTime])
-
   const [choice, setChoice] = useState<ScheduleChoice>('none')
   const [pickedDate, setPickedDate] = useState('')
   const [pickedTime, setPickedTime] = useState('')
 
-  // Fresh decision per opening — best-time data arrives async, so the default
-  // can only be decided when the dialog actually opens. Adjusted during render
-  // (the documented pattern), not in an effect.
-  const nextOpenSlot = weekContext?.nextOpenSlot ?? null
-
+  // Fresh decision per opening. Adjusted during render (the documented pattern), not
+  // in an effect.
   const [prevOpen, setPrevOpen] = useState(open)
   if (open !== prevOpen) {
     setPrevOpen(open)
     if (open) {
-      // A date the client asked for wins: it is a commitment, not a recommendation.
-      setChoice(requestedDate ? 'pick' : nextOpenSlot ? 'next' : best ? 'best' : 'none')
+      // A date the client asked for preselects the manual pick.
+      setChoice(requestedDate ? 'pick' : 'none')
       setPickedDate(requestedDate ?? '')
       setPickedTime('')
     }
   }
 
   function handleConfirm() {
-    if (choice === 'next' && nextOpenSlot) {
-      onConfirm(nextOpenSlot)
-    } else if (choice === 'best' && best) {
-      onConfirm(formatScheduledAt(getNextDateForDay(best.day, timeZone), best.time, timeZone))
-    } else if (choice === 'pick' && pickedDate) {
+    if (choice === 'pick' && pickedDate) {
       onConfirm(formatScheduledAt(pickedDate, pickedTime, timeZone))
     } else {
       onConfirm(null)
@@ -146,57 +111,6 @@ export function ScheduleDialog({
         )}
 
         <div role="radiogroup" aria-label="Schedule" className="flex flex-col gap-2">
-          {nextOpenSlot && (
-            <OptionCard
-              checked={choice === 'next'}
-              title={`Next open slot — ${formatPublishSlot(nextOpenSlot, timeZone).label}`}
-              sub="Fills this client's week"
-              onSelect={() => setChoice('next')}
-            />
-          )}
-          {best ? (
-            <OptionCard
-              checked={choice === 'best'}
-              title={`Best time — ${best.day} ${best.time}`}
-              /**
-               * How old this is, in the plainest words available.
-               *
-               * The line has been wrong twice. It said "from this client's own engagement history"
-               * when the value was often a model's guess and never engagement. It then said
-               * "Followers online, from Instagram", which described our data pipeline rather than
-               * anything a reader needs.
-               *
-               * Freshness leads because it is the part that changes what someone does — this is the
-               * moment they publish against these hours, and a reading from June looks identical to
-               * one from last night without a date. The source follows it: at the point of acting
-               * on a recommendation, knowing it came from the network's own data rather than
-               * from us is worth four words.
-               *
-               * The network is read off the measurement, not written in: shared code that names
-               * one would credit Instagram for a reading taken somewhere else.
-               */
-              sub={
-                best.measuredAt
-                  ? `Last updated ${formatDate(new Date(best.measuredAt))} · from ${best.platform}`
-                  : `Based on your ${best.platform} activity`
-              }
-              onSelect={() => setChoice('best')}
-            />
-          ) : (
-            /**
-             * Absent data says so, rather than one fewer option appearing.
-             *
-             * There used to be something here for every client, because a model invented posting
-             * times for anyone without a connected account and the dialog could not tell those from
-             * measurements. With the guess deleted this option is honest but conditional — and a
-             * silently missing row reads as "this client has no best time", which is a claim about
-             * the client rather than about what we know.
-             */
-            <p className="rounded-sm border border-dashed border-line2 px-3 py-2.5 text-micro text-text2">
-              No best time yet. Connect Instagram and we&rsquo;ll work it out from{' '}
-              {MIN_BEST_TIME_DAYS} days of real activity — we never guess.
-            </p>
-          )}
           <OptionCard
             checked={choice === 'pick'}
             title="Pick a date & time"

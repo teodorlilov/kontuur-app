@@ -172,8 +172,6 @@ export type Database = {
       brand_profiles: {
         Row: {
           avoid_topics: string | null
-          best_time_json: Json | null
-          best_time_updated_at: string | null
           client_id: string
           content_pillars: string | null
           default_carousel_slides: number | null
@@ -191,8 +189,6 @@ export type Database = {
         }
         Insert: {
           avoid_topics?: string | null
-          best_time_json?: Json | null
-          best_time_updated_at?: string | null
           client_id: string
           content_pillars?: string | null
           default_carousel_slides?: number | null
@@ -210,8 +206,6 @@ export type Database = {
         }
         Update: {
           avoid_topics?: string | null
-          best_time_json?: Json | null
-          best_time_updated_at?: string | null
           client_id?: string
           content_pillars?: string | null
           default_carousel_slides?: number | null

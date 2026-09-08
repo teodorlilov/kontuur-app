@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState } from 'react'
 import { toast } from '@/components/ui/toast'
 import { Button } from '@/components/ui/button'
 import { Segmented } from '@/components/layout/page-header/segmented'
-import { useBestTime } from '@/components/posts/use-best-time'
 import { SkippedBanner } from './skipped-banner'
 import { ReviewGrid } from '@/components/draft-editing/review-grid'
 import { DraftRail } from '@/components/draft-editing/draft-rail'
@@ -102,8 +101,6 @@ export function ReviewView({
   const [scheduleTarget, setScheduleTarget] = useState<string | null>(null)
   const [approving, setApproving] = useState(false)
   const [rewriting, setRewriting] = useState(false)
-
-  const { bestTimeData } = useBestTime(clientId)
 
   const liveDrafts = useMemo(
     () => posts.filter((p) => !approvedIds.has(p.post.id) && !discardedIds.has(p.post.id)),
@@ -417,7 +414,6 @@ export function ReviewView({
 
       <ScheduleDialog
         open={scheduleTarget !== null}
-        bestTime={bestTimeData}
         approving={approving}
         requestedDate={posts.find((p) => p.post.id === scheduleTarget)?.post.target_date ?? null}
         timeZone={timeZone}

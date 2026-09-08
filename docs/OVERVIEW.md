@@ -51,7 +51,7 @@ Validate (quality + language, multi-dimensional scores, auto-correction, slop + 
 Review queue ──► optional Client approval portal (public magic link)
        │
        ▼
-Calendar (schedule + best-time recommendations) ──► attach images (upload / Canva)
+Calendar (schedule a post into a day and time) ──► attach images (upload / Canva)
        │
        ▼
 Auto-publish to Instagram (Meta Graph API) via 5-min cron
@@ -180,7 +180,7 @@ server actions opportunistically when touching the file — no big-bang rewrite.
 All model calls go through `callAnthropic()`, which centralizes:
 
 - **Model selection** — `DEFAULT_MODEL` (`claude-sonnet-4-5`) for generation/validation,
-  `LIGHT_MODEL` (`claude-haiku-4-5`) for extraction tasks (pillars, sources, best-time, URL analysis).
+  `LIGHT_MODEL` (`claude-haiku-4-5`) for extraction tasks (pillars, sources, URL analysis).
 - **Prompt caching** — system prompts are sent with `cache_control: ephemeral` by default.
 - **Structured output** — an optional `outputSchema` forces tool-use so the model returns
   schema-valid JSON with no parsing needed; `sanitizeAndParseJson` + `jsonrepair` handle
@@ -202,7 +202,6 @@ src/
 │   ├── onboard/                 #   brand profile generation from interview
 │   ├── analyze-url/             #   bootstrap a profile from a website / Instagram URL
 │   ├── suggest-sources/         #   recommend research sources for a client
-│   ├── best-time/               #   best posting-time recommendations
 │   ├── intelligence/            #   weekly agency briefing
 │   ├── solo-coaching/           #   solo-mode Monday coaching card
 │   ├── analytics/               #   AI summary of a reporting period
@@ -254,7 +253,7 @@ in `supabase/migrations/`. Nineteen tables, grouped by domain:
 | Table            | Purpose                                                                                                                                                                                                                                 |
 | ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `clients`        | A managed brand: `name`, `niche`, `language`, `posts_per_week`, `website_url`, `contact_email`.                                                                                                                                         |
-| `brand_profiles` | 1:1 with a client. Tone, target audience, content pillars, formality, secondary language, avoid-topics, health-niche flag, default post type + carousel slide count, `source_strategy`, `weekly_mix_json`, and cached `best_time_json`. |
+| `brand_profiles` | 1:1 with a client. Tone, target audience, content pillars, formality, secondary language, avoid-topics, health-niche flag, default post type + carousel slide count, `source_strategy`, `weekly_mix_json`. |
 | `client_sources` | Research inputs per client — type `rss` / `website` / `file` / `tavily`, with fetch status, extracted text, source summary, and `pillar_ids` mapping the source to content pillars.                                                     |
 | `language_rules` | Per-language authenticity ruleset (Bulgarian + English seeded): banned anglicisms, banned calques, formality rules, native CTA phrases, opener examples.                                                                                |
 
@@ -380,8 +379,7 @@ invites with a setup-password flow; forgot-password; auth rate limiting; role-ba
 `analyze-url` bootstraps the profile from a website or Instagram URL, and the sheet is editable
 before save. `provisionClient` is the single writer and creates FIVE rows: `clients`,
 `brand_profiles`, `posting_schedules`, the web-research `client_sources` row, and
-`brand_visual_identity`. It does not touch best times — those are derived from measured Instagram
-data later, by `refreshObservedBestTime`.
+`brand_visual_identity`.
 
 **Brand profiles & content pillars** — Full editable brand settings; content pillars with
 per-pillar source mapping; language + formality controls; health-niche compliance flag.
@@ -419,9 +417,12 @@ a locked priority brief — editable in the wizard, where a correction is scoped
 The idea stays in the inbox until a post is approved from it, which is the moment it is
 recorded as `generated` and linked.
 
-**Content calendar** — Monthly grid with scheduling (FAB + unscheduled panel), best-time
-recommendations per platform, batch scheduling from review, and client-response cards. Calendar
-images are preloaded for snappy navigation.
+**Content calendar** — Week, month and per-client views with scheduling (FAB + unscheduled panel),
+batch scheduling from review, and client-response cards. Calendar images are preloaded for snappy
+navigation. It suggests no posting times: `brand_profiles.best_time_json` and the ghost slots drawn
+from it were removed in migration 20260848, because measurement showed the day half of that
+recommendation sat inside sampling noise. What the audience's hours actually look like is described
+on the analytics report's weekday x hour grid, which never prescribes a slot.
 
 **AI visuals & the canvas editor** — Posts arrive in review as finished creatives, not bare copy.
 A per-client **visual identity** (palette + brand style, extracted from the client's site or set by
@@ -444,7 +445,7 @@ are all implemented.
 
 **Autonomous operation** — An **hourly** generate cron researches + generates + validates a
 review queue for every client whose posting schedule's day + hour slot has passed (and
-refreshes stale best-times, weekly briefings, and solo coaching). A **every-5-minute** publish
+refreshes weekly briefings and solo coaching). A **every-5-minute** publish
 cron pushes every due scheduled post to Instagram. It never generates from a client idea:
 an idea is a request that an agency human decides is worth making, and a guard test
 (`api/cron/__tests__/cron-invariants.test.ts`) keeps it that way.
@@ -503,7 +504,7 @@ Configured in `vercel.json`, all authenticated with `Authorization: Bearer $CRON
 All under `src/app/api/`. Representative map (each handler authenticates and scopes to the agency):
 
 - **AI** — `ai/onboard`, `ai/analyze-url`, `ai/suggest-sources`, `ai/generate-stream`,
-  `ai/rewrite`, `ai/detect-slop`, `ai/best-time`, `ai/intelligence`, `ai/intelligence/tip`
+  `ai/rewrite`, `ai/detect-slop`, `ai/intelligence`, `ai/intelligence/tip`
 - **Clients** — `clients`, `clients/[id]`, `clients/[id]/sources` (+ `/tavily`, `/upload`, `/[sourceId]`)
 - **Sources** — `sources/discover`
 - **Posts** — `posts`, `posts/[id]`, `posts/[id]/images`, `posts/[id]/publish`

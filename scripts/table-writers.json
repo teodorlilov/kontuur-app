@@ -12,7 +12,6 @@
   },
   "brand_profiles": {
     "src/features/clients/actions/client-actions.ts": "createClient seeds the profile; updateBrandProfile is the client screen's editor.",
-    "src/features/analytics/lib/instagram/online-followers.ts": "refreshObservedBestTime — the only writer of best_time_json and best_time_updated_at, and it only ever writes measured Instagram data. The guessed path was deleted 2026-08-31.",
     "src/app/(dashboard)/clients/[id]/sources/page.tsx": "A lazy backfill of pillar ids on first open, for clients that predate them. Writes content_pillars only. The comment beside it records why the web-research row is deliberately NOT created here: a page render must not decide whether the pipeline searches the web.",
     "src/features/clients/lib/provision-client.ts": "provisionClient — the ONE way a client and its mandatory children are created. The onboarding form and solo signup both build them here; before 2026-08-31 solo signup built them by hand and shipped without a visual identity, without a web-research row, and without a rollback."
   },

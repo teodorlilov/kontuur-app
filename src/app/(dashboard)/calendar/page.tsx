@@ -14,7 +14,6 @@ import { toPublicationSummary } from '@/lib/posts/publish-state'
 import { capableDestinations } from '@/features/publishing/lib/destinations'
 import type { Tables } from '@/types/database'
 import { fetchImagesByPost } from '@/lib/posts/fetch-post-images'
-import { parseBestTimes } from '@/lib/suggested-times/schemas'
 import { toValidationData } from '@/features/review/lib/adapt-validation'
 import { CalendarView } from '@/features/calendar/components/calendar-view'
 import type { CalendarPost, PostType } from '@/types/api'
@@ -44,21 +43,15 @@ export default async function CalendarPage({ searchParams }: CalendarPageProps) 
       : getMondayISO(new Date(), timezone)
   const window = getCalendarWindow(anchorWeek, timezone)
 
-  type ClientRow = {
-    id: string
-    name: string
-    contact_email: string | null
-    // Forward FK, so PostgREST returns an object rather than an array — the same
-    // embed /review already uses. best_time_json is validated before use, never cast.
-    brand_profiles: { best_time_json: unknown; best_time_updated_at: string | null } | null
-    /**
-     * Reverse FK, so an array — a client may hold rows for several platforms.
-     *
-     * Read only to explain an ABSENT best time. Posting times are measured from Instagram
-     * follower-online counts or they do not exist, and "no account connected" and "connected,
-     * still collecting" are different things to tell a user. Embedded on the query that was
-     * already fetching these clients rather than added as a per-client lookup.
-     */
+  /**
+   * The client projection this page selects, plus its embed.
+   *
+   * The three columns are `Pick`ed rather than written out. The embed is a reverse FK, so
+   * PostgREST returns an array — a client may hold rows for several platforms. It rides on the
+   * query already fetching these clients rather than becoming a per-client lookup, and tells a
+   * publishable client from one nobody has connected yet.
+   */
+  type ClientQueryRow = Pick<Tables<'clients'>, 'id' | 'name' | 'contact_email'> & {
     social_connections: Array<{ platform: string; account_id: string | null }> | null
   }
 
@@ -66,9 +59,7 @@ export default async function CalendarPage({ searchParams }: CalendarPageProps) 
     await Promise.all([
       supabase
         .from('clients')
-        .select(
-          'id, name, contact_email, brand_profiles(best_time_json, best_time_updated_at), social_connections(platform, account_id)'
-        )
+        .select('id, name, contact_email, social_connections(platform, account_id)')
         // Shapes the EMBED, not the client list: a connection whose token the refresher
         // retired is one the publish path refuses (`resolveDestinations` filters the same
         // column), so it must not count as a destination here either — and filtering beats
@@ -116,7 +107,7 @@ export default async function CalendarPage({ searchParams }: CalendarPageProps) 
     throw new Error('Could not load the calendar')
   }
 
-  const clientList = (clientRows as ClientRow[] | null) ?? []
+  const clientList = (clientRows as ClientQueryRow[] | null) ?? []
   // posts_per_week comes from the cached roster rather than a second query — it is
   // already in CLIENT_LIST_COLUMNS and was being fetched and discarded here. It is the
   // target the Clients view measures coverage against, and the one number in the
@@ -127,13 +118,6 @@ export default async function CalendarPage({ searchParams }: CalendarPageProps) 
     name: c.name,
     contact_email: c.contact_email ?? null,
     posts_per_week: perWeekByClient.get(c.id) ?? 0,
-    // Parsed here, server-side: a malformed row becomes "no suggestion" rather than a
-    // throw inside a grid render, and zod stays out of the calendar's bundle.
-    best_times: parseBestTimes(c.brand_profiles?.best_time_json),
-    // When those times were last derived. Surfaced because nothing else can tell a live
-    // measurement from a fossil: the column has no expiry, so a client whose Meta sync broke in
-    // June keeps showing June's hours as though they were yesterday's.
-    best_time_updated_at: c.brand_profiles?.best_time_updated_at ?? null,
     // An account_id is what the metrics sync actually needs; a connection row without one
     // cannot produce follower-online data, so it does not count as connected here.
     instagram_connected: (c.social_connections ?? []).some(

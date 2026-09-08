@@ -10,8 +10,8 @@ import type { CoverageState } from './week-model'
  * tone would put the app back to eight.
  *
  * The states in ascending order of how much they have to say, so the ramp reads as one
- * ladder rather than six unrelated fills: a recess, a hatched outline, amber, a green
- * tint, solid green — and clay when something broke.
+ * ladder rather than four unrelated fills: a recess, a green tint, solid green — and
+ * clay when something broke.
  *
  * Every occupied state carries an **inset ring** as well as a fill. The neutrals in
  * this system sit within 1.05:1 of each other by design (DESIGN.md leans on the contour
@@ -24,14 +24,8 @@ import type { CoverageState } from './week-model'
  * this is a class list and not a component.
  */
 export const COVERAGE_TONE: Record<CoverageState, string> = {
-  /** Nothing here, and nothing was expected. A recess, not a chip. */
+  /** Nothing placed here. A recess, not a chip. */
   none: 'bg-ink/[0.05]',
-  /**
-   * `--hatch`, the token DESIGN.md reserves for absence, on Surface so the cell reads
-   * as a place something could still go.
-   */
-  open: 'slot-open bg-surface ring-1 ring-inset ring-line2',
-  missed: 'bg-pending/[0.22] ring-1 ring-inset ring-pending/[0.55]',
   /**
    * Marker on a Deep Pine edge — DESIGN.md § Chips pairs Marker with "scheduled", and
    * the edge is what separates a tint this light from the ground under it.
@@ -51,8 +45,6 @@ export const COVERAGE_TONE: Record<CoverageState, string> = {
  */
 export const COVERAGE_INK: Record<CoverageState, string> = {
   none: 'text-text3',
-  open: 'text-text2',
-  missed: 'text-pending',
   scheduled: 'text-forest-deep',
   published: 'text-ink-inv',
   failed: 'text-danger',

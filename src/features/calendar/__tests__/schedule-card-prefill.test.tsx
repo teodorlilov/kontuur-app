@@ -142,16 +142,6 @@ describe('ScheduleCard pre-fill', () => {
     expect(timeField().value).toBe('09:00')
   })
 
-  it('lets a suggested slot win over what the post already carries', () => {
-    // Opened from a gap in the week grid: the slot decides when, not the post's own
-    // scheduled_at. Getting this backwards would silently move the post being placed.
-    renderCard(makePost({ scheduled_at: '2026-09-01T06:00:00.000Z' }), {
-      slotPrefill: { clientId: 'client-1', at: '2026-09-10T14:00:00.000Z' },
-    })
-    expect(dateField().value).toBe('2026-09-10')
-    expect(timeField().value).toBe('17:00')
-  })
-
   it('renders nothing when closed', () => {
     renderCard(makePost(), { isOpen: false })
     expect(screen.queryByLabelText('Date')).not.toBeInTheDocument()

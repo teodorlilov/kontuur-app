@@ -30,8 +30,7 @@ import { useQueueVisuals } from '@/features/review/hooks/use-queue-visuals'
 import { totalVisualSlots } from '@/lib/visual/visual-backlog'
 import { computeTriage, type TriageBucket, type TriagedPost } from '@/features/review/lib/triage'
 import { toVisualSlots } from '@/features/review/lib/visual-slots'
-import { pickNextOpenSlot } from '@/lib/suggested-times/slot-picker'
-import { getMondayISO, getWeekDayKeys, isoToDateTimeFields, toDateKey } from '@/utils/date-helpers'
+import { getMondayISO, getWeekDayKeys, toDateKey } from '@/utils/date-helpers'
 import { APPROVAL_TOKEN_EXPIRY_HOURS, MS_PER_HOUR } from '@/utils/constants'
 import type { WeekScheduledPost } from '@/features/review/lib/week-schedule'
 import {
@@ -42,13 +41,11 @@ import {
 import type { QueuePost } from '@/features/review/lib/queue-post'
 import type { ReviewDraft } from '@/components/draft-editing/types'
 import type { CarouselSlide, PostImage, SlopDetection } from '@/types/api'
-import type { MeasuredBestTimes } from '@/lib/suggested-times/schemas'
 import type { ValidationData } from '@/types/api'
 
 interface ReviewQueueProps {
   initialPosts: QueuePost[]
   clients: Array<{ id: string; name: string }>
-  bestTimeMap: Record<string, MeasuredBestTimes | null>
   /** Slots the clients hold this week and next — the slot picker's occupancy. */
   weekSchedule: WeekScheduledPost[]
   postsPerWeekByClient: Record<string, number>
@@ -72,7 +69,6 @@ function toDraft(t: TriagedPost): ReviewDraft {
 export function ReviewQueue({
   initialPosts,
   clients,
-  bestTimeMap,
   weekSchedule,
   postsPerWeekByClient,
   loadedAt,
@@ -352,16 +348,6 @@ export function ReviewQueue({
     return byClient
   }, [weekSchedule, sessionScheduled])
 
-  function nextSlotFor(post: QueuePost, occupied: string[]): string | null {
-    return pickNextOpenSlot({
-      bestTimes: bestTimeMap[post.client_id]?.platforms ?? null,
-      postsPerWeek: postsPerWeekByClient[post.client_id] ?? 0,
-      occupiedSlots: occupied,
-      now: new Date(),
-      timeZone: timezone,
-    })
-  }
-
   // ── Approve ──
   /**
    * Optimistic, the same trust-then-verify shape as discard below: the card
@@ -429,24 +415,15 @@ export function ReviewQueue({
     setScheduleTarget(null)
   }
 
+  /**
+   * Open the batch modal with every row blank.
+   *
+   * Rows used to arrive prefilled from a stored posting-time recommendation; that was
+   * removed (migration 20260848). The reviewer sets each date against the week strip instead.
+   */
   function openBatch(items: QueuePost[]) {
     if (items.length === 0) return
-    // Prefill each row with the picker's suggestion, consuming slots per
-    // client as it goes — every row stays editable in the modal.
-    const occupiedCopy = new Map<string, string[]>()
-    const assignments: Record<string, { date: string; time: string }> = {}
-    for (const post of items) {
-      const occupied = occupiedCopy.get(post.client_id) ?? [
-        ...(occupiedSlotsByClient.get(post.client_id) ?? []),
-      ]
-      const iso = nextSlotFor(post, occupied)
-      if (iso) {
-        occupied.push(iso)
-        assignments[post.id] = isoToDateTimeFields(iso, timezone)
-      }
-      occupiedCopy.set(post.client_id, occupied)
-    }
-    setBatch({ posts: items, assignments })
+    setBatch({ posts: items, assignments: {} })
   }
 
   function handleBatchComplete() {
@@ -626,22 +603,8 @@ export function ReviewQueue({
       weekStart,
       countsByDay,
       target: postsPerWeekByClient[scheduleTargetPost.client_id] ?? 0,
-      nextOpenSlot: pickNextOpenSlot({
-        bestTimes: bestTimeMap[scheduleTargetPost.client_id]?.platforms ?? null,
-        postsPerWeek: postsPerWeekByClient[scheduleTargetPost.client_id] ?? 0,
-        occupiedSlots: occupied,
-        now: new Date(),
-        timeZone: timezone,
-      }),
     }
-  }, [
-    scheduleTargetPost,
-    occupiedSlotsByClient,
-    weekStart,
-    bestTimeMap,
-    postsPerWeekByClient,
-    timezone,
-  ])
+  }, [scheduleTargetPost, occupiedSlotsByClient, weekStart, postsPerWeekByClient, timezone])
   const visualTallies = useMemo(() => {
     let failed = 0
     let composing = 0
@@ -828,7 +791,6 @@ export function ReviewQueue({
 
       <ScheduleDialog
         open={scheduleTarget !== null}
-        bestTime={scheduleTargetPost ? (bestTimeMap[scheduleTargetPost.client_id] ?? null) : null}
         weekContext={scheduleWeekContext}
         timeZone={timezone}
         onConfirm={handleScheduleConfirm}

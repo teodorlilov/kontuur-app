@@ -3,7 +3,6 @@
 import { memo } from 'react'
 import { cn } from '@/utils/cn'
 import { PostCard } from './post-card'
-import { GhostSlot } from './ghost-slot'
 import { MONTH_LABELS as MONTHS, WEEKDAY_LABELS as DOW_LONG } from '@/utils/constants'
 import type { LaneItem } from '@/features/calendar/lib/week-model'
 
@@ -24,14 +23,12 @@ export const AgendaList = memo(function AgendaList({
   todayKey,
   timeZone,
   onPostClick,
-  onSlotClick,
 }: {
   dayKeys: string[]
   lanes: Map<string, LaneItem[]>
   todayKey: string
   timeZone: string
   onPostClick: (postId: string) => void
-  onSlotClick: (slot: { clientId: string; clientName: string; at: string }) => void
 }) {
   const daysWithPosts = dayKeys.filter((key) => (lanes.get(key) ?? []).length > 0)
 
@@ -63,26 +60,14 @@ export const AgendaList = memo(function AgendaList({
                   </span>
                 )}
               </h3>
-              {(lanes.get(dayKey) ?? []).map((item) =>
-                item.kind === 'post' ? (
-                  <PostCard
-                    key={item.post.id}
-                    post={item.post}
-                    timeZone={timeZone}
-                    onClick={onPostClick}
-                  />
-                ) : (
-                  <GhostSlot
-                    key={`${item.clientId}-${item.at}`}
-                    clientId={item.clientId}
-                    clientName={item.clientName}
-                    at={item.at}
-                    missed={item.missed}
-                    timeZone={timeZone}
-                    onClick={onSlotClick}
-                  />
-                )
-              )}
+              {(lanes.get(dayKey) ?? []).map((item) => (
+                <PostCard
+                  key={item.post.id}
+                  post={item.post}
+                  timeZone={timeZone}
+                  onClick={onPostClick}
+                />
+              ))}
               {index < daysWithPosts.length - 1 && <hr className="mt-2 border-line" />}
             </section>
           )

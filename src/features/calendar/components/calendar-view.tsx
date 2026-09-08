@@ -81,8 +81,6 @@ export function CalendarView({ initialPosts, clients, anchorWeekISO }: CalendarV
   const [cardOpen, setCardOpen] = useState(false)
   const [activePostId, setActivePostId] = useState<string | null>(null)
   const [editMode, setEditMode] = useState(false)
-  /** Set when the card was opened from a suggested slot, so it can prefill and scope. */
-  const [slotPrefill, setSlotPrefill] = useState<{ clientId: string; at: string } | null>(null)
   const editParamProcessed = useRef(false)
 
   const {
@@ -202,22 +200,7 @@ export function CalendarView({ initialPosts, clients, anchorWeekISO }: CalendarV
   // Active post — search all posts so both grid and panel clicks work
   const activePost = allPosts.find((p) => p.id === activePostId) ?? null
 
-  /**
-   * What the card's stepper walks.
-   *
-   * Scoped to one client when the card was opened from that client's suggested slot,
-   * which is what `slotPrefill.clientId` is for — it was stored, typed and passed to the
-   * card, and then read by nothing, so the header still said "3 of 48" while offering to
-   * step through posts that could not go in the slot being filled. Entered from the queue
-   * there is no prefill and this is the whole backlog, exactly as before.
-   */
-  const cardQueue = useMemo(
-    () =>
-      slotPrefill
-        ? filteredUnscheduled.filter((p) => p.client_id === slotPrefill.clientId)
-        : filteredUnscheduled,
-    [filteredUnscheduled, slotPrefill]
-  )
+  const cardQueue = filteredUnscheduled
   const activeIndex = cardQueue.findIndex((p) => p.id === activePostId)
 
   const handlePanelPostClick = useCallback((post: CalendarPost) => {
@@ -233,16 +216,12 @@ export function CalendarView({ initialPosts, clients, anchorWeekISO }: CalendarV
   /**
    * Close the card and forget what it was opened for.
    *
-   * Every path that dismisses the card goes through here. Four of them used to call a
-   * bare `setCardOpen(false)` and leave `slotPrefill` standing, so after placing a post
-   * into a Tuesday 09:00 slot the *next* post opened from the queue — any client, any day
-   * — arrived prefilled with that Tuesday and that hour, because the card's prefill
-   * effect reads the slot before it reads the post's own time.
+   * Every path that dismisses the card goes through here rather than calling a bare
+   * `setCardOpen(false)`, so no dismissal can leave the card's other state standing.
    */
   const closeCard = useCallback(() => {
     setCardOpen(false)
     setEditMode(false)
-    setSlotPrefill(null)
   }, [])
 
   const handleUnschedule = useCallback(
@@ -408,45 +387,6 @@ export function CalendarView({ initialPosts, clients, anchorWeekISO }: CalendarV
   // Compared as instants, not as strings — see `postsInWeek`.
   const scheduledThisWeek = postsInWeek(filteredScheduled, weekStart, timezone).length
 
-  const laneClients = useMemo(
-    () =>
-      clients.map((client) => ({
-        id: client.id,
-        name: client.name,
-        bestTimes: client.best_times,
-      })),
-    [clients]
-  )
-
-  /**
-   * Placing into a suggested slot: open the dialog the product already has, with the
-   * client, date and time filled in. The stepper scopes to that client via `cardQueue`,
-   * because stepping the whole agency backlog from one client's slot offers posts it
-   * cannot take.
-   *
-   * The slot carries the client's **id**. It always knew it — `LaneItem` has held a
-   * `clientId` since the lanes were built — but the click only forwarded the display
-   * name, so this had to look the client back up by `name`. Two clients sharing a name
-   * resolved to whichever came first, and a renamed client resolved to none, which
-   * returned early and made the slot look inert.
-   */
-  const handleSlotClick = useCallback(
-    (slot: { clientId: string; clientName: string; at: string }) => {
-      const firstWaiting = filteredUnscheduled.find((p) => p.client_id === slot.clientId)
-      // Nothing to place. Opening the card here showed an empty overlay — `ScheduleCard`
-      // renders nothing without a post — so the click read as broken on exactly the
-      // clients whose gaps the slot exists to point at.
-      if (!firstWaiting) {
-        toast.info(`Nothing waiting for ${slot.clientName}. Generate a post to fill this slot.`)
-        return
-      }
-      setSlotPrefill({ clientId: slot.clientId, at: slot.at })
-      setActivePostId(firstWaiting.id)
-      setCardOpen(true)
-    },
-    [filteredUnscheduled]
-  )
-
   /**
    * The deficit, surfaced in the rail so it is visible without opening the tab.
    *
@@ -594,10 +534,8 @@ export function CalendarView({ initialPosts, clients, anchorWeekISO }: CalendarV
             <WeekGrid
               weekStartISO={weekStart}
               scheduledPosts={filteredScheduled}
-              clients={laneClients}
               timeZone={timezone}
               onPostClick={handleGridPostClick}
-              onSlotClick={handleSlotClick}
               // Stable references, not fresh arrows every render. `WeekGrid` is memoised and
               // forwards `onDropPost` straight to all seven `DayColumn`s, which are memoised
               // too — an inline lambda here re-rendered the entire grid on every keystroke in
@@ -608,7 +546,6 @@ export function CalendarView({ initialPosts, clients, anchorWeekISO }: CalendarV
           ) : mode === 'clients' ? (
             <ClientsView
               clients={visibleClients}
-              laneClients={laneClients}
               scheduledPosts={filteredScheduled}
               weekStartISO={weekStart}
               timeZone={timezone}
@@ -640,7 +577,6 @@ export function CalendarView({ initialPosts, clients, anchorWeekISO }: CalendarV
       <ScheduleCard
         post={activePost}
         timeZone={timezone}
-        slotPrefill={slotPrefill}
         postIndex={activeIndex}
         totalPosts={cardQueue.length}
         isOpen={cardOpen}

@@ -158,10 +158,8 @@ describe('buildClientWeek', () => {
       clientId: 'bd',
       lanes: buildWeekLanes({
         posts: [],
-        clients: [],
         weekStartISO: week,
         timeZone: 'Europe/Sofia',
-        now: new Date('2026-08-03T00:00:00Z'),
       }),
       weekStartISO: week,
       target: 2,
@@ -180,10 +178,8 @@ describe('buildClientWeek', () => {
       clientId: 'hn',
       lanes: buildWeekLanes({
         posts: posts,
-        clients: [],
         weekStartISO: week,
         timeZone: 'Europe/Sofia',
-        now: new Date('2026-08-03T00:00:00Z'),
       }),
       weekStartISO: week,
       target: 3,
@@ -202,10 +198,8 @@ describe('buildClientWeek', () => {
       clientId: 'vb',
       lanes: buildWeekLanes({
         posts: posts,
-        clients: [],
         weekStartISO: week,
         timeZone: 'Europe/Sofia',
-        now: new Date('2026-08-03T00:00:00Z'),
       }),
       weekStartISO: week,
       target: 2,
@@ -223,10 +217,8 @@ describe('buildClientWeek', () => {
       clientId: 'hn',
       lanes: buildWeekLanes({
         posts: posts,
-        clients: [],
         weekStartISO: week,
         timeZone: 'Europe/Sofia',
-        now: new Date('2026-08-03T00:00:00Z'),
       }),
       weekStartISO: week,
       target: 1,
@@ -240,10 +232,8 @@ describe('buildClientWeek', () => {
       clientId: 'hn',
       lanes: buildWeekLanes({
         posts: [],
-        clients: [],
         weekStartISO: week,
         timeZone: 'Europe/Sofia',
-        now: new Date('2026-08-03T00:00:00Z'),
       }),
       weekStartISO: week,
       target: 0,
@@ -324,8 +314,8 @@ describe('describeCoverage', () => {
   })
 
   it('names a day that has a state but no instant', () => {
-    expect(describeCoverage(week({ 0: { state: 'open', at: null } }), SOFIA)).toBe(
-      'Monday an open slot.'
+    expect(describeCoverage(week({ 0: { state: 'scheduled', at: null } }), SOFIA)).toBe(
+      'Monday scheduled.'
     )
   })
 
@@ -337,88 +327,47 @@ describe('describeCoverage', () => {
 describe('buildWeekLanes', () => {
   const week = '2026-08-03'
   const tz = 'Europe/Sofia'
-  const bestTimes = [
-    {
-      platform: 'Instagram',
-      best_days: ['Thursday'],
-      best_time_windows: [{ time: '10:00', label: 'morning', reason: 'peak' }],
-      avoid: '',
-      confidence: 'ai-derived',
-      reasoning_summary: '',
-    },
-  ] as never
 
-  const client = { id: 'bd', name: 'Билков Дом', platform: 'Instagram', bestTimes }
-
-  it('draws a suggested slot on a day the client has nothing', () => {
-    const lanes = buildWeekLanes({
-      posts: [],
-      clients: [client],
-      weekStartISO: week,
-      timeZone: tz,
-      now: new Date('2026-08-03T09:00:00Z'),
-    })
-    const thursday = lanes.get('2026-08-06') ?? []
-    expect(thursday).toHaveLength(1)
-    expect(thursday[0]).toMatchObject({ kind: 'slot', clientId: 'bd', missed: false })
-  })
-
-  it('drops the slot when that client already posts that day', () => {
-    // Matched on the day, not the timestamp: a post moved from 10:00 to 14:00 still
-    // fills that day, and pairing on the exact time would draw a ghost beside it.
-    const posts = [
-      { id: 'p', client_id: 'bd', scheduled_at: '2026-08-06T11:00:00.000Z', status: 'scheduled' },
-    ] as CalendarPost[]
-    const lanes = buildWeekLanes({
-      posts,
-      clients: [client],
-      weekStartISO: week,
-      timeZone: tz,
-      now: new Date('2026-08-03T09:00:00Z'),
-    })
-    expect((lanes.get('2026-08-06') ?? []).filter((i) => i.kind === 'slot')).toHaveLength(0)
-  })
-
-  it('marks a slot whose time has passed as missed', () => {
-    const lanes = buildWeekLanes({
-      posts: [],
-      clients: [client],
-      weekStartISO: week,
-      timeZone: tz,
-      now: new Date('2026-08-08T09:00:00Z'), // Saturday — Thursday is gone
-    })
-    expect(lanes.get('2026-08-06')?.[0]).toMatchObject({ kind: 'slot', missed: true })
-  })
-
-  it('draws nothing for a client with no stored suggestion', () => {
-    const lanes = buildWeekLanes({
-      posts: [],
-      clients: [{ ...client, bestTimes: null }],
-      weekStartISO: week,
-      timeZone: tz,
-      now: new Date('2026-08-03T09:00:00Z'),
-    })
-    // Degrades to nothing, never to a guess.
+  it('gives every day of the week a lane, including the empty ones', () => {
+    const lanes = buildWeekLanes({ posts: [], weekStartISO: week, timeZone: tz })
+    expect([...lanes.keys()]).toEqual([
+      '2026-08-03',
+      '2026-08-04',
+      '2026-08-05',
+      '2026-08-06',
+      '2026-08-07',
+      '2026-08-08',
+      '2026-08-09',
+    ])
     expect([...lanes.values()].flat()).toHaveLength(0)
   })
 
-  it('orders posts and slots together by time', () => {
+  it('buckets a post by its zoned day, not its UTC one', () => {
+    // 21:30Z on the Wednesday is 00:30 Thursday in Sofia.
+    const posts = [
+      { id: 'p', client_id: 'bd', scheduled_at: '2026-08-05T21:30:00.000Z', status: 'scheduled' },
+    ] as CalendarPost[]
+    const lanes = buildWeekLanes({ posts, weekStartISO: week, timeZone: tz })
+    expect(lanes.get('2026-08-05') ?? []).toHaveLength(0)
+    expect(lanes.get('2026-08-06')?.[0]).toMatchObject({ kind: 'post' })
+  })
+
+  it('orders a day by time, whatever order the posts arrived in', () => {
     const posts = [
       {
-        id: 'p',
-        client_id: 'other',
+        id: 'late',
+        client_id: 'bd',
+        scheduled_at: '2026-08-06T15:00:00.000Z',
+        status: 'scheduled',
+      },
+      {
+        id: 'early',
+        client_id: 'bd',
         scheduled_at: '2026-08-06T05:00:00.000Z',
         status: 'scheduled',
       },
     ] as CalendarPost[]
-    const lanes = buildWeekLanes({
-      posts,
-      clients: [client],
-      weekStartISO: week,
-      timeZone: tz,
-      now: new Date('2026-08-03T09:00:00Z'),
-    })
-    // 08:00 Sofia post, then the 10:00 Sofia slot.
-    expect((lanes.get('2026-08-06') ?? []).map((i) => i.kind)).toEqual(['post', 'slot'])
+    const lanes = buildWeekLanes({ posts, weekStartISO: week, timeZone: tz })
+    expect((lanes.get('2026-08-06') ?? []).map((i) => i.post.id)).toEqual(['early', 'late'])
   })
 })

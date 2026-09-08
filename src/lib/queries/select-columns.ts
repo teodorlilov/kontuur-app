@@ -204,7 +204,7 @@ export const CLIENT_ROSTER_COLUMNS =
 
 // brand_profiles
 export const BRAND_PROFILE_COLUMNS =
-  'id, tone, target_audience, social_goals, content_pillars, avoid_topics, default_post_type, default_carousel_slides, weekly_mix_json, language_formality, secondary_language, is_health_niche, best_time_json, best_time_updated_at, source_strategy, language_notes'
+  'id, tone, target_audience, social_goals, content_pillars, avoid_topics, default_post_type, default_carousel_slides, weekly_mix_json, language_formality, secondary_language, is_health_niche, source_strategy, language_notes'
 
 // brand_visual_identity
 // Just the blob: `fetchVisualIdentity` reads `data.identity` and nothing else. `source_kind` and

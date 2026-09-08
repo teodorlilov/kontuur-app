@@ -1,5 +1,14 @@
 # Calendar redesign — implementation plan
 
+> **Reversed 2026-09-08.** Ghost slots and everything below about `best_time_json` were removed
+> in migration 20260848. The plan's own instinct was right — it labels the time a "model guess"
+> and only `posts_per_week` a "fact" — but the measured replacement was no better: across the
+> three clients with data, weekday-to-weekday variation in follower-online counts was 1.04x-1.10x
+> and the gap between the third-ranked day (drawn) and the fourth (not drawn) was 0.41%-3.82%,
+> inside sampling error. The hour half was real and survives, as the analytics report's
+> weekday x hour grid, which describes rather than recommends. Kept as a record of the decision.
+
+
 > A plan, not authority. [DESIGN.md](../../DESIGN.md) outranks it on anything visual and
 > [docs/CLAUDE.md](../CLAUDE.md) on anything structural. It deliberately restates no tokens.
 >

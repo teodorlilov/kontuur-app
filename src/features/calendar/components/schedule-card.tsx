@@ -44,14 +44,6 @@ interface ScheduleCardProps {
   post: CalendarPost | null
   /** The agency zone. The date/time pair is wall-clock in it, on read and on write. */
   timeZone: string
-  /**
-   * The suggested slot this card was opened from, when it was.
-   *
-   * Prefills the date and time so placing into a gap is one click rather than two date
-   * pickers. Its time is a *suggestion* from `best_time_json`, not evidence — the card
-   * says so and the field stays editable.
-   */
-  slotPrefill?: { clientId: string; at: string } | null
   postIndex: number
   totalPosts: number
   isOpen: boolean
@@ -117,7 +109,6 @@ function EditModeFooter({
 export const ScheduleCard = memo(function ScheduleCard({
   post,
   timeZone,
-  slotPrefill,
   postIndex,
   totalPosts,
   isOpen,
@@ -156,13 +147,7 @@ export const ScheduleCard = memo(function ScheduleCard({
   // Left as an effect deliberately: it seeds seven independent fields from one prop, and the
   // render-time adjustment pattern would mean seven paired comparisons for no behavioural gain.
   useEffect(() => {
-    if (slotPrefill) {
-      // Opened from a suggested slot: the slot decides when, not whatever the post
-      // happened to carry.
-      const { date: slotDate, time: slotTime } = isoToDateTimeFields(slotPrefill.at, timeZone)
-      setDate(slotDate)
-      setTime(slotTime)
-    } else if (post?.scheduled_at) {
+    if (post?.scheduled_at) {
       // One zone for both fields. This was `toISOString().slice(0,10)` — the UTC date —
       // beside `toTimeString().slice(0,5)` — the browser's time. Reopening a post and
       // pressing Update rewrote it at the wrong instant, by whatever the offset was.
@@ -183,7 +168,7 @@ export const ScheduleCard = memo(function ScheduleCard({
     // spinner left true by the previous post would render every following post
     // mid-publish forever.
     setPublishing(false)
-  }, [post?.id, post?.scheduled_at, post?.caption, post?.slides_json, timeZone, slotPrefill])
+  }, [post?.id, post?.scheduled_at, post?.caption, post?.slides_json, timeZone])
 
   // Delegate merging to the calendar state hook (functional updates) — computing the merged array
   // here from a captured `post` snapshot loses images when concurrent generations complete.

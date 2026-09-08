@@ -17,7 +17,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { resolveAuth } from '@/lib/auth/resolve-auth'
 import { verifyClientOwnership } from '@/lib/auth/helpers'
 import { fetchIgConnectionState } from '@/lib/queries/db'
-import { captureAndDeriveBestTime } from '@/features/analytics/lib/instagram/online-followers'
+import { backfillOnlineFollowers } from '@/features/analytics/lib/instagram/online-followers'
 import { IG_METRICS_TAG } from '@/features/analytics/lib/instagram/report-data'
 import { purgeAccountAnalytics } from '@/features/analytics/lib/shared/purge-account-metrics'
 import { decodeOAuthState } from '../oauth-state'
@@ -209,25 +209,24 @@ export async function GET(request: NextRequest) {
     }
 
     /**
-     * Posting times, now, rather than after three nights of cron.
+     * Four weeks of follower-online history, now, rather than after several nights of cron.
      *
-     * Meta serves this history on request, so an established account can answer "when are your
-     * followers online" the moment it is linked. Nothing asked: the nightly sync collected four
-     * days at a time and the derivation waited for a threshold, so connecting an account with two
-     * years of history produced an empty calendar for the better part of a week.
+     * Meta serves this on request, so an established account can fill the analytics report's
+     * weekday x hour grid the moment it is linked. Nothing asked: the nightly sync collected a few
+     * days at a time, so connecting an account with two years of history left the grid below its
+     * own sample floor for the better part of a week.
      *
      * Awaited rather than fired and forgotten — a serverless function stops at its response, so a
-     * detached promise here is a coin flip. Never throws: this is one Graph call and a derivation
-     * on the tail of a connect that has already committed, and a user seeing "Failed to connect"
-     * for an account that is connected and working would be a far worse outcome than waiting a
-     * night for their times.
+     * detached promise here is a coin flip. Never throws: this is one Graph call on the tail of a
+     * connect that has already committed, and a user seeing "Failed to connect" for an account
+     * that is connected and working would be a far worse outcome than a night's wait.
      */
-    await captureAndDeriveBestTime(admin, {
+    await backfillOnlineFollowers(admin, {
       clientId,
       accountId,
       accessToken: longLived.access_token,
-    }).catch((bestTimeErr: unknown) => {
-      console.error('[meta/callback] initial best-time capture failed:', bestTimeErr)
+    }).catch((captureErr: unknown) => {
+      console.error('[meta/callback] initial follower-activity capture failed:', captureErr)
     })
 
     return NextResponse.redirect(
