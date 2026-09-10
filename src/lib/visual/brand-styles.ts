@@ -9,7 +9,11 @@
 import type { FontFamilyName } from '@/lib/canvas/font-library'
 import type { SchemeSpec } from './color-scheme'
 
-export type BrandStyleId = 'graphic-editorial' | 'clinical-luxury' | 'hyperreal-poster'
+export type BrandStyleId =
+  | 'graphic-editorial'
+  | 'clinical-luxury'
+  | 'hyperreal-poster'
+  | 'poster-grit'
 
 /** The style's typography pairing for text overlays (canvas editor + auto-compose seeding). */
 export interface BrandStyleFonts {
@@ -284,6 +288,74 @@ export const BRAND_STYLES: Record<BrandStyleId, BrandStyle> = {
         'half in deep shadow, the falloff left unfilled',
         'lit top-down like a museum piece, casting one crisp shadow',
         'shot with a long lens so it reads flat and graphic against the ground',
+      ],
+    },
+  },
+  'poster-grit': {
+    id: 'poster-grit',
+    name: 'Poster Grit',
+    description:
+      'Distressed art-school poster — greyscale photography, one injected accent, scratched over-printed stock.',
+    // No typography named, unlike Graphic Editorial's paragraph. Every prompt closes with "Don't add
+    // text" (`buildVisualPrompt`, prompt.ts:145) and the lettering is the canvas editor's job, so
+    // asking for display serifs and caption blocks buys nothing and invites glyph junk. What IS named
+    // is the drawn marks that are not letterforms — leader lines, empty ruled boxes, register and crop
+    // marks — because those give the reference's annotated feel and the editor cannot draw them.
+    // Subjects are named as a GENRE only ('surreal symbolic photography'), never as a list. A list of
+    // archetypes in the last concrete sentence beats the copy; that is the regression `artDirectionFor`
+    // was rebuilt to prevent and the same trap is open here. For the same reason this paragraph names
+    // no body part even as a figure of speech: the first draft closed on "made by hand rather than
+    // machined" and the probe render came back with a literal hand cradling the subject, so it now
+    // reads "human and imperfect". `artDirectionFor`'s guard (variation.test.ts) covers the framings
+    // and treatments against exactly this, and does not reach the style paragraph.
+    prompt:
+      'Distressed poster art direction for a social media panel, art-school manifesto energy, heavily scratched and scuffed ground stock, torn and re-laid paper edges, dragged brush strokes, ink smears and fingerprints, coarse halftone dot screens that clog in the shadows, photocopy degradation and toner speckle, surreal symbolic photography, unsettling and dreamlike, lit hard from one side with deep unfilled shadow falloff, subjects cut out and pasted down onto the stock, thin ruled leader lines running from a detail of the picture out toward the margin, empty ruled boxes and small register and crop marks, expressive asymmetric composition, human and imperfect rather than machined, a generous uninterrupted margin held across the top of the frame and a calm unbroken band across the lower half, gritty, romantic, provocative, premium independent design studio aesthetic, striking Instagram poster panel.',
+    previewSrc: '/brand-styles/poster-grit.jpg',
+    // Yeseva One serves weight 400 and nothing else, so `nearestWeight` clamps the 700/900 that
+    // `seedCanvasDoc` and the heavier lockups request down to it. That is the same arrangement Dela
+    // Gothic One is on above, but the justification is NOT the same: Dela Gothic is black by design
+    // and reads as heavy as the request intended, while this is a moderate-weight display serif and
+    // genuinely will set lighter than a 900 lockup asks for. `headlineUppercase` is what pays for it
+    // — caps at 400 hold a poster the way this face's lowercase does not — and it is also where the
+    // reference is loudest. It carries no italic either, so a lockup wanting one gets the roman.
+    // Chosen over the faces that do carry 900: user decision 2026-09-10, for its character.
+    fonts: { display: 'Yeseva One', body: 'Sofia Sans', headlineUppercase: true },
+    // The one system in the registry that DESATURATES the photograph, which is a deliberate departure
+    // from the rule the other three state out loud ("The photography is full-colour and untinted").
+    // That rule was written against duotone — a documentary photograph rendered entirely in the
+    // brand's rust — and it is still right for them. Here greyscale-plus-one-injected-object is not a
+    // tint of the picture, it is the design system itself, and the departure is scoped to this entry.
+    variation: {
+      // Accents are the saturated rungs only: on a greyscale frame the single object holding colour
+      // has to actually read as colour, and `light` (primary at lightness 0.78) or `ink` (secondary
+      // at 0.20) would put it back into the greyscale it was lifted out of.
+      // `ink` as a GROUND is the fourth, and it is this system's dark half rather than a hedge — the
+      // reference sheet's darkest panels are a near-black stock with the accent still injected.
+      // `tint` is deliberately absent: Graphic Editorial's note above records a tinted page swallowing
+      // a marks-on-stock system twice, and this is a marks-on-stock system.
+      schemes: [
+        ['paper', 'primary'],
+        ['paper', 'secondary'],
+        ['paper', 'shade'],
+        ['ink', 'primary'],
+      ],
+      colorDirective: (ground, accent) =>
+        `Print this on distressed ${ground} stock, scuffed and unevenly inked. Desaturate the photograph to greyscale, then let exactly ONE thing inside it hold a fully saturated ${accent}. The dragged painted bands and the thin ruled marks take ${accent} too. Everything else in the frame is greyscale.`,
+      framings: [
+        'held low in the frame with the scuffed stock left open above it',
+        'blown up far past life size and cut by three edges at once',
+        'small and alone in the middle of a large scratched field',
+        'climbing out of the bottom edge with bare stock above it',
+        'stacked as two or three torn fragments that do not quite align',
+        'pushed to one side, the rest of the frame left as bare stock',
+      ],
+      treatments: [
+        'lit hard from one side so most of it falls away into shadow',
+        'torn from another sheet and pasted down, the edge left ragged',
+        'printed as a coarse dot screen that clogs in the shadows',
+        'scratched into and abraded, as if the print itself were damaged',
+        'a broad painted band dragged across it in one stroke',
+        'stencilled and sprayed, the edges bled and overspray left on the stock',
       ],
     },
   },
