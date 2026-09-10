@@ -1,3 +1,13 @@
+/**
+ * The smallest type either fitter will settle for, and the ratio it steps down by.
+ *
+ * Here rather than beside one caller because two now fit against these: the canvas autofit that
+ * sizes seeded layers, and the inline text editor's overlay. Two copies would let the editor settle
+ * at a size the canvas would have shrunk further, on the same text.
+ */
+export const MIN_FONT_SIZE = 24
+export const FIT_SCALE = 1.15
+
 type FitLabel = 'ok' | 'overflow' | `shrunk:${number}`
 
 type FitOutcome = { size: number; steps: number; fit: FitLabel }

@@ -1,13 +1,10 @@
 import Konva from 'konva'
 import type { CanvasDoc, CanvasTextNode } from '@/types/canvas'
-import { computeFit } from '@/lib/canvas/autofit'
+import { computeFit, FIT_SCALE, MIN_FONT_SIZE } from '@/lib/canvas/autofit'
 import { TEXT_BOTTOM_MARGIN } from '@/lib/canvas/constants'
 import { isTextNode, textLabel } from '@/lib/canvas/doc-nodes'
 import { markerBands, type MarkerBandAttrs } from '@/lib/canvas/highlight'
 import { textNodeAttrs } from '@/lib/canvas/node-attrs'
-
-const MIN_FONT_SIZE = 24
-const FIT_SCALE = 1.15
 
 // One detached Konva.Text reused for all measurements (fonts must be ready before measuring).
 let measurer: Konva.Text | null = null
