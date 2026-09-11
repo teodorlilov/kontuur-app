@@ -57,6 +57,16 @@ describe('ReconnectPrompt', () => {
     expect(screen.getByRole('dialog')).toBeInTheDocument()
   })
 
+  it('closing it any other way — Escape, the X, a click outside — is not remembered', () => {
+    const first = render(<ReconnectPrompt cards={[card]} />)
+    fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' })
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    first.unmount()
+
+    render(<ReconnectPrompt cards={[card]} />)
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+  })
+
   it('clicking Reconnect also counts as seen — the OAuth round trip must not reopen it', () => {
     const first = render(<ReconnectPrompt cards={[card]} />)
     fireEvent.click(screen.getByRole('link', { name: 'Reconnect Instagram' }))
