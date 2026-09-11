@@ -1,6 +1,6 @@
 import { isConnectionRetired } from '@/lib/meta/token-expiry'
 import type { UpcomingPost } from '@/lib/queries/cache'
-import { PLATFORM_NAMES, toPublishingPlatform, type PostPlatform } from '@/lib/validation'
+import { PLATFORM_NAMES, toPublishingPlatform, type PostPlatform } from '@/lib/meta/platforms'
 import { formatLongDate, formatLongSlot } from '@/utils/date-helpers'
 import type { RosterClientRow } from './roster'
 

@@ -1,6 +1,6 @@
 import { cn } from '@/utils/cn'
 import { MS_PER_DAY } from '@/utils/constants'
-import { PLATFORM_NAMES } from '@/lib/validation'
+import { PLATFORM_NAMES } from '@/lib/meta/platforms'
 import { formatSyncInstant } from '../../lib/compute/format'
 
 /** Two missed nightly syncs is a problem, one is jitter. */

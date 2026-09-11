@@ -5,7 +5,7 @@ import {
   type WeightedPillar,
 } from '@/lib/clients/content-pillars'
 import { isConnectionRetired, isTokenExpired } from '@/lib/meta/token-expiry'
-import { toPublishingPlatform } from '@/lib/validation'
+import { toPublishingPlatform } from '@/lib/meta/platforms'
 import type { ClientSourceSummary } from '@/lib/queries/db'
 import type { MetaConnection } from '@/types/api'
 

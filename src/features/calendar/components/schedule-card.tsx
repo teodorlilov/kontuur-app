@@ -32,7 +32,7 @@ import {
   type PostDisplayState,
 } from '@/lib/posts/publish-state'
 import { POST_STATUS_CHIP } from '@/features/calendar/lib/post-status-chip'
-import { namePlatforms } from '@/lib/validation'
+import { namePlatforms } from '@/lib/meta/platforms'
 import type { PostStatus } from '@/lib/validation'
 
 interface ContentUpdates {

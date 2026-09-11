@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { PLATFORM_NAMES } from '@/lib/validation'
+import { PLATFORM_NAMES } from '@/lib/meta/platforms'
 import type { BestDay, ReachDay } from '../../lib/instagram/build-report'
 import { CHART_COLORS } from '../../lib/compute/chart-config'
 import { formatCount, formatDayMonth } from '../../lib/compute/format'

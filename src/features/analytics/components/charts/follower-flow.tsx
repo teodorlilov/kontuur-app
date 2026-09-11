@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { cn } from '@/utils/cn'
-import { PLATFORM_NAMES } from '@/lib/validation'
+import { PLATFORM_NAMES } from '@/lib/meta/platforms'
 import type { FollowerSummary } from '../../lib/instagram/build-report'
 import { CHART_COLORS } from '../../lib/compute/chart-config'
 import { countDeltaVerdict } from '../../lib/compute/delta-verdict'

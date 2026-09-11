@@ -1,5 +1,5 @@
 import type { CommentGroup } from '@/types/api'
-import { namePlatforms } from '@/lib/validation'
+import { namePlatforms } from '@/lib/meta/platforms'
 import { toPreviewLine } from '@/utils/format'
 
 /**

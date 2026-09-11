@@ -6,7 +6,7 @@ import { toast } from '@/components/ui/toast'
 import { cn } from '@/utils/cn'
 import { Button } from '@/components/ui/button'
 import { SelectControl } from '@/components/layout/page-header/select-control'
-import { PLATFORM_NAMES } from '@/lib/validation'
+import { PLATFORM_NAMES } from '@/lib/meta/platforms'
 import { archiveReport } from '../../actions/report-actions'
 import { useAnalyticsNav } from './analytics-nav'
 import {

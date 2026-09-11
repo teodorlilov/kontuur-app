@@ -1,7 +1,7 @@
 import 'server-only'
 
 import { unstable_cache } from 'next/cache'
-import { PLATFORM_NAMES } from '@/lib/validation'
+import { PLATFORM_NAMES } from '@/lib/meta/platforms'
 import type { AnalyticsReportData } from './build-report'
 import {
   buildFallbackSentence,

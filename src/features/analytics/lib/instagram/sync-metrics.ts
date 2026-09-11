@@ -14,7 +14,7 @@ import {
   fetchReachByProductType,
   type IGDemographics,
 } from '@/lib/meta/instagram/insights'
-import { PLATFORM_NAMES } from '@/lib/validation'
+import { PLATFORM_NAMES } from '@/lib/meta/platforms'
 import {
   runSyncPhases,
   syncRoster,

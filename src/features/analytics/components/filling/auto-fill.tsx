@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { PLATFORM_NAMES } from '@/lib/validation'
+import { PLATFORM_NAMES } from '@/lib/meta/platforms'
 import { fillPeriodData } from '../../actions/report-actions'
 import type { AnalyticsPeriod } from '../../lib/compute/period'
 

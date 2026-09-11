@@ -1,5 +1,5 @@
 import type { ClientRosterEntry } from '@/features/clients/lib/roster'
-import { PLATFORM_NAMES } from '@/lib/validation'
+import { PLATFORM_NAMES } from '@/lib/meta/platforms'
 import { formatPublishSlot } from '@/utils/date-helpers'
 import { formatRelativeTime } from '@/utils/format'
 import { cn } from '@/utils/cn'

@@ -1,4 +1,4 @@
-import { PLATFORM_NAMES } from '@/lib/validation'
+import { PLATFORM_NAMES } from '@/lib/meta/platforms'
 import type { FacebookReportData } from '../../lib/facebook/build-facebook-report'
 import { AnalyticsSection, ChartLegend } from '../document/analytics-section'
 import { EmptyFill } from '../document/empty-fill'

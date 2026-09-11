@@ -4,7 +4,7 @@ import {
   isTokenExpired,
   isTokenExpiring,
 } from '@/lib/meta/token-expiry'
-import { POST_PLATFORMS, toPublishingPlatform, type PostPlatform } from '@/lib/validation'
+import { POST_PLATFORMS, toPublishingPlatform, type PostPlatform } from '@/lib/meta/platforms'
 import { extractInitials } from '@/utils/format'
 import type { PostSummary } from '@/types/post'
 import type { ClientRow, SocialConnectionRow } from '@/types'

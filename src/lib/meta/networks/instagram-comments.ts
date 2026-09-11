@@ -1,6 +1,6 @@
 import 'server-only'
 
-import { PLATFORM_NAMES } from '@/lib/validation'
+import { PLATFORM_NAMES } from '@/lib/meta/platforms'
 import { graphDelete, graphGet, graphPost } from '../graph-client'
 import { fetchMediaSince } from '../instagram/insights'
 import { IG_GRAPH_BASE } from '../constants'

@@ -3,7 +3,7 @@ import 'server-only'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { revalidateTag } from 'next/cache'
 import { notify } from '@/lib/notifications/notify'
-import { PLATFORM_NAMES, toPublishingPlatform } from '@/lib/validation'
+import { PLATFORM_NAMES, toPublishingPlatform } from '@/lib/meta/platforms'
 
 /**
  * Store the connection an OAuth flow just produced — the ONE writer of that operation.

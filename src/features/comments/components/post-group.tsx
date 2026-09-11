@@ -5,7 +5,7 @@ import { ImageOff } from 'lucide-react'
 import { cn } from '@/utils/cn'
 import { formatRelativeTime, parseTimestamp } from '@/utils/format'
 import { formatHandle, postOrigin, postTitle } from '../lib/post-label'
-import { namePlatforms } from '@/lib/validation'
+import { namePlatforms } from '@/lib/meta/platforms'
 import type { CommentGroup, QueuedComment } from '@/types/api'
 
 /**

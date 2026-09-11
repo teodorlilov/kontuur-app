@@ -1,7 +1,7 @@
 import 'server-only'
 
 import { mapWithConcurrency } from '@/lib/concurrency'
-import { PLATFORM_NAMES } from '@/lib/validation'
+import { PLATFORM_NAMES } from '@/lib/meta/platforms'
 import { altTextFromCaption, validateInstagramCaption } from './instagram-caption'
 import { IG_GRAPH_BASE } from '../constants'
 import { graphGet, graphPost } from '../graph-client'

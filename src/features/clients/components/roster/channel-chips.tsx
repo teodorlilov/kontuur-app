@@ -1,5 +1,5 @@
 import type { RosterChannel } from '@/features/clients/lib/roster'
-import { PLATFORM_MARKS, PLATFORM_NAMES } from '@/lib/validation'
+import { PLATFORM_MARKS, PLATFORM_NAMES } from '@/lib/meta/platforms'
 import { cn } from '@/utils/cn'
 
 /** One chip per network the publish pipeline can reach; the column is 116px, hence marks. */

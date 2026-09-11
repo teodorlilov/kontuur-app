@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { PLATFORM_NAMES } from '@/lib/validation'
+import { PLATFORM_NAMES } from '@/lib/meta/platforms'
 import { analyticsPartialHref } from '../../lib/compute/analytics-href'
 import type { AnalyticsPeriod } from '../../lib/compute/period'
 

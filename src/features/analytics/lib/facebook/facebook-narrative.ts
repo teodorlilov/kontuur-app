@@ -1,7 +1,7 @@
 import 'server-only'
 
 import { unstable_cache } from 'next/cache'
-import { PLATFORM_NAMES } from '@/lib/validation'
+import { PLATFORM_NAMES } from '@/lib/meta/platforms'
 import type { FacebookReportData } from './build-facebook-report'
 import { FB_METRICS_TAG, getFacebookAnalyticsReport } from './facebook-report-data'
 import {

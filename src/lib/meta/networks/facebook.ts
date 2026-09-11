@@ -1,7 +1,7 @@
 import 'server-only'
 
 import { mapWithConcurrency } from '@/lib/concurrency'
-import { PLATFORM_NAMES } from '@/lib/validation'
+import { PLATFORM_NAMES } from '@/lib/meta/platforms'
 import { FB_GRAPH_BASE } from '../constants'
 import { graphGet, graphPost } from '../graph-client'
 import { fbPermalinkSchema, graphAckSchema, graphCreatedIdSchema } from '../schemas'

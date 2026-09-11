@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { cn } from '@/utils/cn'
-import { PLATFORM_NAMES } from '@/lib/validation'
+import { PLATFORM_NAMES } from '@/lib/meta/platforms'
 import type { ReportPostRow } from '../../lib/instagram/build-report'
 import { formatCount, formatDayMonth } from '../../lib/compute/format'
 import { firstLine, postTypeMeta } from '../../lib/compute/post-display'

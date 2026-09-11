@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Modal } from '@/components/ui/modal'
 import { ConnectLink, ServiceTile } from '@/components/ui/service-row'
 import { StatusPill } from '@/components/ui/status-pill'
-import { PLATFORM_MARKS } from '@/lib/validation'
+import { PLATFORM_MARKS } from '@/lib/meta/platforms'
 import { pluralise } from '@/utils/format'
 import type { RetiredConnectionCard } from '../lib/retired-connections'
 
