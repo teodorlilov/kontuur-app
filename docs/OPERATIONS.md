@@ -211,6 +211,9 @@ nobody "fixes" them:
   without the user, and retiring one the platform has killed are three moments in a connection's
   life, across two providers with different grant endpoints and opposite failure policies. Same
   column, different operations.
+- **`social_connections.last_sync_error`** — `recordSyncHealth` stamps a metrics run's verdict;
+  `storeConnection` clears it, because a connection that was just (re)made has no verdict and the
+  one left behind is usually the dead token the reconnect fixed.
 - **`posts.status`** — `schedulePosts` derives it from the slot and the publish-now route stamps
   the same pair when it gives a tray post one; `updatePost` handles the one transition a slot
   cannot express (`pending_review`, i.e. undo). `publishOnePost` was listed here as moving the

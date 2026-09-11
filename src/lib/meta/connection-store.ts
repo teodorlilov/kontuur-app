@@ -11,9 +11,15 @@ import type { SupabaseClient } from '@supabase/supabase-js'
  * this each would carry its own upsert and its own conflict target, which is how the same row
  * comes to be written two ways.
  *
- * The other writers of `social_connections` are untouched: rotating a token, retiring one the
- * platform has killed, disconnecting, and stamping sync health are genuinely different
- * operations with their own owners.
+ * A successful connect also ends a retirement and clears the last sync verdict: `retired_at` and
+ * `retired_reason` (migration 20260850) go back to null so the reconnect prompt and the roster
+ * stop reporting the dead token, and `last_sync_error` goes back to null because the row's last
+ * recorded failure was the dead token itself — left in place it would make the analytics sync
+ * line read "did not finish … retrying tonight" on an account that was just reconnected.
+ * `last_sync_at` is kept: a null there reads as "more than two nights ago".
+ *
+ * The other writers of `social_connections` are untouched: rotating a token, disconnecting, and
+ * stamping sync health are genuinely different operations with their own owners.
  */
 interface StoredConnection {
   /** `client_id` for an account a client publishes to; null for a user-scoped token. */
@@ -55,6 +61,9 @@ export async function storeConnection(
       account_name: connection.accountName,
       access_token: connection.accessToken,
       token_expires_at: connection.tokenExpiresAt,
+      retired_at: null,
+      retired_reason: null,
+      last_sync_error: null,
     },
     { onConflict: connection.clientId ? 'client_id,platform' : 'user_id,platform' }
   )

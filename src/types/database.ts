@@ -1572,6 +1572,8 @@ export type Database = {
           last_sync_error: string | null
           platform: string
           refresh_token: string | null
+          retired_at: string | null
+          retired_reason: string | null
           token_expires_at: string | null
           user_id: string | null
         }
@@ -1586,6 +1588,8 @@ export type Database = {
           last_sync_error?: string | null
           platform: string
           refresh_token?: string | null
+          retired_at?: string | null
+          retired_reason?: string | null
           token_expires_at?: string | null
           user_id?: string | null
         }
@@ -1600,6 +1604,8 @@ export type Database = {
           last_sync_error?: string | null
           platform?: string
           refresh_token?: string | null
+          retired_at?: string | null
+          retired_reason?: string | null
           token_expires_at?: string | null
           user_id?: string | null
         }
