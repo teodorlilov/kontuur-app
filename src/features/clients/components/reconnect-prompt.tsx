@@ -27,31 +27,26 @@ function rememberSeen(card: RetiredConnectionCard): void {
 }
 
 /**
- * The one-time prompt for a connection Meta has killed. State holds only dismissals; the card
- * is derived from props each render because the layout stays mounted and hands it new cards.
- * Only "Not now" is remembered: Reconnect succeeds by clearing the row, and an interrupted
- * OAuth must bring the prompt back. Hidden while the Facebook Page chooser (`?choose_page`) is
- * open, which happens before that row clears.
+ * The one-time prompt for a connection Meta has killed. Only "Not now" is remembered. Closing
+ * it any other way just closes it until the layout next renders — `closedFor` holds the props
+ * array it was closed against, and a re-render hands a new one. Hidden while the Facebook Page
+ * chooser (`?choose_page`) is open, which happens before the row clears.
  */
 export function ReconnectPrompt({ cards }: { cards: RetiredConnectionCard[] }) {
-  const [closed, setClosed] = useState<string[]>([])
+  const [dismissed, setDismissed] = useState<string[]>([])
+  const [closedFor, setClosedFor] = useState<RetiredConnectionCard[] | null>(null)
   const choosingPage = useSearchParams().has('choose_page')
-  const card = filterUnseen(cards).find((c) => !closed.includes(buildSeenKey(c)))
-  if (!card || choosingPage) return null
+  const card = filterUnseen(cards).find((c) => !dismissed.includes(buildSeenKey(c)))
+  if (!card || choosingPage || closedFor === cards) return null
 
-  const closeForNow = () => setClosed((keys) => [...keys, buildSeenKey(card)])
+  const close = () => setClosedFor(cards)
   const dismiss = () => {
     rememberSeen(card)
-    closeForNow()
+    setDismissed((keys) => [...keys, buildSeenKey(card)])
   }
 
   return (
-    <Modal
-      open
-      onClose={closeForNow}
-      title={`${card.networkLabel} needs reconnecting`}
-      maxWidth={600}
-    >
+    <Modal open onClose={close} title={`${card.networkLabel} needs reconnecting`} maxWidth={600}>
       <div className="flex flex-col gap-6">
         <div className="flex items-center gap-3">
           <ServiceTile>{PLATFORM_MARKS[card.platform]}</ServiceTile>

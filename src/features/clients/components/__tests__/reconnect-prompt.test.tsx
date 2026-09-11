@@ -64,13 +64,13 @@ describe('ReconnectPrompt', () => {
     expect(screen.getByRole('dialog')).toBeInTheDocument()
   })
 
-  it('closing it any other way — Escape, the X, a click outside — is not remembered', () => {
-    const first = render(<ReconnectPrompt cards={[card]} />)
+  it('closing it any other way — Escape, the X, a click outside — only closes it', () => {
+    const { rerender } = render(<ReconnectPrompt cards={[card]} />)
     fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' })
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
-    first.unmount()
+    expect(window.localStorage.length).toBe(0)
 
-    render(<ReconnectPrompt cards={[card]} />)
+    rerender(<ReconnectPrompt cards={[card]} />)
     expect(screen.getByRole('dialog')).toBeInTheDocument()
   })
 
