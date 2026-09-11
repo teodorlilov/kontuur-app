@@ -4,7 +4,7 @@ import { Chip, ChipGroup } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { withPalette } from '@/lib/visual/identity'
-import { StyleOptions } from '@/features/visual-identity/components/style-options'
+import { BrandStylePicker } from '@/features/visual-identity/components/brand-style-picker'
 import type { DraftRowSpec } from '@/features/onboarding/lib/draft-rows'
 import type { DraftProfile } from '@/features/onboarding/types'
 import type { ExtractionStatus } from '@/features/onboarding/hooks/use-extraction-status'
@@ -67,7 +67,7 @@ export function DraftFieldEdit({ spec, draft, onChange, paletteStatus }: DraftFi
       )
     case 'style':
       return (
-        <StyleOptions
+        <BrandStylePicker
           value={draft.identity.style}
           onChange={(style) => onChange({ identity: { ...draft.identity, style } })}
         />

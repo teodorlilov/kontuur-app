@@ -97,5 +97,4 @@ export const UNTESTED_COMPONENTS: string[] = [
   'features/sources/components/stepper/scan-step.tsx',
   'features/sources/components/stepper/summary-step.tsx',
   'features/sources/components/stepper/website-pages-step.tsx',
-  'features/visual-identity/components/style-options.tsx',
 ]

@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import type { VisualIdentity } from '@/types/visual'
 import { VisualIdentityPanel } from '../components/visual-identity-panel'
 import { BRAND_STYLES } from '@/lib/visual/brand-styles'
@@ -17,6 +18,9 @@ import type { DraftRowSpec } from '@/features/onboarding/lib/draft-rows'
  * for every post from then on. The settings panel enforced this and the onboarding sheet did not,
  * which is exactly the kind of divergence a shared helper cannot fix on its own: nothing stops the
  * next editor from spreading the old identity again. These tests are what stops it.
+ *
+ * The brand style now arrives through a confirm dialog rather than a click on a card, so the style
+ * cases here assert the invariant across the whole open-preview-confirm trip, on both surfaces.
  */
 
 /** A measured blue identity, description and all — what the extractor hands the sheet. */
@@ -76,19 +80,53 @@ describe('palette editors', () => {
     expect(emitted.identity).not.toHaveProperty('palette_description')
   })
 
-  it('keeps the description when only the brand style changes — colours did not move', () => {
+  /**
+   * The style now arrives through a dialog, so the invariant has to survive a three-step round trip
+   * — open, preview, confirm — and the confirm step is where a careless `withPalette` would eat the
+   * description on the way out. `toHaveBeenCalledTimes` is asserted FIRST so a missing `await` fails
+   * here rather than passing quietly against an `undefined` read through `?.`.
+   */
+  it('keeps the description when only the brand style changes — colours did not move', async () => {
+    const user = userEvent.setup()
     const onChange = vi.fn()
     render(<VisualIdentityPanel identity={BLUE} onChange={onChange} />)
 
-    // The card itself, not the zoom button nested inside it — both carry the style's name.
-    const card = screen
-      .getAllByRole('button', { name: /graphic editorial/i })
-      .find((el) => el.hasAttribute('aria-pressed'))
-    fireEvent.click(card!)
+    await user.click(screen.getByRole('button', { name: 'Change' }))
+    await user.click(screen.getByRole('option', { name: /Graphic Editorial/ }))
+    await user.click(screen.getByRole('button', { name: 'Use this style' }))
 
+    expect(onChange).toHaveBeenCalledTimes(1)
     const emitted = onChange.mock.calls[0]?.[0] as VisualIdentity
     expect(emitted.style).toBe('graphic-editorial')
     expect(emitted.palette_description).toBe(BLUE.palette_description)
+  })
+
+  /** The same trip through the onboarding sheet, which spreads the identity itself. */
+  it('onboarding sheet keeps the description when only the brand style changes', async () => {
+    const user = userEvent.setup()
+    const onChange = vi.fn()
+    const spec: DraftRowSpec = {
+      id: 'style',
+      group: 'system',
+      label: 'Visual system',
+      kind: 'style',
+    }
+    render(
+      <DraftFieldEdit
+        spec={spec}
+        draft={{ ...buildEmptyDraft(), identity: BLUE }}
+        onChange={onChange}
+      />
+    )
+
+    await user.click(screen.getByRole('button', { name: 'Change' }))
+    await user.click(screen.getByRole('option', { name: /Graphic Editorial/ }))
+    await user.click(screen.getByRole('button', { name: 'Use this style' }))
+
+    expect(onChange).toHaveBeenCalledTimes(1)
+    const emitted = onChange.mock.calls[0]?.[0] as { identity: VisualIdentity }
+    expect(emitted.identity.style).toBe('graphic-editorial')
+    expect(emitted.identity.palette_description).toBe(BLUE.palette_description)
   })
 })
 
