@@ -294,6 +294,8 @@ export type NotificationType =
   | 'client_feedback'
   | 'posts_ready'
   | 'approval_sent'
+  | 'connection_retired'
+  | 'publish_failed'
 
 export type EnrichedNotification = Pick<
   NotificationRow,

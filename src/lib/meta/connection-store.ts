@@ -1,6 +1,9 @@
 import 'server-only'
 
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { revalidateTag } from 'next/cache'
+import { notify } from '@/lib/notifications/notify'
+import { PLATFORM_NAMES, toPublishingPlatform } from '@/lib/validation'
 
 /**
  * Store the connection an OAuth flow just produced — the ONE writer of that operation.
@@ -70,4 +73,63 @@ export async function storeConnection(
   if (error) {
     throw new Error(`Failed to save ${connection.platform} connection: ${error.message}`)
   }
+}
+
+/**
+ * Retire a connection Meta has declared dead — the ONE writer of that operation.
+ *
+ * A Graph `token_invalid` answer (code 190 family, `graph-errors.ts`) means nothing but a
+ * reconnect will ever fix this credential. Nulling the token is what every reader already treats
+ * as "needs reconnecting": the publish preflight fails the destination without calling Meta
+ * (`publish-post.ts` `connectionBlocker` — each tick still spends an attempt, the ladder is
+ * unchanged), the nightly and half-hourly syncs skip the row, and the calendar and review pages
+ * drop the network. `retired_at` is the non-secret fact the roster, the client settings and the
+ * reconnect prompt read (migration 20260850); `retired_reason` keeps Meta's message for support
+ * and nothing renders it.
+ *
+ * Called from every path that recognises the 190 — `sync-shared.ts` `syncRoster`,
+ * `sync-comments.ts` `syncAllClientComments`, `comment-actions.ts` `checkClientComments`,
+ * `publish-post.ts` (both Graph catches), `report-actions.ts` `fillPeriodData` and
+ * `refresh-tokens.ts` — so the moment the app learns a token is dead is the moment it stops
+ * using it.
+ *
+ * Retire ONLY on `token_invalid`. A `permission` answer from `/insights` or the comments edge is
+ * a missing scope on a token that still publishes; retiring it would break publishing to fix
+ * analytics. Client-scoped rows only: the user-scoped `facebook_user` and `canva` rows have no
+ * client and sit on none of the paths above.
+ *
+ * Order matters. The write comes first; the caches are expired next — `{ expire: 0 }`, not the
+ * `'max'` the user-driven edits use, because `'max'` only marks the entry stale and the very
+ * next load would still render the connection as live, while a retirement must be visible on the
+ * refresh that follows it; the notification comes last, with a one-day cooldown because a second
+ * retirement within a day is the same event and the default week would silence a real repeat.
+ * Nothing here is caught: a failed write throws before any side effect, and `notify` throws only
+ * on a failed cooldown check or client lookup, by which point the retirement has landed — the
+ * caller is at a boundary and logs once either way.
+ */
+export async function retireConnection(
+  admin: SupabaseClient,
+  input: { clientId: string; platform: string; reason: string }
+): Promise<void> {
+  const { error } = await admin
+    .from('social_connections')
+    .update({
+      access_token: null,
+      retired_at: new Date().toISOString(),
+      retired_reason: input.reason,
+    })
+    .eq('client_id', input.clientId)
+    .eq('platform', input.platform)
+  if (error) throw new Error(`retire failed for client ${input.clientId}: ${error.message}`)
+
+  revalidateTag('agency-clients', { expire: 0 })
+
+  const known = toPublishingPlatform(input.platform)
+  const label = known ? PLATFORM_NAMES[known] : input.platform
+  await notify(admin, {
+    clientId: input.clientId,
+    type: 'connection_retired',
+    cooldownDays: 1,
+    message: (name) => `${label} for ${name} stopped working — reconnect the account`,
+  })
 }

@@ -67,6 +67,7 @@ true.
 | --- | --- | --- |
 | Connect a Canva account to the signed-in user | `GET` | [app/api/canva/callback/route.ts](../src/app/api/canva/callback/route.ts) |
 | Store the connection an OAuth flow produced | `storeConnection` | [lib/meta/connection-store.ts](../src/lib/meta/connection-store.ts) |
+| Retire a connection Meta has declared dead | `retireConnection` | [lib/meta/connection-store.ts](../src/lib/meta/connection-store.ts) |
 | Connect an Instagram account to a client | `GET` | [app/api/meta/callback/route.ts](../src/app/api/meta/callback/route.ts) |
 | Hold the Facebook user token that lists someone's Pages | `GET` | [app/api/meta/callback/route.ts](../src/app/api/meta/callback/route.ts) |
 | Connect a Facebook Page to a client | `connectFacebookPage` | [features/clients/actions/connection-actions.ts](../src/features/clients/actions/connection-actions.ts) |
