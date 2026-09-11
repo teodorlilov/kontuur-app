@@ -411,7 +411,13 @@ Components should feel **tactile and considered** — like well-made objects on 
 
 ### Navigation
 
-- **Style:** 224px sidebar. Items at 13px body weight with Ink Secondary text; **the active item takes New Growth fill with Pine Deep text and icon**, over an inset Pine Deep edge at 45% so the plate has a boundary. Its count badge inverts to Pine Deep fill with lime text, because Wash on a lime plate is unreadable. Uppercase 10px `+0.16em` section labels above groups. Icons are 16px Lucide strokes, always paired with a text label.
+- **Style:** 224px sidebar. Items at 13px body weight with Ink Secondary text; **the active item takes New Growth fill with Pine Deep text and icon**, over an inset Pine Deep edge at 45% so the plate has a boundary. Its count badge inverts to Pine Deep fill with lime text, because Wash on a lime plate is unreadable. Uppercase 10px `+0.16em` section labels above groups. Icons are 18px Solar line-duotone glyphs in Pine Deep, always paired with a text label — see Icons below.
+
+### Icons
+
+- **Set:** Solar (`@solar-icons/react`, drawings by 480 Design under CC BY 4.0 — the credit line in the marketing footer is a licence condition). Two weights only, stroke 1.5: **Line Duotone** where the icon names a place or a thing (sidebar nav, the editor rail, section-heading and stat-card chips, empty states, the command palette), **Linear** where it is a control or a signal (buttons, inputs, toolbar tools, chevrons, close, and every warning / error / success / pending glyph in its semantic colour).
+- **The second stroke is Living Green.** That is the whole colour story: one duotone layer, one token, everywhere it appears. A parent retints it in exactly two cases — `.icon-quiet` (current colour at 50%: an inactive rail tool, or the active nav row where the passenger on lime must be Pine Deep) and `.icon-on-dark` (Living Green Lite on a pine surface). A semantic icon never takes the green; its colour is its meaning.
+- **One component draws every icon.** `components/ui/icon.tsx` owns the closed size ramp — `xs` 12 · `sm` 14 · `md` 16 · `lg` 18 · `xl` 22 · `hero` 28 — and the stroke. Call sites pass a glyph and a step, never a pixel size or a stroke width. _Audit test: a glyph component rendered directly, or a `size={n}` on one, is drift._
 
 ### Confirmation
 
@@ -480,6 +486,7 @@ Reach for these before writing a new one:
 | --------------------------------------- | ------------------------------------------------------------------------------------- |
 | `components/ui/card.tsx`                | A clearing. Padding comes from `className`.                                           |
 | `components/ui/section-heading.tsx`     | An `h2` with its icon chip; `tone="wash" \| "marker"`.                                |
+| `components/ui/icon.tsx`                | Every icon: a Solar glyph at a step of the closed size ramp — see Icons above.        |
 | `components/ui/action-link.tsx`         | A `next/link` styled as an action.                                                    |
 | `components/ui/button.tsx`              | A button that acts. Sizes mirror `ActionLink`: caption / body / title.                |
 | `components/ui/form/form-section.tsx`   | A settings panel — titled, with a divider header.                                     |

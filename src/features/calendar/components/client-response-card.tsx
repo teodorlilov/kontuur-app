@@ -1,6 +1,7 @@
 'use client'
 
-import { Check, MessageCircle } from 'lucide-react'
+import { ChatRoundIcon, UnreadIcon } from '@solar-icons/react/linear'
+import { Icon } from '@/components/ui/icon'
 import { formatRelativeTime, parseTimestamp } from '@/utils/format'
 
 interface ClientResponseCardProps {
@@ -37,7 +38,7 @@ export function ClientResponseCard({
   clientName,
 }: ClientResponseCardProps) {
   const s = STYLES[approvalStatus]
-  const Icon = approvalStatus === 'approved' ? Check : MessageCircle
+  const glyph = approvalStatus === 'approved' ? UnreadIcon : ChatRoundIcon
   const timeAgo = respondedAt ? formatRelativeTime(parseTimestamp(respondedAt)) : null
 
   return (
@@ -48,9 +49,9 @@ export function ClientResponseCard({
       <div className="flex items-center gap-[9px] px-3.5 py-3" style={{ background: s.headerBg }}>
         <div
           className="flex size-7 shrink-0 items-center justify-center rounded-full"
-          style={{ background: s.iconBg }}
+          style={{ background: s.iconBg, color: s.iconColor }}
         >
-          <Icon size={13} color={s.iconColor} />
+          <Icon glyph={glyph} size="sm" />
         </div>
         <div>
           <div className="text-body font-medium text-ink">

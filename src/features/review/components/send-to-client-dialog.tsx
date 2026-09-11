@@ -1,7 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { Link2, Mail } from 'lucide-react'
+import { LetterIcon, LinkMinimalisticIcon } from '@solar-icons/react/linear'
+import { Icon } from '@/components/ui/icon'
 import { toast } from '@/components/ui/toast'
 import { Modal } from '@/components/ui/modal'
 import { Button } from '@/components/ui/button'
@@ -66,7 +67,7 @@ export function SendToClientDialog({ post, onClose, onSent }: SendToClientDialog
             disabled={sending !== null}
             onClick={() => void send('email')}
           >
-            <Mail aria-hidden className="mr-2 size-3.5" strokeWidth={1.8} />
+            <Icon glyph={LetterIcon} size="sm" className="mr-2" />
             Email the client
           </Button>
           <Button
@@ -75,7 +76,7 @@ export function SendToClientDialog({ post, onClose, onSent }: SendToClientDialog
             disabled={sending !== null}
             onClick={() => void send('send')}
           >
-            <Link2 aria-hidden className="mr-2 size-3.5" strokeWidth={1.8} />
+            <Icon glyph={LinkMinimalisticIcon} size="sm" className="mr-2" />
             Copy approval link
           </Button>
         </div>

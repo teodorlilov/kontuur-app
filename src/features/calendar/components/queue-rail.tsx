@@ -1,7 +1,13 @@
 'use client'
 
 import { memo, useMemo, useState } from 'react'
-import { ChevronDown, ChevronLeft, ChevronRight, Search } from 'lucide-react'
+import {
+  AltArrowDownIcon,
+  AltArrowLeftIcon,
+  AltArrowRightIcon,
+  MagnifierIcon,
+} from '@solar-icons/react/linear'
+import { Icon } from '@/components/ui/icon'
 import { cn } from '@/utils/cn'
 import { CONTROL_SURFACE, CONTROL_TEXT } from '@/components/ui/form/control-classes'
 import { Listbox, type ListboxOption } from '@/components/ui/listbox'
@@ -70,7 +76,7 @@ export const QueueRail = memo(function QueueRail({
           aria-label={`Expand queue, ${totalCount} waiting to be scheduled`}
           className="grid size-7 flex-none place-items-center rounded-sm text-text2 transition-colors duration-150 ease-contour hover:bg-ink/[0.06] hover:text-ink"
         >
-          <ChevronLeft className="size-3.5 rotate-90 md:rotate-0" />
+          <Icon glyph={AltArrowLeftIcon} size="sm" className="rotate-90 md:rotate-0" />
         </button>
         <span className="order-last rounded-full bg-pending-bg px-1.5 py-0.5 text-micro font-semibold tabular-nums text-pending md:order-none">
           {totalCount}
@@ -105,7 +111,7 @@ export const QueueRail = memo(function QueueRail({
             aria-label="Collapse queue"
             className="ml-auto grid size-6 place-items-center rounded-sm text-text3 transition-colors duration-150 ease-contour hover:bg-ink/[0.06] hover:text-ink"
           >
-            <ChevronRight className="size-3.5" />
+            <Icon glyph={AltArrowRightIcon} size="sm" />
           </button>
         </div>
 
@@ -121,7 +127,7 @@ export const QueueRail = memo(function QueueRail({
 
         <div className="mt-2.5 flex items-center gap-1.5">
           <div className={cn(CONTROL_SURFACE, 'flex flex-1 items-center gap-1.5 px-2 py-1')}>
-            <Search className="size-3 shrink-0 text-text2" aria-hidden="true" />
+            <Icon glyph={MagnifierIcon} size="xs" className="shrink-0 text-text2" />
             <input
               type="search"
               value={search}
@@ -172,9 +178,9 @@ export const QueueRail = memo(function QueueRail({
                 )}
               >
                 {selected?.label}
-                <ChevronDown
-                  size={12}
-                  aria-hidden="true"
+                <Icon
+                  glyph={AltArrowDownIcon}
+                  size="xs"
                   className={cn(
                     'transition-transform duration-150 ease-contour',
                     open && 'rotate-180'

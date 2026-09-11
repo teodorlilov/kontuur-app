@@ -1,4 +1,5 @@
-import { Sparkles } from 'lucide-react'
+import { StarsIcon } from '@solar-icons/react/line-duotone'
+import { Icon } from '@/components/ui/icon'
 import { Card } from '@/components/ui/card'
 import { IconChip } from '@/components/ui/icon-chip'
 import { BriefingActions } from '@/features/dashboard/components/briefing-actions'
@@ -26,7 +27,7 @@ export function BriefingBar({ briefing }: { briefing: DashboardBriefing | null }
   return (
     <Card className="flex flex-wrap items-center gap-3.5 px-5 py-[18px]">
       <IconChip className="size-[27px] shrink-0 rounded-sm">
-        <Sparkles size={14} />
+        <Icon glyph={StarsIcon} size="sm" />
       </IconChip>
 
       <div className="min-w-[220px] flex-1">

@@ -1,18 +1,27 @@
 'use client'
 
 import { useCallback, useSyncExternalStore } from 'react'
-import { ChevronLeft, Image as ImageIcon, Layers, Shapes, Sparkles, Type } from 'lucide-react'
+import { AltArrowLeftIcon } from '@solar-icons/react/linear'
+import {
+  GalleryIcon,
+  LayersIcon,
+  StarsIcon,
+  TextSquareIcon,
+  Widget6Icon,
+} from '@solar-icons/react/line-duotone'
+import type { Icon as Glyph } from '@solar-icons/react/lib/types'
+import { Icon } from '@/components/ui/icon'
 import { cn } from '@/utils/cn'
 import { EDITOR_ICON_BUTTON, EDITOR_LABEL, FOCUS_RING } from './chrome'
 
 export type RailSection = 'text' | 'elements' | 'ai' | 'background' | 'layers'
 
-const SECTIONS: Array<{ id: RailSection; label: string; Icon: typeof Type }> = [
-  { id: 'text', label: 'Text', Icon: Type },
-  { id: 'elements', label: 'Elements', Icon: Shapes },
-  { id: 'ai', label: 'AI', Icon: Sparkles },
-  { id: 'background', label: 'Image', Icon: ImageIcon },
-  { id: 'layers', label: 'Layers', Icon: Layers },
+const SECTIONS: Array<{ id: RailSection; label: string; icon: Glyph }> = [
+  { id: 'text', label: 'Text', icon: TextSquareIcon },
+  { id: 'elements', label: 'Elements', icon: Widget6Icon },
+  { id: 'ai', label: 'AI', icon: StarsIcon },
+  { id: 'background', label: 'Image', icon: GalleryIcon },
+  { id: 'layers', label: 'Layers', icon: LayersIcon },
 ]
 
 const STORAGE_KEY = 'kontuur:editor-rail'
@@ -37,7 +46,7 @@ export function Rail({ active, busy = [], onSelect, children }: RailProps) {
         aria-label="Editor sections"
         className="flex w-16 shrink-0 flex-col items-center gap-1 border-r border-line bg-paper py-2"
       >
-        {SECTIONS.map(({ id, label, Icon }) => (
+        {SECTIONS.map(({ id, label, icon }) => (
           <button
             key={id}
             type="button"
@@ -48,11 +57,11 @@ export function Rail({ active, busy = [], onSelect, children }: RailProps) {
               'flex w-14 cursor-pointer flex-col items-center gap-0.5 rounded-sm py-1.5',
               'text-text2 transition-colors duration-150 ease-contour hover:bg-ink/[0.05] hover:text-ink',
               FOCUS_RING,
-              active === id && 'bg-wash text-forest'
+              active === id ? 'bg-wash text-forest' : 'icon-quiet'
             )}
           >
             <span className="relative">
-              <Icon size={16} strokeWidth={1.8} aria-hidden />
+              <Icon glyph={icon} size="lg" />
               {busy.includes(id) && (
                 <span
                   aria-hidden
@@ -78,7 +87,7 @@ export function Rail({ active, busy = [], onSelect, children }: RailProps) {
               aria-label="Hide this panel"
               className={EDITOR_ICON_BUTTON}
             >
-              <ChevronLeft size={15} aria-hidden />
+              <Icon glyph={AltArrowLeftIcon} />
             </button>
           </div>
           <div className="flex-1 overflow-y-auto px-3 pb-4">{children}</div>

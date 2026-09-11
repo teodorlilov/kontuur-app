@@ -1,7 +1,8 @@
 'use client'
 
 import Link from 'next/link'
-import { AlertCircle } from 'lucide-react'
+import { DangerCircleIcon } from '@solar-icons/react/linear'
+import { Icon } from '@/components/ui/icon'
 import { allocationCostOfSkips, type PillarAllocation } from '@/features/generate/lib/run-plan'
 import type { SkippedPillar } from '@/ai/research/types'
 
@@ -31,11 +32,7 @@ export function SkippedBanner({
 
   return (
     <div className="mb-4 flex items-start gap-3 rounded-panel bg-pending-bg px-4 py-3 text-caption text-text2">
-      <AlertCircle
-        aria-hidden
-        className="mt-0.5 size-3.5 flex-none text-pending"
-        strokeWidth={1.6}
-      />
+      <Icon glyph={DangerCircleIcon} size="sm" className="mt-0.5 flex-none text-pending" />
       <p className="min-w-0 flex-1">
         <span className="font-semibold text-pending">
           {names.length} pillar{names.length === 1 ? '' : 's'} skipped

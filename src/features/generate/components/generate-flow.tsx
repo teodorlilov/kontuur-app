@@ -2,7 +2,8 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Users } from 'lucide-react'
+import { UsersGroupRoundedIcon } from '@solar-icons/react/line-duotone'
+import { Icon } from '@/components/ui/icon'
 import { toast } from '@/components/ui/toast'
 import { ActionLink } from '@/components/ui/action-link'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
@@ -497,7 +498,7 @@ function NoClientsState() {
   return (
     <EmptyState
       className="flex-1"
-      icon={<Users aria-hidden className="size-8" strokeWidth={1.4} />}
+      icon={<Icon glyph={UsersGroupRoundedIcon} size="hero" />}
       title="No clients yet"
       description="Add your first client before generating posts."
       action={<ActionLink href="/clients/new">Add your first client</ActionLink>}

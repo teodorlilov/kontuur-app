@@ -3,7 +3,14 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import * as Dialog from '@radix-ui/react-dialog'
-import { CornerDownLeft, Search, Sparkles, UserPlus, Users, type LucideIcon } from 'lucide-react'
+import { MagnifierIcon, ReplyIcon } from '@solar-icons/react/linear'
+import {
+  StarsIcon,
+  UserPlusRoundedIcon,
+  UsersGroupRoundedIcon,
+} from '@solar-icons/react/line-duotone'
+import type { Icon as Glyph } from '@solar-icons/react/lib/types'
+import { Icon } from '@/components/ui/icon'
 import { cn } from '@/utils/cn'
 import { getNavItems } from '@/components/layout/nav-items'
 
@@ -12,7 +19,7 @@ interface PaletteEntry {
   label: string
   hint: string
   href: string
-  icon: LucideIcon
+  icon: Glyph
 }
 
 interface CommandPaletteProps {
@@ -55,7 +62,7 @@ function PaletteBody({ onOpenChange, agencyMode, clients }: Omit<CommandPaletteP
       label: client.name,
       hint: 'Client settings',
       href: `/clients/${client.id}/edit`,
-      icon: Users,
+      icon: UsersGroupRoundedIcon,
     }))
     return [
       ...navEntries,
@@ -65,14 +72,14 @@ function PaletteBody({ onOpenChange, agencyMode, clients }: Omit<CommandPaletteP
         label: 'Generate posts',
         hint: 'Action',
         href: '/generate',
-        icon: Sparkles,
+        icon: StarsIcon,
       },
       {
         id: 'action:add-client',
         label: 'Add client',
         hint: 'Action',
         href: '/clients/new',
-        icon: UserPlus,
+        icon: UserPlusRoundedIcon,
       },
     ]
   }, [agencyMode, clients])
@@ -126,7 +133,7 @@ function PaletteBody({ onOpenChange, agencyMode, clients }: Omit<CommandPaletteP
     >
       <Dialog.Title className="sr-only">Search Kontuur</Dialog.Title>
       <div className="flex items-center gap-2.5 border-b border-line px-4 py-3.5">
-        <Search size={15} className="shrink-0 text-text3" />
+        <Icon glyph={MagnifierIcon} className="shrink-0 text-text3" />
         <input
           autoFocus
           value={query}
@@ -147,7 +154,6 @@ function PaletteBody({ onOpenChange, agencyMode, clients }: Omit<CommandPaletteP
           <p className="px-2 py-6 text-center text-body text-text3">Nothing matches “{query}”.</p>
         ) : (
           results.map((entry, index) => {
-            const Icon = entry.icon
             const isActive = index === highlighted
             return (
               <button
@@ -162,12 +168,13 @@ function PaletteBody({ onOpenChange, agencyMode, clients }: Omit<CommandPaletteP
                 )}
               >
                 <Icon
-                  size={14}
+                  glyph={entry.icon}
+                  size="sm"
                   className={cn('shrink-0', isActive ? 'text-forest' : 'text-text3')}
                 />
                 <span className="flex-1 truncate text-body text-ink">{entry.label}</span>
                 <span className="text-micro text-text3">{entry.hint}</span>
-                {isActive && <CornerDownLeft size={12} className="text-text3" />}
+                {isActive && <Icon glyph={ReplyIcon} size="xs" className="text-text3" />}
               </button>
             )
           })

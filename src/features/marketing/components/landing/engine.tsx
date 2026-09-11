@@ -2,7 +2,8 @@
 
 import { useCallback, useState } from 'react'
 import Image from 'next/image'
-import { Check, RotateCcw } from 'lucide-react'
+import { RestartIcon, UnreadIcon } from '@solar-icons/react/linear'
+import { Icon } from '@/components/ui/icon'
 import { cn } from '@/utils/cn'
 import { useSectionLoop } from '../../hooks/use-section-loop'
 import { useTypewriter } from '../../hooks/use-typewriter'
@@ -126,7 +127,7 @@ export function Engine() {
           onClick={runAgain}
           className="inline-flex items-center gap-2 rounded-full border border-line2 px-3.5 py-2 text-caption text-text2 transition-colors duration-150 ease-contour hover:border-forest hover:bg-wash hover:text-forest focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-spring"
         >
-          <RotateCcw size={13} aria-hidden />
+          <Icon glyph={RestartIcon} size="sm" />
           Run it again
         </button>
       </div>
@@ -166,7 +167,7 @@ export function Engine() {
                             phase >= 3 ? 'scale-100 opacity-100' : 'scale-90 opacity-0'
                           )}
                         >
-                          <Check size={10} strokeWidth={2.6} aria-hidden />
+                          <Icon glyph={UnreadIcon} size="xs" />
                           {check}
                         </span>
                       ))}

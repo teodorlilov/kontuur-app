@@ -1,21 +1,22 @@
 'use client'
 
 import {
-  ArrowDownToLine,
-  ArrowUpToLine,
-  Crop,
-  Eraser,
-  FlipHorizontal2,
-  FlipVertical2,
-  ImageDown,
-  Layers,
-  Minus,
-  Move3d,
-  SprayCan,
-  Squircle,
-  Trash2,
-  Wand2,
-} from 'lucide-react'
+  CropIcon,
+  EraserIcon,
+  ExportIcon,
+  FlipHorizontalIcon,
+  FlipVerticalIcon,
+  FullScreenIcon,
+  GalleryDownloadIcon,
+  ImportIcon,
+  LayersIcon,
+  MagicWand2Icon,
+  MinusIcon,
+  ScissorsIcon,
+  StopIcon,
+  TrashBinTrashIcon,
+} from '@solar-icons/react/linear'
+import { Icon } from '@/components/ui/icon'
 import { cn } from '@/utils/cn'
 import { isImageNode, isShapeNode, isTextNode } from '@/lib/canvas/doc-nodes'
 import type {
@@ -94,7 +95,7 @@ function MultiToolbar({ selectedIds, ...props }: SelectionToolbarProps) {
   return (
     <>
       <span className="inline-flex items-center gap-1.5 font-sans text-caption text-text2">
-        <Layers size={14} aria-hidden /> Several objects selected
+        <Icon glyph={LayersIcon} size="sm" /> Several objects selected
       </span>
       <span className={TOOLBAR_DIVIDER} aria-hidden />
       <span className="font-sans text-micro text-text3">
@@ -105,7 +106,7 @@ function MultiToolbar({ selectedIds, ...props }: SelectionToolbarProps) {
           the primary node while claiming to remove them all. */}
       <IconAction
         label={`Delete ${selectedIds.length} objects`}
-        icon={<Trash2 size={15} aria-hidden />}
+        icon={<Icon glyph={TrashBinTrashIcon} />}
         onClick={() => props.onRemoveNodes(selectedIds)}
       />
     </>
@@ -117,7 +118,7 @@ function AssetToolbar({ node, ...props }: SelectionToolbarProps & { node: Canvas
     <>
       <SliderPopover
         label="Opacity"
-        icon={<Move3d size={15} aria-hidden />}
+        icon={<Icon glyph={FullScreenIcon} />}
         readout={`${Math.round((node.opacity ?? 1) * 100)}%`}
         min={0.1}
         max={1}
@@ -129,13 +130,13 @@ function AssetToolbar({ node, ...props }: SelectionToolbarProps & { node: Canvas
       <IconAction
         label="Flip horizontally"
         pressed={node.flipX === true}
-        icon={<FlipHorizontal2 size={15} aria-hidden />}
+        icon={<Icon glyph={FlipHorizontalIcon} />}
         onClick={() => props.onAssetChange(node.id, { flipX: !node.flipX || undefined })}
       />
       <IconAction
         label="Flip vertically"
         pressed={node.flipY === true}
-        icon={<FlipVertical2 size={15} aria-hidden />}
+        icon={<Icon glyph={FlipVerticalIcon} />}
         onClick={() => props.onAssetChange(node.id, { flipY: !node.flipY || undefined })}
       />
 
@@ -153,7 +154,7 @@ function AssetToolbar({ node, ...props }: SelectionToolbarProps & { node: Canvas
         title="Keep the subject of this picture and drop what is behind it — instant on a flat colour, otherwise AI does it"
         onClick={props.onRemoveNodeBackground}
       >
-        <SprayCan size={14} aria-hidden /> Cut out subject
+        <Icon glyph={ScissorsIcon} size="sm" /> Cut out subject
       </button>
       {/* The ellipsis is doing real work: this one opens a brush, and nothing changes until you
           have painted over the picture and pressed Apply. Without it the label promised an action
@@ -164,7 +165,7 @@ function AssetToolbar({ node, ...props }: SelectionToolbarProps & { node: Canvas
         title="Paint over the parts of this picture you want rubbed away, then press Apply"
         onClick={props.onEraseSelected}
       >
-        <Eraser size={14} aria-hidden /> Rub out parts&hellip;
+        <Icon glyph={EraserIcon} size="sm" /> Rub out parts&hellip;
       </button>
       {/* The rail's "Repair or replace a zone" for a placed picture instead of the slide's own —
           same brush, same prompt, same model, aimed at whatever is selected. */}
@@ -174,7 +175,7 @@ function AssetToolbar({ node, ...props }: SelectionToolbarProps & { node: Canvas
         title="Paint over part of this picture and describe what belongs there instead"
         onClick={props.onRepairSelected}
       >
-        <Wand2 size={14} aria-hidden /> Repair a zone&hellip;
+        <Icon glyph={MagicWand2Icon} size="sm" /> Repair a zone&hellip;
       </button>
       <button
         type="button"
@@ -182,7 +183,7 @@ function AssetToolbar({ node, ...props }: SelectionToolbarProps & { node: Canvas
         title="Make this picture the slide's background image"
         onClick={props.onSetNodeAsBackground}
       >
-        <ImageDown size={14} aria-hidden /> Use as slide background
+        <Icon glyph={GalleryDownloadIcon} size="sm" /> Use as slide background
       </button>
 
       <span className="flex-1" />
@@ -191,7 +192,7 @@ function AssetToolbar({ node, ...props }: SelectionToolbarProps & { node: Canvas
       <OrderControls id={node.id} {...props} />
       <IconAction
         label="Delete this picture"
-        icon={<Trash2 size={15} aria-hidden />}
+        icon={<Icon glyph={TrashBinTrashIcon} />}
         onClick={() => props.onRemoveNodes([node.id])}
       />
     </>
@@ -226,7 +227,7 @@ function ShapeToolbar({ node, ...props }: SelectionToolbarProps & { node: Canvas
       />
       <SliderPopover
         label={node.kind === 'line' ? 'Thickness' : 'Outline width'}
-        icon={<Minus size={15} aria-hidden />}
+        icon={<Icon glyph={MinusIcon} />}
         readout={`${node.strokeWidth ?? 0}px`}
         min={node.kind === 'line' ? 1 : 0}
         max={40}
@@ -237,7 +238,7 @@ function ShapeToolbar({ node, ...props }: SelectionToolbarProps & { node: Canvas
       {node.kind === 'rect' && (
         <SliderPopover
           label="Corner radius"
-          icon={<Squircle size={15} aria-hidden />}
+          icon={<Icon glyph={StopIcon} />}
           readout={`${node.cornerRadius ?? 0}px`}
           min={0}
           max={200}
@@ -248,7 +249,7 @@ function ShapeToolbar({ node, ...props }: SelectionToolbarProps & { node: Canvas
       )}
       <SliderPopover
         label="Opacity"
-        icon={<Move3d size={15} aria-hidden />}
+        icon={<Icon glyph={FullScreenIcon} />}
         readout={`${Math.round((node.opacity ?? 1) * 100)}%`}
         min={0.1}
         max={1}
@@ -261,7 +262,7 @@ function ShapeToolbar({ node, ...props }: SelectionToolbarProps & { node: Canvas
       <OrderControls id={node.id} {...props} />
       <IconAction
         label="Delete this shape"
-        icon={<Trash2 size={15} aria-hidden />}
+        icon={<Icon glyph={TrashBinTrashIcon} />}
         onClick={() => props.onRemoveNodes([node.id])}
       />
     </>
@@ -281,7 +282,7 @@ function CanvasToolbar(props: SelectionToolbarProps) {
         title="Pan and zoom the background inside the frame"
         onClick={props.onToggleReposition}
       >
-        <Crop size={14} aria-hidden /> Reposition
+        <Icon glyph={CropIcon} size="sm" /> Reposition
       </button>
 
       <span className={TOOLBAR_DIVIDER} aria-hidden />
@@ -309,12 +310,12 @@ function OrderControls({
     <div className="flex items-center gap-0.5" role="group" aria-label="Stacking order">
       <IconAction
         label="Bring forward (⌘])"
-        icon={<ArrowUpToLine size={15} aria-hidden />}
+        icon={<Icon glyph={ExportIcon} />}
         onClick={() => onMoveNode(id, 'up')}
       />
       <IconAction
         label="Send backward (⌘[)"
-        icon={<ArrowDownToLine size={15} aria-hidden />}
+        icon={<Icon glyph={ImportIcon} />}
         onClick={() => onMoveNode(id, 'down')}
       />
     </div>

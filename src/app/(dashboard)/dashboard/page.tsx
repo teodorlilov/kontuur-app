@@ -1,4 +1,10 @@
-import { BarChart2, Calendar, CircleCheck, Users } from 'lucide-react'
+import {
+  CalendarIcon,
+  ChartIcon,
+  CheckCircleIcon,
+  UsersGroupRoundedIcon,
+} from '@solar-icons/react/line-duotone'
+import { Icon } from '@/components/ui/icon'
 import { requireSessionUser } from '@/lib/auth/session'
 import {
   getCachedAgency,
@@ -69,7 +75,7 @@ export default async function DashboardPage() {
               dark
               label="Scheduled this week"
               value={metrics.scheduledThisWeek}
-              icon={<Calendar size={16} />}
+              icon={<Icon glyph={CalendarIcon} size="lg" />}
               pill={{
                 text: `${coveredDays} of ${DAYS_PER_WEEK} days covered`,
                 tone: 'positive',
@@ -83,7 +89,7 @@ export default async function DashboardPage() {
             <StatCard
               label={isSolo ? 'Drafts to review' : 'Pending review'}
               value={metrics.pendingCount}
-              icon={<CircleCheck size={16} />}
+              icon={<Icon glyph={CheckCircleIcon} size="lg" />}
               pill={
                 metrics.pendingCount > 0
                   ? { text: 'Needs attention', tone: 'attention' }
@@ -101,7 +107,7 @@ export default async function DashboardPage() {
             <StatCard
               label={isSolo ? 'Platforms connected' : 'Active clients'}
               value={isSolo ? metrics.connectedClientCount : clients.length}
-              icon={<Users size={16} />}
+              icon={<Icon glyph={UsersGroupRoundedIcon} size="lg" />}
               pill={
                 metrics.clientsAddedThisMonth > 0
                   ? { text: `+${metrics.clientsAddedThisMonth} this month`, tone: 'positive' }
@@ -129,7 +135,7 @@ export default async function DashboardPage() {
         {data.changeRequests.length > 0 && (
           <section className="rv mt-4 [--d:140ms]">
             <div className="flex items-center justify-between gap-3">
-              <SectionHeading icon={<BarChart2 size={14} />} tone="marker">
+              <SectionHeading icon={<Icon glyph={ChartIcon} size="sm" />} tone="marker">
                 Change requests
               </SectionHeading>
               <span className="rounded-full bg-marker px-2.5 py-[3px] text-caption font-semibold text-forest-deep">

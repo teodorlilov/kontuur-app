@@ -1,6 +1,7 @@
 'use client'
 
-import { Clock, Check, MessageCircle } from 'lucide-react'
+import { ChatRoundIcon, ClockCircleIcon, UnreadIcon } from '@solar-icons/react/linear'
+import { Icon } from '@/components/ui/icon'
 import { cn } from '@/utils/cn'
 import { postTypeLabel } from '@/features/review/lib/queue-post'
 import { ActiveBar, CaptionPreview } from '@/components/posts/post-list-parts'
@@ -23,7 +24,8 @@ interface PostListItemProps {
 /** Small status badge showing pending / approved / feedback sent. */
 function ApprovalStatusBadge({ status }: { status: ApprovalPostStatus }) {
   const s = APPROVAL_STATUS_STYLES[status]
-  const Icon = status === 'pending' ? Clock : status === 'approved' ? Check : MessageCircle
+  const glyph =
+    status === 'pending' ? ClockCircleIcon : status === 'approved' ? UnreadIcon : ChatRoundIcon
   return (
     // tracking-normal: cancels the Label role's built-in 0.16em — a badge this
     // small reads as a word, and 1.6px of tracking pulls it apart.
@@ -31,7 +33,7 @@ function ApprovalStatusBadge({ status }: { status: ApprovalPostStatus }) {
       className="inline-flex items-center gap-1 rounded-xs px-[7px] py-0.5 text-label font-medium tracking-normal"
       style={{ background: s.bg, color: s.color }}
     >
-      <Icon size={9} />
+      <Icon glyph={glyph} size="xs" />
       {s.label}
     </div>
   )

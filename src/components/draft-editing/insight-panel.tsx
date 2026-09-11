@@ -1,7 +1,14 @@
 'use client'
 
 import { useState } from 'react'
-import { AlertCircle, Check, ChevronDown, X, ExternalLink } from 'lucide-react'
+import {
+  AltArrowDownIcon,
+  CloseIcon,
+  DangerCircleIcon,
+  SquareTopUpIcon,
+  UnreadIcon,
+} from '@solar-icons/react/linear'
+import { Icon } from '@/components/ui/icon'
 import { cn } from '@/utils/cn'
 import { toSourceHost } from '@/utils/url'
 import { StatusPill } from '@/components/ui/status-pill'
@@ -157,7 +164,7 @@ export function InsightPanel({
               rel="noopener noreferrer"
               className="mt-4 inline-flex items-center gap-1.5 text-caption font-medium text-spring-text hover:underline"
             >
-              <ExternalLink aria-hidden className="size-3" strokeWidth={1.8} />
+              <Icon glyph={SquareTopUpIcon} size="xs" />
               Open source
             </a>
           )}
@@ -179,15 +186,16 @@ export function InsightPanel({
             onClick={() => setShowFixes((v) => !v)}
             className="flex w-full items-center gap-2 text-left"
           >
-            <Check aria-hidden className="size-3.5 flex-none text-forest" strokeWidth={2} />
+            <Icon glyph={UnreadIcon} size="sm" className="flex-none text-forest" />
             <span className="min-w-0 flex-1 text-caption text-text2">
               {appliedFixes.length} language fix{appliedFixes.length === 1 ? '' : 'es'} applied
               automatically
             </span>
-            <ChevronDown
-              aria-hidden
+            <Icon
+              glyph={AltArrowDownIcon}
+              size="xs"
               className={cn(
-                'size-3 flex-none text-text3 transition-transform duration-150 ease-contour',
+                'flex-none text-text3 transition-transform duration-150 ease-contour',
                 showFixes && 'rotate-180'
               )}
             />
@@ -211,7 +219,7 @@ export function InsightPanel({
       {unappliedFixes.length > 0 && (
         <section className="border-t border-line p-4">
           <div className="flex items-center gap-2">
-            <AlertCircle aria-hidden className="size-3.5 flex-none text-pending" strokeWidth={2} />
+            <Icon glyph={DangerCircleIcon} size="sm" className="flex-none text-pending" />
             <span className="min-w-0 flex-1 text-caption text-text2">
               {unappliedFixes.length} language issue{unappliedFixes.length === 1 ? '' : 's'} could
               not be fixed automatically — check the copy
@@ -275,13 +283,12 @@ function FlagGroup({ title, children }: { title: string; children: React.ReactNo
 }
 
 function Flag({ tone, children }: { tone: 'warn' | 'bad'; children: React.ReactNode }) {
-  const Icon = tone === 'bad' ? X : AlertCircle
   return (
     <p className="flex items-start gap-2 text-caption text-text2">
       <Icon
-        aria-hidden
-        className={cn('mt-0.5 size-3 flex-none', tone === 'bad' ? 'text-danger' : 'text-pending')}
-        strokeWidth={1.8}
+        glyph={tone === 'bad' ? CloseIcon : DangerCircleIcon}
+        size="xs"
+        className={cn('mt-0.5 flex-none', tone === 'bad' ? 'text-danger' : 'text-pending')}
       />
       <span className="min-w-0 flex-1">{children}</span>
     </p>

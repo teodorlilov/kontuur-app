@@ -1,6 +1,7 @@
 'use client'
 
-import { Check, MessageCircle } from 'lucide-react'
+import { ChatRoundIcon, UnreadIcon } from '@solar-icons/react/linear'
+import { Icon } from '@/components/ui/icon'
 import type { ApprovalPostStatus } from './types'
 
 interface ActionBarProps {
@@ -20,7 +21,11 @@ function StatusMessage({ status }: { status: 'approved' | 'changes_requested' })
       className="flex flex-1 items-center gap-2 text-caption font-medium"
       style={{ color: isApproved ? 'var(--spring-text)' : 'var(--forest)' }}
     >
-      {isApproved ? <Check size={14} /> : <MessageCircle size={14} />}
+      {isApproved ? (
+        <Icon glyph={UnreadIcon} size="sm" />
+      ) : (
+        <Icon glyph={ChatRoundIcon} size="sm" />
+      )}
       {isApproved
         ? 'This post has been approved'
         : 'Feedback sent — waiting for the agency to update'}
@@ -49,7 +54,7 @@ export function ActionBar({
             disabled={isSubmitting}
             style={{ opacity: isSubmitting ? 0.7 : 1 }}
           >
-            <MessageCircle size={12} />
+            <Icon glyph={ChatRoundIcon} size="xs" />
             Request changes
           </button>
 
@@ -59,7 +64,7 @@ export function ActionBar({
             disabled={isSubmitting}
             style={{ opacity: isSubmitting ? 0.7 : 1 }}
           >
-            <Check size={12} />
+            <Icon glyph={UnreadIcon} size="xs" />
             Approve this post
           </button>
         </>

@@ -1,7 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { Check } from 'lucide-react'
+import { UnreadIcon } from '@solar-icons/react/linear'
+import { Icon } from '@/components/ui/icon'
 import { cn } from '@/utils/cn'
 import { Modal } from '@/components/ui/modal'
 import { Button } from '@/components/ui/button'
@@ -201,11 +202,7 @@ function OptionCard({
           <span className="block text-body font-medium text-ink">{title}</span>
           <span className="mt-0.5 block text-caption text-text2">{sub}</span>
         </span>
-        <Check
-          aria-hidden
-          className={cn('size-4 flex-none text-forest', !checked && 'opacity-0')}
-          strokeWidth={2}
-        />
+        <Icon glyph={UnreadIcon} className={cn('flex-none text-forest', !checked && 'opacity-0')} />
       </span>
       {children}
     </div>

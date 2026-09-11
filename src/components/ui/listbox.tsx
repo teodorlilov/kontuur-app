@@ -2,7 +2,8 @@
 
 import { useRef, useState } from 'react'
 import * as Popover from '@radix-ui/react-popover'
-import { Check } from 'lucide-react'
+import { UnreadIcon } from '@solar-icons/react/linear'
+import { Icon } from '@/components/ui/icon'
 import { cn } from '@/utils/cn'
 import { focusableItems, rovingFocus } from './roving-focus'
 
@@ -117,10 +118,10 @@ export function Listbox<T extends string>({
                     </span>
                   )}
                 </span>
-                <Check
-                  aria-hidden
-                  className={cn('size-3.5 flex-none text-forest', !isSelected && 'opacity-0')}
-                  strokeWidth={2}
+                <Icon
+                  glyph={UnreadIcon}
+                  size="sm"
+                  className={cn('flex-none text-forest', !isSelected && 'opacity-0')}
                 />
               </button>
             )

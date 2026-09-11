@@ -2,7 +2,9 @@
 
 import { useMemo, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { MessageCircle, RefreshCw } from 'lucide-react'
+import { RefreshIcon } from '@solar-icons/react/linear'
+import { ChatRoundIcon } from '@solar-icons/react/line-duotone'
+import { Icon } from '@/components/ui/icon'
 import { PageHeader, HeaderMeta, MetaFlag } from '@/components/layout/page-header/page-header'
 import { PAGE_SHELL } from '@/components/layout/page-header/shared'
 import { TabRail, type TabItem } from '@/components/layout/page-header/tab-rail'
@@ -258,7 +260,7 @@ export function CommentsView({
                 loading={checking}
                 onClick={() => checkNow(selectedClientId)}
               >
-                <RefreshCw size={13} aria-hidden="true" />
+                <Icon glyph={RefreshIcon} size="sm" />
                 Check now
               </Button>
             ) : (
@@ -268,7 +270,7 @@ export function CommentsView({
                 loading={refreshing}
                 onClick={() => startRefresh(() => router.refresh())}
               >
-                <RefreshCw size={13} aria-hidden="true" />
+                <Icon glyph={RefreshIcon} size="sm" />
                 Reload
               </Button>
             )}
@@ -311,7 +313,7 @@ export function CommentsView({
 
         {visible.length === 0 && !active ? (
           <EmptyState
-            icon={<MessageCircle size={18} aria-hidden="true" />}
+            icon={<Icon glyph={ChatRoundIcon} size="lg" />}
             title={emptyTitle(tab)}
             description={emptyDescription(tab, groups.length > 0)}
           />
@@ -323,7 +325,7 @@ export function CommentsView({
             <div className="flex flex-col gap-3">
               {visible.length === 0 ? (
                 <EmptyState
-                  icon={<MessageCircle size={18} aria-hidden="true" />}
+                  icon={<Icon glyph={ChatRoundIcon} size="lg" />}
                   title={emptyTitle(tab)}
                   description={emptyDescription(tab, groups.length > 0)}
                 />

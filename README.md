@@ -11,7 +11,7 @@ AI-powered social media content platform for marketing agencies. Generate, revie
 - **Framework:** Next.js 16 (App Router), React 19, TypeScript (strict)
 - **Database & Auth:** Supabase (PostgreSQL + Row Level Security + Auth)
 - **AI:** Anthropic Claude API (claude-sonnet-4-5)
-- **Styling:** Tailwind CSS 4, Lucide React icons
+- **Styling:** Tailwind CSS 4, Solar icons (`@solar-icons/react`; drawings by 480 Design, CC BY 4.0 — credited in the site footer)
 - **Email:** Resend
 - **Charts:** Recharts
 - **PDF:** jsPDF, pdf-parse

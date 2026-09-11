@@ -1,6 +1,7 @@
 'use client'
 
-import { Image as ImageIcon, GalleryHorizontalEnd } from 'lucide-react'
+import { GalleryIcon, GalleryWideIcon } from '@solar-icons/react/line-duotone'
+import { Icon } from '@/components/ui/icon'
 import { cn } from '@/utils/cn'
 import type { PostType } from '@/types/api'
 
@@ -31,14 +32,14 @@ export function FormatCards({ value, slideCount, onChange }: FormatCardsProps) {
       type: 'single',
       title: 'Single image',
       sub: 'One caption, one composed visual',
-      icon: <ImageIcon aria-hidden className="size-4" strokeWidth={1.6} />,
+      icon: <Icon glyph={GalleryIcon} />,
       disabled: false,
     },
     {
       type: 'carousel',
       title: 'Carousel',
       sub: carouselAvailable ? `${slideCount} slides, a visual on each` : 'Instagram only',
-      icon: <GalleryHorizontalEnd aria-hidden className="size-4" strokeWidth={1.6} />,
+      icon: <Icon glyph={GalleryWideIcon} />,
       disabled: !carouselAvailable,
     },
   ]

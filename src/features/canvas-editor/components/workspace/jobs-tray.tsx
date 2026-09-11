@@ -2,7 +2,8 @@
 
 import { useState } from 'react'
 import * as Popover from '@radix-ui/react-popover'
-import { ChevronDown } from 'lucide-react'
+import { AltArrowDownIcon } from '@solar-icons/react/linear'
+import { Icon } from '@/components/ui/icon'
 import { cn } from '@/utils/cn'
 import { Spinner } from '@/components/ui/spinner'
 import type { EditorJob, EditorJobs } from '../../hooks/use-editor-jobs'
@@ -40,7 +41,7 @@ export function JobsTray({ jobs, discard }: Pick<EditorJobs, 'jobs' | 'discard'>
           {/* One job names itself; several are counted. A list of labels in a header would push the
               Save button off a narrow window, and the popover is one click away either way. */}
           {jobs.length === 1 ? first.label : `${jobs.length} running`}
-          <ChevronDown size={13} aria-hidden />
+          <Icon glyph={AltArrowDownIcon} size="sm" />
         </button>
       </Popover.Trigger>
       <Popover.Portal>

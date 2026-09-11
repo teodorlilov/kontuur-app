@@ -1,6 +1,7 @@
 'use client'
 
-import { Copy, ChevronLeft, ChevronRight } from 'lucide-react'
+import { AltArrowLeftIcon, AltArrowRightIcon, CopyIcon } from '@solar-icons/react/linear'
+import { Icon } from '@/components/ui/icon'
 import { postTypeLabel } from '@/features/review/lib/queue-post'
 import { getPillarColor } from '@/components/ui/colors/identity-colors'
 import { formatScheduleDate } from '@/utils/format'
@@ -48,7 +49,7 @@ function NavButton({
   disabled: boolean
   onClick: () => void
 }) {
-  const Icon = direction === 'prev' ? ChevronLeft : ChevronRight
+  const glyph = direction === 'prev' ? AltArrowLeftIcon : AltArrowRightIcon
   return (
     <button
       className="flex h-7 w-7 items-center justify-center rounded-[6px] border border-ink/12 bg-surface transition-opacity duration-120 ease-[ease]"
@@ -59,7 +60,7 @@ function NavButton({
         opacity: disabled ? 0.35 : 1,
       }}
     >
-      <Icon size={14} color="var(--text2)" />
+      <Icon glyph={glyph} size="sm" className="text-text2" />
     </button>
   )
 }
@@ -126,7 +127,7 @@ function CaptionCard({ caption }: { caption: string | null }) {
           className="flex cursor-pointer items-center gap-1 border-0 bg-transparent text-label font-medium tracking-normal text-spring-text"
           onClick={() => navigator.clipboard?.writeText(caption)}
         >
-          <Copy size={10} />
+          <Icon glyph={CopyIcon} size="xs" />
           Copy
         </button>
       </div>

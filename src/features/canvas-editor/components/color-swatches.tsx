@@ -1,7 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { Pipette } from 'lucide-react'
+import { PipetteIcon } from '@solar-icons/react/linear'
+import { Icon } from '@/components/ui/icon'
 import { cn } from '@/utils/cn'
 import type { Palette } from '@/types/visual'
 import { EDITOR_LABEL } from './workspace/chrome'
@@ -102,7 +103,7 @@ function EyedropperButton({ onPick }: { onPick: (hex: string) => void }) {
       }}
       className="inline-flex size-7 cursor-pointer items-center justify-center rounded-xs border border-line2 bg-paper text-text2 hover:text-ink"
     >
-      <Pipette size={13} aria-hidden />
+      <Icon glyph={PipetteIcon} size="sm" />
     </button>
   )
 }

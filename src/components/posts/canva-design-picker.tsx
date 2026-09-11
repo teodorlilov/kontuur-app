@@ -1,9 +1,11 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { Search, Loader2, Image as ImageIcon } from 'lucide-react'
+import { GalleryIcon, MagnifierIcon } from '@solar-icons/react/linear'
+import { Icon } from '@/components/ui/icon'
 import { cn } from '@/utils/cn'
 import { Modal } from '@/components/ui/modal'
+import { Spinner } from '@/components/ui/spinner'
 import { mapImageRow } from '@/lib/posts/map-image-row'
 import type { PostImage } from '@/types/api'
 
@@ -109,7 +111,7 @@ export function CanvaDesignPicker({
       {/* Search bar */}
       <form onSubmit={handleSearch} className="mb-4">
         <div className="flex items-center gap-2 rounded-sm border border-line2 bg-sunken px-3 py-2">
-          <Search className="h-3.5 w-3.5 shrink-0 text-text2" />
+          <Icon glyph={MagnifierIcon} size="sm" className="shrink-0 text-text2" />
           <input
             className="flex-1 border-0 bg-transparent text-body text-ink"
             type="text"
@@ -145,7 +147,7 @@ export function CanvaDesignPicker({
 
       {loading && (
         <div className="flex justify-center p-6 text-text2">
-          <Loader2 className="h-5 w-5 animate-spin" />
+          <Spinner className="text-text2" />
         </div>
       )}
 
@@ -201,7 +203,7 @@ function DesignCard({
       {/* Thumbnail */}
       <div className="flex aspect-[4/5] w-full items-center justify-center overflow-hidden bg-sunken">
         {isImporting ? (
-          <Loader2 className="h-5 w-5 animate-spin text-forest" />
+          <Spinner />
         ) : design.thumbnailUrl ? (
           // Deliberately a plain <img>. Canva serves these thumbnails from a signed,
           // expiring URL on a host it rotates, so `next/image` would need a wildcard
@@ -215,7 +217,7 @@ function DesignCard({
             alt={design.title}
           />
         ) : (
-          <ImageIcon className="h-6 w-6 text-text2" />
+          <Icon glyph={GalleryIcon} size="hero" className="text-text2" />
         )}
       </div>
 

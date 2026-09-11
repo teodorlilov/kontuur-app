@@ -1,6 +1,7 @@
 'use client'
 
-import { Check } from 'lucide-react'
+import { UnreadIcon } from '@solar-icons/react/linear'
+import { Icon } from '@/components/ui/icon'
 import { cn } from '@/utils/cn'
 import { Spinner } from '@/components/ui/spinner'
 import { StatusPill } from '@/components/ui/status-pill'
@@ -131,7 +132,7 @@ function PhaseBox({
               : 'bg-sunken'
         )}
       >
-        {state === 'done' && <Check aria-hidden className="size-3" strokeWidth={2.4} />}
+        {state === 'done' && <Icon glyph={UnreadIcon} size="xs" />}
         {/* h/w rather than size-*: they conflict 1:1 with the Spinner's own
             h-4 w-4, so tailwind-merge reliably lets these win. */}
         {state === 'active' && <Spinner size="sm" className="h-3 w-3 text-white" />}

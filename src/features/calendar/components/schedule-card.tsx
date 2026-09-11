@@ -1,7 +1,14 @@
 'use client'
 
 import { memo, useState, useEffect, useCallback, useMemo } from 'react'
-import { X, ChevronLeft, ChevronRight, Copy, Mail } from 'lucide-react'
+import {
+  AltArrowLeftIcon,
+  AltArrowRightIcon,
+  CloseIcon,
+  CopyIcon,
+  LetterIcon,
+} from '@solar-icons/react/linear'
+import { Icon } from '@/components/ui/icon'
 import { cn } from '@/utils/cn'
 import { toast } from '@/components/ui/toast'
 import { watchPublishOutcome } from '@/features/publishing/lib/watch-publish'
@@ -451,14 +458,14 @@ export const ScheduleCard = memo(function ScheduleCard({
               {postIndex >= 0 && (
                 <div className="flex items-center gap-[5px]">
                   <NavBtn onClick={onPrev} disabled={postIndex === 0}>
-                    <ChevronLeft className="size-3" />
+                    <Icon glyph={AltArrowLeftIcon} size="xs" />
                   </NavBtn>
                   {/* tracking-normal cancels the Label role's built-in 0.16em. */}
                   <span className="text-label tracking-normal text-text2">
                     {postIndex + 1} of {totalPosts}
                   </span>
                   <NavBtn onClick={onNext} disabled={postIndex === totalPosts - 1}>
-                    <ChevronRight className="size-3" />
+                    <Icon glyph={AltArrowRightIcon} size="xs" />
                   </NavBtn>
                 </div>
               )}
@@ -467,7 +474,7 @@ export const ScheduleCard = memo(function ScheduleCard({
                 onClick={onClose}
                 className="flex size-7 cursor-pointer items-center justify-center rounded-[7px] border border-line2 bg-surface text-text2"
               >
-                <X className="size-3.5" />
+                <Icon glyph={CloseIcon} size="sm" />
               </button>
             </div>
           </div>
@@ -588,7 +595,7 @@ export const ScheduleCard = memo(function ScheduleCard({
                   type="button"
                   onClick={handleCopyCaption}
                 >
-                  <Copy className="size-2.5" />
+                  <Icon glyph={CopyIcon} size="xs" />
                   Copy
                 </button>
               </div>
@@ -1110,7 +1117,7 @@ function NormalFooter({
               disabled={approvalSending}
               loading={approvalSending}
             >
-              <Mail className="size-3" /> Send for approval
+              <Icon glyph={LetterIcon} size="xs" /> Send for approval
             </Button>
           )}
         </>

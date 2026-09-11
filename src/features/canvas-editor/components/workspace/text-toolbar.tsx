@@ -1,14 +1,15 @@
 'use client'
 
 import {
-  AlignCenter,
-  AlignLeft,
-  AlignRight,
-  CaseUpper,
-  Highlighter,
-  Italic,
-  RotateCw,
-} from 'lucide-react'
+  AlignHorizontalCenterIcon,
+  AlignLeftIcon,
+  AlignRightIcon,
+  PaintRollerIcon,
+  RestartIcon,
+  TextFieldIcon,
+  TextItalicIcon,
+} from '@solar-icons/react/linear'
+import { Icon } from '@/components/ui/icon'
 import { cn } from '@/utils/cn'
 import { getFontEntry } from '@/lib/canvas/font-library'
 import { CANVAS_FONT_WEIGHTS } from '@/types/canvas'
@@ -21,7 +22,11 @@ import { TextEffectsPopover } from './text-effects-popover'
 import { ColorPopover } from './toolbar-controls'
 
 const WEIGHT_FALLBACK: CanvasFontWeight[] = [400, 700]
-const ALIGN_ICONS = { left: AlignLeft, center: AlignCenter, right: AlignRight } as const
+const ALIGN_ICONS = {
+  left: AlignLeftIcon,
+  center: AlignHorizontalCenterIcon,
+  right: AlignRightIcon,
+} as const
 
 interface TextToolbarProps {
   node: CanvasTextNode
@@ -68,7 +73,7 @@ export function TextToolbar({ node, palette, onChange }: TextToolbarProps) {
 
       <div className="flex items-center gap-0.5" role="group" aria-label="Alignment">
         {(Object.keys(ALIGN_ICONS) as Array<keyof typeof ALIGN_ICONS>).map((align) => {
-          const Icon = ALIGN_ICONS[align]
+          const glyph = ALIGN_ICONS[align]
           return (
             <button
               key={align}
@@ -79,7 +84,7 @@ export function TextToolbar({ node, palette, onChange }: TextToolbarProps) {
               onClick={() => onChange({ align })}
               className={cn(EDITOR_ICON_BUTTON, node.align === align && EDITOR_PRESSED)}
             >
-              <Icon size={15} aria-hidden />
+              <Icon glyph={glyph} />
             </button>
           )
         })}
@@ -98,7 +103,7 @@ export function TextToolbar({ node, palette, onChange }: TextToolbarProps) {
         label="UPPERCASE"
         pressed={node.uppercase ?? false}
         onChange={(uppercase) => onChange({ uppercase: uppercase || undefined })}
-        icon={<CaseUpper size={15} aria-hidden />}
+        icon={<Icon glyph={TextFieldIcon} />}
       />
       <ToggleButton
         label="Italic"
@@ -107,7 +112,7 @@ export function TextToolbar({ node, palette, onChange }: TextToolbarProps) {
         disabled={!italicAvailable && !node.italic}
         title={italicAvailable ? 'Italic' : 'This font family has no italic face'}
         onChange={(italic) => onChange({ italic: italic || undefined })}
-        icon={<Italic size={15} aria-hidden />}
+        icon={<Icon glyph={TextItalicIcon} />}
       />
       <ToggleButton
         label="Marker highlight"
@@ -120,7 +125,7 @@ export function TextToolbar({ node, palette, onChange }: TextToolbarProps) {
             true
           )
         }
-        icon={<Highlighter size={15} aria-hidden />}
+        icon={<Icon glyph={PaintRollerIcon} />}
       />
       {node.highlight && (
         <ColorPopover
@@ -147,7 +152,7 @@ export function TextToolbar({ node, palette, onChange }: TextToolbarProps) {
       />
       <NumberField
         label="Rotation"
-        icon={<RotateCw size={13} aria-hidden />}
+        icon={<Icon glyph={RestartIcon} size="sm" />}
         value={Math.round(node.rotation ?? 0)}
         min={-180}
         max={180}

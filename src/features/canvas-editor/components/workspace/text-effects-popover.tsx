@@ -1,6 +1,7 @@
 'use client'
 
-import { Sparkles } from 'lucide-react'
+import { StarsIcon } from '@solar-icons/react/linear'
+import { Icon } from '@/components/ui/icon'
 import { cn } from '@/utils/cn'
 import {
   TEXT_EFFECT_PRESETS,
@@ -38,7 +39,7 @@ export function TextEffectsPopover({ node, onChange }: TextEffectsPopoverProps) 
 
   return (
     <ToolbarPopover
-      icon={<Sparkles size={16} aria-hidden />}
+      icon={<Icon glyph={StarsIcon} />}
       // The state travels in the label, which drives both `title` and `aria-label` — a second
       // aria attribute on a Radix trigger would announce it as a toggle, which it is not.
       label={activeLabel ? `Effects · ${activeLabel}` : 'Effects'}

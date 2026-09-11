@@ -3,7 +3,9 @@
 import { useState, useSyncExternalStore } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { ChevronLeft, LogOut, Menu, X } from 'lucide-react'
+import { AltArrowLeftIcon, CloseIcon, HamburgerMenuIcon } from '@solar-icons/react/linear'
+import { Logout2Icon } from '@solar-icons/react/line-duotone'
+import { Icon } from '@/components/ui/icon'
 import { toast } from '@/components/ui/toast'
 import { createBrowserSupabaseClient } from '@/lib/supabase/client'
 import { extractInitials } from '@/utils/format'
@@ -88,8 +90,6 @@ function SidebarLink({
 }) {
   const pathname = usePathname()
   const isActive = isNavItemActive(pathname, item.href)
-  const Icon = item.icon
-
   return (
     <Link
       href={item.href}
@@ -104,10 +104,11 @@ function SidebarLink({
             // plate a boundary — a lime silhouette on paper is only 1.35:1.
             'bg-accent font-semibold text-forest-deep shadow-[inset_0_0_0_1px_rgba(12,46,32,0.45)]'
           : 'text-text2 hover:translate-x-0.5 hover:bg-ink/[0.04] hover:text-ink',
+        isActive && 'icon-quiet',
         collapsed && 'justify-center px-0'
       )}
     >
-      <Icon size={15} className={cn('shrink-0', isActive ? 'text-forest-deep' : 'text-text3')} />
+      <Icon glyph={item.icon} size="lg" className="shrink-0 text-forest-deep" />
       {!collapsed && (
         <>
           <span className="flex-1 truncate">{item.label}</span>
@@ -196,7 +197,7 @@ function SidebarContent({
           onClick={onSignOut}
           className={cn(SIDEBAR_ROW, SIDEBAR_ROW_IDLE, collapsed && 'justify-center px-0')}
         >
-          <LogOut size={15} className="shrink-0 text-text3" />
+          <Icon glyph={Logout2Icon} size="lg" className="shrink-0 text-forest-deep" />
           {!collapsed && 'Sign out'}
         </button>
       </div>
@@ -277,8 +278,9 @@ export function Sidebar({
           aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
           className="absolute -right-3 top-6 z-10 grid size-[26px] place-items-center rounded-full border border-line bg-surface text-text2 shadow-pop transition-colors hover:text-forest"
         >
-          <ChevronLeft
-            size={12}
+          <Icon
+            glyph={AltArrowLeftIcon}
+            size="xs"
             className={cn(
               'transition-transform duration-300 ease-contour',
               collapsed && 'rotate-180'
@@ -294,7 +296,7 @@ export function Sidebar({
         onClick={() => setMobileOpen(true)}
         aria-label="Open menu"
       >
-        <Menu size={16} className="text-text2" />
+        <Icon glyph={HamburgerMenuIcon} className="text-text2" />
       </button>
 
       {mobileOpen && (
@@ -311,7 +313,7 @@ export function Sidebar({
               className="absolute right-4 top-4 z-10 text-text2"
               aria-label="Close menu"
             >
-              <X size={16} />
+              <Icon glyph={CloseIcon} />
             </button>
             <SidebarContent
               {...sharedProps}

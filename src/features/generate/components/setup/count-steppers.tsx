@@ -1,6 +1,7 @@
 'use client'
 
-import { Minus, Plus } from 'lucide-react'
+import { AddIcon, MinusIcon } from '@solar-icons/react/linear'
+import { Icon } from '@/components/ui/icon'
 import { MIN_CAROUSEL_SLIDES, MAX_CAROUSEL_SLIDES, POSTS_PER_RUN_OPTIONS } from '@/utils/constants'
 import type { PostType } from '@/types/api'
 
@@ -32,7 +33,7 @@ function Stepper({ value, min, max, decrementLabel, incrementLabel, onChange }: 
         onClick={() => onChange(value - 1)}
         className="grid size-7 place-items-center rounded-sm text-text2 transition-colors duration-150 ease-contour hover:bg-wash hover:text-forest disabled:pointer-events-none disabled:opacity-35"
       >
-        <Minus aria-hidden className="size-3" strokeWidth={1.8} />
+        <Icon glyph={MinusIcon} size="xs" />
       </button>
       <span className="min-w-8 text-center text-title font-semibold tabular-nums text-ink">
         {value}
@@ -44,7 +45,7 @@ function Stepper({ value, min, max, decrementLabel, incrementLabel, onChange }: 
         onClick={() => onChange(value + 1)}
         className="grid size-7 place-items-center rounded-sm text-text2 transition-colors duration-150 ease-contour hover:bg-wash hover:text-forest disabled:pointer-events-none disabled:opacity-35"
       >
-        <Plus aria-hidden className="size-3" strokeWidth={1.8} />
+        <Icon glyph={AddIcon} size="xs" />
       </button>
     </span>
   )

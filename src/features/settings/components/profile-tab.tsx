@@ -1,6 +1,7 @@
 // No 'use client': this panel is static markup, and the settings page now passes it in as an
 // element rather than importing it into the client view — so none of it reaches the browser.
-import { Bell, Lock, Mail, User } from 'lucide-react'
+import { BellIcon, LetterIcon, LockIcon, UserIcon } from '@solar-icons/react/line-duotone'
+import { Icon } from '@/components/ui/icon'
 import { RailBox, RailText } from '@/components/ui/form'
 import { StatusPill } from '@/components/ui/status-pill'
 
@@ -12,10 +13,10 @@ import { StatusPill } from '@/components/ui/status-pill'
  * would fail, and stays a placeholder until that backend exists.
  */
 const UPCOMING = [
-  { label: 'Display name and profile photo', Icon: User },
-  { label: 'Email address', Icon: Mail },
-  { label: 'Password and security', Icon: Lock },
-  { label: 'Email notification preferences', Icon: Bell },
+  { label: 'Display name and profile photo', icon: UserIcon },
+  { label: 'Email address', icon: LetterIcon },
+  { label: 'Password and security', icon: LockIcon },
+  { label: 'Email notification preferences', icon: BellIcon },
 ]
 
 export function ProfileTab() {
@@ -29,12 +30,12 @@ export function ProfileTab() {
       </div>
 
       <ul>
-        {UPCOMING.map(({ label, Icon }) => (
+        {UPCOMING.map(({ label, icon }) => (
           <li
             key={label}
             className="flex items-center gap-3 border-t border-line py-3.5 text-body text-text3 first:border-t-0"
           >
-            <Icon size={16} aria-hidden className="flex-none" />
+            <Icon glyph={icon} className="flex-none" />
             {label}
           </li>
         ))}

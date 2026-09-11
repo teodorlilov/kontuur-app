@@ -1,7 +1,8 @@
 'use client'
 
 import * as Dialog from '@radix-ui/react-dialog'
-import { X } from 'lucide-react'
+import { CloseIcon } from '@solar-icons/react/linear'
+import { Icon } from '@/components/ui/icon'
 import { cn } from '@/utils/cn'
 
 interface ModalProps {
@@ -46,7 +47,7 @@ export function Modal({ open, onClose, title, children, className, maxWidth = 52
                 aria-label="Close"
                 className="ml-auto grid size-7 place-items-center rounded-sm text-text3 transition-colors duration-150 ease-contour hover:bg-ink/[0.04] hover:text-ink"
               >
-                <X size={16} aria-hidden />
+                <Icon glyph={CloseIcon} />
               </button>
             </Dialog.Close>
           </div>

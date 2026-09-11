@@ -53,6 +53,12 @@ const CONTENT_SECURITY_POLICY = [
 ].join('; ')
 
 const nextConfig: NextConfig = {
+  // Both Solar entry points are barrels of ~1,270 icons. Next already rewrites lucide-react's
+  // barrel to per-icon imports by default; these two are not on that list, so without this every
+  // page that imports one glyph would compile all of them in dev.
+  experimental: {
+    optimizePackageImports: ['@solar-icons/react/linear', '@solar-icons/react/line-duotone'],
+  },
   // puppeteer-core + @sparticuz/chromium must stay external — bundling breaks @sparticuz's runtime
   // binary extraction on Vercel (the headless Chrome used for brand visual-identity extraction).
   serverExternalPackages: ['pdf-parse', 'pdfjs-dist', 'puppeteer-core', '@sparticuz/chromium'],

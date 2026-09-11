@@ -1,6 +1,13 @@
 'use client'
 
-import { Lasso, Maximize2, Scissors, Sparkles, Wand2 } from 'lucide-react'
+import {
+  MagicWand2Icon,
+  MaximizeIcon,
+  ObjectScanIcon,
+  ScissorsIcon,
+  StarsIcon,
+} from '@solar-icons/react/linear'
+import { Icon } from '@/components/ui/icon'
 import { cn } from '@/utils/cn'
 import { VisualFrame } from '@/components/draft-editing/visual-frame'
 import type { AssetRef } from '../../lib/asset-client'
@@ -44,7 +51,7 @@ export function AiSection(props: AiSectionProps) {
         <PromptRow
           placeholder="Describe the picture…"
           submitLabel="Generate"
-          icon={<Sparkles size={13} aria-hidden />}
+          icon={<Icon glyph={StarsIcon} size="sm" />}
           title="Generate a new background in the client's palette and brand style"
           busy={busy.generating}
           // An empty prompt is a real request — the model is stochastic, so the same slide copy
@@ -122,14 +129,14 @@ export function AiSection(props: AiSectionProps) {
         <h3 className={EDITOR_LABEL}>Change this picture</h3>
         <div className="flex flex-col gap-1.5">
           <AiVerb
-            icon={<Wand2 size={14} aria-hidden />}
+            icon={<Icon glyph={MagicWand2Icon} size="sm" />}
             label="Repair or replace a zone"
             description="Paint over part of the picture and describe what belongs there instead."
             seconds={TYPICAL_SECONDS.inpaint}
             onClick={props.onEnterInpaint}
           />
           <AiVerb
-            icon={<Scissors size={14} aria-hidden />}
+            icon={<Icon glyph={ScissorsIcon} size="sm" />}
             label="Cut out the subject"
             description="Lift the main subject out as its own movable picture."
             seconds={TYPICAL_SECONDS.isolate}
@@ -137,14 +144,14 @@ export function AiSection(props: AiSectionProps) {
             onClick={props.onIsolateSubject}
           />
           <AiVerb
-            icon={<Lasso size={14} aria-hidden />}
+            icon={<Icon glyph={ObjectScanIcon} size="sm" />}
             label="Lasso something out"
             description="Draw a loop around any object to cut just that out."
             seconds={TYPICAL_SECONDS.lasso}
             onClick={props.onEnterLasso}
           />
           <AiVerb
-            icon={<Maximize2 size={14} aria-hidden />}
+            icon={<Icon glyph={MaximizeIcon} size="sm" />}
             label="Expand the picture"
             description="Generate more picture around all four edges, so you have room to reposition."
             seconds={TYPICAL_SECONDS.expand}

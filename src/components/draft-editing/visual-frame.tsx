@@ -1,7 +1,8 @@
 'use client'
 
 import Image from 'next/image'
-import { AlertCircle } from 'lucide-react'
+import { DangerCircleIcon } from '@solar-icons/react/linear'
+import { Icon } from '@/components/ui/icon'
 import { cn } from '@/utils/cn'
 import type { DraftVisual } from '@/lib/visual/draft-visuals'
 
@@ -58,11 +59,7 @@ export function VisualFrame({ visual, size, alt, pager, className }: VisualFrame
     return (
       <div className={cn(base, 'grid place-items-center bg-danger-bg text-danger')}>
         <span className="flex flex-col items-center gap-1.5 text-center">
-          <AlertCircle
-            aria-hidden
-            className={size === 'cover' ? 'size-5' : 'size-3.5'}
-            strokeWidth={1.6}
-          />
+          <Icon glyph={DangerCircleIcon} size={size === 'cover' ? 'xl' : 'sm'} />
           {size === 'cover' && <span className="text-micro font-medium">Visual failed</span>}
         </span>
       </div>

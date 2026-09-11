@@ -2,7 +2,8 @@
 
 import { useRef } from 'react'
 import { cn } from '@/utils/cn'
-import { Sparkles, Upload } from 'lucide-react'
+import { StarsIcon, UploadMinimalisticIcon } from '@solar-icons/react/linear'
+import { Icon } from '@/components/ui/icon'
 import { Spinner } from '@/components/ui/spinner'
 import { BusyHint } from './busy-hint'
 import type { CanvasShapeKind } from '@/types/canvas'
@@ -48,7 +49,8 @@ export function AssetsSection({
         disabled={uploading}
         className={cn(EDITOR_BUTTON, 'w-full', uploading && 'cursor-default')}
       >
-        {uploading ? <Spinner size="sm" /> : <Upload size={13} aria-hidden />} Upload an image
+        {uploading ? <Spinner size="sm" /> : <Icon glyph={UploadMinimalisticIcon} size="sm" />}{' '}
+        Upload an image
       </button>
       <input
         ref={fileInputRef}
@@ -68,7 +70,7 @@ export function AssetsSection({
       <div className={cn(EDITOR_LABEL, 'mt-4')}>Shapes</div>
       <div className="flex gap-1.5">
         {SHAPE_TILES.map((kind) => {
-          const { label, Icon } = NODE_KIND_META[kind]
+          const { label, icon } = NODE_KIND_META[kind]
           return (
             <button
               key={kind}
@@ -77,7 +79,7 @@ export function AssetsSection({
               onClick={() => onAddShape(kind)}
               className={cn(EDITOR_BUTTON, 'flex-1')}
             >
-              <Icon size={15} aria-hidden />
+              <Icon glyph={icon} />
               <span className="sr-only">{label}</span>
             </button>
           )
@@ -90,7 +92,7 @@ export function AssetsSection({
         <PromptRow
           placeholder="e.g. hand-drawn arrow"
           submitLabel="Draw"
-          icon={<Sparkles size={13} aria-hidden />}
+          icon={<Icon glyph={StarsIcon} size="sm" />}
           title="Generate a vector graphic in the client's brand palette (~10s)"
           busy={generatingSvg}
           onSubmit={onGenerateSvg}

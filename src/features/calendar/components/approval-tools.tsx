@@ -1,6 +1,8 @@
 'use client'
 
-import { useEffect, useRef, type ElementType } from 'react'
+import { useEffect, useRef } from 'react'
+import type { Icon as Glyph } from '@solar-icons/react/lib/types'
+import { Icon } from '@/components/ui/icon'
 import { Button } from '@/components/ui/button'
 import type { ClientEntry } from '@/features/calendar/hooks/use-approval'
 
@@ -22,7 +24,7 @@ import type { ClientEntry } from '@/features/calendar/hooks/use-approval'
  */
 export function ApprovalAction({
   variant,
-  icon: Icon,
+  icon,
   label,
   loadingLabel,
   loading,
@@ -34,7 +36,7 @@ export function ApprovalAction({
   onSelectClient,
 }: {
   variant: 'primary' | 'secondary'
-  icon: ElementType
+  icon: Glyph
   label: string
   loadingLabel: string
   loading: boolean
@@ -94,7 +96,7 @@ export function ApprovalAction({
           else onTogglePicker()
         }}
       >
-        <Icon className="size-3.5 shrink-0" />
+        <Icon glyph={icon} size="sm" className="shrink-0" />
         {loading ? loadingLabel : label}
       </Button>
 

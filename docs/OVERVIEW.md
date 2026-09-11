@@ -72,7 +72,7 @@ publishes everything that is due every five minutes.
 | ------------------------- | --------------------------------------------------------------------------------------- |
 | Framework                 | Next.js 16 (App Router), React 19                                                       |
 | Language                  | TypeScript (strict)                                                                     |
-| Styling                   | Tailwind CSS 4, Radix UI primitives, Framer Motion, Lucide icons                        |
+| Styling                   | Tailwind CSS 4, Radix UI primitives, Framer Motion, Solar icons (480 Design, CC BY 4.0)  |
 | Toasts                    | Sonner                                                                                  |
 | Database / Auth / Storage | Supabase (PostgreSQL + Row Level Security + Auth + Storage)                             |
 | AI (text)                 | Anthropic Claude — `claude-sonnet-4-5` (default) + `claude-haiku-4-5` (light tasks)     |

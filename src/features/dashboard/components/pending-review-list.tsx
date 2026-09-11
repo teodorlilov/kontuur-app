@@ -3,7 +3,9 @@
 import { useState, useTransition } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
-import { Check, CircleCheck } from 'lucide-react'
+import { UnreadIcon } from '@solar-icons/react/linear'
+import { CheckCircleIcon } from '@solar-icons/react/line-duotone'
+import { Icon } from '@/components/ui/icon'
 import { toast } from '@/components/ui/toast'
 import { schedulePost, updatePost } from '@/lib/actions/post-actions'
 import { formatRelativeTime, parseTimestamp, toPreviewLine } from '@/utils/format'
@@ -105,7 +107,9 @@ export function PendingReviewList({ posts, totalPending }: PendingReviewListProp
   return (
     <Card className="px-5 py-[18px]">
       <div className="flex items-center justify-between gap-3">
-        <SectionHeading icon={<CircleCheck size={14} />}>Pending review</SectionHeading>
+        <SectionHeading icon={<Icon glyph={CheckCircleIcon} size="sm" />}>
+          Pending review
+        </SectionHeading>
         <span className="rounded-full bg-wash px-2.5 py-[3px] text-caption font-semibold text-forest">
           {remaining} in queue
         </span>
@@ -118,7 +122,7 @@ export function PendingReviewList({ posts, totalPending }: PendingReviewListProp
         {queue.length === 0 ? (
           <div className="flex h-full flex-col items-center justify-center gap-2.5">
             <IconChip className="size-11 rounded-full">
-              <Check size={18} />
+              <Icon glyph={UnreadIcon} size="lg" />
             </IconChip>
             <span className="text-center font-display text-display italic text-text2">
               All caught up — nothing waiting on you.

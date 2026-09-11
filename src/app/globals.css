@@ -497,6 +497,26 @@ body {
   }
 }
 
+/* ─── Icons ──────────────────────────────────────────────────────────
+   A line-duotone glyph draws its second stroke in Living Green (DESIGN.md § Icons).
+   `.icon-quiet` hands that stroke to the current colour at half strength — an inactive
+   rail tool, or the active nav row where the passenger on lime must be Pine Deep.
+   `.icon-on-dark` swaps in the lite green that stays legible on a pine surface. */
+
+.icon {
+  --solar-secondary-color: var(--icon-secondary, var(--spring));
+  --solar-secondary-opacity: var(--icon-secondary-opacity, 1);
+}
+
+.icon-quiet {
+  --icon-secondary: currentColor;
+  --icon-secondary-opacity: 0.5;
+}
+
+.icon-on-dark {
+  --icon-secondary: var(--spring-lite);
+}
+
 /* ─── Mount reveal ───────────────────────────────────────────────────
    Above-the-fold dashboard sections stagger in on mount via --d. CSS-only
    on purpose: no observer, no route-transition animation (session-8 rule). */

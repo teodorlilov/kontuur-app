@@ -1,6 +1,7 @@
 'use client'
 
-import { Check } from 'lucide-react'
+import { UnreadIcon } from '@solar-icons/react/linear'
+import { Icon } from '@/components/ui/icon'
 import { cn } from '@/utils/cn'
 import { useSectionLoop } from '../../hooks/use-section-loop'
 import { SplitBand } from './section'
@@ -115,7 +116,7 @@ function ChaosStage({
               composed ? 'scale-100 opacity-100' : 'scale-90 opacity-0'
             )}
           >
-            <Check size={11} strokeWidth={2.4} />
+            <Icon glyph={UnreadIcon} size="xs" />
             Composed
           </span>
         </div>

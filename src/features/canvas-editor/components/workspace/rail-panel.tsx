@@ -1,6 +1,7 @@
 'use client'
 
-import { Plus } from 'lucide-react'
+import { AddIcon } from '@solar-icons/react/linear'
+import { Icon } from '@/components/ui/icon'
 import type { LockupContext, LockupId } from '@/lib/canvas/lockups'
 import type { CanvasDoc, CanvasNode, CanvasShapeKind } from '@/types/canvas'
 import type { AssetRef } from '../../lib/asset-client'
@@ -66,7 +67,7 @@ export function RailPanel(props: RailPanelProps) {
     return (
       <div className="flex flex-col gap-3">
         <button type="button" className={EDITOR_BUTTON} onClick={props.onAddText}>
-          <Plus size={14} aria-hidden /> Add a text layer
+          <Icon glyph={AddIcon} size="sm" /> Add a text layer
         </button>
         <p className="m-0 text-micro text-text2">
           Double-click any text on the canvas to edit it in place.

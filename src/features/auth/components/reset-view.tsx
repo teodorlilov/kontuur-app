@@ -1,7 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { Check } from 'lucide-react'
+import { UnreadIcon } from '@solar-icons/react/linear'
+import { Icon } from '@/components/ui/icon'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { validateEmail } from '@/lib/validation'
@@ -95,7 +96,7 @@ export function ResetSentView() {
     >
       <div className="flex flex-col items-center gap-6">
         <span className="grid size-12 place-items-center rounded-full bg-wash text-forest">
-          <Check size={22} strokeWidth={1.8} aria-hidden />
+          <Icon glyph={UnreadIcon} size="xl" />
         </span>
         <p className="text-center text-caption text-text2">
           <AuthLink onClick={() => open('signin')}>Back to sign in</AuthLink>

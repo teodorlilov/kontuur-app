@@ -1,6 +1,7 @@
 'use client'
 
-import { ChevronDown } from 'lucide-react'
+import { AltArrowDownIcon } from '@solar-icons/react/linear'
+import { Icon } from '@/components/ui/icon'
 import { cn } from '@/utils/cn'
 import { Listbox } from '@/components/ui/listbox'
 
@@ -46,9 +47,9 @@ export function SelectControl<T extends string>({
         >
           {label}
           <span className="pl-1 font-medium text-ink">{selected?.label}</span>
-          <ChevronDown
-            size={12}
-            aria-hidden="true"
+          <Icon
+            glyph={AltArrowDownIcon}
+            size="xs"
             className={cn(
               'ml-1 text-text2 transition-transform duration-150 ease-contour',
               open && 'rotate-180'

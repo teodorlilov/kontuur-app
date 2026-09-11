@@ -8,6 +8,9 @@ import { Wordmark } from '@/components/layout/wordmark'
  * makes and cannot keep, so the columns are gone and what remains is real.
  *
  * Shared with the three legal pages under `app/(marketing)/`.
+ *
+ * The 480 Design line is the attribution the Solar icon set's CC BY 4.0 licence requires, and
+ * this footer is the one public place it lives — removing it is a licence breach, not a tidy-up.
  */
 const LINKS = [
   { label: 'Privacy', href: '/privacy' },
@@ -45,7 +48,16 @@ export function Footer() {
           © {new Date().getFullYear()} Kontuur. Operated by Chelling Ltd, UIC 206770508, Sofia,
           Bulgaria.
         </p>
-        <p className="text-caption text-text3">Built by About Social Media</p>
+        <p className="text-caption text-text3">
+          Built by About Social Media · Icons by{' '}
+          <a
+            href="https://www.figma.com/community/file/1166831539721848736"
+            className="text-text3 underline-offset-2 hover:underline"
+          >
+            480 Design
+          </a>{' '}
+          (Solar, CC BY 4.0)
+        </p>
       </div>
     </footer>
   )

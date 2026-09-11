@@ -1,22 +1,23 @@
 'use client'
 
 import {
-  BarChart3,
-  GalleryHorizontalEnd,
-  MessageSquareCheck,
-  Palette,
-  PenTool,
-  Send,
-  Sparkles,
-  type LucideIcon,
-} from 'lucide-react'
+  Chart2Icon,
+  ChatSquareCheckIcon,
+  GalleryWideIcon,
+  PaletteIcon,
+  PenNewSquareIcon,
+  PlaneIcon,
+  StarsIcon,
+} from '@solar-icons/react/line-duotone'
+import type { Icon as Glyph } from '@solar-icons/react/lib/types'
+import { Icon } from '@/components/ui/icon'
 import { useAuthDialog } from '@/features/auth/components/auth-dialog-provider'
 import { cn } from '@/utils/cn'
 import { Reveal } from './reveal'
 import { Section, SectionHead } from './section'
 
 interface Capability {
-  icon: LucideIcon
+  icon: Glyph
   name: string
   value: string
   /** The section further down that demonstrates it — every card lands on proof. */
@@ -68,7 +69,7 @@ const HandlesMotif = () => (
 
 const CAPABILITIES: readonly Capability[] = [
   {
-    icon: Sparkles,
+    icon: StarsIcon,
     name: 'AI post generation',
     value:
       "A week of on-brand posts from each client's actual business — their site, their news, their voice.",
@@ -77,7 +78,7 @@ const CAPABILITIES: readonly Capability[] = [
     motif: <TypingMotif />,
   },
   {
-    icon: Palette,
+    icon: PaletteIcon,
     name: 'Visual design systems',
     value: 'Every brand gets its own palette, type and templates — derived from its real identity.',
     href: '#visuals',
@@ -85,7 +86,7 @@ const CAPABILITIES: readonly Capability[] = [
     motif: <PaletteMotif />,
   },
   {
-    icon: GalleryHorizontalEnd,
+    icon: GalleryWideIcon,
     name: 'AI carousels',
     value:
       'Multi-slide posts with a designed visual for every single slide — never slide one and filler.',
@@ -94,7 +95,7 @@ const CAPABILITIES: readonly Capability[] = [
     motif: <SlidesMotif />,
   },
   {
-    icon: PenTool,
+    icon: PenNewSquareIcon,
     name: 'Built-in editor',
     value:
       'Move the type, swipe a marker, drop in elements, cut subjects out — no Canva round-trips.',
@@ -103,7 +104,7 @@ const CAPABILITIES: readonly Capability[] = [
     motif: <HandlesMotif />,
   },
   {
-    icon: MessageSquareCheck,
+    icon: ChatSquareCheckIcon,
     name: 'Client forms',
     value: 'Ideas come in, approvals come back — your clients use a link, never a login.',
     href: '#approvals',
@@ -115,7 +116,7 @@ const CAPABILITIES: readonly Capability[] = [
     ),
   },
   {
-    icon: Send,
+    icon: PlaneIcon,
     name: 'Auto-publishing',
     value:
       'Approved posts go out to Instagram & Facebook on schedule — while you do anything else.',
@@ -134,7 +135,7 @@ const CAPABILITIES: readonly Capability[] = [
     ),
   },
   {
-    icon: BarChart3,
+    icon: Chart2Icon,
     name: 'Analytics + AI insight',
     value:
       'Trends, top posts, audiences — with an AI summary that tells you what to do next month.',
@@ -183,7 +184,7 @@ export function Capabilities() {
               className={cn(CARD_BASE, 'h-full bg-surface hover:border-spring/30')}
             >
               <span className="grid size-9 place-items-center rounded-lg bg-wash text-forest">
-                <capability.icon size={16} aria-hidden />
+                <Icon glyph={capability.icon} />
               </span>
               <span className="text-title text-ink">{capability.name}</span>
               <span className="flex-1 text-caption text-text2">{capability.value}</span>
@@ -205,8 +206,8 @@ export function Capabilities() {
             onClick={() => open('signup')}
             className={cn(CARD_BASE, 'surface-dark h-full w-full border-transparent')}
           >
-            <span className="grid size-9 place-items-center rounded-lg bg-ink-inv/10 text-accent">
-              <Sparkles size={16} aria-hidden />
+            <span className="icon-on-dark grid size-9 place-items-center rounded-lg bg-ink-inv/10 text-accent">
+              <Icon glyph={StarsIcon} />
             </span>
             <span className="text-title text-ink-inv">Your week, back</span>
             <span className="flex-1 text-caption text-ink-inv/75">

@@ -1,7 +1,8 @@
 'use client'
 
 import { useRef, useState } from 'react'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { AltArrowLeftIcon, AltArrowRightIcon } from '@solar-icons/react/linear'
+import { Icon } from '@/components/ui/icon'
 import { cn } from '@/utils/cn'
 import { toast } from '@/components/ui/toast'
 import { Button } from '@/components/ui/button'
@@ -130,13 +131,13 @@ export function WorkColumn({
         <div className="flex flex-wrap items-center gap-3 px-4 py-3">
           <span className="flex flex-none items-center gap-1">
             <NavButton label="Previous draft" disabled={!canPrev} onClick={onPrev}>
-              <ChevronLeft aria-hidden className="size-3.5" strokeWidth={1.8} />
+              <Icon glyph={AltArrowLeftIcon} size="sm" />
             </NavButton>
             <span className="min-w-14 text-center text-micro tabular-nums text-text3">
               {positionInRun}
             </span>
             <NavButton label="Next draft" disabled={!canNext} onClick={onNext}>
-              <ChevronRight aria-hidden className="size-3.5" strokeWidth={1.8} />
+              <Icon glyph={AltArrowRightIcon} size="sm" />
             </NavButton>
           </span>
           <span className="min-w-[120px] flex-1">

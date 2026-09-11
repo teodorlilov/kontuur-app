@@ -1,4 +1,5 @@
-import { AlertTriangle, MessageCircle, Pencil } from 'lucide-react'
+import { ChatRoundIcon, DangerTriangleIcon, PenIcon } from '@solar-icons/react/linear'
+import { Icon } from '@/components/ui/icon'
 import { ActionLink } from '@/components/ui/action-link'
 import {
   formatRelativeTime,
@@ -40,7 +41,7 @@ function CardHeader({ cr }: { cr: DashboardChangeRequest }) {
 function FeedbackQuote({ note }: { note: string }) {
   return (
     <div className="mt-2 flex gap-2 rounded-sm border border-marker bg-marker/40 px-3 py-2.5">
-      <MessageCircle size={14} className="mt-0.5 shrink-0 text-text2" />
+      <Icon glyph={ChatRoundIcon} size="sm" className="mt-0.5 shrink-0 text-text2" />
       <p className="text-body italic leading-[1.5] text-ink">&ldquo;{note}&rdquo;</p>
     </div>
   )
@@ -66,13 +67,13 @@ export function ChangeRequestCard({
 
       <div className="mt-2.5 flex items-center justify-between">
         <ActionLink href={`/calendar?editPost=${cr.id}`} size="sm">
-          <Pencil size={12} />
+          <Icon glyph={PenIcon} size="xs" />
           Edit post
         </ActionLink>
 
         {flaggedSlide && (
           <span className="inline-flex items-center gap-1 rounded-xs bg-pending-bg px-2.5 py-1 text-micro font-medium text-pending">
-            <AlertTriangle size={11} />
+            <Icon glyph={DangerTriangleIcon} size="xs" />
             Slide {flaggedSlide} flagged
           </span>
         )}

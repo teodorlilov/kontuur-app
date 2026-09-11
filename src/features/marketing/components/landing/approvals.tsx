@@ -1,7 +1,8 @@
 'use client'
 
 import Image from 'next/image'
-import { Check, Link2 } from 'lucide-react'
+import { LinkMinimalisticIcon, UnreadIcon } from '@solar-icons/react/linear'
+import { Icon } from '@/components/ui/icon'
 import { cn } from '@/utils/cn'
 import { useSectionLoop } from '../../hooks/use-section-loop'
 import { SplitBand } from './section'
@@ -37,7 +38,7 @@ export function Approvals() {
               phase >= 0 ? 'translate-y-0 opacity-100' : 'translate-y-1 opacity-0'
             )}
           >
-            <Link2 size={12} aria-hidden />
+            <Icon glyph={LinkMinimalisticIcon} size="xs" />
             kontuur.app/approve/x7k…
           </span>
 
@@ -70,7 +71,7 @@ export function Approvals() {
                 tapped ? 'bg-forest text-white' : 'bg-wash text-forest'
               )}
             >
-              {tapped && <Check size={12} strokeWidth={2.6} aria-hidden />}
+              {tapped && <Icon glyph={UnreadIcon} size="xs" />}
               {tapped ? 'Approved' : 'Approve'}
             </span>
             <span className="rounded-full border border-line2 px-4 py-2 text-caption text-text2">

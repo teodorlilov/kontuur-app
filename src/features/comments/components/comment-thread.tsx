@@ -2,7 +2,8 @@
 
 import { useState } from 'react'
 import Image from 'next/image'
-import { ExternalLink } from 'lucide-react'
+import { SquareTopUpIcon } from '@solar-icons/react/linear'
+import { Icon } from '@/components/ui/icon'
 import { Button } from '@/components/ui/button'
 import { StatusPill } from '@/components/ui/status-pill'
 import { cn } from '@/utils/cn'
@@ -197,7 +198,7 @@ export function CommentThread({
             className="inline-flex items-center gap-1.5 text-caption text-text2 hover:text-forest"
           >
             Open on {network}
-            <ExternalLink size={12} aria-hidden="true" />
+            <Icon glyph={SquareTopUpIcon} size="xs" />
           </a>
         </div>
       )}

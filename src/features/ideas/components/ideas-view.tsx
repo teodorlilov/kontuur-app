@@ -2,7 +2,8 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Lightbulb } from 'lucide-react'
+import { LightbulbIcon } from '@solar-icons/react/line-duotone'
+import { Icon } from '@/components/ui/icon'
 import { ActionLink } from '@/components/ui/action-link'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -545,7 +546,7 @@ function IdeasEmptyState({
   hasAnyIdeas: boolean
   scope: string
 }) {
-  const icon = <Lightbulb size={28} aria-hidden />
+  const icon = <Icon glyph={LightbulbIcon} size="hero" />
 
   if (!hasAnyIdeas) {
     return (

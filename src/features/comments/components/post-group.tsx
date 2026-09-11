@@ -1,7 +1,8 @@
 'use client'
 
 import Image from 'next/image'
-import { ImageOff } from 'lucide-react'
+import { GalleryRemoveIcon } from '@solar-icons/react/linear'
+import { Icon } from '@/components/ui/icon'
 import { cn } from '@/utils/cn'
 import { formatRelativeTime, parseTimestamp } from '@/utils/format'
 import { formatHandle, postOrigin, postTitle } from '../lib/post-label'
@@ -54,7 +55,7 @@ export function PostGroup({
           ) : (
             // An icon, not an empty square: a bare grey box reads as an image that
             // failed to load rather than one we never had.
-            <ImageOff size={14} aria-hidden="true" className="text-text3" />
+            <Icon glyph={GalleryRemoveIcon} size="sm" className="text-text3" />
           )}
         </div>
         <div className="min-w-0 flex-1">

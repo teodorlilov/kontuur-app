@@ -1,7 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { ChevronDown, ChevronUp } from 'lucide-react'
+import { AltArrowDownIcon, AltArrowUpIcon } from '@solar-icons/react/linear'
+import { Icon } from '@/components/ui/icon'
 import { cn } from '@/utils/cn'
 import { clamp } from '@/lib/canvas/clamp'
 import { EDITOR_CONTROL, FOCUS_RING } from './workspace/chrome'
@@ -106,10 +107,10 @@ export function NumberField({
           beside the digits rather than on top of them. */}
       <div className="flex flex-col">
         <StepButton label={`Increase ${label}`} onClick={() => stepBy(step)}>
-          <ChevronUp size={11} aria-hidden />
+          <Icon glyph={AltArrowUpIcon} size="xs" />
         </StepButton>
         <StepButton label={`Decrease ${label}`} onClick={() => stepBy(-step)}>
-          <ChevronDown size={11} aria-hidden />
+          <Icon glyph={AltArrowDownIcon} size="xs" />
         </StepButton>
       </div>
     </div>

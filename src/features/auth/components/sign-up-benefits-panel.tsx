@@ -1,4 +1,5 @@
-import { Check } from 'lucide-react'
+import { UnreadIcon } from '@solar-icons/react/linear'
+import { Icon } from '@/components/ui/icon'
 
 /**
  * What the product does, in four lines, each one a feature that ships.
@@ -81,12 +82,7 @@ export function SignUpBenefitsPanel({ filled }: SignUpBenefitsPanelProps) {
         <ul className="mt-7 flex list-none flex-col gap-4">
           {BENEFITS.map((benefit) => (
             <li key={benefit} className="flex gap-3 text-caption text-ink-inv/85">
-              <Check
-                size={14}
-                strokeWidth={2.2}
-                aria-hidden
-                className="mt-0.5 flex-none text-accent"
-              />
+              <Icon glyph={UnreadIcon} size="sm" className="mt-0.5 flex-none text-accent" />
               {benefit}
             </li>
           ))}

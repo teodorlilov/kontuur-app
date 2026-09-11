@@ -1,6 +1,7 @@
 'use client'
 
-import { Maximize2, Minus, Plus } from 'lucide-react'
+import { AddIcon, MaximizeIcon, MinusIcon } from '@solar-icons/react/linear'
+import { Icon } from '@/components/ui/icon'
 import { cn } from '@/utils/cn'
 import { TOOL_ROW } from '@/components/layout/page-header/shared'
 import type { ViewportControls as Viewport } from '../hooks/use-stage-viewport'
@@ -15,7 +16,7 @@ export function ViewportControls({ viewport }: ViewportControlsProps) {
   return (
     <div className="pointer-events-auto absolute right-4 bottom-4 flex items-center gap-1 rounded-chip border border-line bg-surface p-1 shadow-pop">
       <button type="button" className={TOOL_ROW} title="Zoom out (⌘−)" onClick={viewport.zoomOut}>
-        <Minus size={14} aria-hidden />
+        <Icon glyph={MinusIcon} size="sm" />
       </button>
       <button
         type="button"
@@ -30,7 +31,7 @@ export function ViewportControls({ viewport }: ViewportControlsProps) {
         {Math.round(viewport.scale * 100)}%
       </button>
       <button type="button" className={TOOL_ROW} title="Zoom in (⌘+)" onClick={viewport.zoomIn}>
-        <Plus size={14} aria-hidden />
+        <Icon glyph={AddIcon} size="sm" />
       </button>
       <button
         type="button"
@@ -39,7 +40,7 @@ export function ViewportControls({ viewport }: ViewportControlsProps) {
         aria-pressed={viewport.isFit}
         className={cn(TOOL_ROW, viewport.isFit && 'text-ink')}
       >
-        <Maximize2 size={14} aria-hidden />
+        <Icon glyph={MaximizeIcon} size="sm" />
       </button>
     </div>
   )

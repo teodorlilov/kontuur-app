@@ -1,7 +1,8 @@
 'use client'
 
 import Link from 'next/link'
-import { Search } from 'lucide-react'
+import { MagnifierIcon } from '@solar-icons/react/linear'
+import { Icon } from '@/components/ui/icon'
 import { useShell } from '@/components/layout/shell-context'
 import { NotificationsBell } from '@/components/layout/notifications-bell'
 import { TOOL_ROW } from '@/components/layout/page-header/shared'
@@ -25,7 +26,7 @@ export function RailTools() {
       </span>
 
       <button type="button" onClick={openPalette} className={TOOL_ROW} aria-label="Search">
-        <Search size={14} className="shrink-0" />
+        <Icon glyph={MagnifierIcon} size="sm" className="shrink-0" />
         <kbd className="rounded-xs border border-line2 px-1 py-px text-label font-semibold not-italic text-text3">
           ⌘K
         </kbd>

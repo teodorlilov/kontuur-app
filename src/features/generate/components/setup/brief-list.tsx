@@ -1,7 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { Plus, MessageSquare } from 'lucide-react'
+import { AddIcon, ChatSquareIcon } from '@solar-icons/react/linear'
+import { Icon } from '@/components/ui/icon'
 import { cn } from '@/utils/cn'
 import { Button } from '@/components/ui/button'
 import {
@@ -94,7 +95,7 @@ export function BriefList({ briefs, onChange, lockedCount = 0 }: BriefListProps)
           className="flex w-full items-start gap-3 rounded-panel border border-dashed border-line2 p-3 text-left transition-colors duration-150 ease-contour hover:border-forest hover:bg-wash"
         >
           <span className="grid size-7 flex-none place-items-center rounded-chip bg-wash text-forest">
-            <Plus aria-hidden className="size-3.5" strokeWidth={1.6} />
+            <Icon glyph={AddIcon} size="sm" />
           </span>
           <span>
             <span className="block text-body font-medium text-ink">
@@ -135,7 +136,7 @@ function BriefRow({
   return (
     <div className="flex items-center gap-3 rounded-chip border border-line bg-sunken px-3 py-2">
       <span className="inline-flex flex-none items-center gap-1.5 rounded-chip bg-marker px-2 py-0.5 text-micro font-medium text-forest-deep">
-        {locked && <MessageSquare aria-hidden className="size-3" strokeWidth={1.8} />}
+        {locked && <Icon glyph={ChatSquareIcon} size="xs" />}
         {locked ? 'From idea' : 'Priority'}
       </span>
       <span className="min-w-0 flex-1">

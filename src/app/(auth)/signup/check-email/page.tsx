@@ -3,7 +3,8 @@
 import { Suspense } from 'react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
-import { Mail } from 'lucide-react'
+import { LetterIcon } from '@solar-icons/react/linear'
+import { Icon } from '@/components/ui/icon'
 import { AuthPanel } from '@/features/auth/components/auth-panel'
 
 /**
@@ -31,7 +32,7 @@ function CheckEmailContent() {
         >
           <div className="flex flex-col items-center gap-6">
             <span className="grid size-12 place-items-center rounded-full bg-wash text-forest">
-              <Mail size={22} strokeWidth={1.6} aria-hidden />
+              <Icon glyph={LetterIcon} size="xl" />
             </span>
             <p className="text-center text-caption text-text3">
               Didn&apos;t receive it? Check your spam folder.

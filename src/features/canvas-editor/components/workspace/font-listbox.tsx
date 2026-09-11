@@ -1,6 +1,7 @@
 'use client'
 
-import { AlertTriangle, ChevronDown } from 'lucide-react'
+import { AltArrowDownIcon, DangerTriangleIcon } from '@solar-icons/react/linear'
+import { Icon } from '@/components/ui/icon'
 import { Listbox, type ListboxOption } from '@/components/ui/listbox'
 import { cn } from '@/utils/cn'
 import {
@@ -89,8 +90,10 @@ export function FontListbox({ value, text, onChange }: FontListboxProps) {
           >
             {selected?.label ?? value}
           </span>
-          {unsupported && <AlertTriangle size={13} className="shrink-0 text-danger" aria-hidden />}
-          <ChevronDown size={13} className="shrink-0 text-text3" aria-hidden />
+          {unsupported && (
+            <Icon glyph={DangerTriangleIcon} size="sm" className="shrink-0 text-danger" />
+          )}
+          <Icon glyph={AltArrowDownIcon} size="sm" className="shrink-0 text-text3" />
         </button>
       )}
     />

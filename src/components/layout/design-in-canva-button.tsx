@@ -1,6 +1,7 @@
 'use client'
 
-import { ExternalLink } from 'lucide-react'
+import { SquareTopUpIcon } from '@solar-icons/react/linear'
+import { Icon } from '@/components/ui/icon'
 import { cn } from '@/utils/cn'
 import { SIDEBAR_ROW, SIDEBAR_ROW_IDLE } from '@/components/layout/nav-items'
 import { useCanvaStatus } from '@/hooks/use-canva-status'
@@ -48,7 +49,7 @@ export function DesignInCanvaButton({ collapsed = false }: { collapsed?: boolean
       {!collapsed && (
         <>
           <span className="flex-1 truncate">{label}</span>
-          {connected && <ExternalLink size={13} className="shrink-0 text-text3" />}
+          {connected && <Icon glyph={SquareTopUpIcon} size="sm" className="shrink-0 text-text3" />}
         </>
       )}
     </button>

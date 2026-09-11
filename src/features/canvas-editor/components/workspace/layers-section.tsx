@@ -1,7 +1,15 @@
 'use client'
 
 import { useRef, useState } from 'react'
-import { Eye, EyeOff, Lock, Trash2, Type, Unlock } from 'lucide-react'
+import {
+  EyeClosedIcon,
+  EyeIcon,
+  LockIcon,
+  LockUnlockedIcon,
+  TextSquareIcon,
+  TrashBinTrashIcon,
+} from '@solar-icons/react/linear'
+import { Icon } from '@/components/ui/icon'
 import { cn } from '@/utils/cn'
 import { focusableItems, rovingFocus } from '@/components/ui/roving-focus'
 import { isHidden, isLocked, isShapeNode, isTextNode } from '@/lib/canvas/doc-nodes'
@@ -230,16 +238,16 @@ function LayerRow({ node, selected, tabbable, dragging, ...props }: LayerRowProp
         on={hidden}
         onLabel="Show this layer"
         offLabel="Hide this layer"
-        onIcon={<EyeOff size={13} aria-hidden />}
-        offIcon={<Eye size={13} aria-hidden />}
+        onIcon={<Icon glyph={EyeClosedIcon} size="sm" />}
+        offIcon={<Icon glyph={EyeIcon} size="sm" />}
         onClick={() => props.onToggleHidden(node)}
       />
       <RowToggle
         on={locked}
         onLabel="Unlock this layer"
         offLabel="Lock this layer"
-        onIcon={<Lock size={13} aria-hidden />}
-        offIcon={<Unlock size={13} aria-hidden />}
+        onIcon={<Icon glyph={LockIcon} size="sm" />}
+        offIcon={<Icon glyph={LockUnlockedIcon} size="sm" />}
         onClick={() => props.onToggleLocked(node)}
       />
       <button
@@ -250,7 +258,7 @@ function LayerRow({ node, selected, tabbable, dragging, ...props }: LayerRowProp
         onClick={() => props.onRemove(node.id)}
         className={cn(EDITOR_ICON_BUTTON, 'size-6')}
       >
-        <Trash2 size={13} aria-hidden />
+        <Icon glyph={TrashBinTrashIcon} size="sm" />
       </button>
     </div>
   )
@@ -303,11 +311,11 @@ function Thumbnail({ node }: { node: CanvasNode }) {
         // The family is the one thing here that is genuinely per-node data.
         style={{ fontFamily: `"${node.fontFamily}", sans-serif` }}
       >
-        {glyphs || <Type size={13} className="text-text3" />}
+        {glyphs || <Icon glyph={TextSquareIcon} size="sm" className="text-text3" />}
       </span>
     )
   }
-  const { Icon } = NODE_KIND_META[node.kind]
+  const { icon } = NODE_KIND_META[node.kind]
   if (isShapeNode(node)) {
     // A shape has no bitmap to show, so the chip IS the shape's own colour.
     return (
@@ -316,7 +324,7 @@ function Thumbnail({ node }: { node: CanvasNode }) {
         className="grid size-8 shrink-0 place-items-center rounded-xs border border-line bg-sunken"
         style={{ color: node.fill ?? node.stroke ?? 'var(--text3)' }}
       >
-        <Icon size={16} strokeWidth={node.kind === 'line' ? 2.5 : 1.8} />
+        <Icon glyph={icon} />
       </span>
     )
   }
@@ -341,8 +349,8 @@ function Thumbnail({ node }: { node: CanvasNode }) {
         )}
       />
       <Icon
-        size={11}
-        aria-hidden
+        glyph={icon}
+        size="xs"
         className="absolute -bottom-0.5 -right-0.5 rounded-xs bg-paper text-text3"
       />
     </span>

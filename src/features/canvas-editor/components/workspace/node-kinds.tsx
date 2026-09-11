@@ -1,4 +1,12 @@
-import { Circle, Image as ImageIcon, Minus, Shapes, Square, Type } from 'lucide-react'
+import {
+  GalleryIcon,
+  MinusIcon,
+  RecordIcon,
+  StopIcon,
+  TextSquareIcon,
+  Widget6Icon,
+} from '@solar-icons/react/linear'
+import type { Icon as Glyph } from '@solar-icons/react/lib/types'
 import type { CanvasNode, CanvasTextRole } from '@/types/canvas'
 import { isShapeNode, isTextNode, textLabel } from '@/lib/canvas/doc-nodes'
 
@@ -8,13 +16,13 @@ import { isShapeNode, isTextNode, textLabel } from '@/lib/canvas/doc-nodes'
  * the moment a kind is added.
  */
 export const NODE_KIND_META = {
-  text: { label: 'Text', Icon: Type },
-  image: { label: 'Image', Icon: ImageIcon },
-  svg: { label: 'Vector', Icon: Shapes },
-  rect: { label: 'Rectangle', Icon: Square },
-  ellipse: { label: 'Ellipse', Icon: Circle },
-  line: { label: 'Line', Icon: Minus },
-} as const satisfies Record<CanvasNode['kind'], { label: string; Icon: typeof Type }>
+  text: { label: 'Text', icon: TextSquareIcon },
+  image: { label: 'Image', icon: GalleryIcon },
+  svg: { label: 'Vector', icon: Widget6Icon },
+  rect: { label: 'Rectangle', icon: StopIcon },
+  ellipse: { label: 'Ellipse', icon: RecordIcon },
+  line: { label: 'Line', icon: MinusIcon },
+} as const satisfies Record<CanvasNode['kind'], { label: string; icon: Glyph }>
 
 /**
  * The roles a lockup creates, in the user's words rather than the schema's.

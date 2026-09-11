@@ -1,7 +1,8 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { ChevronLeft } from 'lucide-react'
+import { AltArrowLeftIcon } from '@solar-icons/react/linear'
+import { Icon } from '@/components/ui/icon'
 import { toast } from '@/components/ui/toast'
 import { Button } from '@/components/ui/button'
 import { HeaderMeta, MetaFlag, PageHeader } from '@/components/layout/page-header/page-header'
@@ -702,7 +703,7 @@ export function ReviewQueue({
                   className="text-text2"
                   onClick={() => setView('buckets')}
                 >
-                  <ChevronLeft aria-hidden className="mr-1 size-3.5" strokeWidth={1.8} />
+                  <Icon glyph={AltArrowLeftIcon} size="sm" className="mr-1" />
                   All posts
                 </Button>
                 <span className="text-caption text-text3">

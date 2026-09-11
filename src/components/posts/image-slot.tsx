@@ -2,7 +2,15 @@
 
 import { useState, useRef } from 'react'
 import Image from 'next/image'
-import { X, Upload, Check, Download, Sparkles, Pencil } from 'lucide-react'
+import {
+  CloseIcon,
+  DownloadMinimalisticIcon,
+  PenIcon,
+  StarsIcon,
+  UnreadIcon,
+  UploadMinimalisticIcon,
+} from '@solar-icons/react/linear'
+import { Icon } from '@/components/ui/icon'
 import { downloadImageFile } from '@/lib/download-image'
 import { ImageLightbox } from '@/components/ui/image-lightbox'
 import { CanvaDesignPicker } from './canva-design-picker'
@@ -96,7 +104,7 @@ export function ImageSlot({
           type="button"
           onClick={onGenerate}
         >
-          <Sparkles className="h-3 w-3" />
+          <Icon glyph={StarsIcon} size="xs" />
           Generate with AI
         </button>
       )}
@@ -107,7 +115,7 @@ export function ImageSlot({
           type="button"
           onClick={() => setPickerOpen(true)}
         >
-          <Download className="h-3 w-3" />
+          <Icon glyph={DownloadMinimalisticIcon} size="xs" />
           Import from Canva
         </button>
       )}
@@ -189,7 +197,7 @@ function DropZone({
         <span className="text-micro text-text2">Uploading...</span>
       ) : (
         <>
-          <Upload className="h-4 w-4 text-text2" />
+          <Icon glyph={UploadMinimalisticIcon} className="text-text2" />
           <span className="text-micro text-text2">Drop file here or click to upload</span>
           {/* tracking-normal: cancels the Label role's built-in 0.16em — a format
               hint reads as a sentence, not an eyebrow. */}
@@ -203,7 +211,7 @@ function DropZone({
 function GeneratingCard({ label }: { label: string }) {
   return (
     <div className="flex items-center justify-center gap-2 rounded-md border-[1.5px] border-dashed border-spring/45 bg-spring/4 px-3 py-4">
-      <Sparkles className="h-3.5 w-3.5 animate-pulse text-spring-text" />
+      <Icon glyph={StarsIcon} size="sm" className="animate-pulse text-spring-text" />
       <span className="text-micro text-spring-text">{label}</span>
     </div>
   )
@@ -277,12 +285,12 @@ function ImageCard({
               color="var(--spring-text)"
               onClick={onRegenerate}
             >
-              <Sparkles className="h-[13px] w-[13px]" />
+              <Icon glyph={StarsIcon} size="sm" />
             </OverlayAction>
           )}
           {onEdit && (
             <OverlayAction title="Edit text overlay" color="var(--text2)" onClick={onEdit}>
-              <Pencil className="h-[13px] w-[13px]" />
+              <Icon glyph={PenIcon} size="sm" />
             </OverlayAction>
           )}
           <OverlayAction
@@ -290,16 +298,16 @@ function ImageCard({
             color="var(--text2)"
             onClick={() => void downloadImageFile(image.publicUrl, image.fileName ?? undefined)}
           >
-            <Download className="h-[13px] w-[13px]" />
+            <Icon glyph={DownloadMinimalisticIcon} size="sm" />
           </OverlayAction>
           <OverlayAction title="Remove image" color="var(--text2)" onClick={onDelete}>
-            <X className="h-[13px] w-[13px]" />
+            <Icon glyph={CloseIcon} size="sm" />
           </OverlayAction>
         </div>
       </div>
 
       <div className="flex items-center gap-1">
-        <Check className="h-2.5 w-2.5 text-spring-text" />
+        <Icon glyph={UnreadIcon} size="xs" className="text-spring-text" />
         {/* tracking-normal: cancels the Label role's built-in 0.16em — a status line
             reads as words, not as an eyebrow. */}
         <span className="text-label tracking-normal text-spring-text">

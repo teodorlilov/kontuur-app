@@ -1,7 +1,14 @@
 'use client'
 
 import Image from 'next/image'
-import { Layers, Image as ImageIcon, Shapes, Sparkles, Type } from 'lucide-react'
+import {
+  GalleryIcon,
+  LayersIcon,
+  StarsIcon,
+  TextSquareIcon,
+  Widget6Icon,
+} from '@solar-icons/react/line-duotone'
+import { Icon } from '@/components/ui/icon'
 import { cn } from '@/utils/cn'
 import type { LockupPreview, PreviewShape, PreviewText } from '../../lib/lockup-previews'
 import { PREVIEW_CANVAS, SAMPLE_COPY } from '../../lib/lockup-previews'
@@ -20,11 +27,11 @@ const HOLDS = [2600, 2600, 2600, 2600, 2600] as const
 
 /** The rail, in the order the editor lists it. Labelled, because the real one is. */
 const RAIL = [
-  { label: 'Text', Icon: Type },
-  { label: 'Elements', Icon: Shapes },
-  { label: 'AI', Icon: Sparkles },
-  { label: 'Image', Icon: ImageIcon },
-  { label: 'Layers', Icon: Layers },
+  { label: 'Text', icon: TextSquareIcon },
+  { label: 'Elements', icon: Widget6Icon },
+  { label: 'AI', icon: StarsIcon },
+  { label: 'Image', icon: GalleryIcon },
+  { label: 'Layers', icon: LayersIcon },
 ] as const
 
 /**
@@ -175,15 +182,15 @@ export function EditorFrame({ previews }: { previews: LockupPreview[] }) {
 
       <div className="flex">
         <nav className="hidden flex-none flex-col gap-0.5 border-r border-line p-2 sm:flex">
-          {RAIL.map(({ label, Icon }, at) => (
+          {RAIL.map(({ label, icon }, at) => (
             <span
               key={label}
               className={cn(
                 'flex w-14 flex-col items-center gap-1 rounded-sm px-1 py-1.5 text-micro',
-                at === 0 ? 'bg-wash text-forest' : 'text-text3'
+                at === 0 ? 'bg-wash text-forest' : 'icon-quiet text-text3'
               )}
             >
-              <Icon size={14} aria-hidden />
+              <Icon glyph={icon} size="sm" />
               {label}
             </span>
           ))}

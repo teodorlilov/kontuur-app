@@ -1,6 +1,7 @@
 'use client'
 
-import { Check } from 'lucide-react'
+import { UnreadIcon } from '@solar-icons/react/linear'
+import { Icon } from '@/components/ui/icon'
 import { cn } from '@/utils/cn'
 
 export type FlowStep = 'setup' | 'generating' | 'review' | 'done'
@@ -67,7 +68,7 @@ export function FlowStepper({ step, onStepOneClick }: FlowStepperProps) {
                       : 'bg-sunken text-text2'
                 )}
               >
-                {isDone ? <Check aria-hidden className="size-2.5" strokeWidth={2.4} /> : n}
+                {isDone ? <Icon glyph={UnreadIcon} size="xs" /> : n}
               </span>
               {label}
             </Tag>

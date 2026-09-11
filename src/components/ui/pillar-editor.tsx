@@ -1,6 +1,7 @@
 'use client'
 
-import { X } from 'lucide-react'
+import { CloseIcon } from '@solar-icons/react/linear'
+import { Icon } from '@/components/ui/icon'
 import { cn } from '@/utils/cn'
 import { CLIENT_COLORS } from '@/utils/constants'
 import { equalizeWeights, type WeightedPillar } from '@/lib/clients/content-pillars'
@@ -111,7 +112,7 @@ export function PillarEditor({ pillars, onChange, allowEmpty = false }: PillarEd
                 aria-label={`Remove ${pillar.pillar || `pillar ${i + 1}`}`}
                 className="flex size-8 flex-none items-center justify-center rounded-md text-text3 transition-colors hover:bg-danger-bg hover:text-danger"
               >
-                <X size={14} />
+                <Icon glyph={CloseIcon} size="sm" />
               </button>
             )}
           </div>

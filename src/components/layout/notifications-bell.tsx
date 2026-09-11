@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { Bell } from 'lucide-react'
+import { BellIcon } from '@solar-icons/react/linear'
+import { Icon } from '@/components/ui/icon'
 import { cn } from '@/utils/cn'
 import { useShell } from '@/components/layout/shell-context'
 import { TOOL_ROW } from '@/components/layout/page-header/shared'
@@ -191,7 +192,7 @@ export function NotificationsBell() {
   return (
     <div ref={ref} className="relative">
       <button onClick={handleToggle} aria-label="Notifications" className={TOOL_ROW}>
-        <Bell size={15} className="shrink-0" />
+        <Icon glyph={BellIcon} className="shrink-0" />
         {unreadCount > 0 && (
           <span
             className={cn(

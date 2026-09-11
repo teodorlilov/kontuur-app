@@ -1,7 +1,8 @@
 'use client'
 
 import * as Dialog from '@radix-ui/react-dialog'
-import { X } from 'lucide-react'
+import { CloseIcon } from '@solar-icons/react/linear'
+import { Icon } from '@/components/ui/icon'
 import { cn } from '@/utils/cn'
 import type { AuthView } from './auth-dialog-provider'
 import { useAuthDialog } from './auth-dialog-provider'
@@ -51,7 +52,7 @@ export function AuthDialog({ view, initialError }: AuthDialogProps) {
               aria-label="Close"
               className="absolute right-3.5 top-3.5 z-10 grid size-8 place-items-center rounded-full text-text3 transition-colors duration-150 ease-contour hover:bg-ink/[0.04] hover:text-ink"
             >
-              <X size={16} aria-hidden />
+              <Icon glyph={CloseIcon} />
             </button>
           </Dialog.Close>
 

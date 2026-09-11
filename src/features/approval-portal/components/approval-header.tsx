@@ -1,6 +1,8 @@
 'use client'
 
-import { LayoutGrid, Clock, Check, MessageCircle } from 'lucide-react'
+import { ChatRoundIcon, ClockCircleIcon, UnreadIcon, WidgetIcon } from '@solar-icons/react/linear'
+import type { Icon as Glyph } from '@solar-icons/react/lib/types'
+import { Icon } from '@/components/ui/icon'
 import { formatDateChip } from '@/utils/format-date-chip'
 
 interface ReviewHeaderProps {
@@ -25,23 +27,23 @@ const CHIP_STYLES: Record<ChipColour, { bg: string; color: string }> = {
   changes: { bg: 'var(--danger-bg)', color: 'var(--danger)' },
 }
 
-const CHIP_ICONS: Record<ChipColour, typeof LayoutGrid> = {
-  total: LayoutGrid,
-  pending: Clock,
-  approved: Check,
-  changes: MessageCircle,
+const CHIP_ICONS: Record<ChipColour, Glyph> = {
+  total: WidgetIcon,
+  pending: ClockCircleIcon,
+  approved: UnreadIcon,
+  changes: ChatRoundIcon,
 }
 
 /** Small coloured chip showing a count and label. */
 function StatusChip({ label, colour }: { label: string; colour: ChipColour }) {
   const s = CHIP_STYLES[colour]
-  const Icon = CHIP_ICONS[colour]
+  const glyph = CHIP_ICONS[colour]
   return (
     <div
       className="inline-flex items-center gap-[5px] rounded-[6px] px-2.5 py-1 text-micro font-medium"
       style={{ background: s.bg, color: s.color }}
     >
-      <Icon size={11} />
+      <Icon glyph={glyph} size="xs" />
       {label}
     </div>
   )

@@ -1,7 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { AlertTriangle } from 'lucide-react'
+import { DangerTriangleIcon } from '@solar-icons/react/linear'
+import { Icon } from '@/components/ui/icon'
 import { Modal } from '@/components/ui/modal'
 import { Button } from '@/components/ui/button'
 import { FOCUS_RING } from '@/components/ui/form/control-classes'
@@ -104,7 +105,7 @@ export function ReanalyzeBrandDialog({
                       consequence that is not going to happen is noise the reader learns to skip. */}
                   {isAccepted && suggestion.warning && (
                     <p className="flex gap-2 text-caption text-pending">
-                      <AlertTriangle size={13} className="mt-[3px] flex-none" aria-hidden />
+                      <Icon glyph={DangerTriangleIcon} size="sm" className="mt-[3px] flex-none" />
                       <span>{suggestion.warning}</span>
                     </p>
                   )}

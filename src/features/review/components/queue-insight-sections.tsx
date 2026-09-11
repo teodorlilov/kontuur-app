@@ -1,6 +1,7 @@
 'use client'
 
-import { AlertTriangle } from 'lucide-react'
+import { DangerTriangleIcon } from '@solar-icons/react/linear'
+import { Icon } from '@/components/ui/icon'
 import { cn } from '@/utils/cn'
 import { StatusPill } from '@/components/ui/status-pill'
 import { formatRelativeTime } from '@/utils/format'
@@ -19,11 +20,7 @@ export function QueueInsightSections({ triaged, now }: { triaged: TriagedPost; n
       {post.is_health_niche && (
         <section className="border-t border-line p-4">
           <div className="flex items-start gap-2 rounded-chip bg-pending-bg p-3">
-            <AlertTriangle
-              aria-hidden
-              className="mt-0.5 size-3.5 flex-none text-pending"
-              strokeWidth={1.8}
-            />
+            <Icon glyph={DangerTriangleIcon} size="sm" className="mt-0.5 flex-none text-pending" />
             <p className="text-caption leading-relaxed text-pending">
               Medical content — verify all clinical claims before approving. Medical safety
               instructions are added on publish.

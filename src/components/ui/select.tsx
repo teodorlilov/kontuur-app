@@ -1,6 +1,7 @@
 'use client'
 
-import { ChevronDown } from 'lucide-react'
+import { AltArrowDownIcon } from '@solar-icons/react/linear'
+import { Icon } from '@/components/ui/icon'
 import { cn } from '@/utils/cn'
 import { Listbox } from './listbox'
 import { useFieldContext } from './form/field-context'
@@ -96,10 +97,11 @@ export function Select({
             <span className={cn('min-w-0 flex-1 truncate', !selected && 'text-text3')}>
               {selected?.label ?? placeholder ?? 'Choose…'}
             </span>
-            <ChevronDown
-              aria-hidden
+            <Icon
+              glyph={AltArrowDownIcon}
+              size="xs"
               className={cn(
-                'size-3 flex-none text-text2 transition-transform duration-150 ease-contour',
+                'flex-none text-text2 transition-transform duration-150 ease-contour',
                 open && 'rotate-180'
               )}
             />

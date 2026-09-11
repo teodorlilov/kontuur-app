@@ -1,6 +1,14 @@
 'use client'
 
-import { AlertTriangle, ChevronLeft, Contrast, Keyboard, Redo2, Undo2 } from 'lucide-react'
+import {
+  AltArrowLeftIcon,
+  ColourTuningIcon,
+  DangerTriangleIcon,
+  KeyboardIcon,
+  UndoLeftRoundIcon,
+  UndoRightRoundIcon,
+} from '@solar-icons/react/linear'
+import { Icon } from '@/components/ui/icon'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/utils/cn'
 import { EDITOR_ICON_BUTTON } from './chrome'
@@ -58,7 +66,7 @@ export function TopBar(props: TopBarProps) {
         aria-label="Back to the post"
         className={EDITOR_ICON_BUTTON}
       >
-        <ChevronLeft size={16} aria-hidden />
+        <Icon glyph={AltArrowLeftIcon} />
       </button>
       <span className="font-sans text-body font-medium text-ink">
         {props.slideCount > 1
@@ -68,7 +76,7 @@ export function TopBar(props: TopBarProps) {
 
       {props.overflowing.length > 0 && (
         <span className="inline-flex items-center gap-2 text-micro text-danger">
-          <AlertTriangle size={13} aria-hidden />
+          <Icon glyph={DangerTriangleIcon} size="sm" />
           <span title={`Does not fit: ${props.overflowing.join(' · ')}`}>
             {props.overflowing.length === 1
               ? `"${props.overflowing[0]}" overflows`
@@ -89,7 +97,7 @@ export function TopBar(props: TopBarProps) {
           className="inline-flex items-center gap-1.5 text-micro text-text2"
           title={`Hard to read against the picture: ${props.lowContrast.join(' · ')}. Try a backdrop behind it, a different colour, or moving the layer.`}
         >
-          <Contrast size={13} aria-hidden />
+          <Icon glyph={ColourTuningIcon} size="sm" />
           {props.lowContrast.length === 1
             ? `"${props.lowContrast[0]}" is hard to read`
             : `${props.lowContrast.length} layers are hard to read`}
@@ -109,7 +117,7 @@ export function TopBar(props: TopBarProps) {
         aria-label="Keyboard shortcuts"
         className={EDITOR_ICON_BUTTON}
       >
-        <Keyboard size={16} aria-hidden />
+        <Icon glyph={KeyboardIcon} />
       </button>
       <button
         type="button"
@@ -119,7 +127,7 @@ export function TopBar(props: TopBarProps) {
         onClick={props.undo}
         className={EDITOR_ICON_BUTTON}
       >
-        <Undo2 size={16} aria-hidden />
+        <Icon glyph={UndoLeftRoundIcon} />
       </button>
       <button
         type="button"
@@ -129,7 +137,7 @@ export function TopBar(props: TopBarProps) {
         onClick={props.redo}
         className={cn(EDITOR_ICON_BUTTON, 'mr-1')}
       >
-        <Redo2 size={16} aria-hidden />
+        <Icon glyph={UndoRightRoundIcon} />
       </button>
 
       <Button variant="secondary" size="sm" onClick={props.onCancel}>

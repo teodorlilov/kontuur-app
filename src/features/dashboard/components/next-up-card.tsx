@@ -1,5 +1,7 @@
 import Link from 'next/link'
-import { AlertTriangle, Send } from 'lucide-react'
+import { DangerTriangleIcon } from '@solar-icons/react/linear'
+import { PlaneIcon } from '@solar-icons/react/line-duotone'
+import { Icon } from '@/components/ui/icon'
 import { cn } from '@/utils/cn'
 import { StatCard } from '@/features/dashboard/components/stat-card'
 import { formatPublishSlot } from '@/utils/date-helpers'
@@ -63,7 +65,7 @@ export function NextUpCard({
     return (
       <StatCard
         label="Failed to publish"
-        icon={<AlertTriangle size={16} />}
+        icon={<Icon glyph={DangerTriangleIcon} size="lg" />}
         pill={{ text: 'Needs a human', tone: 'danger' }}
         footer={
           <Link href="/calendar" className="text-forest underline-offset-2 hover:underline">
@@ -93,7 +95,7 @@ export function NextUpCard({
     return (
       <StatCard
         label="Going out next"
-        icon={<Send size={16} />}
+        icon={<Icon glyph={PlaneIcon} size="lg" />}
         footer={
           <Link href="/calendar" className="text-forest underline-offset-2 hover:underline">
             Open calendar
@@ -123,7 +125,7 @@ export function NextUpCard({
     return (
       <StatCard
         label="Going out next"
-        icon={<Send size={16} />}
+        icon={<Icon glyph={PlaneIcon} size="lg" />}
         pill={{ text: 'Nothing queued', tone: 'attention' }}
         footer={
           <Link href="/clients" className="text-forest underline-offset-2 hover:underline">
@@ -143,7 +145,7 @@ export function NextUpCard({
   return (
     <StatCard
       label="Going out next"
-      icon={<Send size={16} />}
+      icon={<Icon glyph={PlaneIcon} size="lg" />}
       pill={{ text: 'Nothing queued', tone: 'muted' }}
       footer={
         <Link href="/generate" className="text-forest underline-offset-2 hover:underline">

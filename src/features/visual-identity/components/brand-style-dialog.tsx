@@ -2,7 +2,8 @@
 
 import { useRef, useState } from 'react'
 import Image from 'next/image'
-import { Check, Search } from 'lucide-react'
+import { MagnifierIcon, UnreadIcon } from '@solar-icons/react/linear'
+import { Icon } from '@/components/ui/icon'
 import { cn } from '@/utils/cn'
 import { Modal } from '@/components/ui/modal'
 import { Button } from '@/components/ui/button'
@@ -79,7 +80,7 @@ export function BrandStyleDialog({ current, onConfirm, onClose }: BrandStyleDial
           'mb-4 flex items-center gap-1.5 px-2 py-1'
         )}
       >
-        <Search className="size-3 shrink-0 text-text2" aria-hidden="true" />
+        <Icon glyph={MagnifierIcon} size="xs" className="shrink-0 text-text2" />
         <input
           type="search"
           value={query}
@@ -198,10 +199,10 @@ function StyleRow({ style, selected, onSelect }: StyleRowProps) {
         className="h-12 w-9 flex-none rounded-sm bg-sunken object-cover"
       />
       <span className="min-w-0 flex-1 truncate text-body font-medium text-ink">{style.name}</span>
-      <Check
-        aria-hidden
-        className={cn('size-3.5 flex-none text-forest', !selected && 'opacity-0')}
-        strokeWidth={2}
+      <Icon
+        glyph={UnreadIcon}
+        size="sm"
+        className={cn('flex-none text-forest', !selected && 'opacity-0')}
       />
     </button>
   )

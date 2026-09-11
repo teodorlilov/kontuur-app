@@ -2,7 +2,8 @@
 
 import { useEffect, useRef } from 'react'
 import Image from 'next/image'
-import { Download } from 'lucide-react'
+import { DownloadMinimalisticIcon } from '@solar-icons/react/linear'
+import { Icon } from '@/components/ui/icon'
 import { downloadImageFile } from '@/lib/download-image'
 
 /** Fullscreen click-to-close overlay for inspecting an image at large size. */
@@ -77,7 +78,7 @@ export function ImageLightbox({
               'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-spring',
             ].join(' ')}
           >
-            <Download className="size-3.5" />
+            <Icon glyph={DownloadMinimalisticIcon} size="sm" />
             Download
           </button>
         </div>

@@ -1,7 +1,8 @@
 'use client'
 
 import { useEffect, useRef } from 'react'
-import { Check } from 'lucide-react'
+import { UnreadIcon } from '@solar-icons/react/linear'
+import { Icon } from '@/components/ui/icon'
 import { cn } from '@/utils/cn'
 import { parseSlides } from '@/lib/posts/parse-slides'
 import { VisualFrame } from './visual-frame'
@@ -118,11 +119,7 @@ export function DraftRail({
                   ? { 'aria-label': 'Not scored' }
                   : {})}
               >
-                {settled ? (
-                  <Check aria-hidden className="size-3.5" strokeWidth={2.2} />
-                ) : (
-                  (scores.overall_score ?? '—')
-                )}
+                {settled ? <Icon glyph={UnreadIcon} size="sm" /> : (scores.overall_score ?? '—')}
               </span>
             </button>
           )

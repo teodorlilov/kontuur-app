@@ -1,10 +1,17 @@
 import Link from 'next/link'
-import { BarChart2, CircleCheck, Sparkles, UserPlus, type LucideIcon } from 'lucide-react'
+import {
+  ChartIcon,
+  CheckCircleIcon,
+  StarsIcon,
+  UserPlusRoundedIcon,
+} from '@solar-icons/react/line-duotone'
+import type { Icon as Glyph } from '@solar-icons/react/lib/types'
+import { Icon } from '@/components/ui/icon'
 import { IconChip } from '@/components/ui/icon-chip'
 
 interface QuickAction {
   href: string
-  icon: LucideIcon
+  icon: Glyph
   title: string
   subtitle: string
 }
@@ -19,19 +26,19 @@ export function QuickActionsStrip({ pendingCount, isSolo }: QuickActionsStripPro
   const actions: Array<QuickAction | false> = [
     {
       href: '/generate',
-      icon: Sparkles,
+      icon: StarsIcon,
       title: isSolo ? 'Create content' : 'Generate posts',
       subtitle: isSolo ? 'Pick a platform' : 'Pick client + platform',
     },
     !isSolo && {
       href: '/clients/new',
-      icon: UserPlus,
+      icon: UserPlusRoundedIcon,
       title: 'Add client',
       subtitle: 'Start onboarding',
     },
     {
       href: '/review',
-      icon: CircleCheck,
+      icon: CheckCircleIcon,
       title: isSolo ? 'My drafts' : 'Review queue',
       subtitle:
         pendingCount === 0
@@ -40,7 +47,7 @@ export function QuickActionsStrip({ pendingCount, isSolo }: QuickActionsStripPro
     },
     {
       href: '/analytics',
-      icon: BarChart2,
+      icon: ChartIcon,
       title: isSolo ? 'My results' : 'Analytics',
       subtitle: 'View performance',
     },
@@ -51,7 +58,6 @@ export function QuickActionsStrip({ pendingCount, isSolo }: QuickActionsStripPro
       {actions
         .filter((action): action is QuickAction => action !== false)
         .map((action) => {
-          const Icon = action.icon
           return (
             <Link
               key={action.href}
@@ -62,7 +68,7 @@ export function QuickActionsStrip({ pendingCount, isSolo }: QuickActionsStripPro
               className="flex items-center gap-3 rounded-panel border border-ink/[0.05] bg-surface px-3.5 py-3.5 no-underline transition-[transform,border-color] duration-150 ease-contour hover:-translate-y-0.5 hover:border-sage"
             >
               <IconChip className="size-[34px] shrink-0 rounded-sm">
-                <Icon size={15} />
+                <Icon glyph={action.icon} size="lg" />
               </IconChip>
               <span className="min-w-0">
                 <span className="block truncate text-body font-semibold text-ink">

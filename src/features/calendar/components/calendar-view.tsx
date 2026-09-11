@@ -2,7 +2,13 @@
 
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
-import { ChevronLeft, ChevronRight, Link, Mail } from 'lucide-react'
+import {
+  AltArrowLeftIcon,
+  AltArrowRightIcon,
+  LetterIcon,
+  LinkIcon,
+} from '@solar-icons/react/linear'
+import { Icon } from '@/components/ui/icon'
 import { useCalendar } from '@/features/calendar/hooks/use-calendar'
 import { useApproval, type ClientEntry } from '@/features/calendar/hooks/use-approval'
 import { toast } from '@/components/ui/toast'
@@ -46,7 +52,7 @@ function RangeStepBtn({
   /** What a step actually moves — the button announced "month" in all three views. */
   unit: 'month' | 'week'
 }) {
-  const Icon = direction === 'prev' ? ChevronLeft : ChevronRight
+  const glyph = direction === 'prev' ? AltArrowLeftIcon : AltArrowRightIcon
   return (
     <button
       type="button"
@@ -54,7 +60,7 @@ function RangeStepBtn({
       aria-label={`${direction === 'prev' ? 'Previous' : 'Next'} ${unit}`}
       className="grid size-7 place-items-center rounded-sm text-text2 transition-colors duration-150 ease-contour hover:bg-ink/[0.06] hover:text-ink"
     >
-      <Icon className="size-3" />
+      <Icon glyph={glyph} size="xs" />
     </button>
   )
 }
@@ -483,7 +489,7 @@ export function CalendarView({ initialPosts, clients, anchorWeekISO }: CalendarV
             {clients.length > 0 && (
               <ApprovalAction
                 variant="secondary"
-                icon={Link}
+                icon={LinkIcon}
                 label="Copy link"
                 loadingLabel="Generating…"
                 loading={copyLinkSending}
@@ -502,7 +508,7 @@ export function CalendarView({ initialPosts, clients, anchorWeekISO }: CalendarV
             {clients.length > 0 && (
               <ApprovalAction
                 variant="primary"
-                icon={Mail}
+                icon={LetterIcon}
                 // Month has no single week to send, so the action falls back to the
                 // current one. The label says so rather than leaving the reader to
                 // discover it from the email — which is what the hook's own comment

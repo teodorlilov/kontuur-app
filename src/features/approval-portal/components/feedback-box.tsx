@@ -1,6 +1,7 @@
 'use client'
 
-import { MessageCircle } from 'lucide-react'
+import { ChatRoundIcon } from '@solar-icons/react/linear'
+import { Icon } from '@/components/ui/icon'
 
 interface FeedbackBoxProps {
   mode: 'input' | 'read-only'
@@ -15,7 +16,7 @@ function ReadOnlyFeedback({ value }: { value: string }) {
       {/* tracking-normal: cancels the Label role's built-in 0.16em — this reads as a
           sentence fragment, not a spaced-out eyebrow. */}
       <div className="mb-2 flex items-center gap-[5px] text-label font-medium tracking-normal text-forest">
-        <MessageCircle size={11} />
+        <Icon glyph={ChatRoundIcon} size="xs" />
         Feedback you sent
       </div>
       <div className="text-body text-ink">{value}</div>

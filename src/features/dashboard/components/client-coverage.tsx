@@ -2,7 +2,9 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { ChevronLeft, ChevronRight, Users } from 'lucide-react'
+import { AltArrowLeftIcon, AltArrowRightIcon } from '@solar-icons/react/linear'
+import { UsersGroupRoundedIcon } from '@solar-icons/react/line-duotone'
+import { Icon } from '@/components/ui/icon'
 import { SectionHeading } from '@/components/ui/section-heading'
 import { CoverageRow, TIER_COUNT } from '@/features/dashboard/components/coverage-row'
 import { COVERAGE_LIST_HEIGHT, COVERAGE_ROWS_PER_PAGE } from '@/features/dashboard/lib/layout'
@@ -30,7 +32,9 @@ export function ClientCoverage({ clients, coverage, clientPendingMap }: ClientCo
   return (
     <section>
       <div className="flex items-center justify-between gap-3">
-        <SectionHeading icon={<Users size={14} />}>Client coverage</SectionHeading>
+        <SectionHeading icon={<Icon glyph={UsersGroupRoundedIcon} size="sm" />}>
+          Client coverage
+        </SectionHeading>
         <span className="flex items-center gap-3 text-micro text-text3">
           <span className="flex items-center gap-1.5">
             <i className="size-2.5 rounded-[3.5px] bg-forest" />
@@ -86,14 +90,14 @@ export function ClientCoverage({ clients, coverage, clientPendingMap }: ClientCo
                   disabled={currentPage === 0}
                   onClick={() => setPage(currentPage - 1)}
                 >
-                  <ChevronLeft className="size-3.5" />
+                  <Icon glyph={AltArrowLeftIcon} size="sm" />
                 </PageButton>
                 <PageButton
                   label="Next clients"
                   disabled={currentPage >= pageCount - 1}
                   onClick={() => setPage(currentPage + 1)}
                 >
-                  <ChevronRight className="size-3.5" />
+                  <Icon glyph={AltArrowRightIcon} size="sm" />
                 </PageButton>
               </div>
             </div>

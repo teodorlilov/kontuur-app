@@ -1,7 +1,8 @@
 'use client'
 
 import { memo, useMemo } from 'react'
-import { ChevronRight } from 'lucide-react'
+import { AltArrowRightIcon } from '@solar-icons/react/linear'
+import { Icon } from '@/components/ui/icon'
 import { cn } from '@/utils/cn'
 import { getClientTone } from '@/components/ui/colors/identity-colors'
 import { getDaysInMonth, isSameMonth, type WeekView } from '@/features/calendar/lib/calendar-range'
@@ -131,9 +132,10 @@ export const MonthCoverage = memo(function MonthCoverage({
               >
                 {total}
               </span>
-              <ChevronRight
-                aria-hidden="true"
-                className="size-3 text-text3 transition-colors duration-150 ease-contour group-hover:text-forest"
+              <Icon
+                glyph={AltArrowRightIcon}
+                size="xs"
+                className="text-text3 transition-colors duration-150 ease-contour group-hover:text-forest"
               />
             </button>
 

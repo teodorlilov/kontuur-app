@@ -2,7 +2,8 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Check, CalendarDays, Mail, RotateCcw } from 'lucide-react'
+import { CalendarDateIcon, LetterIcon, RestartIcon, UnreadIcon } from '@solar-icons/react/linear'
+import { Icon } from '@/components/ui/icon'
 import { cn } from '@/utils/cn'
 import { toast } from '@/components/ui/toast'
 import { getMondayISO } from '@/utils/date-helpers'
@@ -54,7 +55,7 @@ export function DoneView({
   return (
     <div className="rv mx-auto mt-[8vh] w-full max-w-[480px] px-4 pb-16 text-center">
       <div className="mx-auto mb-6 grid size-16 place-items-center rounded-full bg-wash text-forest">
-        <Check aria-hidden className="size-7" strokeWidth={2} />
+        <Icon glyph={UnreadIcon} size="hero" />
       </div>
       <h1 className="font-display text-prompt text-ink [text-wrap:balance]">
         {nothingKept ? 'Nothing kept this time' : `${pluralise(approvedCount, 'post')} approved`}
@@ -83,7 +84,7 @@ export function DoneView({
       <div className="mt-8 flex flex-col gap-2 text-left">
         <NextAction
           primary
-          icon={<CalendarDays aria-hidden className="size-4" strokeWidth={1.6} />}
+          icon={<Icon glyph={CalendarDateIcon} />}
           title="Open the calendar"
           sub={
             nothingKept
@@ -93,14 +94,14 @@ export function DoneView({
           onClick={() => router.push('/calendar')}
         />
         <NextAction
-          icon={<Mail aria-hidden className="size-4" strokeWidth={1.6} />}
+          icon={<Icon glyph={LetterIcon} />}
           title={sending ? 'Sending…' : 'Send for client approval'}
           sub="A link the client opens without an account"
           disabled={sending || nothingKept}
           onClick={handleSendApproval}
         />
         <NextAction
-          icon={<RotateCcw aria-hidden className="size-4" strokeWidth={1.6} />}
+          icon={<Icon glyph={RestartIcon} />}
           title="Generate another run"
           sub="Same client, or switch to a different one"
           onClick={onNewRun}

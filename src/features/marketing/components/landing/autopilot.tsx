@@ -1,6 +1,7 @@
 'use client'
 
-import { Check } from 'lucide-react'
+import { UnreadIcon } from '@solar-icons/react/linear'
+import { Icon } from '@/components/ui/icon'
 import { cn } from '@/utils/cn'
 import { useSectionLoop } from '../../hooks/use-section-loop'
 import { SplitBand } from './section'
@@ -98,7 +99,7 @@ export function Autopilot() {
                         : 'bg-surface/70 text-text2'
                   )}
                 >
-                  {published && <Check size={10} strokeWidth={2.6} aria-hidden />}
+                  {published && <Icon glyph={UnreadIcon} size="xs" />}
                   {published ? 'Published' : 'Scheduled'}
                 </span>
               </div>

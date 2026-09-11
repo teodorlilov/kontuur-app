@@ -1,6 +1,7 @@
 'use client'
 
-import { ChevronDown } from 'lucide-react'
+import { AltArrowDownIcon } from '@solar-icons/react/linear'
+import { Icon } from '@/components/ui/icon'
 import { cn } from '@/utils/cn'
 import { Avatar } from '@/components/ui/avatar'
 import { Listbox } from '@/components/ui/listbox'
@@ -62,10 +63,11 @@ export function ClientPicker({ clients, selectedId, meta, onSelect, disabled }: 
             <span className="block truncate text-caption text-text2">{meta}</span>
           </span>
           {!disabled && (
-            <ChevronDown
-              aria-hidden
+            <Icon
+              glyph={AltArrowDownIcon}
+              size="sm"
               className={cn(
-                'size-3.5 flex-none text-text3 transition-transform duration-150 ease-contour',
+                'flex-none text-text3 transition-transform duration-150 ease-contour',
                 open && 'rotate-180'
               )}
             />

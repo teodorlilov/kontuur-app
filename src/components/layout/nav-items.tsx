@@ -1,15 +1,15 @@
 import {
-  LayoutDashboard,
-  Users,
-  Sparkles,
-  ClipboardList,
-  Calendar,
-  MessageSquare,
-  MessageCircle,
-  BarChart2,
-  Settings,
-  type LucideIcon,
-} from 'lucide-react'
+  CalendarIcon,
+  ChartIcon,
+  ChatRoundIcon,
+  ChatSquareIcon,
+  ClipboardListIcon,
+  SettingsIcon,
+  StarsIcon,
+  UsersGroupRoundedIcon,
+  Widget2Icon,
+} from '@solar-icons/react/line-duotone'
+import type { Icon as Glyph } from '@solar-icons/react/lib/types'
 
 /** Which live count a nav item shows as a badge, if any. */
 export type NavBadge = 'pending' | 'ideas' | 'comments'
@@ -17,32 +17,36 @@ export type NavBadge = 'pending' | 'ideas' | 'comments'
 export interface NavItem {
   label: string
   href: string
-  icon: LucideIcon
+  icon: Glyph
   badge?: NavBadge
 }
 
 const AGENCY_NAV: NavItem[] = [
-  { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-  { label: 'Clients', href: '/clients', icon: Users },
-  { label: 'Generate posts', href: '/generate', icon: Sparkles },
-  { label: 'Review queue', href: '/review', icon: ClipboardList, badge: 'pending' },
-  { label: 'Calendar', href: '/calendar', icon: Calendar },
-  // MessageCircle, not MessageSquare — that one is Client ideas, directly below.
-  { label: 'Comments', href: '/comments', icon: MessageCircle, badge: 'comments' },
-  { label: 'Client ideas', href: '/ideas', icon: MessageSquare, badge: 'ideas' },
-  { label: 'Analytics', href: '/analytics', icon: BarChart2 },
+  { label: 'Dashboard', href: '/dashboard', icon: Widget2Icon },
+  { label: 'Clients', href: '/clients', icon: UsersGroupRoundedIcon },
+  { label: 'Generate posts', href: '/generate', icon: StarsIcon },
+  { label: 'Review queue', href: '/review', icon: ClipboardListIcon, badge: 'pending' },
+  { label: 'Calendar', href: '/calendar', icon: CalendarIcon },
+  // ChatRound, not ChatSquare — that one is Client ideas, directly below.
+  { label: 'Comments', href: '/comments', icon: ChatRoundIcon, badge: 'comments' },
+  { label: 'Client ideas', href: '/ideas', icon: ChatSquareIcon, badge: 'ideas' },
+  { label: 'Analytics', href: '/analytics', icon: ChartIcon },
 ]
 
 const SOLO_NAV: NavItem[] = [
-  { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-  { label: 'Create content', href: '/generate', icon: Sparkles },
-  { label: 'My drafts', href: '/review', icon: ClipboardList, badge: 'pending' },
-  { label: 'My calendar', href: '/calendar', icon: Calendar },
-  { label: 'My comments', href: '/comments', icon: MessageCircle, badge: 'comments' },
-  { label: 'My results', href: '/analytics', icon: BarChart2 },
+  { label: 'Dashboard', href: '/dashboard', icon: Widget2Icon },
+  { label: 'Create content', href: '/generate', icon: StarsIcon },
+  { label: 'My drafts', href: '/review', icon: ClipboardListIcon, badge: 'pending' },
+  { label: 'My calendar', href: '/calendar', icon: CalendarIcon },
+  { label: 'My comments', href: '/comments', icon: ChatRoundIcon, badge: 'comments' },
+  { label: 'My results', href: '/analytics', icon: ChartIcon },
 ]
 
-export const SETTINGS_NAV_ITEM: NavItem = { label: 'Settings', href: '/settings', icon: Settings }
+export const SETTINGS_NAV_ITEM: NavItem = {
+  label: 'Settings',
+  href: '/settings',
+  icon: SettingsIcon,
+}
 
 /** Nav items for a workspace mode, settings included. */
 export function getNavItems(agencyMode: 'agency' | 'solo'): NavItem[] {

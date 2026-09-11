@@ -2,7 +2,8 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { Copy, ExternalLink } from 'lucide-react'
+import { CopyIcon, SquareTopUpIcon } from '@solar-icons/react/linear'
+import { Icon } from '@/components/ui/icon'
 import { Button } from '@/components/ui/button'
 import { Field, FormSection, InputAffix } from '@/components/ui/form'
 import { StatusPill } from '@/components/ui/status-pill'
@@ -85,7 +86,7 @@ export function IdeaFormTab({
                   }}
                   className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-text2 transition-colors hover:bg-ink/[0.05] hover:text-ink"
                 >
-                  <Copy size={13} />
+                  <Icon glyph={CopyIcon} size="sm" />
                   Copy
                 </button>
                 <a
@@ -95,7 +96,7 @@ export function IdeaFormTab({
                   aria-label="Open the idea form in a new tab"
                   className="inline-flex items-center rounded-md px-2 py-1 text-text2 transition-colors hover:bg-ink/[0.05] hover:text-ink"
                 >
-                  <ExternalLink size={13} />
+                  <Icon glyph={SquareTopUpIcon} size="sm" />
                 </a>
               </span>
             }

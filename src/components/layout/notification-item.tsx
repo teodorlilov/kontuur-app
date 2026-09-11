@@ -1,6 +1,13 @@
 'use client'
 
-import { AlertTriangle, Check, MessageCircle, Send, Unplug } from 'lucide-react'
+import {
+  ChatRoundIcon,
+  DangerTriangleIcon,
+  PlaneIcon,
+  UnlinkIcon,
+  UnreadIcon,
+} from '@solar-icons/react/linear'
+import { Icon } from '@/components/ui/icon'
 import { formatRelativeTime, parseTimestamp } from '@/utils/format'
 import { cn } from '@/utils/cn'
 import type { EnrichedNotification } from '@/types/api'
@@ -96,15 +103,15 @@ export function NotificationItem({
           )}
         >
           {isRetired ? (
-            <Unplug size={14} />
+            <Icon glyph={UnlinkIcon} size="sm" />
           ) : isPublishFailed ? (
-            <AlertTriangle size={14} />
+            <Icon glyph={DangerTriangleIcon} size="sm" />
           ) : isSent ? (
-            <Send size={14} />
+            <Icon glyph={PlaneIcon} size="sm" />
           ) : isApproval ? (
-            <Check size={14} />
+            <Icon glyph={UnreadIcon} size="sm" />
           ) : (
-            <MessageCircle size={14} />
+            <Icon glyph={ChatRoundIcon} size="sm" />
           )}
         </div>
 
