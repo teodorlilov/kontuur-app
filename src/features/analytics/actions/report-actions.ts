@@ -9,6 +9,7 @@ import type { Json } from '@/types'
 import { getCachedAgency } from '@/lib/queries/cache'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import { fetchConnection, fetchConnectionSyncState, fetchIgConnectionState } from '@/lib/queries/db'
+import { retireConnection } from '@/lib/meta/connection-store'
 import { GraphApiError } from '@/lib/meta/graph-errors'
 import { isTokenExpired } from '@/lib/meta/token-expiry'
 import { toDateKey } from '@/utils/date-helpers'
@@ -206,6 +207,40 @@ interface FillOutcome {
   /** Nothing landed and re-running will not help right now — the chain stops and says so. */
   stalled: boolean
   rateLimited?: boolean
+  /** The token was dead and has been retired; the page must re-render to show it. */
+  retired?: boolean
+}
+
+/**
+ * What a failed fill means to `AutoFill`. A dead token is retired here and reported as
+ * `retired`; a retire that does not land is logged once and reads as a plain stall — the
+ * action never rejects.
+ */
+async function resolveStalledOutcome(
+  admin: SupabaseClient,
+  scope: ReportScope,
+  err: unknown
+): Promise<ActionResult<FillOutcome>> {
+  if (err instanceof GraphApiError && err.failure === 'token_invalid') {
+    try {
+      await retireConnection(admin, {
+        clientId: scope.client.id,
+        platform: scope.network,
+        reason: err.message,
+      })
+      return { ok: true, data: { filled: false, stalled: true, retired: true } }
+    } catch (retireErr) {
+      console.error('[analytics] retire after 190 failed', { clientId: scope.client.id, retireErr })
+    }
+  }
+  return {
+    ok: true,
+    data: {
+      filled: false,
+      stalled: true,
+      rateLimited: err instanceof GraphApiError && err.failure === 'rate_limited',
+    },
+  }
 }
 
 /**
@@ -251,14 +286,7 @@ export async function fillPeriodData(
       return { ok: true, data: { filled: outcome.wroteDays > 0, stalled: outcome.wroteDays === 0 } }
     } catch (err) {
       console.error('[analytics] facebook period fill failed', { clientId: scope.client.id, err })
-      return {
-        ok: true,
-        data: {
-          filled: false,
-          stalled: true,
-          rateLimited: err instanceof GraphApiError && err.failure === 'rate_limited',
-        },
-      }
+      return resolveStalledOutcome(admin, scope, err)
     }
   }
 
@@ -279,7 +307,7 @@ export async function fillPeriodData(
     )
   } catch (err) {
     console.error('[analytics] automatic period fill failed', { clientId: scope.client.id, err })
-    return { ok: true, data: { filled: false, stalled: true } }
+    return resolveStalledOutcome(admin, scope, err)
   }
 
   revalidateTag(IG_METRICS_TAG, 'max')

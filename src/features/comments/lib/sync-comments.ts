@@ -2,6 +2,7 @@ import 'server-only'
 
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database'
+import { retireConnection } from '@/lib/meta/connection-store'
 import { GraphApiError } from '@/lib/meta/graph-errors'
 import { COMMENTABLE_PLATFORMS, resolveComments } from '@/lib/meta/networks'
 import type { CommentsAdapter, NetworkAccount, PlatformComment } from '@/lib/meta/networks/types'
@@ -71,12 +72,11 @@ interface CommentsSyncOutcome {
 }
 
 /**
- * Syncs comments for every client with a live Instagram connection.
+ * Syncs comments for every client with a live connection on a network that has comments.
  *
- * Per-client failures are contained the same way the metrics cron contains them,
- * with one deliberate difference: this run does not notify. A comment sync that
- * fails is not a fact the agency can act on, and the metrics cron already alerts
- * on the conditions they share — a dead token, a revoked permission.
+ * Per-client failures are contained as the metrics cron contains them, minus the notifying: a
+ * failed comment sync is not something the agency can act on. A dead token is, and this
+ * half-hourly run (`vercel.json`) is where it is caught soonest, so it retires the connection.
  */
 export async function syncAllClientComments(
   admin: SupabaseClient,
@@ -135,6 +135,21 @@ export async function syncAllClientComments(
       outcome.failed++
       const message = err instanceof Error ? err.message : 'unknown error'
       outcome.errors.push({ clientId, error: message })
+      if (err instanceof GraphApiError && err.failure === 'token_invalid') {
+        try {
+          await retireConnection(admin, {
+            clientId,
+            platform: connection.platform,
+            reason: message,
+          })
+        } catch (retireErr) {
+          outcome.errors.push({
+            clientId,
+            error: `retire failed: ${retireErr instanceof Error ? retireErr.message : 'unknown'}`,
+          })
+        }
+        continue
+      }
       // One rate-limit answer poisons every remaining call in this run. Unlike the
       // nightly metrics sync there is nothing to wait for — the next run is in 30
       // minutes, so this costs at most one cycle of freshness.

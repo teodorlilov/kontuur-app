@@ -1,4 +1,9 @@
-import { daysUntilExpiry, isTokenExpired, isTokenExpiring } from '@/lib/meta/token-expiry'
+import {
+  daysUntilExpiry,
+  isConnectionRetired,
+  isTokenExpired,
+  isTokenExpiring,
+} from '@/lib/meta/token-expiry'
 import { POST_PLATFORMS, toPublishingPlatform, type PostPlatform } from '@/lib/validation'
 import { extractInitials } from '@/utils/format'
 import type { PostSummary } from '@/types/post'
@@ -13,8 +18,8 @@ import type { ClientRow, SocialConnectionRow } from '@/types'
  * in memory. That also makes the chip counts and the summary band free.
  */
 
-/** How a single channel is doing. */
-export type ChannelState = 'connected' | 'expiring' | 'missing'
+/** How a single channel is doing. `retired`: the network killed the token (`retireConnection`). */
+export type ChannelState = 'connected' | 'expiring' | 'missing' | 'retired'
 
 export interface RosterChannel {
   platform: PostPlatform
@@ -25,6 +30,7 @@ export interface RosterChannel {
 }
 
 export type ClientStatus =
+  | 'connection_retired'
   | 'connection_missing'
   | 'awaiting_approval'
   | 'connection_expiring'
@@ -33,9 +39,11 @@ export type ClientStatus =
 
 /**
  * Most urgent first. Exported so tests assert the ordering itself rather than
- * re-encoding it, and so resolveStatus cannot drift from what the UI ranks by.
+ * re-encoding it, and so resolveStatus cannot drift from what the UI ranks by. Retired
+ * outranks a live second network: the posts queued for the dead one still fail.
  */
 export const STATUS_PRECEDENCE: readonly ClientStatus[] = [
+  'connection_retired',
   'connection_missing',
   'awaiting_approval',
   'connection_expiring',
@@ -54,7 +62,7 @@ export type RosterFilter = 'attention' | 'approval' | 'connection' | 'empty' | '
  *  NOT NULL columns, so every reader carried a guard for a state the schema forbids. */
 export type RosterConnectionRow = Pick<
   SocialConnectionRow,
-  'platform' | 'account_name' | 'token_expires_at'
+  'platform' | 'account_name' | 'token_expires_at' | 'retired_at'
 >
 
 export type RosterClientRow = Pick<ClientRow, 'id' | 'name' | 'niche'> & {
@@ -122,11 +130,13 @@ function buildChannels(rows: RosterConnectionRow[], now: Date): RosterChannel[] 
       return { platform, state: 'missing' as const, accountName: null, expiresInDays: null }
     }
     // A lapsed token cannot publish, so it reads as missing rather than expiring.
-    const state: ChannelState = isTokenExpired(row.token_expires_at, now)
-      ? 'missing'
-      : isTokenExpiring(row.token_expires_at, now)
-        ? 'expiring'
-        : 'connected'
+    const state: ChannelState = isConnectionRetired(row)
+      ? 'retired'
+      : isTokenExpired(row.token_expires_at, now)
+        ? 'missing'
+        : isTokenExpiring(row.token_expires_at, now)
+          ? 'expiring'
+          : 'connected'
     return {
       platform,
       state,
@@ -149,7 +159,12 @@ function buildChannels(rows: RosterConnectionRow[], now: Date): RosterChannel[] 
  * Nothing sweeps a lapsed row, so that state is permanent until someone reconnects.
  */
 export function hasLiveChannel(rows: RosterConnectionRow[], now: Date): boolean {
-  return buildChannels(rows, now).some((channel) => channel.state !== 'missing')
+  return buildChannels(rows, now).some(isLiveChannel)
+}
+
+/** A channel the publish pipeline can use right now. */
+function isLiveChannel(channel: RosterChannel): boolean {
+  return channel.state === 'connected' || channel.state === 'expiring'
 }
 
 /** The single status a row displays, highest precedence wins. */
@@ -158,8 +173,9 @@ function resolveStatus(
   approvalCount: number,
   queuedCount: number
 ): ClientStatus {
+  if (channels.some((c) => c.state === 'retired')) return 'connection_retired'
   // Same rule as `hasLiveChannel`, off channels the caller already built.
-  if (!channels.some((c) => c.state !== 'missing')) return 'connection_missing'
+  if (!channels.some(isLiveChannel)) return 'connection_missing'
   if (approvalCount > 0) return 'awaiting_approval'
   if (channels.some((c) => c.state === 'expiring')) return 'connection_expiring'
   if (queuedCount === 0) return 'queue_empty'
@@ -250,7 +266,7 @@ export function buildRoster(
 }
 
 /**
- * `connection` deliberately matches both missing and expiring: both mean this
+ * `connection` deliberately matches retired, missing and expiring: all three mean this
  * client's publishing is broken or about to break, and folding them keeps
  * "Needs attention" an exact union of the three narrower chips.
  */
@@ -263,7 +279,11 @@ export function matchesFilter(entry: ClientRosterEntry, filter: RosterFilter): b
     case 'approval':
       return entry.status === 'awaiting_approval'
     case 'connection':
-      return entry.status === 'connection_expiring' || entry.status === 'connection_missing'
+      return (
+        entry.status === 'connection_retired' ||
+        entry.status === 'connection_expiring' ||
+        entry.status === 'connection_missing'
+      )
     case 'empty':
       return entry.status === 'queue_empty'
   }

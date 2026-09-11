@@ -21,7 +21,13 @@ function offset(days: number): string {
 }
 
 function connection(over: Partial<RosterConnectionRow> = {}): RosterConnectionRow {
-  return { platform: 'instagram', account_name: 'acct', token_expires_at: offset(90), ...over }
+  return {
+    platform: 'instagram',
+    account_name: 'acct',
+    token_expires_at: offset(90),
+    retired_at: null,
+    ...over,
+  }
 }
 
 /** Healthy by default: Instagram live, one queued post, nothing awaiting approval. */
@@ -60,6 +66,7 @@ function entry(
 describe('STATUS_PRECEDENCE', () => {
   it('ranks most urgent first', () => {
     expect(STATUS_PRECEDENCE).toEqual([
+      'connection_retired',
       'connection_missing',
       'awaiting_approval',
       'connection_expiring',
@@ -70,6 +77,7 @@ describe('STATUS_PRECEDENCE', () => {
 
   it('covers every status exactly once', () => {
     const all: ClientStatus[] = [
+      'connection_retired',
       'connection_missing',
       'awaiting_approval',
       'connection_expiring',
@@ -279,5 +287,30 @@ describe('sortRoster', () => {
     const before = roster.map((e) => e.id)
     sortRoster(roster, 'name')
     expect(roster.map((e) => e.id)).toEqual(before)
+  })
+})
+
+describe('a retired channel', () => {
+  it('outranks everything: the network killed the token, and only a reconnect fixes it', () => {
+    const row = entry({ social_connections: [connection({ retired_at: offset(-1) })] })
+    expect(row.channels.find((c) => c.platform === 'instagram')?.state).toBe('retired')
+    expect(row.status).toBe('connection_retired')
+    expect(row.needsAttention).toBe(true)
+  })
+
+  it('still ranks first beside a live second network — posts to the dead one will fail', () => {
+    const row = entry({
+      social_connections: [
+        connection({ retired_at: offset(-1) }),
+        connection({ platform: 'facebook', token_expires_at: null }),
+      ],
+    })
+    expect(row.status).toBe('connection_retired')
+  })
+
+  it('is what the "connection" chip filters for, like missing and expiring', () => {
+    const row = entry({ social_connections: [connection({ retired_at: offset(-1) })] })
+    expect(matchesFilter(row, 'connection')).toBe(true)
+    expect(matchesFilter(row, 'attention')).toBe(true)
   })
 })

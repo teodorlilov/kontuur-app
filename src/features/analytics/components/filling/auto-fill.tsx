@@ -17,6 +17,7 @@ import type { AnalyticsPeriod } from '../../lib/compute/period'
  * `stalled` carries the key it belongs to instead of being cleared when the key changes: a
  * synchronous reset inside the effect is what `react-hooks/set-state-in-effect` forbids, and
  * "belongs to a run that is no longer current" is answerable at render time anyway.
+ * A `retired` outcome refreshes like a filled one — the server renders the disconnected state.
  */
 export function AutoFill({
   clientId,
@@ -46,13 +47,15 @@ export function AutoFill({
       start: period.start,
       end: period.end,
       network,
-    }).then((result) => {
-      if (!result.ok) return setStalled({ key, kind: 'failed' })
-      if (result.data.filled) return router.refresh()
-      if (result.data.stalled) {
-        setStalled({ key, kind: result.data.rateLimited ? 'throttled' : 'failed' })
-      }
     })
+      .then((result) => {
+        if (!result.ok) return setStalled({ key, kind: 'failed' })
+        if (result.data.filled || result.data.retired) return router.refresh()
+        if (result.data.stalled) {
+          setStalled({ key, kind: result.data.rateLimited ? 'throttled' : 'failed' })
+        }
+      })
+      .catch(() => setStalled({ key, kind: 'failed' }))
   }, [key, clientId, network, period.preset, period.start, period.end, router])
 
   if (stalled?.key !== key) return null

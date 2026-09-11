@@ -14,12 +14,8 @@ import { PLATFORM_NAMES, toPublishingPlatform } from '@/lib/validation'
  * this each would carry its own upsert and its own conflict target, which is how the same row
  * comes to be written two ways.
  *
- * A successful connect also ends a retirement and clears the last sync verdict: `retired_at` and
- * `retired_reason` (migration 20260850) go back to null so the reconnect prompt and the roster
- * stop reporting the dead token, and `last_sync_error` goes back to null because the row's last
- * recorded failure was the dead token itself — left in place it would make the analytics sync
- * line read "did not finish … retrying tonight" on an account that was just reconnected.
- * `last_sync_at` is kept: a null there reads as "more than two nights ago".
+ * A connect also ends a retirement (`retired_at`, `retired_reason`, `last_sync_error` → null;
+ * `last_sync_at` kept, a null there reads as "two nights ago").
  *
  * The other writers of `social_connections` are untouched: rotating a token, disconnecting, and
  * stamping sync health are genuinely different operations with their own owners.
@@ -76,36 +72,11 @@ export async function storeConnection(
 }
 
 /**
- * Retire a connection Meta has declared dead — the ONE writer of that operation.
- *
- * A Graph `token_invalid` answer (code 190 family, `graph-errors.ts`) means nothing but a
- * reconnect will ever fix this credential. Nulling the token is what every reader already treats
- * as "needs reconnecting": the publish preflight fails the destination without calling Meta
- * (`publish-post.ts` `connectionBlocker` — each tick still spends an attempt, the ladder is
- * unchanged), the nightly and half-hourly syncs skip the row, and the calendar and review pages
- * drop the network. `retired_at` is the non-secret fact the roster, the client settings and the
- * reconnect prompt read (migration 20260850); `retired_reason` keeps Meta's message for support
- * and nothing renders it.
- *
- * Called from every path that recognises the 190 — `sync-shared.ts` `syncRoster`,
- * `sync-comments.ts` `syncAllClientComments`, `comment-actions.ts` `checkClientComments`,
- * `publish-post.ts` (both Graph catches), `report-actions.ts` `fillPeriodData` and
- * `refresh-tokens.ts` — so the moment the app learns a token is dead is the moment it stops
- * using it.
- *
- * Retire ONLY on `token_invalid`. A `permission` answer from `/insights` or the comments edge is
- * a missing scope on a token that still publishes; retiring it would break publishing to fix
- * analytics. Client-scoped rows only: the user-scoped `facebook_user` and `canva` rows have no
- * client and sit on none of the paths above.
- *
- * Order matters. The write comes first; the caches are expired next — `{ expire: 0 }`, not the
- * `'max'` the user-driven edits use, because `'max'` only marks the entry stale and the very
- * next load would still render the connection as live, while a retirement must be visible on the
- * refresh that follows it; the notification comes last, with a one-day cooldown because a second
- * retirement within a day is the same event and the default week would silence a real repeat.
- * Nothing here is caught: a failed write throws before any side effect, and `notify` throws only
- * on a failed cooldown check or client lookup, by which point the retirement has landed — the
- * caller is at a boundary and logs once either way.
+ * Retire a connection Meta has declared dead — the ONE writer of that operation (migration
+ * 20260850). Call it ONLY on `token_invalid`; a `permission` answer is a missing scope on a
+ * token that still publishes. Write, then `{ expire: 0 }` (`'max'` would serve the stale roster
+ * on the next load), then notify; nothing is caught — a throw from `notify` means the
+ * retirement had already landed.
  */
 export async function retireConnection(
   admin: SupabaseClient,

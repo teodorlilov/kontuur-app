@@ -199,8 +199,10 @@ export const CLIENT_WEBSITE_COLUMNS = 'id, website_url'
  * (social_connections holds client_id), so PostgREST returns an ARRAY here —
  * unlike brand_profiles above, which is a forward FK and returns an object.
  */
-export const CLIENT_ROSTER_COLUMNS =
-  'id, name, niche, social_connections(platform, account_name, token_expires_at)'
+// What a channel's state derives from — mirrored by `RosterConnectionRow`; both readers use it.
+export const ROSTER_CONNECTION_COLUMNS = 'platform, account_name, token_expires_at, retired_at'
+
+export const CLIENT_ROSTER_COLUMNS = `id, name, niche, social_connections(${ROSTER_CONNECTION_COLUMNS})`
 
 // brand_profiles
 export const BRAND_PROFILE_COLUMNS =
@@ -291,7 +293,7 @@ export const USER_AUTH_COLUMNS = 'agency_id, role'
 
 // social_connections
 export const SOCIAL_CONNECTION_COLUMNS =
-  'id, platform, account_id, account_name, token_expires_at, created_at'
+  'id, platform, account_id, account_name, token_expires_at, retired_at, created_at'
 
 /**
  * The credential read — the ONLY projection that pulls access_token, used by the

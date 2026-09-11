@@ -41,7 +41,7 @@ function NotificationPanel({
   unreadCount: number
   onMarkAllRead: () => void
   onMarkRead: (id: string) => void
-  onNavigate: () => void
+  onNavigate: (from?: EnrichedNotification) => void
 }) {
   // One context read for the panel, resolving names for every row it renders — rather than
   // each row subscribing to the shell itself. `timezone` was already coming from here.
@@ -126,7 +126,10 @@ function SectionHeader({ label }: { label: string }) {
 function PanelFooter({ onNavigate }: { onNavigate: () => void }) {
   return (
     <div className="border-t border-line px-4 py-2.5 text-center">
-      <button onClick={onNavigate} className="text-caption font-medium text-forest hover:underline">
+      <button
+        onClick={() => onNavigate()}
+        className="text-caption font-medium text-forest hover:underline"
+      >
         Go to calendar →
       </button>
     </div>
@@ -176,8 +179,12 @@ export function NotificationsBell() {
     if (next) void refetch()
   }
 
-  function handleNavigate() {
+  function handleNavigate(from?: EnrichedNotification) {
     setOpen(false)
+    if (from?.type === 'connection_retired' && from.client_id) {
+      router.push(`/clients/${from.client_id}/edit?tab=accounts`)
+      return
+    }
     router.push('/calendar')
   }
 

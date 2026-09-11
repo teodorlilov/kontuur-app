@@ -337,12 +337,7 @@ export function formatPublishSlot(
   now: Date = new Date()
 ): { label: string; isToday: boolean } {
   const date = new Date(iso)
-  const time = new Intl.DateTimeFormat('en-GB', {
-    timeZone,
-    hour: '2-digit',
-    minute: '2-digit',
-    hourCycle: 'h23',
-  }).format(date)
+  const time = formatClockTime(date, timeZone)
 
   if (toDateKey(date, timeZone) === toDateKey(now, timeZone)) {
     return { label: `Today ${time}`, isToday: true }
@@ -358,4 +353,30 @@ export function formatPublishSlot(
     label: `${new Intl.DateTimeFormat('en-GB', parts).format(date)} ${time}`,
     isToday: false,
   }
+}
+
+/** "10:00" — the 24-hour clock reading of an instant in `timeZone`, as every slot label shows it. */
+function formatClockTime(date: Date, timeZone: string): string {
+  return new Intl.DateTimeFormat('en-GB', {
+    timeZone,
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  }).format(date)
+}
+
+/** "Thursday 10 September" — an instant's calendar day in `timeZone`. Server-side only. */
+export function formatLongDate(date: Date, timeZone: string): string {
+  return new Intl.DateTimeFormat('en-GB', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    timeZone,
+  }).format(date)
+}
+
+/** "Saturday 13 September, 10:00" — a slot in full, where no calendar around it disambiguates a bare weekday. */
+export function formatLongSlot(iso: string, timeZone: string): string {
+  const date = new Date(iso)
+  return `${formatLongDate(date, timeZone)}, ${formatClockTime(date, timeZone)}`
 }

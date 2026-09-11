@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   REFRESH_WINDOW_DAYS,
   daysUntilExpiry,
+  isConnectionRetired,
   isTokenExpired,
   isTokenExpiring,
 } from '../token-expiry'
@@ -82,5 +83,18 @@ describe('daysUntilExpiry', () => {
 
   it('returns null for an unparseable timestamp', () => {
     expect(daysUntilExpiry('not-a-date', NOW)).toBeNull()
+  })
+})
+
+describe('isConnectionRetired', () => {
+  it('reads a stamped retired_at as retired', () => {
+    expect(isConnectionRetired({ retired_at: '2026-09-11T03:30:00Z' })).toBe(true)
+  })
+
+  it('reads null, a missing row, and a row served before the column existed as live', () => {
+    expect(isConnectionRetired({ retired_at: null })).toBe(false)
+    expect(isConnectionRetired(null)).toBe(false)
+    expect(isConnectionRetired(undefined)).toBe(false)
+    expect(isConnectionRetired({} as { retired_at: string | null })).toBe(false)
   })
 })

@@ -184,7 +184,7 @@ export function GenerateFlow({
         setSlideCount(clientData.defaultCarouselSlides || 6)
       }
       setClientSources(parsed.sources)
-      setClientConnections(parsed.connections as MetaConnection[])
+      setClientConnections(parsed.connections)
       const changedClient = clients.find((c) => c.id === nextClientId)
       if (changedClient && changedClient.posts_per_week > 0) {
         setTargetPostCount(changedClient.posts_per_week)

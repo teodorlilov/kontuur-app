@@ -344,7 +344,13 @@ export type SettingsTab = 'team' | 'account' | 'integrations' | 'profile'
  */
 export type MetaConnection = Pick<
   SocialConnectionRow,
-  'id' | 'platform' | 'account_id' | 'account_name' | 'token_expires_at' | 'created_at'
+  | 'id'
+  | 'platform'
+  | 'account_id'
+  | 'account_name'
+  | 'token_expires_at'
+  | 'retired_at'
+  | 'created_at'
 >
 
 // ---- API error ----

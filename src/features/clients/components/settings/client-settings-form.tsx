@@ -28,6 +28,7 @@ import { extractInitials, formatRelativeTime, parseTimestamp } from '@/utils/for
 import { isEqual } from '@/utils/is-equal'
 import { clearQueryParams } from '@/utils/url'
 import { StatusPill } from '@/components/ui/status-pill'
+import { isConnectionRetired } from '@/lib/meta/token-expiry'
 import { cn } from '@/utils/cn'
 import type { ContentInsights } from '@/features/clients/lib/insights'
 import type { ClientIdea, MetaConnection, UrlAnalysisResponse } from '@/types/api'
@@ -312,11 +313,13 @@ export function ClientSettingsForm(props: ClientSettingsFormProps) {
   }
 
   const connectionCount = connections.length
-  const isConnected = connectionCount > 0
+  const liveConnectionCount = connections.filter((c) => !isConnectionRetired(c)).length
+  const isConnected = liveConnectionCount > 0
+  const hasRetiredConnection = liveConnectionCount < connectionCount
   const goToAccounts = useCallback(() => selectTab('accounts'), [selectTab])
 
   const tabs: Array<TabItem<SettingsTab>> = SETTINGS_TABS.map((tab) =>
-    tab.id === 'accounts' ? { ...tab, count: connectionCount, warn: !isConnected } : { ...tab }
+    tab.id === 'accounts' ? { ...tab, count: liveConnectionCount, warn: !isConnected } : { ...tab }
   )
 
   const panel = PANEL_COPY[activeTab]
@@ -332,7 +335,9 @@ export function ClientSettingsForm(props: ClientSettingsFormProps) {
           <>
             <span className="truncate">{drafts.client.name || 'Untitled client'}</span>
             {isConnected ? (
-              <StatusPill tone="ok">{connectionCount} connected</StatusPill>
+              <StatusPill tone="ok">{liveConnectionCount} connected</StatusPill>
+            ) : hasRetiredConnection ? (
+              <StatusPill tone="bad">Disconnected</StatusPill>
             ) : (
               <StatusPill tone="bad">Not connected</StatusPill>
             )}
@@ -487,7 +492,7 @@ export function ClientSettingsForm(props: ClientSettingsFormProps) {
               pendingCount={pendingCount}
               sourceCount={sourceCount}
               publishedCount={publishedCount}
-              connectionCount={connectionCount}
+              connectionCount={liveConnectionCount}
               onConnectClick={goToAccounts}
             />
             <ClientDangerRail onDelete={() => setIsConfirmingDelete(true)} />
@@ -517,7 +522,7 @@ export function ClientSettingsForm(props: ClientSettingsFormProps) {
         return (
           <ScheduleRail
             isActive={drafts.schedule.isActive}
-            connectionCount={connectionCount}
+            connectionCount={liveConnectionCount}
             onConnectClick={goToAccounts}
           />
         )
@@ -526,7 +531,7 @@ export function ClientSettingsForm(props: ClientSettingsFormProps) {
           <AccountsRail
             scheduledCount={scheduledCount}
             approvedUnpublishedCount={approvedUnpublishedCount}
-            connectionCount={connectionCount}
+            connectionCount={liveConnectionCount}
           />
         )
       case 'insights':

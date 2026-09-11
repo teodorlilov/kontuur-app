@@ -2,6 +2,7 @@ import 'server-only'
 
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { PostImageRow, PostRow } from '@/types'
+import { retireConnection } from '@/lib/meta/connection-store'
 import { GraphApiError } from '@/lib/meta/graph-errors'
 import { resolveNetwork } from '@/lib/meta/networks'
 import { fetchConnection, type NetworkConnection } from '@/lib/queries/db'
@@ -83,6 +84,7 @@ export async function failPublication(
     const subject = options.network ? `A scheduled ${options.network} post` : 'A scheduled post'
     await notify(admin, {
       clientId,
+      type: 'publish_failed',
       message: `${subject} could not be published: ${message}`,
     }).catch((err) => {
       console.error(
@@ -95,10 +97,29 @@ export async function failPublication(
 }
 
 /**
+ * Retire the connection when Graph says the token is dead. Swallows its own failure: a throw
+ * inside the catch that fails the destination would leave the row in `publishing`.
+ */
+async function retireOnDeadToken(
+  admin: SupabaseClient,
+  clientId: string,
+  platform: Publication['platform'],
+  err: GraphApiError
+): Promise<void> {
+  if (err.failure !== 'token_invalid') return
+  await retireConnection(admin, { clientId, platform, reason: err.message }).catch(
+    (retireErr: unknown) => {
+      console.error(`[publish] retire after 190 failed for client ${clientId}:`, retireErr)
+    }
+  )
+}
+
+/**
  * Map a Graph failure to what the retry ladder should do with it.
  *
  * The classification is Meta's, shared by every network on its Graph; only the name in the
- * message differs, which is what `label` is for.
+ * message differs, which is what `label` is for. `token_invalid` is `final: false` because the
+ * connection is already retired and the next tick stops at the preflight.
  */
 function graphFailureToDecision(
   err: GraphApiError,
@@ -303,6 +324,7 @@ export async function publishOnePublication(
     )
   } catch (err) {
     if (err instanceof GraphApiError) {
+      await retireOnDeadToken(admin, post.client_id, publication.platform, err)
       const decision = graphFailureToDecision(err, adapter.label)
       const { final, writeError } = await failPublication(
         admin,
@@ -375,6 +397,7 @@ export async function resumePendingPublication(
     )
   } catch (err) {
     if (err instanceof GraphApiError) {
+      await retireOnDeadToken(admin, row.posts.client_id, row.platform, err)
       const decision = graphFailureToDecision(err, adapter.label)
       await failPublication(admin, row.id, row.posts.client_id, decision.message, {
         final: decision.final,

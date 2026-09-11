@@ -4,7 +4,7 @@ import {
   type PillarCoverageState,
   type WeightedPillar,
 } from '@/lib/clients/content-pillars'
-import { isTokenExpired } from '@/lib/meta/token-expiry'
+import { isConnectionRetired, isTokenExpired } from '@/lib/meta/token-expiry'
 import { toPublishingPlatform } from '@/lib/validation'
 import type { ClientSourceSummary } from '@/lib/queries/db'
 import type { MetaConnection } from '@/types/api'
@@ -92,11 +92,15 @@ export function computeRunPlan({
 /**
  * Which of the client's connections can take THIS post is the adapters' business, and they
  * are server-side. This preview claims only what it can see from the browser: a publishing
- * connection with a live token. Canva rows share the table and are not one.
+ * connection with a live token, neither lapsed nor retired. Canva rows share the table and are
+ * not one.
  */
 function computePublishState(connections: MetaConnection[]): PublishState {
   const working = connections.some(
-    (c) => toPublishingPlatform(c.platform) && !isTokenExpired(c.token_expires_at)
+    (c) =>
+      toPublishingPlatform(c.platform) &&
+      !isConnectionRetired(c) &&
+      !isTokenExpired(c.token_expires_at)
   )
   return working ? { kind: 'connected' } : { kind: 'not_connected' }
 }

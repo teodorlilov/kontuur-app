@@ -4,7 +4,11 @@ import { cache } from 'react'
 import { unstable_cache } from 'next/cache'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import { SCHEDULED_STATUSES, type PendingRow } from '@/lib/queries/cache'
-import { PUBLICATION_EMBED, type PublicationEmbedColumns } from '@/lib/queries/select-columns'
+import {
+  PUBLICATION_EMBED,
+  ROSTER_CONNECTION_COLUMNS,
+  type PublicationEmbedColumns,
+} from '@/lib/queries/select-columns'
 import { isAwaitingPublish, toPublicationSummary } from '@/lib/posts/publish-state'
 import { getWeekRange } from '@/utils/date-helpers'
 import { hasLiveChannel, type RosterConnectionRow } from '@/features/clients/lib/roster'
@@ -63,14 +67,15 @@ export const getCachedScheduledThisWeek = cache(fetchScheduledCount)
  * How many of the agency's clients have at least one social account linked.
  *
  * Counted over distinct client ids rather than rows, because a client with more than one
- * connection row (Instagram plus Canva) is still one connected client.
+ * connection row (Instagram plus Canva) is still one connected client. Judged by the roster's
+ * rule, so it selects the roster's columns.
  */
 const fetchConnectedCount = unstable_cache(
   async (agencyId: string): Promise<number> => {
     const supabase = createAdminSupabaseClient()
     const { data, error } = await supabase
       .from('social_connections')
-      .select('client_id, platform, account_name, token_expires_at, clients!inner(agency_id)')
+      .select(`client_id, ${ROSTER_CONNECTION_COLUMNS}, clients!inner(agency_id)`)
       .eq('clients.agency_id', agencyId)
 
     if (error) {

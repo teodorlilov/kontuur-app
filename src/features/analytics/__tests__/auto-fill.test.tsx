@@ -84,4 +84,23 @@ describe('AutoFill', () => {
     await waitFor(() => expect(refresh).toHaveBeenCalledTimes(1))
     expect(screen.queryByRole('status')).not.toBeInTheDocument()
   })
+
+  it('refreshes when the fill retired the connection — the server renders the disconnected state', async () => {
+    fillPeriodData.mockResolvedValue({
+      ok: true,
+      data: { filled: false, stalled: true, retired: true },
+    })
+    render(<AutoFill clientId="c1" period={PERIOD} unfilledDays={12} />)
+
+    await waitFor(() => expect(refresh).toHaveBeenCalledTimes(1))
+    expect(screen.queryByRole('status')).not.toBeInTheDocument()
+  })
+
+  it('names a run whose action rejected, rather than leaving the skeleton silent', async () => {
+    fillPeriodData.mockRejectedValue(new Error('network down'))
+    render(<AutoFill clientId="c1" period={PERIOD} unfilledDays={12} />)
+
+    expect(await screen.findByRole('status')).toHaveTextContent(/could not be completed/)
+    expect(refresh).not.toHaveBeenCalled()
+  })
 })

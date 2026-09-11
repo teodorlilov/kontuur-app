@@ -1,6 +1,6 @@
 'use client'
 
-import { Check, MessageCircle, Send } from 'lucide-react'
+import { AlertTriangle, Check, MessageCircle, Send, Unplug } from 'lucide-react'
 import { formatRelativeTime, parseTimestamp } from '@/utils/format'
 import { cn } from '@/utils/cn'
 import type { EnrichedNotification } from '@/types/api'
@@ -17,7 +17,7 @@ interface NotificationItemProps {
    */
   clientName: string
   onMarkRead: (id: string) => void
-  onNavigate: () => void
+  onNavigate: (notification: EnrichedNotification) => void
 }
 
 /** Build the title line for a notification. */
@@ -26,6 +26,8 @@ function titleForNotification(n: EnrichedNotification): string {
   if (n.type === 'client_approved_all') return 'approved all posts'
   if (n.type === 'client_feedback') return 'requested changes'
   if (n.type === 'approval_sent') return 'has posts awaiting approval'
+  if (n.type === 'connection_retired') return 'needs an account reconnected'
+  if (n.type === 'publish_failed') return 'has a post that could not be published'
   // Legacy rows without type — derive from message
   if (n.message?.includes('approved')) return 'approved all posts'
   return 'requested changes'
@@ -39,9 +41,12 @@ function bodyForNotification(n: EnrichedNotification): string {
   if (n.type === 'client_feedback' && !n.feedback_text) {
     return n.message ?? 'Changes requested on weekly calendar'
   }
-  if (n.type === 'posts_ready' || n.type === 'approval_sent') return n.message ?? ''
-  // Legacy rows
   return n.message ?? ''
+}
+
+/** The row's call to action, matching where `handleNavigate` sends it. */
+function linkLabelForNotification(n: EnrichedNotification): string {
+  return n.type === 'connection_retired' ? 'Open connected accounts →' : 'Open in calendar →'
 }
 
 /** Single notification row in the panel. */
@@ -58,6 +63,8 @@ export function NotificationItem({
   // Sending an approval is neither the client answering yes nor no. It gets its own marker rather
   // than borrowing the change-request one, which is what it did while it had no type at all.
   const isSent = n.type === 'approval_sent'
+  const isRetired = n.type === 'connection_retired'
+  const isPublishFailed = n.type === 'publish_failed'
   const title = titleForNotification(n)
   const body = bodyForNotification(n)
   const feedbackPreview = n.feedback_text
@@ -70,7 +77,7 @@ export function NotificationItem({
     <div
       onClick={() => {
         onMarkRead(n.id)
-        onNavigate()
+        onNavigate(n)
       }}
       className={cn(
         'cursor-pointer border-b border-line px-4 py-3.5 transition-colors hover:bg-wash/60',
@@ -81,10 +88,18 @@ export function NotificationItem({
         <div
           className={cn(
             'mt-px grid size-8 shrink-0 place-items-center rounded-full',
-            isApproval || isSent ? 'bg-wash text-forest' : 'bg-marker text-forest-deep'
+            isRetired || isPublishFailed
+              ? 'bg-danger-bg text-danger'
+              : isApproval || isSent
+                ? 'bg-wash text-forest'
+                : 'bg-marker text-forest-deep'
           )}
         >
-          {isSent ? (
+          {isRetired ? (
+            <Unplug size={14} />
+          ) : isPublishFailed ? (
+            <AlertTriangle size={14} />
+          ) : isSent ? (
             <Send size={14} />
           ) : isApproval ? (
             <Check size={14} />
@@ -110,7 +125,9 @@ export function NotificationItem({
             <span className="text-micro text-text3">
               {formatRelativeTime(parseTimestamp(n.created_at))}
             </span>
-            <span className="text-micro font-medium text-forest">Open in calendar →</span>
+            <span className="text-micro font-medium text-forest">
+              {linkLabelForNotification(n)}
+            </span>
           </div>
         </div>
       </div>

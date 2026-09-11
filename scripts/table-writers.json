@@ -94,7 +94,7 @@
     "src/lib/visual/post-color.ts": "claimScheme — a compare-and-swap on visual_ground/visual_accent so two lanes generating one carousel cannot split its colours."
   },
   "social_connections": {
-    "src/features/publishing/lib/refresh-tokens.ts": "Two of the five Meta-side credential operations: rotate an expiring token without the user, and retire one Meta has declared dead (access_token = null) so publish reports 'needs reconnecting' instead of hammering Graph. Both update by id and neither touches account identity.",
+    "src/features/publishing/lib/refresh-tokens.ts": "Rotates an expiring Instagram token without the user (update by id, never touching account identity). Retiring a dead one is retireConnection in lib/meta/connection-store.ts — this file only calls it.",
     "src/features/clients/actions/connection-actions.ts": "The user disconnecting Instagram.",
     "src/app/api/meta/data-deletion/route.ts": "Meta's data-deletion callback erases the connection. Required by the platform and deliberately unconditional.",
     "src/app/api/canva/callback/route.ts": "Stores the Canva connection from its OAuth flow.",

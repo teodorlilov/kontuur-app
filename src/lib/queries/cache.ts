@@ -347,18 +347,17 @@ const _fetchClientRoster = unstable_cache(
 
 export const getCachedClientRoster = cache(_fetchClientRoster)
 
+/** An upcoming post and the networks it still has to go out on. */
+export type UpcomingPost = PostSummary & { pendingPlatforms: string[] }
+
 /**
- * Upcoming posts across the agency, earliest first, so the roster can show each
- * client's next slot and how many are queued behind it.
- *
- * Read by two surfaces: the roster needs only the client and the time, while the
- * dashboard's "going out next" card lists individual publishes from this same
- * entry — so the select carries id and platform and is not free to shrink.
- *
- * Call revalidateTag('client-post-stats') after post mutations.
+ * Upcoming posts across the agency, earliest first, with the destinations still to go out
+ * (after the `unpublished` filter, every destination on a kept post). Call
+ * revalidateTag('client-post-stats') after post mutations; bump the key when the cached shape
+ * changes, the Data Cache survives deploys.
  */
 const _fetchUpcomingByClient = unstable_cache(
-  async (agencyId: string): Promise<PostSummary[]> => {
+  async (agencyId: string): Promise<UpcomingPost[]> => {
     const supabase = createAdminSupabaseClient()
     const { data, error } = await supabase
       .from('posts')
@@ -396,9 +395,12 @@ const _fetchUpcomingByClient = unstable_cache(
         ({ post_publications }) =>
           publishStateOf((post_publications ?? []).map(toPublicationSummary)) === 'unpublished'
       )
-      .map(({ post_publications: _publications, ...post }) => post)
+      .map(({ post_publications, ...post }) => ({
+        ...post,
+        pendingPlatforms: (post_publications ?? []).map((publication) => publication.platform),
+      }))
   },
-  ['client-upcoming'],
+  ['client-upcoming-v2'],
   { revalidate: 60, tags: ['client-post-stats'] }
 )
 

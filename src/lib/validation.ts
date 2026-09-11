@@ -50,6 +50,12 @@ export const PLATFORM_NAMES: Record<PostPlatform, string> = {
   facebook: 'Facebook',
 }
 
+/** Two-letter marks for where a name will not fit. */
+export const PLATFORM_MARKS: Record<PostPlatform, string> = {
+  instagram: 'IG',
+  facebook: 'FB',
+}
+
 /**
  * Name a set of destinations the way a sentence would: "Instagram", "Instagram and Facebook".
  *

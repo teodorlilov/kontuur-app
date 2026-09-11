@@ -45,6 +45,16 @@ export function isTokenExpiring(expiresAt: string | null, now: Date = new Date()
 }
 
 /**
+ * Has the platform killed this token? Truthiness on purpose: a cached row from before the
+ * column existed must read as live.
+ */
+export function isConnectionRetired<Connection extends { retired_at: string | null }>(
+  connection: Connection | null | undefined
+): connection is Connection & { retired_at: string } {
+  return Boolean(connection?.retired_at)
+}
+
+/**
  * Whole days until the token lapses, for copy like "expires in 6 days".
  * Rounds up, so a token with any time left today reads as 1 rather than 0.
  * Returns null when there is no expiry to count down to.

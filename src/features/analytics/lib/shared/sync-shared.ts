@@ -1,6 +1,7 @@
 import 'server-only'
 
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { retireConnection } from '@/lib/meta/connection-store'
 import { GraphApiError } from '@/lib/meta/graph-errors'
 import { notify } from '@/lib/notifications/notify'
 import {
@@ -51,11 +52,11 @@ export interface SyncPhase {
  * The ladder, in order: a time budget checked BETWEEN clients, never inside one, so a client
  * either syncs whole or not at all; a connection with no `client_id` counted as a failure rather
  * than dropped silently, because it can be neither synced nor reported and a row like that is a
- * data problem worth seeing in the totals; a dead token or missing permission notifying the
- * agency and moving on; one rate-limit answer ending the run, since it poisons every remaining
- * call and is self-healing by tomorrow — a stored verdict, no alert; and anything else notifying
- * that the sync did not finish, because otherwise a half-failing sync is invisible: the page
- * still renders, just with sections quietly frozen.
+ * data problem worth seeing in the totals; a dead token retiring the connection and a missing
+ * permission notifying the agency, either way moving on; one rate-limit answer ending the run,
+ * since it poisons every remaining call and is self-healing by tomorrow — a stored verdict, no
+ * alert; and anything else notifying that the sync did not finish, because otherwise a
+ * half-failing sync is invisible: the page still renders, just with sections quietly frozen.
  *
  * `recordSyncHealth` runs on both outcomes, so the run's own verdict is stored rather than
  * inferred later from the metric day rows — which the on-demand refill writes too, and so cannot
@@ -87,10 +88,10 @@ export async function syncRoster(
   if (error) throw new Error(`${platform} connection roster query failed: ${error.message}`)
   const connections = (data ?? []) as SyncableConnection[]
 
-  const noteNotifyFailure = (clientId: string, err: unknown) =>
+  const noteSideEffectFailure = (clientId: string, what: 'notify' | 'retire', err: unknown) =>
     outcome.errors.push({
       clientId,
-      error: `notify failed: ${err instanceof Error ? err.message : 'unknown'}`,
+      error: `${what} failed: ${err instanceof Error ? err.message : 'unknown'}`,
     })
 
   for (const [index, connection] of connections.entries()) {
@@ -114,11 +115,19 @@ export async function syncRoster(
       outcome.errors.push({ clientId, error: message })
       await recordSyncHealth(admin, clientId, platform, message)
       if (err instanceof GraphApiError) {
-        if (err.failure === 'token_invalid' || err.failure === 'permission') {
+        if (err.failure === 'token_invalid') {
+          try {
+            await retireConnection(admin, { clientId, platform, reason: message })
+          } catch (retireErr) {
+            noteSideEffectFailure(clientId, 'retire', retireErr)
+          }
+          continue
+        }
+        if (err.failure === 'permission') {
           try {
             await notifyMetricsBlocked(admin, clientId, networkLabel)
           } catch (notifyErr) {
-            noteNotifyFailure(clientId, notifyErr)
+            noteSideEffectFailure(clientId, 'notify', notifyErr)
           }
           continue
         }
@@ -130,7 +139,7 @@ export async function syncRoster(
       try {
         await notifySyncIncomplete(admin, clientId)
       } catch (notifyErr) {
-        noteNotifyFailure(clientId, notifyErr)
+        noteSideEffectFailure(clientId, 'notify', notifyErr)
       }
     }
   }
@@ -193,9 +202,9 @@ function notifySyncIncomplete(admin: SupabaseClient, clientId: string): Promise<
 }
 
 /**
- * Tell the agency a metrics sync is blocked on a dead or underscoped connection.
- * `networkLabel` is the display name of the network whose token is dead — naming Instagram
- * over a Facebook failure sends people to reconnect the wrong account.
+ * Tell the agency a metrics sync is blocked on an underscoped connection (a dead one is retired
+ * instead). `networkLabel` names the network whose scope is missing — naming Instagram over a
+ * Facebook failure sends people to reconnect the wrong account.
  */
 function notifyMetricsBlocked(
   admin: SupabaseClient,

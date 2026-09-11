@@ -12,13 +12,22 @@ import {
 import {
   getCachedAgency,
   getCachedAgencyClients,
+  getCachedClientRoster,
   getCachedNewIdeasCount,
   getCachedPendingRows,
+  getCachedUpcomingByClient,
 } from '@/lib/queries/cache'
 import { USER_AUTH_COLUMNS } from '@/lib/queries/select-columns'
 import { getCachedCommentQueue } from '@/features/comments/queries/comment-queue'
 import { countNeedingReply } from '@/features/comments/lib/comment-status'
+import {
+  buildRetiredConnectionCards,
+  type RetiredConnectionCard,
+} from '@/features/clients/lib/retired-connections'
+import { ReconnectPrompt } from '@/features/clients/components/reconnect-prompt'
 import { fetchActiveRuns } from '@/lib/generation/runs'
+import { isConnectionRetired } from '@/lib/meta/token-expiry'
+import { formatLongDate } from '@/utils/date-helpers'
 import { extractInitials } from '@/utils/format'
 import { AuthProvider } from '@/components/providers/auth-provider'
 import { ShellProvider } from '@/components/layout/shell-context'
@@ -27,19 +36,10 @@ import { Sidebar } from '@/components/layout/sidebar'
 import type { ActiveRun } from '@/types/api'
 
 /**
- * Formatted here rather than in the rail because a client component calling
- * new Date() renders one value during SSR and another after hydration, and
- * would use the browser's timezone instead of the agency's.
+ * The dashboard shell. `ReconnectPrompt` mounts here so a dead connection is announced
+ * wherever the person lands; a layout re-renders on full load, `router.refresh()` and server
+ * actions, never on soft navigation.
  */
-function formatToday(timezone: string): string {
-  return new Intl.DateTimeFormat('en-GB', {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-    timeZone: timezone,
-  }).format(new Date())
-}
-
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const userId = await getAuthUserId()
 
@@ -85,19 +85,22 @@ export default async function DashboardLayout({ children }: { children: React.Re
   let timezone = 'UTC'
   let clients: Array<{ id: string; name: string }> = []
   let activeRuns: ActiveRun[] = []
+  let retiredCards: RetiredConnectionCard[] = []
 
   if (userData) {
-    const [agencyData, agencyClients, pendingRows, ideas, commentQueue, runs] = await Promise.all([
-      getCachedAgency(userData.agency_id),
-      getCachedAgencyClients(userData.agency_id),
-      getCachedPendingRows(userData.agency_id),
-      getCachedNewIdeasCount(userData.agency_id),
-      // The same cached read the /comments page uses, not a second count query —
-      // which is what makes the badge and the queue's own tab agree by construction
-      // rather than by two pieces of code being kept in step.
-      getCachedCommentQueue(userData.agency_id),
-      fetchActiveRuns(supabase, userData.agency_id),
-    ])
+    const [agencyData, agencyClients, pendingRows, ideas, commentQueue, runs, roster] =
+      await Promise.all([
+        getCachedAgency(userData.agency_id),
+        getCachedAgencyClients(userData.agency_id),
+        getCachedPendingRows(userData.agency_id),
+        getCachedNewIdeasCount(userData.agency_id),
+        // The same cached read the /comments page uses, not a second count query —
+        // which is what makes the badge and the queue's own tab agree by construction
+        // rather than by two pieces of code being kept in step.
+        getCachedCommentQueue(userData.agency_id),
+        fetchActiveRuns(supabase, userData.agency_id),
+        getCachedClientRoster(userData.agency_id),
+      ])
 
     if (agencyData?.mode === 'solo') agencyMode = 'solo'
     agencyName = agencyData?.name ?? ''
@@ -107,6 +110,17 @@ export default async function DashboardLayout({ children }: { children: React.Re
     commentsCount = countNeedingReply(commentQueue.groups)
     clients = agencyClients.map((client) => ({ id: client.id, name: client.name }))
     activeRuns = runs
+
+    const hasRetired = roster.some((client) =>
+      (client.social_connections ?? []).some(isConnectionRetired)
+    )
+    if (hasRetired) {
+      retiredCards = buildRetiredConnectionCards(
+        roster,
+        await getCachedUpcomingByClient(userData.agency_id),
+        timezone
+      )
+    }
   }
 
   // The rail avatar is the signed-in person, not the workspace — the sidebar
@@ -121,7 +135,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
           agencyName={agencyName}
           agencyMode={agencyMode}
           userInitials={extractInitials(displayName)}
-          todayLabel={formatToday(timezone)}
+          todayLabel={formatLongDate(new Date(), timezone)}
           timezone={timezone}
           clients={clients}
         >
@@ -145,6 +159,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
               <main className="app-content relative z-[1] flex-1 overflow-y-auto">{children}</main>
             </div>
           </div>
+          <ReconnectPrompt cards={retiredCards} />
         </ShellProvider>
       </AuthProvider>
     </>

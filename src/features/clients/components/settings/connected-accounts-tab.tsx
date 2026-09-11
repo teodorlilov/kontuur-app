@@ -7,7 +7,7 @@ import { StatusPill } from '@/components/ui/status-pill'
 import { ConnectLink, ServiceTile } from '@/components/ui/service-row'
 import { toast } from '@/components/ui/toast'
 import { disconnectConnection } from '@/features/clients/actions/connection-actions'
-import { isTokenExpired } from '@/lib/meta/token-expiry'
+import { isConnectionRetired, isTokenExpired } from '@/lib/meta/token-expiry'
 import { cn } from '@/utils/cn'
 import { PLATFORM_ACCOUNTS, type PlatformAccount } from '@/features/clients/lib/platform-accounts'
 import type { MetaConnection } from '@/types/api'
@@ -105,6 +105,8 @@ function AccountRow({
   onDisconnect: () => void
 }) {
   const expired = connection ? isTokenExpired(connection.token_expires_at) : false
+  const isRetired = isConnectionRetired(connection)
+  const needsReconnect = expired || isRetired
 
   return (
     <div
@@ -124,6 +126,8 @@ function AccountRow({
 
       {!platform.supported ? (
         <StatusPill tone="warn">Coming soon</StatusPill>
+      ) : isRetired ? (
+        <StatusPill tone="bad">Disconnected by {platform.label}</StatusPill>
       ) : expired ? (
         <StatusPill tone="warn">Token expired</StatusPill>
       ) : connection ? (
@@ -133,13 +137,13 @@ function AccountRow({
       )}
 
       {platform.supported &&
-        (connection && !expired ? (
+        (connection && !needsReconnect ? (
           <Button variant="ghost" size="sm" onClick={onDisconnect} loading={isDisconnecting}>
             Disconnect
           </Button>
         ) : (
           <ConnectLink href={`/api/meta/connect?platform=${platform.id}&client_id=${clientId}`}>
-            {expired ? 'Reconnect' : 'Connect'}
+            {needsReconnect ? 'Reconnect' : 'Connect'}
           </ConnectLink>
         ))}
     </div>

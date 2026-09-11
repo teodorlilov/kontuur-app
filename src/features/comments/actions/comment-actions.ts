@@ -11,6 +11,7 @@ import {
   SOCIAL_CONNECTION_AUTH_COLUMNS,
   type SocialConnectionAuthColumns,
 } from '@/lib/queries/select-columns'
+import { retireConnection } from '@/lib/meta/connection-store'
 import { isTokenExpired } from '@/lib/meta/token-expiry'
 import { COMMENTABLE_PLATFORMS, resolveComments } from '@/lib/meta/networks'
 import type { CommentsAdapter } from '@/lib/meta/networks/types'
@@ -83,8 +84,14 @@ async function resolveComment(
   if (!adapter) return { ok: false, error: 'That network cannot be moderated from here' }
 
   const connection = await fetchConnection(admin, row.client_id, adapter.platform)
-  if (!connection?.access_token) {
+  if (!connection) {
     return { ok: false, error: `This client has no connected ${adapter.label} account` }
+  }
+  if (!connection.access_token) {
+    return {
+      ok: false,
+      error: `${adapter.label} disconnected this account — reconnect to continue`,
+    }
   }
   if (isTokenExpired(connection.token_expires_at)) {
     return {
@@ -131,6 +138,8 @@ async function resolveComment(
  * `network` is the display label of the network the failure came from — these actions
  * moderate both, and naming Instagram over a Facebook failure sent people to reconnect
  * the wrong account.
+ *
+ * `token_invalid` is described, not acted on: the comments cron retires it within thirty minutes.
  */
 function describe(err: unknown, network: string, fallback: string): string {
   if (err instanceof GraphApiError) {
@@ -288,7 +297,7 @@ export async function deleteComment(input: DeleteCommentInput): Promise<ActionRe
  * media call rather than one per post.
  *
  * Not a new operation — it calls the same `syncClientComments` the cron does, which
- * is why `docs/OPERATIONS.md` needs no new row for it.
+ * is why `docs/OPERATIONS.md` needs no new row for it. Like the cron, it retires a dead token.
  */
 export async function checkClientComments(
   clientId: string
@@ -320,10 +329,11 @@ export async function checkClientComments(
     (connection) => connection.access_token && !isTokenExpired(connection.token_expires_at)
   )
   if (usable.length === 0) {
-    // Naming what is wrong: nothing connected at all reads differently from a connection that
-    // has expired, and only one of the two is fixed by reconnecting.
-    return connections.length === 0
-      ? { ok: false, error: 'This client has no connected account to check' }
+    if (connections.length === 0) {
+      return { ok: false, error: 'This client has no connected account to check' }
+    }
+    return connections.some((connection) => !connection.access_token)
+      ? { ok: false, error: 'The network disconnected this account — reconnect to continue' }
       : { ok: false, error: 'The connection has expired — reconnect to continue' }
   }
 
@@ -346,6 +356,15 @@ export async function checkClientComments(
       postsWithNewComments += result.fetched
     } catch (err) {
       console.error(`[comments] ${connection.platform} check failed for ${parsed.id}:`, err)
+      if (err instanceof GraphApiError && err.failure === 'token_invalid') {
+        await retireConnection(admin, {
+          clientId: parsed.id,
+          platform: connection.platform,
+          reason: err.message,
+        }).catch((retireErr: unknown) => {
+          console.error(`[comments] retire after 190 failed for ${parsed.id}:`, retireErr)
+        })
+      }
       // `usable` is filtered to commentable platforms, so the adapter always resolves; the
       // fallback keeps the lowercase key out of copy shown to a person all the same.
       const label = resolveComments(connection.platform)?.label ?? connection.platform

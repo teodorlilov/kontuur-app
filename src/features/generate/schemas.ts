@@ -41,6 +41,7 @@ export const clientRefreshSchema = z.object({
         account_id: z.string(),
         account_name: z.string(),
         token_expires_at: z.string().nullable(),
+        retired_at: z.string().nullable(),
         created_at: z.string(),
       })
     )

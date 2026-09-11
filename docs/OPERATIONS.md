@@ -208,10 +208,13 @@ operation below is about a destination, not about a post — which is why none o
 Columns written by more than one function, correctly. Each was checked; the reasoning is here so
 nobody "fixes" them:
 
-- **`social_connections.access_token`** — four writers. Minting a connection, rotating a token
-  without the user, and retiring one the platform has killed are three moments in a connection's
-  life, across two providers with different grant endpoints and opposite failure policies. Same
-  column, different operations.
+- **`social_connections.access_token`** — five writers across two providers. On the Meta side,
+  minting a connection (`storeConnection`), rotating a token without the user
+  (`refreshExpiringTokens`) and retiring one Meta has declared dead (`retireConnection`) are three
+  moments in a connection's life; Canva mints (`GET` in `app/api/canva/callback/route.ts`) and
+  refreshes (`getCanvaToken`) against its own grant endpoint with the opposite failure policy —
+  a failed Canva refresh keeps the row, a dead Meta token is nulled. Same column, different
+  operations.
 - **`social_connections.last_sync_error`** — `recordSyncHealth` stamps a metrics run's verdict;
   `storeConnection` clears it, because a connection that was just (re)made has no verdict and the
   one left behind is usually the dead token the reconnect fixed.

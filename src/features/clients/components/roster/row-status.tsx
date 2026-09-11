@@ -1,4 +1,5 @@
 import type { ClientRosterEntry } from '@/features/clients/lib/roster'
+import { PLATFORM_NAMES } from '@/lib/validation'
 import { formatPublishSlot } from '@/utils/date-helpers'
 import { formatRelativeTime } from '@/utils/format'
 import { cn } from '@/utils/cn'
@@ -24,6 +25,17 @@ function copyFor(
   timezone: string
 ): { headline: string; detail: string | null } {
   switch (entry.status) {
+    case 'connection_retired': {
+      const retired = entry.channels.find((c) => c.state === 'retired')
+      return {
+        headline: `${retired ? PLATFORM_NAMES[retired.platform] : 'Account'} disconnected`,
+        detail:
+          entry.queuedCount > 0
+            ? `${plural(entry.queuedCount, 'post')} will fail · reconnect needed`
+            : 'Reconnect needed',
+      }
+    }
+
     case 'connection_missing':
       return {
         headline: 'No account connected',

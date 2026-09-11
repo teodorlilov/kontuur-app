@@ -28,6 +28,7 @@ function failedPhases(syncError: string): string | null {
  * Freshness alone cannot answer the incomplete case — `lastSyncAt` stamps every ATTEMPT — so
  * that branch keys on `syncError`, not on the stamp. `sync-line.test.tsx` pins a current
  * stamp beside a partial-sync error.
+ * Disconnected wins over "first sync tonight": a retired, never-synced Page has neither.
  */
 export function SyncLine({
   lastSyncAt,
@@ -48,15 +49,15 @@ export function SyncLine({
 }) {
   const stale = hasHistory && isStale(lastSyncAt)
   const incomplete = hasHistory && hasConnection && syncError !== null
-  const warn = stale || incomplete || (hasHistory && !hasConnection)
+  const warn = stale || incomplete || !hasConnection
 
   let message: string
-  if (!hasHistory) {
-    message = 'Connected · first sync tonight, 03:30'
-  } else if (!hasConnection) {
+  if (!hasConnection) {
     message = `${networkLabel} disconnected — metrics stopped${
       lastSyncAt ? ` ${formatSyncInstant(lastSyncAt, timezone)}` : ''
     } · reconnect to resume`
+  } else if (!hasHistory) {
+    message = 'Connected · first sync tonight, 03:30'
   } else if (incomplete) {
     const phases = failedPhases(syncError)
     message = `Last sync did not finish${

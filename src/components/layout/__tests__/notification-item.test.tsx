@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { NotificationItem } from '../notification-item'
 import type { EnrichedNotification } from '@/types/api'
 
@@ -70,5 +70,51 @@ describe('NotificationItem', () => {
     renderItem(notification({ type: null, message: 'Acme approved all posts' }))
 
     expect(screen.getByText('approved all posts')).toBeInTheDocument()
+  })
+  it('names a retired connection as its own event, pointing at the accounts tab', () => {
+    renderItem(
+      notification({
+        type: 'connection_retired',
+        message: 'Instagram for Acme stopped working — reconnect the account',
+      })
+    )
+
+    expect(screen.getByText('needs an account reconnected')).toBeInTheDocument()
+    expect(
+      screen.getByText('Instagram for Acme stopped working — reconnect the account')
+    ).toBeInTheDocument()
+    expect(screen.getByText('Open connected accounts →')).toBeInTheDocument()
+    expect(screen.queryByText('requested changes')).not.toBeInTheDocument()
+    expect(screen.queryByText('Open in calendar →')).not.toBeInTheDocument()
+  })
+
+  it('names a failed publish as its own event rather than a change request', () => {
+    renderItem(
+      notification({
+        type: 'publish_failed',
+        message: 'A scheduled Instagram post could not be published: connection needs reconnecting',
+      })
+    )
+
+    expect(screen.getByText('has a post that could not be published')).toBeInTheDocument()
+    expect(screen.queryByText('requested changes')).not.toBeInTheDocument()
+  })
+
+  it('hands the notification itself to onNavigate, so the bell can pick a destination', () => {
+    const onNavigate = vi.fn()
+    const n = notification({ type: 'connection_retired', message: 'x' })
+    render(
+      <NotificationItem
+        notification={n}
+        clientName="Acme"
+        onMarkRead={vi.fn()}
+        onNavigate={onNavigate}
+      />
+    )
+    fireEvent.click(screen.getByText('needs an account reconnected'))
+
+    expect(onNavigate).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'connection_retired', client_id: 'c1' })
+    )
   })
 })

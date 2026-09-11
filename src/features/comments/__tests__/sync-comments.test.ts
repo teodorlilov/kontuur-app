@@ -48,7 +48,12 @@ vi.mock(import('@/features/analytics/lib/shared/post-metrics-store'), () => ({
   upsertPostMetricRows: (...a: unknown[]) => upsertPostMetricRows(...a),
 }))
 
-const { syncClientComments } = await import('../lib/sync-comments')
+const retireConnection = vi.fn()
+vi.mock('@/lib/meta/connection-store', () => ({
+  retireConnection: (...a: unknown[]) => retireConnection(...a),
+}))
+
+const { syncClientComments, syncAllClientComments } = await import('../lib/sync-comments')
 const { GraphApiError } = await import('@/lib/meta/graph-errors')
 
 /**
@@ -406,5 +411,48 @@ describe('syncClientComments', () => {
       'Application request limit reached'
     )
     expect(rateLimited.failure).toBe('rate_limited')
+  })
+})
+
+describe('syncAllClientComments on a dead token', () => {
+  it('retires the connection the moment Graph answers 190 — this run is the half-hourly heartbeat', async () => {
+    retireConnection.mockReset()
+    retireConnection.mockResolvedValue(undefined)
+    listCommentablePosts.mockRejectedValue(
+      new GraphApiError({
+        httpStatus: 400,
+        code: 190,
+        subcode: null,
+        type: 'OAuthException',
+        message: 'Error validating access token',
+        fbtraceId: null,
+      })
+    )
+    const roster = vi.fn(() => ({
+      in: () => ({
+        not: () => ({
+          not: () =>
+            Promise.resolve({
+              data: [
+                { client_id: 'c1', platform: 'instagram', account_id: 'acct', access_token: 'tok' },
+              ],
+              error: null,
+            }),
+        }),
+      }),
+    }))
+    const del = vi.fn(() => ({ lt: () => Promise.resolve({ error: null }) }))
+    const admin = {
+      from: vi.fn(() => ({ select: roster, delete: del })),
+    } as unknown as SupabaseClient
+
+    const outcome = await syncAllClientComments(admin, { timeBudgetMs: 10_000 })
+
+    expect(outcome.failed).toBe(1)
+    expect(retireConnection).toHaveBeenCalledWith(admin, {
+      clientId: 'c1',
+      platform: 'instagram',
+      reason: 'Error validating access token',
+    })
   })
 })

@@ -22,20 +22,23 @@ export function ServiceTile({ children }: { children: ReactNode }) {
  * A link that reads as a primary action.
  *
  * An anchor rather than `Button`: starting OAuth is a real navigation to a route handler, which a
- * button would have to fake with `window.location`.
+ * button would have to fake with `window.location`. `onClick` never prevents the navigation.
  */
 export function ConnectLink({
   href,
   className,
   children,
+  onClick,
 }: {
   href: string
   className?: string
   children: ReactNode
+  onClick?: () => void
 }) {
   return (
     <a
       href={href}
+      onClick={onClick}
       className={cn(
         'inline-flex h-8 items-center rounded-md bg-forest px-3 text-body font-medium text-surface',
         'transition-colors duration-150 ease-contour hover:bg-forest-deep',

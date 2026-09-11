@@ -29,6 +29,7 @@ function connection(overrides: Partial<MetaConnection>): MetaConnection {
     account_id: 'acc',
     account_name: 'Acc',
     token_expires_at: null,
+    retired_at: null,
     created_at: '2026-01-01',
     ...overrides,
   }
@@ -113,6 +114,14 @@ describe('computeRunPlan', () => {
       const plan = computeRunPlan({
         ...base,
         connections: [connection({ token_expires_at: '2020-01-01T00:00:00Z' })],
+      })
+      expect(plan.publishState).toEqual({ kind: 'not_connected' })
+    })
+
+    it('a token the network killed → not_connected, however far off its expiry', () => {
+      const plan = computeRunPlan({
+        ...base,
+        connections: [connection({ retired_at: '2026-09-11T03:30:00Z' })],
       })
       expect(plan.publishState).toEqual({ kind: 'not_connected' })
     })

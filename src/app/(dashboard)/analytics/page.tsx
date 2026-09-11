@@ -37,6 +37,7 @@ import {
   igMarkers,
 } from '@/features/analytics/lib/shared/unfilled-days'
 import { getAnalyticsReport } from '@/features/analytics/lib/instagram/report-data'
+import { isConnectionRetired } from '@/lib/meta/token-expiry'
 import { toDateKey } from '@/utils/date-helpers'
 
 // The regenerate action runs under this segment: a full window refresh is
@@ -165,7 +166,7 @@ export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps
               clientId={clientId}
               clientName={client.name}
               pageName={facebook!.account_name}
-              hasConnection={hasFacebook}
+              hasConnection={hasFacebook && !isConnectionRetired(facebook)}
               timezone={timezone}
               lastSyncAt={fbSyncAt}
               syncError={fbSyncError}
@@ -201,7 +202,7 @@ export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps
         )
       : Promise.resolve(0),
   ])
-  const hasConnection = instagram !== null
+  const hasConnection = instagram !== null && !isConnectionRetired(instagram)
   const handle = instagram?.account_name?.replace(/^@/, '') ?? null
 
   const narrativeResult = data.hasHistory

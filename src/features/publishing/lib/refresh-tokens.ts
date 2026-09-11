@@ -6,19 +6,14 @@ import { IG_TOKEN_REFRESH_URL } from '@/lib/meta/constants'
 import { classifyGraphError, type GraphFailure } from '@/lib/meta/graph-errors'
 import { igRefreshResponseSchema } from '@/lib/meta/schemas'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
-import { notify } from '@/lib/notifications/notify'
+import { retireConnection } from '@/lib/meta/connection-store'
 import type { SocialConnectionRow } from '@/types'
 
-/**
- * Derived, with the narrowing the query guarantees stated beside it.
- *
- * The hand-written version declared `client_id` and `access_token` non-null over nullable columns,
- * behind a cast. The token filter makes access_token true; client_id was never filtered.
- */
+/** Derived; both non-null narrowings are the query's own `.not(…, 'is', null)` filters. */
 type ExpiringConnection = Pick<
   SocialConnectionRow,
   'id' | 'client_id' | 'access_token' | 'token_expires_at'
-> & { access_token: string }
+> & { access_token: string; client_id: string }
 
 interface RefreshTokensResult {
   refreshed: number
@@ -46,9 +41,9 @@ export function isTokenRetirable(failure: GraphFailure): boolean {
  * IG tokens expire after ~60 days and must be refreshed via ig_refresh_token;
  * without this, every connection silently dies and scheduled posts start failing.
  *
- * A token Meta declares invalid (code 190 family) is RETIRED — access_token
- * nulled so the publish preflight reports "needs reconnecting" instead of
- * hammering Meta with a dead credential on every subsequent run.
+ * A token Meta declares invalid is retired through `retireConnection`. `isTokenRetirable`
+ * widens that to `permission` here, and only here: the refresh endpoint's answer is about the
+ * token itself, unlike a scope error on `/insights`.
  */
 export async function refreshExpiringTokens(): Promise<RefreshTokensResult> {
   const admin = createAdminSupabaseClient()
@@ -60,6 +55,7 @@ export async function refreshExpiringTokens(): Promise<RefreshTokensResult> {
     .select('id, client_id, access_token, token_expires_at')
     .eq('platform', 'instagram')
     .not('access_token', 'is', null)
+    .not('client_id', 'is', null)
     // NULL expiry rows are included: an IG connection stored without an expiry
     // would otherwise never be refreshed and die silently at day 60.
     .or(`token_expires_at.is.null,token_expires_at.lte.${cutoff}`)
@@ -114,36 +110,19 @@ export async function refreshExpiringTokens(): Promise<RefreshTokensResult> {
       })
 
       if (isTokenRetirable(failure)) {
-        // Retire the credential: keeping a dead token makes every publish and
-        // metrics call fail with the same 190 until someone reconnects.
-        const { error: retireError } = await admin
-          .from('social_connections')
-          .update({ access_token: null })
-          .eq('id', conn.id)
-        if (retireError) {
-          results.errors.push(
-            `token retire failed for connection ${conn.id}: ${retireError.message}`
-          )
-        }
-        results.retired++
-        results.errors.push(body.error?.message ?? `HTTP ${res.status}`)
-
-        // Only a retired credential earns the alert. It used to fire here for
-        // every failure, so a Meta 500 or a rate limit told the agency their
-        // connection was broken and asked them to reconnect a token that was
-        // fine and would refresh on its own tomorrow.
-        //
-        // Scoped catch: a failed notification is its own problem, and letting
-        // it reach the outer handler would count this connection twice.
-        // A connection with no client has nobody to tell — the column is nullable and this query
-        // does not filter it, which the hand-written row type used to hide.
         try {
-          if (conn.client_id) await notifyReconnectNeeded(admin, conn.client_id)
-        } catch (notifyErr) {
+          await retireConnection(admin, {
+            clientId: conn.client_id,
+            platform: 'instagram',
+            reason: body.error?.message ?? `HTTP ${res.status}`,
+          })
+          results.retired++
+        } catch (retireErr) {
           results.errors.push(
-            notifyErr instanceof Error ? notifyErr.message : 'reconnect notification failed'
+            retireErr instanceof Error ? retireErr.message : `retire failed for ${conn.id}`
           )
         }
+        results.errors.push(body.error?.message ?? `HTTP ${res.status}`)
       } else {
         // Transient / rate-limited: leave the token for tomorrow's run, and say
         // nothing — there is nothing for anyone to do about it.
@@ -157,16 +136,4 @@ export async function refreshExpiringTokens(): Promise<RefreshTokensResult> {
   }
 
   return results
-}
-
-/** Tell the agency a connection needs manual reconnection, at most once per cooldown. */
-function notifyReconnectNeeded(
-  admin: ReturnType<typeof createAdminSupabaseClient>,
-  clientId: string
-): Promise<void> {
-  return notify(admin, {
-    clientId,
-    message: (name) =>
-      `Instagram connection for ${name} could not be refreshed — please reconnect the account`,
-  })
 }

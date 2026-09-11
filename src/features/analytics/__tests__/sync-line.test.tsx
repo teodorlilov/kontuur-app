@@ -75,4 +75,17 @@ describe('SyncLine', () => {
     )
     expect(screen.getByText(/Instagram disconnected/)).toBeInTheDocument()
   })
+  it('reads disconnected before first-sync when the network killed a never-synced connection', () => {
+    render(
+      <SyncLine
+        lastSyncAt={null}
+        hasHistory={false}
+        hasConnection={false}
+        timezone="UTC"
+        networkLabel="Facebook"
+      />
+    )
+    expect(screen.getByText(/Facebook disconnected — metrics stopped/)).toBeInTheDocument()
+    expect(screen.queryByText(/first sync tonight/)).not.toBeInTheDocument()
+  })
 })
