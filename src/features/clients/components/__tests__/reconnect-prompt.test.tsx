@@ -1,5 +1,9 @@
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
+
+const search = vi.hoisted(() => ({ params: new URLSearchParams() }))
+vi.mock('next/navigation', () => ({ useSearchParams: () => search.params }))
+
 import { ReconnectPrompt } from '../reconnect-prompt'
 import type { RetiredConnectionCard } from '../../lib/retired-connections'
 
@@ -16,7 +20,10 @@ const card: RetiredConnectionCard = {
   reconnectHref: '/api/meta/connect?platform=instagram&client_id=c1',
 }
 
-beforeEach(() => window.localStorage.clear())
+beforeEach(() => {
+  window.localStorage.clear()
+  search.params = new URLSearchParams()
+})
 
 describe('ReconnectPrompt', () => {
   it('opens with the client, what happened, what stops, and a one-click reconnect', () => {
@@ -67,11 +74,18 @@ describe('ReconnectPrompt', () => {
     expect(screen.getByRole('dialog')).toBeInTheDocument()
   })
 
-  it('clicking Reconnect also counts as seen — the OAuth round trip must not reopen it', () => {
+  it('clicking Reconnect is not remembered — an interrupted OAuth must bring it back', () => {
     const first = render(<ReconnectPrompt cards={[card]} />)
     fireEvent.click(screen.getByRole('link', { name: 'Reconnect Instagram' }))
     first.unmount()
 
+    expect(window.localStorage.length).toBe(0)
+    render(<ReconnectPrompt cards={[card]} />)
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+  })
+
+  it('stays out of the way while the Facebook Page chooser is open', () => {
+    search.params = new URLSearchParams('tab=accounts&choose_page=1')
     render(<ReconnectPrompt cards={[card]} />)
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })

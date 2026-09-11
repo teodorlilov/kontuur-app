@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Modal } from '@/components/ui/modal'
 import { ConnectLink, ServiceTile } from '@/components/ui/service-row'
@@ -28,13 +29,15 @@ function rememberSeen(card: RetiredConnectionCard): void {
 /**
  * The one-time prompt for a connection Meta has killed. State holds only dismissals; the card
  * is derived from props each render because the layout stays mounted and hands it new cards.
- * Only "Not now" and "Reconnect" are remembered — Escape, the X or a click outside close it for
- * this page load, so an accidental click cannot spend the one prompt.
+ * Only "Not now" is remembered: Reconnect succeeds by clearing the row, and an interrupted
+ * OAuth must bring the prompt back. Hidden while the Facebook Page chooser (`?choose_page`) is
+ * open, which happens before that row clears.
  */
 export function ReconnectPrompt({ cards }: { cards: RetiredConnectionCard[] }) {
   const [closed, setClosed] = useState<string[]>([])
+  const choosingPage = useSearchParams().has('choose_page')
   const card = filterUnseen(cards).find((c) => !closed.includes(buildSeenKey(c)))
-  if (!card) return null
+  if (!card || choosingPage) return null
 
   const closeForNow = () => setClosed((keys) => [...keys, buildSeenKey(card)])
   const dismiss = () => {
@@ -96,9 +99,7 @@ export function ReconnectPrompt({ cards }: { cards: RetiredConnectionCard[] }) {
         </dl>
 
         <div className="flex items-center gap-1.5">
-          <ConnectLink href={card.reconnectHref} onClick={dismiss}>
-            Reconnect {card.networkLabel}
-          </ConnectLink>
+          <ConnectLink href={card.reconnectHref}>Reconnect {card.networkLabel}</ConnectLink>
           <Button variant="ghost" size="sm" onClick={dismiss}>
             Not now
           </Button>
