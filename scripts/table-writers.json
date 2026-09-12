@@ -55,8 +55,7 @@
     "src/features/analytics/lib/shared/purge-account-metrics.ts": "purgeAccountAnalytics deletes this table for Meta's data-deletion callback and an account switch; deleteClient deliberately leans on the `clients` cascade instead. This was hand-listed until the delete went through a `scoped(table)` helper that hid `.from(table)` from the scan; the deletes are written out now, so the scan finds them and this entry is checked like any other."
   },
   "intelligence_briefings": {
-    "src/features/dashboard/lib/write-briefing.ts": "writeWeeklyBriefing — the only composer of a briefing.",
-    "src/app/api/cron/generate/route.ts": "Patches coaching_points onto a briefing writeWeeklyBriefing has just returned, for solo agencies only. A second call into the briefing writer would need it to accept a field it cannot compute; this stays a patch by id."
+    "src/features/dashboard/lib/write-briefing.ts": "writeWeeklyBriefing — the one writer: the global weekly brief, one row per week_start, upserted with ignoreDuplicates as the claim against a racing cron tick."
   },
   "notifications": {
     "src/components/layout/shell-context.tsx": "The browser toggling is_read for the signed-in user, optimistically. Read state only — it can never create a notification, and it is RLS-scoped rather than admin.",

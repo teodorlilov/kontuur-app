@@ -1,6 +1,5 @@
 import { getCachedPendingRows, getCachedUpcomingByClient } from '@/lib/queries/cache'
 import { getMonthBoundaries } from '@/utils/date-helpers'
-import { getCachedBriefing } from './briefing'
 import { getCachedChangeRequests } from './change-requests'
 import {
   getCachedConnectedClientCount,
@@ -31,7 +30,6 @@ function emptyDashboard(clientsAddedThisMonth: number): DashboardData {
       clientsAddedThisMonth,
       connectedClientCount: 0,
     },
-    briefing: null,
     pendingPosts: [],
     changeRequests: [],
     upcomingPublishes: [],
@@ -48,7 +46,9 @@ function emptyDashboard(clientsAddedThisMonth: number): DashboardData {
  * defeat caching entirely.
  *
  * The readers are still awaited in one wave. They are decoupled and individually cached, but
- * running them in sequence would turn a single round trip into six for no gain.
+ * running them in sequence would turn a single round trip into seven for no gain. The weekly
+ * brief is not among them: it is one global row, not agency data, and the page reads it beside
+ * this.
  */
 export async function fetchDashboardData(
   agencyId: string,
@@ -75,7 +75,6 @@ export async function fetchDashboardData(
     pendingRows,
     upcoming,
     failed,
-    briefing,
     queue,
     changeRequests,
   ] = await Promise.all([
@@ -85,7 +84,6 @@ export async function fetchDashboardData(
     // Shared with the clients roster, which reads the same cached entry.
     getCachedUpcomingByClient(agencyId),
     getCachedFailedPublishes(agencyId),
-    getCachedBriefing(agencyId),
     getCachedReviewQueue(agencyId),
     getCachedChangeRequests(agencyId),
   ])
@@ -109,7 +107,6 @@ export async function fetchDashboardData(
       clientsAddedThisMonth,
       connectedClientCount,
     },
-    briefing,
     pendingPosts: queue.map((row) => ({
       id: row.id,
       caption: row.caption,

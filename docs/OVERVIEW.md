@@ -58,7 +58,7 @@ Calendar (schedule a post into a day and time) ──► attach images (upload /
 Auto-publish to Instagram (Meta Graph API) via 5-min cron
        │
        ▼
-Analytics + weekly AI intelligence briefing
+Analytics + the weekly platform brief
 ```
 
 This whole loop can also run **autonomously**: an hourly cron generates a review queue for
@@ -203,8 +203,7 @@ src/
 │   ├── onboard/                 #   brand profile generation from interview
 │   ├── analyze-url/             #   bootstrap a profile from a website / Instagram URL
 │   ├── suggest-sources/         #   recommend research sources for a client
-│   ├── intelligence/            #   weekly agency briefing
-│   ├── solo-coaching/           #   solo-mode Monday coaching card
+│   ├── intelligence/            #   the weekly platform brief (one global row per week)
 │   ├── analytics/               #   AI summary of a reporting period
 │   ├── shared/                  #   deduplicator, prompt sections, content criteria, formality
 │   └── utils/                   #   prompt helpers, sanitisation
@@ -289,7 +288,7 @@ in `supabase/migrations/`. Nineteen tables, grouped by domain:
 | Table                    | Purpose                                                                                                                        |
 | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------ |
 | `analytics_reports`      | Stored reports per client/platform/period — `metrics_json` + AI `ai_summary`.                                                  |
-| `intelligence_briefings` | Weekly per-agency briefing — platform updates, trending topics, weekly tip, action nudge, sources, and solo `coaching_points`. |
+| `intelligence_briefings` | One global weekly brief per `week_start` — `items` jsonb of verified Instagram/Facebook platform changes (`src/ai/intelligence/schema.ts`). |
 
 Plus an RPC: **`client_post_stats(p_agency_id)`** returns per-client `total_count`,
 `published_count`, and `last_generated_at` in one round-trip for the dashboard/client grid.
@@ -445,20 +444,21 @@ Meta OAuth connect, connection management, profile-picture fetch, and a data-del
 are all implemented.
 
 **Autonomous operation** — An **hourly** generate cron researches + generates + validates a
-review queue for every client whose posting schedule's day + hour slot has passed (and
-refreshes weekly briefings and solo coaching). A **every-5-minute** publish
+review queue for every client whose posting schedule's day + hour slot has passed (and,
+first, writes the week's platform brief if it is missing). A **every-5-minute** publish
 cron pushes every due scheduled post to Instagram. It never generates from a client idea:
 an idea is a request that an agency human decides is worth making, and a guard test
 (`api/cron/__tests__/cron-invariants.test.ts`) keeps it that way.
 
-**Intelligence & coaching** — Weekly per-agency briefing (platform updates, niche trends, weekly
-tip, action nudge, sources); on-demand tips; solo-mode Monday coaching card.
+**Weekly brief** — One global brief per week: up to five Instagram/Facebook platform changes,
+each a headline with a source the web search actually returned (an allowlist of official Meta
+newsrooms and trade outlets). Written by the generate cron on the first tick of the week.
 
 **Analytics & reports** — Overview / posts / audience tabs with Recharts (follower trend, media-type
 breakdown, top posts, post-day breakdown), an AI summary strip, report history, and PDF export
 via jsPDF. Backed by the `client_post_stats` RPC and `analytics_reports`.
 
-**Dashboard** — Stat cards, client rows with pending counts, the intelligence briefing, change-request
+**Dashboard** — Stat cards, client rows with pending counts, the weekly brief bar, change-request
 cards, quick actions, and recent post previews (agency and solo variants).
 
 **Notifications & settings** — Notification bell with unread badge; settings for account, profile,
@@ -493,7 +493,7 @@ Configured in `vercel.json`, all authenticated with `Authorization: Bearer $CRON
 
 | Endpoint                       | Schedule                  | Does                                                                                                                                                                                                                                                                                                                           |
 | ------------------------------ | ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `GET /api/cron/generate`       | hourly `0 * * * *`        | For each active posting schedule whose day + hour slot (agency timezone) has passed today and has no generation run since the slot: research → generate → validate → save `pending_review` → notify agency → distill the style memo (skipped when fresh). Then one weekly intelligence briefing per agency (+ solo coaching). `maxDuration: 300s`. |
+| `GET /api/cron/generate`       | hourly `0 * * * *`        | For each active posting schedule whose day + hour slot (agency timezone) has passed today and has no generation run since the slot: research → generate → validate → save `pending_review` → notify agency → distill the style memo (skipped when fresh). Before all that, the week's global platform brief if no row exists for this UTC Monday yet. `maxDuration: 300s`. |
 | `GET /api/cron/visuals`        | hourly `10 * * * *`       | Paint missing visuals for `pending_review` posts (quality-gated, attempt-capped backlog) so drafts arrive in the queue as finished creatives. `maxDuration: 300s`.                                                                                                                                                             |
 | `GET /api/cron/publish`        | every 5 min `*/5 * * * *` | Publish every `status='scheduled'` post whose `scheduled_at` has passed (24h catch-up window; older posts are marked failed), grouped by client, to Instagram; atomic claim against double-publishing, retry up to 3 attempts. `maxDuration: 300s`.                                                                            |
 | `GET /api/cron/refresh-tokens` | daily `30 8 * * *`        | Refresh Instagram long-lived tokens expiring within 14 days; notify the agency (7-day cooldown) when a refresh fails and the account needs reconnecting. `maxDuration: 300s`.                                                                                                                                                  |
@@ -505,7 +505,7 @@ Configured in `vercel.json`, all authenticated with `Authorization: Bearer $CRON
 All under `src/app/api/`. Representative map (each handler authenticates and scopes to the agency):
 
 - **AI** — `ai/onboard`, `ai/analyze-url`, `ai/suggest-sources`, `ai/generate-stream`,
-  `ai/rewrite`, `ai/detect-slop`, `ai/intelligence`, `ai/intelligence/tip`
+  `ai/rewrite`, `ai/detect-slop`
 - **Clients** — `clients`, `clients/[id]`, `clients/[id]/sources` (+ `/tavily`, `/upload`, `/[sourceId]`)
 - **Sources** — `sources/discover`
 - **Posts** — `posts`, `posts/[id]`, `posts/[id]/images`, `posts/[id]/publish`

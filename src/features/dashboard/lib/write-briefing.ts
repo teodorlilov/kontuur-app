@@ -4,90 +4,54 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { revalidateTag } from 'next/cache'
 import { generateBriefing } from '@/ai/intelligence/generate-briefing'
 import { DASHBOARD_BRIEFING_TAG } from '@/features/dashboard/queries/briefing'
-import { getAgencyNiche } from '@/lib/clients/fetch-client-data'
 import { asJson } from '@/lib/queries/as-json'
-import { getMondayISO } from '@/utils/date-helpers'
+import { getMondayISO, shiftDateKey } from '@/utils/date-helpers'
+
+/** What a call did: filled this week's gap, or found it already filled. */
+type BriefingWrite = { written: false } | { written: true; itemCount: number; unverified: number }
 
 /**
- * Write this week's intelligence briefing — the one writer of `intelligence_briefings`.
+ * Write this week's brief — the one writer of `intelligence_briefings`.
  *
- * There were three, and they were not equal. The dashboard action handled the lookup error, handled
- * the write error, and revalidated the cache the briefing is read through. The Monday cron did the
- * same insert but never revalidated, so a freshly generated briefing sat behind the previous one
- * for five minutes. A third — a POST route with no caller anywhere in the app — ignored the lookup
- * error, ignored both write errors, and never revalidated either; it has been deleted.
+ * One brief for everyone: platform news is the same for every agency, so the row is keyed on
+ * `week_start` alone (UTC Monday) and there is no agency column to scope by. The caller is the
+ * hourly generate cron; 167 ticks a week this is one indexed lookup, and on the first tick of a
+ * new week it is one web-searched model call covering the seven days just ended.
  *
- * `coaching_points` is deliberately not written here. It is a separate column filled only for
- * solo-mode agencies, from a second model call the cron makes after this returns, and folding it in
- * would make every caller pay for a generation most of them do not want.
+ * The upsert with `ignoreDuplicates` is the atomic claim: `week_start` is unique, so two ticks that
+ * both generated (a concurrent invocation of the same cron minute) cannot both write — the loser's
+ * row is simply dropped, and the reader is unaffected either way.
+ *
+ * Errors propagate. The cron is the boundary and logs once; a swallowed failure here used to read
+ * as "no news this week" on every dashboard.
+ *
+ * The tag, not revalidatePath: the brief is read through unstable_cache, which a path
+ * revalidation does not clear.
  */
-
-interface BriefingWrite {
-  id: string
-  /** False when a briefing already existed and `refresh` was not asked for. */
-  written: boolean
-}
-
-export async function writeWeeklyBriefing(
-  supabase: SupabaseClient,
-  agencyId: string,
-  options: { refresh?: boolean } = {}
-): Promise<BriefingWrite | null> {
-  const weekStart = getMondayISO()
+export async function writeWeeklyBriefing(supabase: SupabaseClient): Promise<BriefingWrite> {
+  const weekStart = getMondayISO(new Date(), 'UTC')
 
   const { data: existing, error: lookupError } = await supabase
     .from('intelligence_briefings')
     .select('id')
-    .eq('agency_id', agencyId)
-    .gte('week_start', weekStart)
+    .eq('week_start', weekStart)
     .maybeSingle()
+  if (lookupError) throw new Error(`briefing lookup failed: ${lookupError.message}`)
+  if (existing) return { written: false }
 
-  // Not recoverable by falling through to the insert: a failed lookup cannot tell "no briefing this
-  // week" from "could not ask", and guessing writes a duplicate.
-  if (lookupError) {
-    console.error(`[briefing] lookup failed for agency ${agencyId}:`, lookupError.message)
-    return null
-  }
+  const { items, unverified } = await generateBriefing({
+    since: shiftDateKey(weekStart, -7),
+    until: weekStart,
+  })
 
-  const row = existing as { id: string } | null
-  // The cron fills a gap; the dashboard button regenerates on demand. Same write, different answer
-  // to "and if there is already one".
-  if (row && !options.refresh) return { id: row.id, written: false }
+  const { error: writeError } = await supabase
+    .from('intelligence_briefings')
+    .upsert(
+      { week_start: weekStart, items: asJson(items) },
+      { onConflict: 'week_start', ignoreDuplicates: true }
+    )
+  if (writeError) throw new Error(`briefing write failed: ${writeError.message}`)
 
-  const agencyNiche = await getAgencyNiche(supabase, agencyId)
-  const briefing = await generateBriefing({ agencyNiche })
-
-  // niche_trends is an array of objects; `Json` is the generated column type and does not narrow to
-  // it, so the shape is asserted rather than inferred.
-  const fields = {
-    platform_updates: briefing.platform_updates,
-    trending_topics: asJson(briefing.niche_trends),
-    weekly_tip: briefing.weekly_tip,
-    action_nudge: briefing.action_nudge,
-    sources: briefing.sources,
-  }
-
-  const { data: saved, error: writeError } = row
-    ? await supabase
-        .from('intelligence_briefings')
-        .update(fields)
-        .eq('id', row.id)
-        .select('id')
-        .single()
-    : await supabase
-        .from('intelligence_briefings')
-        .insert({ ...fields, agency_id: agencyId, week_start: weekStart })
-        .select('id')
-        .single()
-
-  if (writeError || !saved) {
-    console.error(`[briefing] write failed for agency ${agencyId}:`, writeError?.message)
-    return null
-  }
-
-  // The tag, not revalidatePath: the briefing is read through unstable_cache, which a path
-  // revalidation does not clear. The cron never did this, which is why its briefings were invisible
-  // for five minutes after it wrote them.
   revalidateTag(DASHBOARD_BRIEFING_TAG, 'max')
-  return { id: (saved as { id: string }).id, written: true }
+  return { written: true, itemCount: items.length, unverified }
 }

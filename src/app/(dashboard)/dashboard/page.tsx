@@ -14,6 +14,7 @@ import {
 import { getMondayISO, getWeekdayIndex } from '@/utils/date-helpers'
 import { formatRelativeTime, parseTimestamp } from '@/utils/format'
 import { fetchDashboardData } from '@/features/dashboard/queries/dashboard-data'
+import { getCachedBriefing } from '@/features/dashboard/queries/briefing'
 import { countFilledPerDay } from '@/features/dashboard/lib/metrics'
 import { DAYS_PER_WEEK } from '@/utils/constants'
 import { cn } from '@/utils/cn'
@@ -47,9 +48,10 @@ export default async function DashboardPage() {
   // can point at a day outside the week the data was fetched for.
   const weekStartISO = getMondayISO(new Date(), timezone)
 
-  const [data, coverage] = await Promise.all([
+  const [data, coverage, briefing] = await Promise.all([
     fetchDashboardData(agencyId, clients, weekStartISO, timezone),
     getCachedClientWeekCoverage(agencyId, weekStartISO, timezone),
+    getCachedBriefing(),
   ])
 
   const { metrics } = data
@@ -167,7 +169,7 @@ export default async function DashboardPage() {
         </div>
 
         <div className="rv mt-4 [--d:240ms]">
-          <BriefingBar briefing={data.briefing} />
+          <BriefingBar briefing={briefing} />
         </div>
 
         <div className="rv mt-4 [--d:280ms]">

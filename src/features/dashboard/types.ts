@@ -1,15 +1,16 @@
 import type { DashboardChangeRequest } from '@/types/api'
+import type { BriefingItem } from '@/ai/intelligence/schema'
+import type { Tables } from '@/types'
 
 /** Tone of the small pill on a dashboard stat card. */
 export type StatPillTone = 'positive' | 'attention' | 'muted' | 'accent' | 'danger'
 
-export interface DashboardBriefing {
-  briefing_text: string | null
-  action_nudge: string | null
-  weekly_tip: string | null
-  platform_updates: string[] | null
-  week_start: string | null
-  coaching_points: string[] | null
+/**
+ * The week's brief as the bar renders it: which week, and the verified changes. Derived from the
+ * row so the column cannot drift; `items` is the parsed jsonb, typed by the schema that wrote it.
+ */
+export type DashboardBriefing = Pick<Tables<'intelligence_briefings'>, 'week_start'> & {
+  items: BriefingItem[]
 }
 
 export interface PendingPostPreview {
@@ -47,10 +48,9 @@ export interface FailedPublish {
   scheduledAt: string | null
 }
 
-/** Everything the dashboard page renders. */
+/** Everything the dashboard page renders about the agency; the brief is global and read beside it. */
 export interface DashboardData {
   metrics: DashboardMetrics
-  briefing: DashboardBriefing | null
   pendingPosts: PendingPostPreview[]
   changeRequests: DashboardChangeRequest[]
   upcomingPublishes: UpcomingPublish[]

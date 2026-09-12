@@ -58,7 +58,6 @@ export const UNTESTED_COMPONENTS: string[] = [
   'features/canvas-editor/components/workspace/prompt-row.tsx',
   'features/canvas-editor/components/workspace/toolbar-popover.tsx',
   'features/clients/components/settings/brand-profile-tab.tsx',
-  'features/dashboard/components/briefing-actions.tsx',
   'features/dashboard/components/client-coverage.tsx',
   'features/dashboard/components/count-up.tsx',
   'features/dashboard/components/pending-review-list.tsx',

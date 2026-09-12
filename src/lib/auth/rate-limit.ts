@@ -61,8 +61,9 @@ export function checkRateLimit(key: string, config: RateLimitConfig): RateLimitR
   return { allowed: true, remaining: config.max - entry.count, resetAt: entry.resetAt }
 }
 
-/** Default config for AI endpoints: 20 requests per minute per user */
-export const AI_RATE_LIMIT: RateLimitConfig = { max: 20, windowMs: 60_000 }
+/** Config for AI endpoints: 20 requests per minute per user. Private — every route consumes
+ *  the pool through aiRateLimitResponse. */
+const AI_RATE_LIMIT: RateLimitConfig = { max: 20, windowMs: 60_000 }
 
 /**
  * The 429 for a user who exhausted the per-minute model-call budget, or null when

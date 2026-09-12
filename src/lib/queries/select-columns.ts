@@ -559,8 +559,7 @@ export type IGAudienceSnapshotColumns = Pick<
 >
 
 // intelligence_briefings
-export const BRIEFING_COLUMNS =
-  'briefing_text, action_nudge, weekly_tip, platform_updates, week_start, coaching_points'
+export const BRIEFING_COLUMNS = 'week_start, items'
 
 // language_rules
 export const LANGUAGE_RULES_COLUMNS = 'native_cta_phrases, formality_rules, language_instructions'

@@ -905,53 +905,24 @@ export type Database = {
       }
       intelligence_briefings: {
         Row: {
-          action_nudge: string | null
-          agency_id: string | null
-          briefing_text: string | null
-          coaching_points: Json | null
-          created_at: string | null
+          created_at: string
           id: string
-          platform_updates: string[] | null
-          sources: string[] | null
-          trending_topics: Json | null
-          week_start: string | null
-          weekly_tip: string | null
+          items: Json
+          week_start: string
         }
         Insert: {
-          action_nudge?: string | null
-          agency_id?: string | null
-          briefing_text?: string | null
-          coaching_points?: Json | null
-          created_at?: string | null
+          created_at?: string
           id?: string
-          platform_updates?: string[] | null
-          sources?: string[] | null
-          trending_topics?: Json | null
-          week_start?: string | null
-          weekly_tip?: string | null
+          items?: Json
+          week_start: string
         }
         Update: {
-          action_nudge?: string | null
-          agency_id?: string | null
-          briefing_text?: string | null
-          coaching_points?: Json | null
-          created_at?: string | null
+          created_at?: string
           id?: string
-          platform_updates?: string[] | null
-          sources?: string[] | null
-          trending_topics?: Json | null
-          week_start?: string | null
-          weekly_tip?: string | null
+          items?: Json
+          week_start?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "intelligence_briefings_agency_id_fkey"
-            columns: ["agency_id"]
-            isOneToOne: false
-            referencedRelation: "agencies"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       language_rules: {
         Row: {

@@ -36,6 +36,8 @@ const IDENTIFIES_CALLER = /auth\.uid\(\)|auth\.jwt\(\)|current_setting\(/
 const EXEMPT: Record<string, string> = {
   language_rules_read_all:
     'Shared reference data with no agency_id: per-LANGUAGE writing rules (native CTA phrases, formality defaults, banned anglicisms) that are identical for every agency. Still gated on auth.uid() IS NOT NULL and SELECT-only, so it is readable by any signed-in user and writable by none.',
+  intelligence_briefings_read_all:
+    'Shared reference data with no agency_id: the one weekly platform brief every dashboard shows (migration 20260851). Same posture as language_rules — gated on auth.uid() IS NOT NULL, SELECT-only, written only by the cron through the service role.',
 }
 
 /**

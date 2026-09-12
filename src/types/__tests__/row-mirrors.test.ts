@@ -66,7 +66,7 @@ const EXEMPT: Record<string, string> = {
   'features/generate/hooks/use-draft-visuals.ts:DraftPostInput':
     "A structural contract deliberately satisfied by BOTH PostData and DraftPost, so it cannot be tied to either. slides_json is `unknown` rather than the column's Json for exactly that reason.",
 
-  // The four below narrow a structurally-untyped `Json` column into the shape the app
+  // The three below narrow a structurally-untyped `Json` column into the shape the app
   // actually writes. Deriving them would replace a useful assertion with `Json` and
   // push a cast to every use — strictly worse. Same posture as PostData.slides_json.
   'types/sources.ts:ClientSource':
@@ -75,11 +75,6 @@ const EXEMPT: Record<string, string> = {
     'Same narrowing as ClientSource — config and pillar_ids are `Json` in the column and Record<string, unknown> / string[] here.',
   'lib/queries/db.ts:ClientSourceSummary':
     'Same narrowing as ClientSource — pillar_ids is `Json` in the column and string[] here.',
-  'features/dashboard/types.ts:DashboardBriefing':
-    'coaching_points is `Json | null` in the column and string[] | null here. (platform_updates genuinely is string[] | null in the column — only the one field is narrowed.)',
-
-  'ai/intelligence/generate-briefing.ts:BriefingResult':
-    "Name overlap, not a projection: this is the parsed JSON body of an Anthropic response, and no query returns it. The columns were modeled on the model's output, so the resemblance runs the other way — deriving it would make a prompt contract depend on a table, and would force `?? []` guards at the write for a state the parser cannot produce.",
   'lib/visual/queries.ts:ExtractionPatch':
     'A write contract, not a row: every field but `status` is optional so a status-only "pending" write never references identity/report, and `status` is narrowed to its four literals. Same reason as UpdateSourceInput. (PublishStatusPatch made the same argument until publishing moved to post_publications, where `PublicationPatch` is derived from the row instead — a partial of a derived type, which this scanner is happy with and which cannot drift.)',
 }

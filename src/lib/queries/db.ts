@@ -334,24 +334,6 @@ export async function fetchPostHistoryByClient(
   )
 }
 
-/**
- * Counts posts with status='pending_review' across the given client ids.
- * Returns 0 immediately when clientIds is empty (avoids an unnecessary DB call).
- */
-export async function countPendingPostsByClients(
-  supabase: SupabaseClient,
-  clientIds: string[]
-): Promise<number> {
-  if (clientIds.length === 0) return 0
-  const { count, error } = await supabase
-    .from('posts')
-    .select('id', { count: 'exact', head: true })
-    .eq('status', 'pending_review')
-    .in('client_id', clientIds)
-  if (error) throw new Error(`countPendingPostsByClients failed: ${error.message}`)
-  return count ?? 0
-}
-
 // ---------- client_sources ----------
 
 export interface ClientSourceRow {

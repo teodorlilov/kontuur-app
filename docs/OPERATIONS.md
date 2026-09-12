@@ -115,7 +115,7 @@ Meta's data-deletion callback that erases third parties.
 | Open a generation run | `startGenerationRun` | [lib/generation/runs.ts](../src/lib/generation/runs.ts) |
 | Record a theme a run produced | `trackGenerationTheme` | [lib/generation/runs.ts](../src/lib/generation/runs.ts) |
 | Record topics a post covered | `recordPostTopics` | [lib/queries/post-history.ts](../src/lib/queries/post-history.ts) |
-| Write the weekly intelligence briefing | `writeWeeklyBriefing` | [features/dashboard/lib/write-briefing.ts](../src/features/dashboard/lib/write-briefing.ts) |
+| Write the week's global platform brief (one row per UTC Monday) | `writeWeeklyBriefing` | [features/dashboard/lib/write-briefing.ts](../src/features/dashboard/lib/write-briefing.ts) |
 
 ### Posts
 

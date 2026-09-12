@@ -120,19 +120,3 @@ export async function fetchClientData(
 
   return { data: await buildClientData(supabase, client) }
 }
-
-/** Returns the most common niche across an agency's clients, or undefined. */
-export async function getAgencyNiche(
-  supabase: SupabaseClient,
-  agencyId: string
-): Promise<string | undefined> {
-  const { data, error } = await supabase.from('clients').select('niche').eq('agency_id', agencyId)
-  if (error) throw new Error(`agency niche query failed: ${error.message}`)
-  // as: explicit column projection — Supabase types from the table, not the select
-  const rows = (data as Array<{ niche: string | null }> | null) ?? []
-  const freq = new Map<string, number>()
-  for (const { niche } of rows) {
-    if (niche) freq.set(niche, (freq.get(niche) ?? 0) + 1)
-  }
-  return freq.size === 0 ? undefined : [...freq.entries()].sort((a, b) => b[1] - a[1])[0]?.[0]
-}

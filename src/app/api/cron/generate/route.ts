@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
-import { fetchClientData, getAgencyNiche } from '@/lib/clients/fetch-client-data'
-import { countPendingPostsByClients, fetchEngineContext } from '@/lib/queries/db'
+import { fetchClientData } from '@/lib/clients/fetch-client-data'
+import { fetchEngineContext } from '@/lib/queries/db'
 import { runGenerationBatch } from '@/ai/generation/generation-orchestrator'
 import { toTheme } from '@/ai/generation/to-theme'
 import { draftColumns } from '@/lib/generation/draft-columns'
@@ -11,14 +11,12 @@ import {
   startGenerationRun,
   trackGenerationTheme,
 } from '@/lib/generation/runs'
-import { generateSoloCoaching } from '@/ai/solo-coaching/generate-coaching'
 import { writeWeeklyBriefing } from '@/features/dashboard/lib/write-briefing'
 import { DEFAULT_CAROUSEL_SLIDES, MS_PER_HOUR, STYLE_MEMO_REFRESH_DAYS } from '@/utils/constants'
 import { distillStyleMemo } from '@/ai/learning/distill-style-memo'
 import { fetchScheduleContext, getScheduleDue } from './helpers'
 import type { PostType } from '@/types/api'
 import type { Theme } from '@/ai/generation/types'
-import { asJson } from '@/lib/queries/as-json'
 import { POSTING_SCHEDULE_DUE_COLUMNS } from '@/lib/queries/select-columns'
 import { recordPostTopics } from '@/lib/queries/post-history'
 import { notify, NOTIFY_EVERY_TIME } from '@/lib/notifications/notify'
@@ -29,7 +27,16 @@ export const maxDuration = 300
 // instead of Vercel killing the function at maxDuration (300s) mid-client.
 const TIME_BUDGET_MS = 240_000
 
-/** Cron endpoint — generates each client's batch when its weekday+hour slot comes due in the agency's timezone. */
+/**
+ * Cron endpoint — generates each client's batch when its weekday+hour slot comes due in the
+ * agency's timezone.
+ *
+ * It also fills the week's platform brief, and does so FIRST: the brief is one global row whose
+ * writer costs a lookup on every tick and one web-searched model call on the first tick of a new
+ * week, and running it after the generation loop would leave that call to be killed by
+ * `maxDuration` on the weeks generation spends its whole budget. A failed brief is logged and does
+ * not stop generation; the next hourly tick simply tries again.
+ */
 export async function GET(request: NextRequest) {
   const authHeader = request.headers.get('authorization')
   if (!process.env.CRON_SECRET || authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
@@ -46,7 +53,17 @@ export async function GET(request: NextRequest) {
     /** Clients whose slot another invocation of this tick claimed first — see startGenerationRun. */
     slot_already_claimed: [] as string[],
   }
-  const processedAgencyIds = new Set<string>()
+
+  try {
+    const brief = await writeWeeklyBriefing(supabase)
+    if (brief.written) {
+      console.info(
+        `[cron] weekly brief written: ${brief.itemCount} items, ${brief.unverified} unverified dropped`
+      )
+    }
+  } catch (err) {
+    console.error('[cron] weekly brief failed:', err)
+  }
 
   const { data: schedules, error: schedulesError } = await supabase
     .from('posting_schedules')
@@ -274,7 +291,6 @@ export async function GET(request: NextRequest) {
         console.error(`[cron] post-save follow-ups failed for client ${clientId}:`, err)
       }
 
-      processedAgencyIds.add(agencyId)
       results.processed++
       console.info(
         `[cron] client=${clientId} done in ${Math.round((Date.now() - clientStartedAt) / 1000)}s ` +
@@ -287,61 +303,6 @@ export async function GET(request: NextRequest) {
         clientId: schedule.client_id,
         error: err instanceof Error ? err.message : 'Unknown error',
       })
-    }
-  }
-
-  // One briefing per agency per week. The week boundary is the writer's to know.
-  for (const agencyId of processedAgencyIds) {
-    try {
-      // The once-per-week guard lives in the writer: without `refresh` it returns the existing
-      // row untouched, so an agency that already has a briefing costs no LLM call.
-      const written = await writeWeeklyBriefing(supabase, agencyId)
-      if (!written) throw new Error('briefing write failed')
-
-      if (written.written) {
-        // Solo coaching card — only for solo-mode agencies
-        const { data: rawAgency, error: agencyError } = await supabase
-          .from('agencies')
-          .select('mode')
-          .eq('id', agencyId)
-          .maybeSingle()
-        if (agencyError) throw new Error(`agency mode lookup failed: ${agencyError.message}`)
-        // as: explicit column projection — Supabase types from the table, not the select
-        const agency = rawAgency as { mode: string } | null
-
-        if (agency?.mode === 'solo') {
-          // SECURITY: admin client bypasses RLS — must scope pending count to this agency's clients
-          const { data: agencyClients, error: clientsError } = await supabase
-            .from('clients')
-            .select('id')
-            .eq('agency_id', agencyId)
-          // An empty list would read as "nothing pending" and coach the opposite advice.
-          if (clientsError) throw new Error(`agency client query failed: ${clientsError.message}`)
-          const agencyClientIds = ((agencyClients as Array<{ id: string }> | null) ?? []).map(
-            (c) => c.id
-          )
-
-          const pendingCount = await countPendingPostsByClients(supabase, agencyClientIds)
-
-          // Its own lookup. This used to borrow `agencyNiche` from the briefing block above, with
-          // a comment saying so — a coupling that broke the moment that block moved into
-          // writeWeeklyBriefing. One query, and only for a solo agency that just got a briefing.
-          const coaching = await generateSoloCoaching({
-            niche: (await getAgencyNiche(supabase, agencyId)) ?? 'general',
-            pendingCount,
-          })
-
-          const { error: coachingError } = await supabase
-            .from('intelligence_briefings')
-            .update({ coaching_points: asJson(coaching.coaching_points) })
-            .eq('id', written.id)
-          if (coachingError) {
-            throw new Error(`coaching write failed: ${coachingError.message}`)
-          }
-        }
-      }
-    } catch (err) {
-      console.error('[cron] Briefing generation failed for agency', agencyId, err)
     }
   }
 

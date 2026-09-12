@@ -50,14 +50,14 @@ Onboard client → configure brand profile + research sources
   → Review queue → optional client approval portal (public magic link)
   → Calendar (schedule + best-time recommendations) → attach images (upload / Canva)
   → Auto-publish to Instagram (Meta Graph API) via daily cron
-  → Analytics + weekly AI intelligence briefing
+  → Analytics + the weekly platform brief
 ```
 
 Surfaces: Dashboard, Clients, Generate (full-screen wizard), Review queue, Calendar, Client ideas, Analytics, Settings — renamed in solo mode (Create content, My drafts, My calendar, My comments, My results; the one client's settings appear as My business). Public, login-free surfaces: the approval portal and the idea submission form. Plus a marketing site (landing, pricing, privacy, terms, data deletion).
 
 ## Capabilities and Constraints
 
-**Confirmed capabilities:** multi-client management with AI onboarding from a website or Instagram URL; post, carousel, and reel-script generation across Instagram, TikTok, LinkedIn, Twitter, and Pinterest; multi-dimensional quality and language validation with auto-correction and slop detection; review queue with batch operations; token-based client approval (48-hour expiry) and client idea submission; content calendar with best-time recommendations; posting schedules driving autonomous generation; Instagram/Facebook publishing; analytics with PDF export; weekly AI intelligence briefings and solo coaching cards; team invites with admin/member roles; AI-composed visuals with a Konva-based editor.
+**Confirmed capabilities:** multi-client management with AI onboarding from a website or Instagram URL; post, carousel, and reel-script generation across Instagram, TikTok, LinkedIn, Twitter, and Pinterest; multi-dimensional quality and language validation with auto-correction and slop detection; review queue with batch operations; token-based client approval (48-hour expiry) and client idea submission; content calendar with best-time recommendations; posting schedules driving autonomous generation; Instagram/Facebook publishing; analytics with PDF export; a weekly brief of verified Instagram/Facebook platform changes; team invites with admin/member roles; AI-composed visuals with a Konva-based editor.
 
 **Terminology that must stay consistent:** *client* (a managed brand, not a Kontuur customer), *agency* (the tenant root — used even in solo mode), *content pillar*, *theme*, *source*, *brand profile*, *review queue*, *approval token*, *posting schedule*.
 
