@@ -12,12 +12,21 @@ import { DEFAULT_RUN_SIZE } from '@/utils/constants'
 import { fetchIdeaById } from '@/features/ideas/lib/ideas'
 import { AWAITING_DECISION } from '@/features/ideas/lib/idea-filters'
 import { GenerateFlow } from '@/features/generate/components/generate-flow'
+import { requireBusinessSetup } from '@/features/onboarding/lib/require-business-setup'
 import type { MetaConnection } from '@/types/api'
 
 interface PageProps {
   searchParams: Promise<{ ideaId?: string; client?: string }>
 }
 
+/**
+ * The generate wizard, preloaded for the idea's client, the `?client=` one, or the first.
+ *
+ * Carries the same first-run gate as the (dashboard) layout: this route group has no shell, so a
+ * solo workspace with no client that deep-links here is sent to /clients/new rather than shown the
+ * agency-worded empty state. The client list it reads is fresh because `createClient`
+ * (features/clients/actions/client-actions.ts) busts its tag with `{ expire: 0 }`.
+ */
 export default async function GeneratePage({ searchParams }: PageProps) {
   // The params do not depend on the session, and the idea does not depend on the client list, so
   // each wave holds everything that can resolve at once. Only fetchClientData below is genuinely
@@ -33,6 +42,8 @@ export default async function GeneratePage({ searchParams }: PageProps) {
     ideaId ? fetchIdeaById(ideaId, agencyId) : null,
     getCachedAgency(agencyId),
   ])
+
+  requireBusinessSetup(agency?.mode, clients.length)
 
   // An `?ideaId=` that resolves to nothing used to fall through to `clients[0]`, so a
   // deleted, mistyped or other-agency id silently opened a full batch run for the

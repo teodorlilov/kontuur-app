@@ -40,7 +40,13 @@ function setup(suggestions = SUGGESTIONS) {
   const onApply = vi.fn()
   const onClose = vi.fn()
   render(
-    <ReanalyzeBrandDialog open onClose={onClose} suggestions={suggestions} onApply={onApply} />
+    <ReanalyzeBrandDialog
+      open
+      onClose={onClose}
+      suggestions={suggestions}
+      onApply={onApply}
+      isSolo={false}
+    />
   )
   return { onApply, onClose, user: userEvent.setup() }
 }

@@ -1,5 +1,6 @@
 import {
   CalendarIcon,
+  CaseRoundIcon,
   ChartIcon,
   ChatRoundIcon,
   ChatSquareIcon,
@@ -33,8 +34,14 @@ const AGENCY_NAV: NavItem[] = [
   { label: 'Analytics', href: '/analytics', icon: ChartIcon },
 ]
 
+/**
+ * "My business" points at /clients, not /clients/<id>/edit: the roster route sends a solo
+ * workspace straight to its one business (src/app/(dashboard)/clients/page.tsx), and the prefix
+ * keeps the row lit on both the settings and the sources pages.
+ */
 const SOLO_NAV: NavItem[] = [
   { label: 'Dashboard', href: '/dashboard', icon: Widget2Icon },
+  { label: 'My business', href: '/clients', icon: CaseRoundIcon },
   { label: 'Create content', href: '/generate', icon: StarsIcon },
   { label: 'My drafts', href: '/review', icon: ClipboardListIcon, badge: 'pending' },
   { label: 'My calendar', href: '/calendar', icon: CalendarIcon },

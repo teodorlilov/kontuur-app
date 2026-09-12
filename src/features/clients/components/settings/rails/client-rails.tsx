@@ -23,6 +23,8 @@ interface ClientStatusRailProps {
   publishedCount: number
   connectionCount: number
   onConnectClick: () => void
+  /** A solo workspace editing its own business: the box is just "Status". */
+  isSolo: boolean
 }
 
 export function ClientStatusRail({
@@ -32,10 +34,11 @@ export function ClientStatusRail({
   publishedCount,
   connectionCount,
   onConnectClick,
+  isSolo,
 }: ClientStatusRailProps) {
   return (
     <>
-      <RailBox title="Client status" tone="mark">
+      <RailBox title={isSolo ? 'Status' : 'Client status'} tone="mark">
         <RailStat
           label="Queue"
           value={
@@ -69,6 +72,8 @@ interface BrandProfileRailProps {
   websiteEdited: boolean
   onReread: () => void
   rereading: boolean
+  /** A solo workspace editing its own business: the source copy speaks to the owner. */
+  isSolo: boolean
 }
 
 export function BrandProfileRail({
@@ -77,6 +82,7 @@ export function BrandProfileRail({
   websiteEdited,
   onReread,
   rereading,
+  isSolo,
 }: BrandProfileRailProps) {
   return (
     <>
@@ -95,8 +101,12 @@ export function BrandProfileRail({
       <RailBox title="Source">
         <RailText>
           {savedWebsite
-            ? 'Read the site again and compare what it suggests against this profile. A client set up before the reader improved is usually carrying its services menu as pillars.'
-            : 'Add a website on the Basic info panel to draft this profile from the client’s own site.'}
+            ? isSolo
+              ? 'Read the site again and compare what it suggests against this profile. A profile set up before the reader improved is usually carrying a services menu as pillars.'
+              : 'Read the site again and compare what it suggests against this profile. A client set up before the reader improved is usually carrying its services menu as pillars.'
+            : isSolo
+              ? 'Add a website on the Basic info panel to draft this profile from your own site.'
+              : 'Add a website on the Basic info panel to draft this profile from the client’s own site.'}
         </RailText>
         {/* Named rather than implied: the read uses the stored address, so an unsaved edit to the
             website field would otherwise silently produce a profile from the previous site. */}
@@ -124,9 +134,16 @@ interface VisualIdentityRailProps {
   palette: Palette
   onReanalyze: () => void
   reanalyzing: boolean
+  /** A solo workspace editing its own business: the source and scope copy speak to the owner. */
+  isSolo: boolean
 }
 
-export function VisualIdentityRail({ palette, onReanalyze, reanalyzing }: VisualIdentityRailProps) {
+export function VisualIdentityRail({
+  palette,
+  onReanalyze,
+  reanalyzing,
+  isSolo,
+}: VisualIdentityRailProps) {
   const contrast = checkPaletteContrast(palette)
 
   return (
@@ -141,7 +158,9 @@ export function VisualIdentityRail({ palette, onReanalyze, reanalyzing }: Visual
       )}
 
       <RailBox title="Source">
-        <RailText>Re-read the brand colours and style from the client&rsquo;s website.</RailText>
+        <RailText>
+          Re-read the brand colours and style from {isSolo ? 'your' : 'the client’s'} website.
+        </RailText>
         <Button
           variant="secondary"
           size="sm"
@@ -154,7 +173,10 @@ export function VisualIdentityRail({ palette, onReanalyze, reanalyzing }: Visual
       </RailBox>
 
       <RailBox title="Where it applies">
-        <RailText>Every AI-generated image and carousel slide for this client.</RailText>
+        <RailText>
+          Every AI-generated image and carousel slide for {isSolo ? 'your business' : 'this client'}
+          .
+        </RailText>
       </RailBox>
     </>
   )

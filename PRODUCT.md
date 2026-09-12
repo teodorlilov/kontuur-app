@@ -13,7 +13,7 @@ Two audiences intended to be of **equal priority** — neither leads, and every 
 > **Current state (2026-07-30):** solo mode is **not yet developed** and is explicitly out of scope for near-term design work. Equal priority remains the intent, not a description of today's build. Do not scope design work to solo surfaces, and do not treat solo defects as blocking — but do not deepen the gap either: new shared surfaces should avoid hard-coding agency-only assumptions that solo would later have to unpick.
 
 - **Agency mode** — marketing agency teams managing social content for multiple client brands. They work across clients, in volume, and answer to the client for what ships. Their situation is throughput plus accountability: many brands, each with its own voice, each needing sign-off.
-- **Solo mode** — a single business owner running their own socials. One brand, no client to please, less time and less marketing expertise. Solo auto-creates one client for the business and simplifies navigation and language throughout.
+- **Solo mode** — a single business owner running their own socials. One brand, no client to please, less time and less marketing expertise. Solo sets the business up as its one client through the same onboarding flow agencies use for each client — a solo workspace with no client yet is sent there first — and simplifies navigation and language throughout.
 
 Mode is chosen at signup and stored on the agency (`agencies.mode`). Within an agency, users carry a `role` of `admin` or `member`.
 
@@ -53,7 +53,7 @@ Onboard client → configure brand profile + research sources
   → Analytics + weekly AI intelligence briefing
 ```
 
-Surfaces: Dashboard, Clients, Generate (full-screen wizard), Review queue, Calendar, Client ideas, Analytics, Settings — renamed in solo mode (Create content, My drafts, My calendar, My results). Public, login-free surfaces: the approval portal and the idea submission form. Plus a marketing site (landing, pricing, privacy, terms, data deletion).
+Surfaces: Dashboard, Clients, Generate (full-screen wizard), Review queue, Calendar, Client ideas, Analytics, Settings — renamed in solo mode (Create content, My drafts, My calendar, My comments, My results; the one client's settings appear as My business). Public, login-free surfaces: the approval portal and the idea submission form. Plus a marketing site (landing, pricing, privacy, terms, data deletion).
 
 ## Capabilities and Constraints
 

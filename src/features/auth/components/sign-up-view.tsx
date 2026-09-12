@@ -34,9 +34,11 @@ interface ModeSelectorProps {
 }
 
 /**
- * Agency or solo. Not in the mock, and not optional either: it decides whether
- * signup provisions a client, a brand profile and a posting schedule alongside
- * the agency, so asking later would mean a second onboarding step.
+ * Agency or solo. Not in the mock, and not optional either: it lands in
+ * `agencies.mode`, which decides the shell's navigation and language and whether
+ * the first-run gate sends the account to set up its business
+ * (features/onboarding/lib/require-business-setup.ts), so asking later would
+ * mean a second onboarding step.
  */
 function ModeSelector({ mode, onChange }: ModeSelectorProps) {
   return (

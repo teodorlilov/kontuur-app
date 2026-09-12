@@ -37,6 +37,13 @@ export const USER_RECORD_TAG = 'user-record'
  * `unstable_cache` for the cross-request TTL, wrapped in React `cache` so a layout and its page
  * share one read within a render. The admin client is required inside `unstable_cache` — a
  * request-scoped client cannot be captured by a cross-request cache.
+ *
+ * A cached "no row" is never served. The row is created moments after the first render that can
+ * miss it — the (dashboard) layout's own fallback creates it when the email-confirmation callback
+ * never reached `createUserRecord` — and a render cannot bust the tag, so serving that miss for
+ * its 300s TTL sent every page's `requireSessionUser` to /login, which bounced back through the
+ * dashboard, in a loop. A miss re-reads once, uncached: one extra round trip, only while the row
+ * is missing.
  */
 const _fetchUserRecord = unstable_cache(
   async (userId: string) => getUserRecord(createAdminSupabaseClient(), userId),
@@ -44,7 +51,10 @@ const _fetchUserRecord = unstable_cache(
   { revalidate: 300, tags: [USER_RECORD_TAG] }
 )
 
-export const getCachedUserRecord = cache(_fetchUserRecord)
+export const getCachedUserRecord = cache(async (userId: string) => {
+  const cached = await _fetchUserRecord(userId)
+  return cached ?? getUserRecord(createAdminSupabaseClient(), userId)
+})
 
 /**
  * Authenticate the current user and resolve their agency_id.

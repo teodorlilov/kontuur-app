@@ -29,11 +29,17 @@ import { CLIENT_FILES_BUCKET, POST_IMAGES_BUCKET } from '@/utils/constants'
 import type { ActionResult } from '@/lib/actions/types'
 
 /**
- * Create a client with its brand profile, posting schedule and visual identity.
+ * Create a client with its brand profile, posting schedule and visual identity — the one place a
+ * client is created, in both modes.
  *
  * Replaces `POST /api/clients`, which was this app's last create-by-route-handler — docs/CLAUDE.md
  * puts mutations behind server actions, and `updateClient` below was already one. Both paths
  * still share `createClientSchema`/`updateClientSchema`, so the write shape is declared once.
+ *
+ * Busts the roster with `{ expire: 0 }`, not `'max'`: the caller navigates straight to
+ * `/generate?client=<id>`, whose first-run gate reads `getCachedAgencyClients`, and `'max'` is
+ * stale-while-revalidate — it would serve the cached empty list once and send a solo workspace
+ * back to setup (the same reason as src/lib/meta/connection-store.ts `retireConnection`).
  */
 export async function createClient(input: CreateClientInput): Promise<ActionResult<string>> {
   // Auth before validation, for the same reason updateClient does it: parsing first lets an
@@ -64,7 +70,7 @@ export async function createClient(input: CreateClientInput): Promise<ActionResu
   })
   if (!result.ok) return { ok: false, error: result.error }
 
-  revalidateTag('agency-clients', 'max')
+  revalidateTag('agency-clients', { expire: 0 })
   return { ok: true, data: result.clientId }
 }
 

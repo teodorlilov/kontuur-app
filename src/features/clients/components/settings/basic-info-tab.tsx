@@ -15,16 +15,24 @@ interface BasicInfoTabProps {
   brand: BrandDraft
   onClientChange: (patch: Partial<ClientDraft>) => void
   onBrandChange: (patch: Partial<BrandDraft>) => void
+  /** A solo workspace editing its own business: labels speak to the owner, not about a client. */
+  isSolo: boolean
 }
 
 /** Identity and language: who the client is and how posts are written for them. */
-export function BasicInfoTab({ client, brand, onClientChange, onBrandChange }: BasicInfoTabProps) {
+export function BasicInfoTab({
+  client,
+  brand,
+  onClientChange,
+  onBrandChange,
+  isSolo,
+}: BasicInfoTabProps) {
   const languageOptions = ensureOption(CONTENT_LANGUAGE_OPTIONS, client.language)
 
   return (
     <>
       <FormSection>
-        <Field label="Client name" span={6} required>
+        <Field label={isSolo ? 'Business name' : 'Client name'} span={6} required>
           <Input
             value={client.name}
             onChange={(e) => onClientChange({ name: e.target.value })}
@@ -52,12 +60,17 @@ export function BasicInfoTab({ client, brand, onClientChange, onBrandChange }: B
             type="email"
             value={client.contactEmail}
             onChange={(e) => onClientChange({ contactEmail: e.target.value })}
-            placeholder="client@example.com"
+            placeholder={isSolo ? 'you@example.com' : 'client@example.com'}
           />
         </Field>
       </FormSection>
 
-      <FormSection legend="Language" description="How posts are written for this client.">
+      <FormSection
+        legend="Language"
+        description={
+          isSolo ? 'How your posts are written.' : 'How posts are written for this client.'
+        }
+      >
         <Field label="Primary" span={4}>
           <Select
             value={client.language}
@@ -90,7 +103,7 @@ export function BasicInfoTab({ client, brand, onClientChange, onBrandChange }: B
 
       <FormSection>
         <ToggleRow
-          title="Health-related client"
+          title={isSolo ? 'Health-related business' : 'Health-related client'}
           description="Applies medical guidelines and appends disclaimers on publish."
           checked={brand.isHealthNiche}
           onChange={(v) => onBrandChange({ isHealthNiche: v })}

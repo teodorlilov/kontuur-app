@@ -19,6 +19,8 @@ import type { SourceUsageStats } from '@/lib/queries/db'
 
 interface SourcesManagerProps {
   clientId: string
+  /** A solo workspace managing its own sources: no roster crumb, copy speaks to the owner. */
+  isSolo: boolean
   clientName: string
   niche: string
   initialSources: ClientSource[]
@@ -36,6 +38,7 @@ interface AddForm {
 
 export function SourcesManager({
   clientId,
+  isSolo,
   clientName,
   niche,
   initialSources,
@@ -255,11 +258,15 @@ export function SourcesManager({
   return (
     <>
       <PageHeader
-        crumb={[
-          { label: 'Clients', href: '/clients' },
-          { label: clientName, href: `/clients/${clientId}/edit` },
-          { label: 'Sources' },
-        ]}
+        crumb={
+          isSolo
+            ? [{ label: 'My business', href: `/clients/${clientId}/edit` }, { label: 'Sources' }]
+            : [
+                { label: 'Clients', href: '/clients' },
+                { label: clientName, href: `/clients/${clientId}/edit` },
+                { label: 'Sources' },
+              ]
+        }
         back={`/clients/${clientId}/edit`}
         badge={extractInitials(clientName)}
         eyebrow="Content sources"
@@ -469,7 +476,9 @@ export function SourcesManager({
 
             {renderSourceList(
               websiteSources,
-              "No websites yet. Add your client's website URL to use their content as research material.",
+              isSolo
+                ? 'No websites yet. Add your website URL to use its content as research material.'
+                : "No websites yet. Add your client's website URL to use their content as research material.",
               'website',
               (url, sourceId) => {
                 void handleDiscoverPages(url, sourceId)
@@ -537,7 +546,9 @@ export function SourcesManager({
 
             {renderSourceList(
               fileSources,
-              'No documents yet. Upload PDFs or text files with client info the AI should reference.',
+              isSolo
+                ? 'No documents yet. Upload PDFs or text files with business info the AI should reference.'
+                : 'No documents yet. Upload PDFs or text files with client info the AI should reference.',
               'file'
             )}
           </section>
@@ -548,6 +559,7 @@ export function SourcesManager({
           pillars={pillars}
           sources={sources}
           postsPerWeek={postsPerWeek}
+          isSolo={isSolo}
         />
 
         {/* Page Picker Modal */}

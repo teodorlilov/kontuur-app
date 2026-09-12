@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import { requireSessionUser } from '@/lib/auth/session'
+import { getCachedAgency } from '@/lib/queries/cache'
 import { SourcesManager } from '@/features/sources/components/sources-manager'
 import { fetchClientById, fetchSourceUsageStats } from '@/lib/queries/db'
 import { parsePillarsWithMeta, serializePillars } from '@/lib/clients/content-pillars'
@@ -21,7 +22,8 @@ export default async function ClientSourcesPage({ params }: { params: Promise<{ 
   // stats in parallel. Stats use the admin client — posts-adjacent tables
   // block user-scoped reads (post_images RLS precedent), ownership is
   // already verified above.
-  const [sourcesResult, profileResult, usageStats] = await Promise.all([
+  const [agency, sourcesResult, profileResult, usageStats] = await Promise.all([
+    getCachedAgency(agencyId),
     supabase
       .from('client_sources')
       .select(CLIENT_SOURCE_FULL_COLUMNS)
@@ -73,6 +75,7 @@ export default async function ClientSourcesPage({ params }: { params: Promise<{ 
   return (
     <SourcesManager
       clientId={id}
+      isSolo={agency?.mode === 'solo'}
       clientName={client.name}
       niche={client.niche ?? ''}
       initialSources={initialSources}

@@ -13,7 +13,7 @@
   "brand_profiles": {
     "src/features/clients/actions/client-actions.ts": "createClient seeds the profile; updateBrandProfile is the client screen's editor.",
     "src/app/(dashboard)/clients/[id]/sources/page.tsx": "A lazy backfill of pillar ids on first open, for clients that predate them. Writes content_pillars only. The comment beside it records why the web-research row is deliberately NOT created here: a page render must not decide whether the pipeline searches the web.",
-    "src/features/clients/lib/provision-client.ts": "provisionClient — the ONE way a client and its mandatory children are created. The onboarding form and solo signup both build them here; before 2026-08-31 solo signup built them by hand and shipped without a visual identity, without a web-research row, and without a rollback."
+    "src/features/clients/lib/provision-client.ts": "provisionClient — the ONE way a client and its mandatory children are created. Its only caller is createClient, the onboarding flow in both modes."
   },
   "brand_visual_identity": {
     "src/lib/visual/queries.ts": "The only store for a client's visual identity — a whole-row upsert at extraction and a blob patch for edits."
@@ -25,14 +25,14 @@
     "src/features/sources/actions/source-actions.ts": "The source manager's CRUD. createSource and updateSource both resolve the URL through resolveSourceUrl — they did not, and updateSource was a live SSRF hole until 2026-08-31.",
     "src/ai/research/sources/research-source.ts": "reportStatus stamps last_fetched_at / last_fetch_status / last_fetch_error after a fetch. Fetch health, written by the fetcher; it never touches a source's configuration.",
     "src/lib/clients/sync-source-pillars.ts": "removeDeletedPillarIds writes ONE column, pillar_ids, as a cascade of a pillar deletion — reachable only through updateBrandProfile, never from the sources screen. updateSource writes the same column when the user scopes a source, which is a different operation. (An earlier note here said 'config' and called this open audit business; both were wrong.)",
-    "src/features/clients/lib/provision-client.ts": "provisionClient — the ONE way a client and its mandatory children are created. The onboarding form and solo signup both build them here; before 2026-08-31 solo signup built them by hand and shipped without a visual identity, without a web-research row, and without a rollback."
+    "src/features/clients/lib/provision-client.ts": "provisionClient — the ONE way a client and its mandatory children are created. Its only caller is createClient, the onboarding flow in both modes."
   },
   "client_style_memos": {
     "src/ai/learning/distill-style-memo.ts": "The memo's only writer, next to the distiller that produces it."
   },
   "clients": {
     "src/features/clients/actions/client-actions.ts": "create, update and delete from the clients screen.",
-    "src/features/clients/lib/provision-client.ts": "provisionClient — the ONE way a client and its mandatory children are created. The onboarding form and solo signup both build them here; before 2026-08-31 solo signup built them by hand and shipped without a visual identity, without a web-research row, and without a rollback."
+    "src/features/clients/lib/provision-client.ts": "provisionClient — the ONE way a client and its mandatory children are created. Its only caller is createClient, the onboarding flow in both modes."
   },
   "discarded_drafts": {
     "src/lib/queries/discarded-drafts.ts": "One insert for both discard sources (wizard, review). reason stays optional — distill-style-memo filters on it being non-null."
@@ -79,7 +79,7 @@
   },
   "posting_schedules": {
     "src/features/clients/actions/client-actions.ts": "createClient seeds it; updateSchedule is the schedule editor.",
-    "src/features/clients/lib/provision-client.ts": "provisionClient — the ONE way a client and its mandatory children are created. The onboarding form and solo signup both build them here; before 2026-08-31 solo signup built them by hand and shipped without a visual identity, without a web-research row, and without a rollback."
+    "src/features/clients/lib/provision-client.ts": "provisionClient — the ONE way a client and its mandatory children are created. Its only caller is createClient, the onboarding flow in both modes."
   },
   "post_publications": {
     "src/features/publishing/lib/publication-store.ts": "The ONE writer, with seven operations: createPublications records where a post is going, withdrawPendingPublications drops the destinations of a post pulled off the calendar (only ones that have not gone out, so unscheduling cannot erase that it published), claimPublication takes a destination for an attempt, setPublishRef persists the reference a network handed back, markPublicationPublished and markPublicationFailed record the outcome, and rearmPublication is the only place attempts are reset. They are in one file BY DESIGN — they are the states of one lifecycle."

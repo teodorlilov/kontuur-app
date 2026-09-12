@@ -25,6 +25,7 @@ import {
   type RetiredConnectionCard,
 } from '@/features/clients/lib/retired-connections'
 import { ReconnectPrompt } from '@/features/clients/components/reconnect-prompt'
+import { requireBusinessSetup } from '@/features/onboarding/lib/require-business-setup'
 import { fetchActiveRuns } from '@/lib/generation/runs'
 import { isConnectionRetired } from '@/lib/meta/token-expiry'
 import { formatLongDate } from '@/utils/date-helpers'
@@ -39,6 +40,10 @@ import type { ActiveRun } from '@/types/api'
  * The dashboard shell. `ReconnectPrompt` mounts here so a dead connection is announced
  * wherever the person lands; a layout re-renders on full load, `router.refresh()` and server
  * actions, never on soft navigation.
+ *
+ * Also the first-run gate: a solo workspace with no client is redirected to /clients/new here
+ * (`requireBusinessSetup`), which covers every entry that lands on /dashboard — sign-up, the
+ * email-confirmation callback, sign-in and setup-password all end there.
  */
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const userId = await getAuthUserId()
@@ -101,6 +106,8 @@ export default async function DashboardLayout({ children }: { children: React.Re
         fetchActiveRuns(supabase, userData.agency_id),
         getCachedClientRoster(userData.agency_id),
       ])
+
+    requireBusinessSetup(agencyData?.mode, agencyClients.length)
 
     if (agencyData?.mode === 'solo') agencyMode = 'solo'
     agencyName = agencyData?.name ?? ''

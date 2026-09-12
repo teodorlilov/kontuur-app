@@ -1,15 +1,15 @@
 import { z } from 'zod'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database'
-import { provisionClient } from '@/features/clients/lib/provision-client'
 
 /**
  * What signup metadata must say before any of it reaches a column.
  *
- * `mode` decides whether the account gets a solo client and lands in `agencies.mode`, so an
- * unrecognised value has to be refused rather than stored. This schema lived in the signup route,
- * which meant the OTHER path into this function — the auth callback, reading the same two values
- * out of `user_metadata` through an `as` cast — stored whatever was there.
+ * `mode` lands in `agencies.mode`, which the app shell and the first-run gate
+ * (features/onboarding/lib/require-business-setup.ts) read, so an unrecognised value has to be
+ * refused rather than stored. This schema lived in the signup route, which meant the OTHER path
+ * into this function — the auth callback, reading the same two values out of `user_metadata`
+ * through an `as` cast — stored whatever was there.
  */
 const accountMetadataSchema = z.object({
   businessName: z.string().trim().min(1),
@@ -31,16 +31,18 @@ interface CreateUserRecordResult {
 
 /**
  * Create a user record (and optionally an agency) from auth metadata.
- * Used by both the auth callback and the dashboard layout fallback.
+ * Used by the signup route, the auth callback and the dashboard layout fallback.
  *
  * - Invited users: inserts into existing agency with 'member' role.
- * - New signups: creates agency, inserts user as 'admin', creates
- *   default client/brand-profile/schedule for solo mode.
+ * - New signups: creates agency, inserts user as 'admin'. Never a client: in both modes the
+ *   first client is created by the onboarding flow through `createClient`
+ *   (features/clients/actions/client-actions.ts), and a solo workspace with no client is sent
+ *   there by `requireBusinessSetup` (features/onboarding/lib/require-business-setup.ts).
  *
  * Idempotent: a second call for a user who already has a row returns that row's agency and writes
  * nothing. Without this guard the new-signup path creates the agency *before* inserting the user,
- * so a repeat call left an orphaned agency (plus, in solo mode, a client, brand profile and
- * schedule) behind every time — and both callers can re-run for the same user.
+ * so a repeat call left an orphaned agency behind every time — and all three callers can re-run
+ * for the same user.
  *
  * Throws if any write fails. A half-created account renders as a signed-in user with a broken
  * dashboard, so the failure has to surface rather than be reported as a successful signup.
@@ -113,13 +115,6 @@ export async function createUserRecord(
     role: 'admin',
   })
   if (userError) throw new Error(`user insert failed: ${userError.message}`)
-
-  if (mode === 'solo') {
-    // The same provisioner the onboarding form uses. This path used to build the client by hand
-    // and had drifted three ways from it: no visual identity, no web-research row, no rollback.
-    const provisioned = await provisionClient(admin, { agencyId, name: businessName })
-    if (!provisioned.ok) throw new Error(`solo client provisioning failed: ${provisioned.error}`)
-  }
 
   return { agencyId, isInvited: false }
 }

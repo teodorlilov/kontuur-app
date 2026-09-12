@@ -13,6 +13,8 @@ interface StepEntryProps {
   onAnalyze: () => void
   onSkip: () => void
   analyzing?: boolean
+  /** A solo workspace setting up its own business: the copy speaks to the owner, not about a client. */
+  isSolo: boolean
 }
 
 /**
@@ -29,6 +31,7 @@ export function StepEntry({
   onAnalyze,
   onSkip,
   analyzing = false,
+  isSolo,
 }: StepEntryProps) {
   // The field holds exactly what was typed. Rendering `toHostLabel(websiteUrl)` instead made the
   // display a lossy round trip: a typed "/" is trailing for one keystroke, `toHostLabel` strips it,
@@ -39,10 +42,12 @@ export function StepEntry({
 
   return (
     <div className="mx-auto mt-[12vh] w-full max-w-[520px] px-4 text-center">
-      <h1 className="text-balance font-display text-prompt font-normal text-ink">Add a client</h1>
+      <h1 className="text-balance font-display text-prompt font-normal text-ink">
+        {isSolo ? 'Set up your business' : 'Add a client'}
+      </h1>
       <p className="mt-3 text-lead text-text2">
-        Paste their website. Kontuur reads it and drafts the whole profile — name, audience, tone,
-        content mix, brand colours. You check what it couldn&rsquo;t work out.
+        Paste {isSolo ? 'your' : 'their'} website. Kontuur reads it and drafts the whole profile —
+        name, audience, tone, content mix, brand colours. You check what it couldn&rsquo;t work out.
       </p>
 
       <div
@@ -68,7 +73,7 @@ export function StepEntry({
           }}
           placeholder="acmestudio.com"
           autoComplete="off"
-          aria-label="Client website"
+          aria-label={isSolo ? 'Your website' : 'Client website'}
           className="min-w-0 flex-1 border-none bg-transparent py-2 text-lead text-ink outline-none placeholder:text-text3"
         />
         <Button onClick={onAnalyze} disabled={!hasInput} loading={analyzing} className="flex-none">
@@ -87,7 +92,7 @@ export function StepEntry({
             'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-spring'
           )}
         >
-          Set them up by hand
+          {isSolo ? 'Set it up by hand' : 'Set them up by hand'}
         </button>
       </p>
     </div>

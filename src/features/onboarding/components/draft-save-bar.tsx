@@ -16,8 +16,11 @@ interface DraftSaveBarProps {
   total?: number
   saving: boolean
   onSave: () => void
-  onDiscard: () => void
+  /** Absent when the flow cannot be left — a solo first run — so no Discard is drawn. */
+  onDiscard?: () => void
   onJumpToAsk: () => void
+  /** A solo workspace setting up its own business: it saves a profile, not a client. */
+  isSolo: boolean
 }
 
 /**
@@ -39,6 +42,7 @@ export function DraftSaveBar({
   onSave,
   onDiscard,
   onJumpToAsk,
+  isSolo,
 }: DraftSaveBarProps) {
   // Everything on this sheet exists only in the page until it is saved.
   useUnloadGuard(visible)
@@ -106,11 +110,13 @@ export function DraftSaveBar({
           </button>
         )}
 
-        <Button variant="danger" size="sm" onClick={onDiscard} disabled={saving}>
-          Discard
-        </Button>
+        {onDiscard && (
+          <Button variant="danger" size="sm" onClick={onDiscard} disabled={saving}>
+            Discard
+          </Button>
+        )}
         <Button size="lg" onClick={onSave} loading={saving} disabled={!!blockedBy}>
-          Save client →
+          {isSolo ? 'Save profile →' : 'Save client →'}
         </Button>
       </div>
     </div>

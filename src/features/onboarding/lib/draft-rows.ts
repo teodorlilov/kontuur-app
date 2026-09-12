@@ -19,11 +19,11 @@ export interface DraftGroup {
 
 const DRAFT_GROUPS: readonly DraftGroup[] = [
   { id: 'basics', name: 'The basics', column: 'left' },
-  { id: 'people', name: 'Their people', column: 'left' },
-  { id: 'voice', name: 'How they sound', column: 'left' },
+  { id: 'people', name: 'People', column: 'left' },
+  { id: 'voice', name: 'Voice', column: 'left' },
   { id: 'look', name: 'Content and look', column: 'right' },
   { id: 'publishing', name: 'Publishing', column: 'right' },
-  { id: 'system', name: 'Their visual system', column: 'band' },
+  { id: 'system', name: 'Visual system', column: 'band' },
 ] as const
 
 /** How a row renders. Anything past `longText` owns its own read view and editor. */
@@ -57,13 +57,13 @@ export interface DraftRowSpec {
  * should make someone do, so it is always the user's call rather than a guess dressed as a draft.
  */
 export const DRAFT_ROWS: readonly DraftRowSpec[] = [
-  { id: 'name', group: 'basics', label: 'Client name', kind: 'text', placeholder: 'Acme Studio' },
+  { id: 'name', group: 'basics', label: 'Name', kind: 'text', placeholder: 'Acme Studio' },
   {
     id: 'niche',
     group: 'basics',
-    label: 'What they do',
+    label: 'What the business does',
     kind: 'text',
-    placeholder: 'What do they sell or do?',
+    placeholder: 'What does the business sell or do?',
   },
 
   {
@@ -71,7 +71,7 @@ export const DRAFT_ROWS: readonly DraftRowSpec[] = [
     group: 'people',
     label: 'Audience',
     kind: 'text',
-    placeholder: 'Who are they trying to reach?',
+    placeholder: 'Who is it trying to reach?',
   },
   {
     id: 'goal',
@@ -87,7 +87,7 @@ export const DRAFT_ROWS: readonly DraftRowSpec[] = [
     group: 'voice',
     label: 'Tone',
     kind: 'longText',
-    placeholder: 'How should their posts sound?',
+    placeholder: 'How should the posts sound?',
   },
   { id: 'language', group: 'voice', label: 'Language', kind: 'language' },
   {
@@ -95,7 +95,7 @@ export const DRAFT_ROWS: readonly DraftRowSpec[] = [
     group: 'voice',
     label: 'Never post',
     kind: 'longText',
-    placeholder: 'Anything they must never post about',
+    placeholder: 'Anything it must never post about',
   },
 
   { id: 'mix', group: 'look', label: 'Content mix', kind: 'mix' },

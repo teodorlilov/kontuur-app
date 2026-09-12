@@ -56,8 +56,13 @@ import {
   VisualIdentityRail,
 } from './rails/client-rails'
 
+interface PanelCopy {
+  title: string
+  description: string
+}
+
 /** Title and subtitle for each panel, so the copy lives in one place. */
-const PANEL_COPY: Record<SettingsTab, { title: string; description: string }> = {
+const PANEL_COPY: Record<SettingsTab, PanelCopy> = {
   basic: {
     title: 'Who this client is',
     description: 'Identity and language used on every generated post.',
@@ -86,6 +91,16 @@ const PANEL_COPY: Record<SettingsTab, { title: string; description: string }> = 
 }
 
 /**
+ * The panels whose title speaks about "this client" get a second-person title for a solo
+ * workspace editing its own business. Everything absent here reads the same in both modes.
+ */
+const SOLO_PANEL_COPY: Partial<Record<SettingsTab, PanelCopy>> = {
+  basic: { title: 'Who you are', description: PANEL_COPY.basic.description },
+  brand: { title: 'How you sound', description: PANEL_COPY.brand.description },
+  visual: { title: 'How you look', description: PANEL_COPY.visual.description },
+}
+
+/**
  * What the save bar calls each editable group.
  *
  * Keyed by draft group, not by tab, because the two do not line up: formality, secondary
@@ -100,6 +115,11 @@ const GROUP_LABEL: Record<keyof DirtyGroups, string> = {
 
 interface ClientSettingsFormProps {
   clientId: string
+  /**
+   * A solo workspace editing its own business: second-person copy, no roster crumb or back
+   * link, no delete, and no idea link (solo has no Client ideas inbox in its navigation).
+   */
+  isSolo: boolean
   sourceCount: number
   /** Active content sources with no topic limit — they feed every pillar, including new ones. */
   unrestrictedSourceCount: number
@@ -128,10 +148,17 @@ interface ClientSettingsFormProps {
   recentIdeas: ClientIdea[]
 }
 
-/** Top-level client settings form. Owns the header, because it owns the tab state. */
+/**
+ * Top-level client settings form. Owns the header, because it owns the tab state.
+ *
+ * Also the solo workspace's business page: with `isSolo` the same form speaks to the owner and
+ * drops what only makes sense with a roster behind it (the Clients crumb, the back link, the
+ * danger rail and the idea link tab). Agency rendering is unchanged.
+ */
 export function ClientSettingsForm(props: ClientSettingsFormProps) {
   const {
     clientId,
+    isSolo,
     sourceCount,
     client,
     profile,
@@ -153,7 +180,8 @@ export function ClientSettingsForm(props: ClientSettingsFormProps) {
 
   const router = useRouter()
   const searchParams = useSearchParams()
-  const [activeTab, selectTab] = useTabParam<SettingsTab>(SETTINGS_TABS, 'basic')
+  const isTabAvailable = (tab: SettingsTab) => !(tab === 'ideas' && isSolo)
+  const [activeTab, selectTab] = useTabParam<SettingsTab>(SETTINGS_TABS, 'basic', isTabAvailable)
   const [saving, setSaving] = useState(false)
   const [reanalyzing, setReanalyzing] = useState(false)
   const [rereadingBrand, setRereadingBrand] = useState(false)
@@ -291,7 +319,7 @@ export function ClientSettingsForm(props: ClientSettingsFormProps) {
 
   async function handleSave() {
     if (!drafts.client.name.trim()) {
-      toast.error('Client name is required')
+      toast.error(isSolo ? 'Business name is required' : 'Client name is required')
       return
     }
     setSaving(true)
@@ -304,7 +332,7 @@ export function ClientSettingsForm(props: ClientSettingsFormProps) {
       // to lose your place in the form.
       baseline.current = drafts
       setDrafts({ ...drafts })
-      toast.success('Client updated')
+      toast.success(isSolo ? 'Profile updated' : 'Client updated')
       router.refresh()
     } else {
       toast.error(result.error || 'Failed to save changes. Please try again.')
@@ -318,22 +346,31 @@ export function ClientSettingsForm(props: ClientSettingsFormProps) {
   const hasRetiredConnection = liveConnectionCount < connectionCount
   const goToAccounts = useCallback(() => selectTab('accounts'), [selectTab])
 
-  const tabs: Array<TabItem<SettingsTab>> = SETTINGS_TABS.map((tab) =>
+  const tabs: Array<TabItem<SettingsTab>> = SETTINGS_TABS.filter((tab) =>
+    isTabAvailable(tab.id)
+  ).map((tab) =>
     tab.id === 'accounts' ? { ...tab, count: liveConnectionCount, warn: !isConnected } : { ...tab }
   )
 
-  const panel = PANEL_COPY[activeTab]
+  const panel = (isSolo && SOLO_PANEL_COPY[activeTab]) || PANEL_COPY[activeTab]
   const dirtyLabel = describeDirty(dirty)
+  const displayName = drafts.client.name || (isSolo ? 'Your business' : 'Client')
 
   return (
     <div className="flex h-full flex-col">
       <PageHeader
-        crumb={[{ label: 'Clients', href: '/clients' }, { label: drafts.client.name || 'Client' }]}
-        back="/clients"
-        badge={extractInitials(drafts.client.name || 'Client')}
+        crumb={
+          isSolo
+            ? [{ label: 'My business' }]
+            : [{ label: 'Clients', href: '/clients' }, { label: displayName }]
+        }
+        back={isSolo ? undefined : '/clients'}
+        badge={extractInitials(displayName)}
         title={
           <>
-            <span className="truncate">{drafts.client.name || 'Untitled client'}</span>
+            <span className="truncate">
+              {drafts.client.name || (isSolo ? 'Your business' : 'Untitled client')}
+            </span>
             {isConnected ? (
               <StatusPill tone="ok">{liveConnectionCount} connected</StatusPill>
             ) : hasRetiredConnection ? (
@@ -367,7 +404,12 @@ export function ClientSettingsForm(props: ClientSettingsFormProps) {
           />
         }
         tabs={
-          <TabRail items={tabs} active={activeTab} onSelect={selectTab} label="Client settings" />
+          <TabRail
+            items={tabs}
+            active={activeTab}
+            onSelect={selectTab}
+            label={isSolo ? 'Business settings' : 'Client settings'}
+          />
         }
       />
 
@@ -398,6 +440,7 @@ export function ClientSettingsForm(props: ClientSettingsFormProps) {
         onClose={() => setBrandAnalysis(null)}
         suggestions={brandSuggestions}
         onApply={applyBrandSuggestions}
+        isSolo={isSolo}
       />
 
       <DeleteClientDialog
@@ -428,6 +471,7 @@ export function ClientSettingsForm(props: ClientSettingsFormProps) {
             brand={drafts.brand}
             onClientChange={patchClient}
             onBrandChange={patchBrand}
+            isSolo={isSolo}
           />
         )
       case 'brand':
@@ -456,6 +500,7 @@ export function ClientSettingsForm(props: ClientSettingsFormProps) {
             schedule={drafts.schedule}
             onBrandChange={patchBrand}
             onScheduleChange={patchSchedule}
+            isSolo={isSolo}
           />
         )
       case 'accounts':
@@ -494,8 +539,9 @@ export function ClientSettingsForm(props: ClientSettingsFormProps) {
               publishedCount={publishedCount}
               connectionCount={liveConnectionCount}
               onConnectClick={goToAccounts}
+              isSolo={isSolo}
             />
-            <ClientDangerRail onDelete={() => setIsConfirmingDelete(true)} />
+            {!isSolo && <ClientDangerRail onDelete={() => setIsConfirmingDelete(true)} />}
           </>
         )
       case 'brand':
@@ -508,6 +554,7 @@ export function ClientSettingsForm(props: ClientSettingsFormProps) {
             websiteEdited={(client.website_url ?? '') !== drafts.client.websiteUrl}
             onReread={handleRereadBrand}
             rereading={rereadingBrand}
+            isSolo={isSolo}
           />
         )
       case 'visual':
@@ -516,6 +563,7 @@ export function ClientSettingsForm(props: ClientSettingsFormProps) {
             palette={drafts.identity.palette}
             onReanalyze={handleReanalyze}
             reanalyzing={reanalyzing}
+            isSolo={isSolo}
           />
         )
       case 'schedule':

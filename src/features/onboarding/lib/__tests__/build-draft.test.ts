@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { buildDraftFromAnalysis, buildEmptyDraft, paletteProvenance } from '../build-draft'
+import {
+  buildDraftFromAnalysis,
+  buildEmptyDraft,
+  paletteProvenance,
+  seedBusinessName,
+} from '../build-draft'
 import type { UrlAnalysisResponse } from '@/types/api'
 
 function analysis(overrides: Partial<UrlAnalysisResponse> = {}): UrlAnalysisResponse {
@@ -59,7 +64,7 @@ describe('buildDraftFromAnalysis', () => {
 
   it('passes the niche confidence through to the chip', () => {
     const { provenance } = buildDraftFromAnalysis(analysis({ detected_niche_confidence: 'low' }))
-    expect(provenance.niche).toEqual({ source: 'their services page', confidence: 'low' })
+    expect(provenance.niche).toEqual({ source: 'the services page', confidence: 'low' })
   })
 
   it('reports a field as unanswered rather than drafting an empty value', () => {
@@ -88,6 +93,38 @@ describe('buildDraftFromAnalysis', () => {
     expect(draft.schedule).toEqual({ day: 'monday', time: '09:00', count: '3' })
     expect(provenance.schedule?.source).toBe('a starting cadence')
     expect(provenance.schedule?.confidence).toBe('low')
+  })
+})
+
+describe('seedBusinessName', () => {
+  it('fills an empty name and stops asking for it', () => {
+    const empty = { draft: buildEmptyDraft(), provenance: {}, unanswered: ['name' as const] }
+    const seeded = seedBusinessName(empty, '  Acme  ')
+
+    expect(seeded.draft.name).toBe('Acme')
+    expect(seeded.unanswered).not.toContain('name')
+    expect(seeded.draft.niche).toBe('')
+    expect(seeded.provenance).toEqual({})
+  })
+
+  it('fills a name the site read could not detect', () => {
+    const result = buildDraftFromAnalysis(analysis({ detected_business_name: null }))
+    const seeded = seedBusinessName(result, 'Acme')
+
+    expect(seeded.draft.name).toBe('Acme')
+    expect(seeded.unanswered).not.toContain('name')
+    expect(seeded.draft.niche).toBe('Real estate agency')
+  })
+
+  it('keeps a name the site read detected, chip and all', () => {
+    const result = buildDraftFromAnalysis(analysis())
+    expect(seedBusinessName(result, 'Acme')).toBe(result)
+  })
+
+  it('is the agency path when there is no business name', () => {
+    const result = buildDraftFromAnalysis(analysis({ detected_business_name: null }))
+    expect(seedBusinessName(result, '')).toBe(result)
+    expect(seedBusinessName(result, '   ')).toBe(result)
   })
 })
 

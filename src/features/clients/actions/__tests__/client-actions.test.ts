@@ -33,6 +33,7 @@ const { mocks } = vi.hoisted(() => ({
     removeStoragePrefix: vi.fn(),
     revalidateTag: vi.fn(),
     revalidatePath: vi.fn(),
+    provisionClient: vi.fn(),
   },
 }))
 
@@ -46,6 +47,9 @@ vi.mock('@/lib/supabase/admin', () => ({
 }))
 vi.mock('@/features/assets/lib/storage', () => ({
   removeStoragePrefix: mocks.removeStoragePrefix,
+}))
+vi.mock('@/features/clients/lib/provision-client', () => ({
+  provisionClient: mocks.provisionClient,
 }))
 // unstable_cache is required, not incidental: the module imports IG_METRICS_TAG
 // from report-data.ts, which calls unstable_cache at module scope — without it
@@ -152,5 +156,42 @@ describe('deleteClient', () => {
     expect(tags).toContain('ig-metrics')
     expect(tags).toContain('agency-clients')
     expect(tags).toContain('client-post-stats')
+  })
+})
+
+describe('createClient', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mocks.resolveActionAuth.mockResolvedValue({
+      ok: true,
+      supabase: {} as never,
+      agencyId: AGENCY_ID,
+      userId: 'user-1',
+    })
+    mocks.provisionClient.mockResolvedValue({ ok: true, clientId: CLIENT_ID })
+  })
+
+  it('provisions through the one client writer and busts the roster immediately', async () => {
+    const { createClient } = await import('../client-actions')
+    const result = await createClient({ name: 'Acme', niche: 'Branding' })
+
+    expect(result).toEqual({ ok: true, data: CLIENT_ID })
+    expect(mocks.provisionClient).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ agencyId: AGENCY_ID, name: 'Acme', niche: 'Branding' })
+    )
+    // { expire: 0 }, not 'max': the caller navigates straight to a page whose first-run gate
+    // reads the roster, and 'max' would serve the cached empty list once more.
+    expect(mocks.revalidateTag).toHaveBeenCalledWith('agency-clients', { expire: 0 })
+  })
+
+  it('rejects an unauthenticated caller before touching the input', async () => {
+    mocks.resolveActionAuth.mockResolvedValue({ ok: false, error: 'Unauthorized' })
+
+    const { createClient } = await import('../client-actions')
+    const result = await createClient({ name: 'Acme' })
+
+    expect(result).toEqual({ ok: false, error: 'Unauthorized' })
+    expect(mocks.provisionClient).not.toHaveBeenCalled()
   })
 })

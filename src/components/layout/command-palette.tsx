@@ -43,6 +43,10 @@ export function CommandPalette({ open, onOpenChange, agencyMode, clients }: Comm
   )
 }
 
+/**
+ * The searchable list. A solo workspace is one business, so it gets neither the per-client
+ * "Client settings" rows (its "My business" nav row is that one screen) nor "Add client".
+ */
 function PaletteBody({ onOpenChange, agencyMode, clients }: Omit<CommandPaletteProps, 'open'>) {
   const router = useRouter()
   const [query, setQuery] = useState('')
@@ -50,6 +54,7 @@ function PaletteBody({ onOpenChange, agencyMode, clients }: Omit<CommandPaletteP
   const listRef = useRef<HTMLDivElement>(null)
 
   const entries = useMemo<PaletteEntry[]>(() => {
+    const isSolo = agencyMode === 'solo'
     const navEntries = getNavItems(agencyMode).map((item) => ({
       id: `nav:${item.href}`,
       label: item.label,
@@ -57,16 +62,16 @@ function PaletteBody({ onOpenChange, agencyMode, clients }: Omit<CommandPaletteP
       href: item.href,
       icon: item.icon,
     }))
-    const clientEntries = clients.map((client) => ({
-      id: `client:${client.id}`,
-      label: client.name,
-      hint: 'Client settings',
-      href: `/clients/${client.id}/edit`,
-      icon: UsersGroupRoundedIcon,
-    }))
-    return [
-      ...navEntries,
-      ...clientEntries,
+    const clientEntries = isSolo
+      ? []
+      : clients.map((client) => ({
+          id: `client:${client.id}`,
+          label: client.name,
+          hint: 'Client settings',
+          href: `/clients/${client.id}/edit`,
+          icon: UsersGroupRoundedIcon,
+        }))
+    const actions: Array<PaletteEntry | false> = [
       {
         id: 'action:generate',
         label: 'Generate posts',
@@ -74,13 +79,18 @@ function PaletteBody({ onOpenChange, agencyMode, clients }: Omit<CommandPaletteP
         href: '/generate',
         icon: StarsIcon,
       },
-      {
+      !isSolo && {
         id: 'action:add-client',
         label: 'Add client',
         hint: 'Action',
         href: '/clients/new',
         icon: UserPlusRoundedIcon,
       },
+    ]
+    return [
+      ...navEntries,
+      ...clientEntries,
+      ...actions.filter((action): action is PaletteEntry => action !== false),
     ]
   }, [agencyMode, clients])
 

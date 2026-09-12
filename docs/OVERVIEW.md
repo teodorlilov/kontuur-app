@@ -28,9 +28,10 @@ It supports two operating modes, chosen at signup and stored on the agency:
 | Mode       | For                                        | Navigation                                                                                           |
 | ---------- | ------------------------------------------ | ---------------------------------------------------------------------------------------------------- |
 | **Agency** | Teams managing social for multiple clients | Dashboard · Clients · Generate posts · Review queue · Calendar · Client ideas · Analytics · Settings |
-| **Solo**   | A single business managing its own socials | Dashboard · Create content · My drafts · My calendar · My results · Settings                         |
+| **Solo**   | A single business managing its own socials | Dashboard · My business · Create content · My drafts · My calendar · My comments · My results · Settings |
 
-Solo mode auto-creates one client for the business and simplifies the language and
+Solo mode sets the business up as its one client through the same onboarding flow (a solo
+workspace with no client yet is sent there first) and simplifies the language and
 navigation throughout.
 
 ### The content lifecycle

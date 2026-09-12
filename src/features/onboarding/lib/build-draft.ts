@@ -65,7 +65,7 @@ export function buildDraftFromAnalysis(analysis: UrlAnalysisResponse): DraftResu
 
   if (analysis.detected_niche) {
     draft.niche = analysis.detected_niche
-    record('niche', 'their services page', analysis.detected_niche_confidence)
+    record('niche', 'the services page', analysis.detected_niche_confidence)
   } else {
     unanswered.push('niche')
   }
@@ -79,7 +79,7 @@ export function buildDraftFromAnalysis(analysis: UrlAnalysisResponse): DraftResu
 
   if (analysis.detected_tone) {
     draft.tone = analysis.detected_tone
-    record('tone', 'their own copy', 'high')
+    record('tone', "the site's own copy", 'high')
   } else {
     unanswered.push('tone')
   }
@@ -102,7 +102,7 @@ export function buildDraftFromAnalysis(analysis: UrlAnalysisResponse): DraftResu
 
   if (analysis.detected_content_pillars.length > 0) {
     draft.pillars = ensurePillarIds(analysis.detected_content_pillars)
-    record('mix', 'what they publish', 'high')
+    record('mix', 'what the site publishes', 'high')
   } else {
     unanswered.push('mix')
   }
@@ -118,6 +118,24 @@ export function buildDraftFromAnalysis(analysis: UrlAnalysisResponse): DraftResu
   record('style', 'the default system', 'low')
 
   return { draft, provenance, unanswered }
+}
+
+/**
+ * Fills an empty draft name with the workspace's own name — the solo path, where the person named
+ * their business at signup (`agencies.name`) before ever reaching this sheet.
+ *
+ * A name the site read detected keeps its value and its chip; only a blank one is filled, and
+ * `name` then leaves `unanswered` so the sheet does not ask for what it already has. An empty
+ * `businessName` returns the input untouched, which is the agency path.
+ */
+export function seedBusinessName(result: DraftResult, businessName: string): DraftResult {
+  const name = businessName.trim()
+  if (!name || result.draft.name) return result
+  return {
+    ...result,
+    draft: { ...result.draft, name },
+    unanswered: result.unanswered.filter((field) => field !== 'name'),
+  }
 }
 
 /**

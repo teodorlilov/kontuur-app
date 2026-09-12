@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { requireSessionUser } from '@/lib/auth/session'
+import { getCachedAgency } from '@/lib/queries/cache'
 import { ClientSettingsForm } from '@/features/clients/components/settings/client-settings-form'
 import { buildInsights, type PillarRow, type ScoreRow } from '@/features/clients/lib/insights'
 import { fetchClientPostStats } from '@/features/clients/lib/post-stats'
@@ -58,6 +59,7 @@ export default async function EditClientPage({
   const facebookPages = choosePage === '1' ? await listFacebookPages() : null
 
   const [
+    agency,
     visualIdentity,
     profile,
     schedule,
@@ -72,6 +74,7 @@ export default async function EditClientPage({
     sourceSummaries,
     styleMemo,
   ] = await Promise.all([
+    getCachedAgency(agencyId),
     // In the parallel block, not awaited above it: nothing below depends on the identity, so
     // awaiting it first would cost a serial round trip before any of these started.
     fetchVisualIdentity(id),
@@ -123,6 +126,7 @@ export default async function EditClientPage({
   return (
     <ClientSettingsForm
       clientId={id}
+      isSolo={agency?.mode === 'solo'}
       sourceCount={sourceCount ?? 0}
       styleMemo={styleMemo}
       client={client}

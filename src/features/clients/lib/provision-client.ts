@@ -24,23 +24,20 @@ interface ProvisionClientInput {
 type ProvisionClientResult = { ok: true; clientId: string } | { ok: false; error: string }
 
 /**
- * Create a client and everything a client must have to work. The ONE way that happens.
+ * Create a client and everything a client must have to work. The ONE way that happens, and
+ * `createClient` (features/clients/actions/client-actions.ts) is its one caller in both modes.
  *
- * There were two. `createClient` (the onboarding form) wrote five children; solo signup wrote
- * three, and the difference was not a design — it was drift:
- *
- *  - Solo clients got NO `brand_visual_identity` row, so their first generations ran against
- *    whatever the read path fell back to rather than `buildDefaultIdentity()`.
- *  - Solo clients got no web-research row until 2026-08-31, so `shouldSearchWeb` (`!!tavilyRow`)
- *    was false for every one of them — the state migration 20260814 exists to make impossible.
- *  - Solo signup had no rollback, so a failed child insert left an agency and a user pointing at
- *    a half-built client, with nothing to retry into.
+ * The contract every client relies on, in one place so it cannot drift:
+ *  - always a `brand_visual_identity` row, so the first generation runs against
+ *    `buildDefaultIdentity()` rather than whatever the read path falls back to;
+ *  - always the web-research row, because `shouldSearchWeb` is `!!tavilyRow` and a client without
+ *    one silently never researches (migration 20260814 backfilled the ones that predate this);
+ *  - rollback on a failed child insert, so a retry does not add a second client of the same name.
  *
  * Everything past the `clients` row is defaulted, so a caller that knows nothing but a name gets a
  * complete, working client. The onboarding form passes what the user typed.
  *
- * Takes the Supabase client because the two callers legitimately differ: the form runs user-scoped
- * under RLS, signup runs on the service role before the user's own row exists.
+ * Takes the Supabase client rather than creating one: the caller runs user-scoped under RLS.
  */
 export async function provisionClient(
   supabase: SupabaseClient,

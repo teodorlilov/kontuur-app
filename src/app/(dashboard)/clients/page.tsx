@@ -1,3 +1,4 @@
+import { redirect } from 'next/navigation'
 import { requireSessionUser } from '@/lib/auth/session'
 import {
   getCachedAgency,
@@ -45,6 +46,14 @@ interface ClientsPageProps {
   searchParams: Promise<Record<string, string | string[] | undefined>>
 }
 
+/**
+ * The client roster — an agency surface. A solo workspace is one business, so for it /clients is
+ * that business: the "My business" sidebar row points here and is sent on to the settings page.
+ * `clients[0]` is safe because the dashboard layout's gate (features/onboarding/lib/
+ * require-business-setup.ts) redirects a solo workspace with no client before any page renders.
+ * The two roster-only reads in the wave are spent on that hop rather than splitting the wave,
+ * which would serialise a round trip on the agency path.
+ */
 export default async function ClientsPage({ searchParams }: ClientsPageProps) {
   const [{ agencyId }, params] = await Promise.all([requireSessionUser(), searchParams])
 
@@ -58,6 +67,8 @@ export default async function ClientsPage({ searchParams }: ClientsPageProps) {
     getCachedUpcomingByClient(agencyId),
     getCachedPendingApprovalsByClient(agencyId),
   ])
+
+  if (agency?.mode === 'solo' && clients[0]) redirect(`/clients/${clients[0].id}/edit`)
 
   const timezone = agency?.timezone ?? 'UTC'
   // Derivation is in-memory because status is computed, not stored. Bounded by

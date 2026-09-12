@@ -30,6 +30,8 @@ interface ScheduleTabProps {
   schedule: ScheduleDraft
   onBrandChange: (patch: Partial<BrandDraft>) => void
   onScheduleChange: (patch: Partial<ScheduleDraft>) => void
+  /** A solo workspace editing its own business: the format legend speaks to the owner. */
+  isSolo: boolean
 }
 
 /**
@@ -45,10 +47,18 @@ export function ScheduleTab({
   schedule,
   onBrandChange,
   onScheduleChange,
+  isSolo,
 }: ScheduleTabProps) {
   return (
     <>
-      <FormSection legend="Format" description="What Kontuur makes for this client by default.">
+      <FormSection
+        legend="Format"
+        description={
+          isSolo
+            ? 'What Kontuur makes for you by default.'
+            : 'What Kontuur makes for this client by default.'
+        }
+      >
         <Field label="Default post type" span={4}>
           <Select
             value={brand.defaultPostType}

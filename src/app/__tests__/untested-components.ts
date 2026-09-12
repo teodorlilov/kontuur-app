@@ -23,10 +23,8 @@
  * logic and its backlog cannot drift into the same merge conflict.
  */
 export const UNTESTED_COMPONENTS: string[] = [
-  'app/(onboarding)/clients/new/page.tsx',
   'app/(public)/approve/[token]/page.tsx',
   'app/auth/callback/invite-handler.tsx',
-  'components/layout/command-palette.tsx',
   'components/layout/contour-field.tsx',
   'components/layout/notifications-bell.tsx',
   'components/layout/page-header/sticky-shell.tsx',
@@ -60,7 +58,6 @@ export const UNTESTED_COMPONENTS: string[] = [
   'features/canvas-editor/components/workspace/prompt-row.tsx',
   'features/canvas-editor/components/workspace/toolbar-popover.tsx',
   'features/clients/components/settings/brand-profile-tab.tsx',
-  'features/clients/components/settings/client-settings-form.tsx',
   'features/dashboard/components/briefing-actions.tsx',
   'features/dashboard/components/client-coverage.tsx',
   'features/dashboard/components/count-up.tsx',
@@ -75,8 +72,6 @@ export const UNTESTED_COMPONENTS: string[] = [
   'features/marketing/components/landing/engine.tsx',
   'features/marketing/components/landing/hero.tsx',
   'features/marketing/components/nav.tsx',
-  'features/onboarding/components/draft-sheet.tsx',
-  'features/onboarding/components/step-entry.tsx',
   'components/posts/canva-design-picker.tsx',
   'components/posts/image-slot.tsx',
   'features/review/components/review-queue.tsx',
@@ -89,7 +84,6 @@ export const UNTESTED_COMPONENTS: string[] = [
   'features/sources/components/page-group-list.tsx',
   'features/sources/components/page-picker-modal.tsx',
   'features/sources/components/source-row.tsx',
-  'features/sources/components/sources-manager.tsx',
   'features/sources/components/stepper/extras-step.tsx',
   'features/sources/components/stepper/pillar-source-stepper.tsx',
   'features/sources/components/stepper/rss-step.tsx',

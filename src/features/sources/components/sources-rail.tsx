@@ -12,6 +12,8 @@ interface SourcesRailProps {
   pillars: WeightedPillar[]
   sources: ClientSource[]
   postsPerWeek: number
+  /** A solo workspace: the run-size note speaks to the owner. */
+  isSolo: boolean
 }
 
 /**
@@ -20,7 +22,13 @@ interface SourcesRailProps {
  * the same object, so fixing a gap here visibly clears it there. Deliberately
  * no Generate button: the lime commitment exists only on /generate.
  */
-export function SourcesRail({ clientId, pillars, sources, postsPerWeek }: SourcesRailProps) {
+export function SourcesRail({
+  clientId,
+  pillars,
+  sources,
+  postsPerWeek,
+  isSolo,
+}: SourcesRailProps) {
   const runSize = postsPerWeek > 0 ? postsPerWeek : DEFAULT_RUN_SIZE
   const activeSourceCount = sources.filter((s) => s.is_active).length
 
@@ -51,7 +59,9 @@ export function SourcesRail({ clientId, pillars, sources, postsPerWeek }: Source
         <p className="mt-2 text-metric font-semibold tabular-nums text-accent">
           {runSize} post{runSize === 1 ? '' : 's'}
         </p>
-        <p className="mt-1 text-caption text-ink-inv/70">Sized to this client’s weekly pace</p>
+        <p className="mt-1 text-caption text-ink-inv/70">
+          Sized to {isSolo ? 'your' : 'this client’s'} weekly pace
+        </p>
 
         <div className="mt-4 border-t border-white/10 pt-4">
           <ContentMixList allocation={runPlan.allocation} />

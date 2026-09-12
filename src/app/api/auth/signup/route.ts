@@ -6,7 +6,7 @@ import { createUserRecord } from '@/lib/auth/create-user-record'
 import { USER_RECORD_TAG } from '@/lib/auth/session'
 
 /**
- * Provision an authenticated user's agency, user row, and (in solo mode) their first client.
+ * Provision an authenticated user's agency and user row.
  *
  * This route used to do the provisioning itself, in ninety lines that were a near-copy of
  * `createUserRecord` — and the browser fires BOTH: `sign-up-view` puts `{businessName, mode}` into

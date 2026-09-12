@@ -55,7 +55,8 @@ export const getCachedAgency = cache(_fetchAgency)
  * Returns all clients for the given agencyId with commonly needed columns.
  * - unstable_cache: persists in Next.js Data Cache across requests (60s TTL, 'agency-clients' tag)
  * - React cache(): deduplicates within a single SSR request so layout + page share one result
- * Call revalidateTag('agency-clients') after any client mutation to clear stale entries immediately.
+ * Call revalidateTag('agency-clients', …) after any client mutation. Only the `{ expire: 0 }` profile
+ * clears the entry for the very next read; 'max' is stale-while-revalidate and serves it once more.
  *
  * Note: pages that require joined data (brand_profiles, contact_email) should
  * issue their own targeted queries in addition to calling this function.

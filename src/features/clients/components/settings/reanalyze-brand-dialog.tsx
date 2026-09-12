@@ -17,6 +17,8 @@ interface ReanalyzeBrandDialogProps {
   suggestions: BrandSuggestion[]
   /** Receives only the ticked rows. Applying loads them into the form; the save bar still saves. */
   onApply: (accepted: BrandSuggestion[]) => void
+  /** A solo workspace editing its own business: the read is "from your site", not a client's. */
+  isSolo: boolean
 }
 
 /**
@@ -32,6 +34,7 @@ export function ReanalyzeBrandDialog({
   onClose,
   suggestions,
   onApply,
+  isSolo,
 }: ReanalyzeBrandDialogProps) {
   // Everything ticked on arrival: the reader asked for the read, so the common case is one click.
   // Keyed by row so a re-read with different rows starts from its own defaults.
@@ -61,8 +64,8 @@ export function ReanalyzeBrandDialog({
     <Modal open={open} onClose={handleClose} title="What the website suggests" maxWidth={640}>
       <div className="flex flex-col gap-5">
         <p className="text-body text-text2">
-          Read from this client&rsquo;s site just now. Nothing is saved yet — the rows you keep are
-          loaded into the form for you to review and save.
+          Read from {isSolo ? 'your' : 'this client’s'} site just now. Nothing is saved yet — the
+          rows you keep are loaded into the form for you to review and save.
         </p>
 
         {/* The list scrolls, not the dialog: five comparisons this long push Apply past the fold,

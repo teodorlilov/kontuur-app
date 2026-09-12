@@ -31,6 +31,8 @@ interface DraftSheetProps {
   paletteStatus?: ExtractionStatus
   onReread?: () => void
   rereading?: boolean
+  /** A solo workspace setting up its own business: the unnamed fallback is "Your business". */
+  isSolo: boolean
 }
 
 /**
@@ -55,9 +57,11 @@ export function DraftSheet({
   paletteStatus = 'idle',
   onReread,
   rereading = false,
+  isSolo,
 }: DraftSheetProps) {
   const [editing, setEditing] = useState<DraftFieldId | null>(null)
   const bandGroups = groupsForColumn('band')
+  const displayName = draft.name || (isSolo ? 'Your business' : 'New client')
 
   function renderGroup(group: DraftGroup) {
     return (
@@ -136,13 +140,11 @@ export function DraftSheet({
           ink: every passenger on it is dark. Ink Secondary on the sub-line, not Tertiary — 3.80:1
           on lime fails, 4.70:1 clears. */}
       <div className="flex items-center gap-4 bg-accent px-6 py-5">
-        <Avatar name={draft.name || 'New client'} size="lg" className="flex-none" />
+        <Avatar name={displayName} size="lg" className="flex-none" />
         <div className="min-w-0 flex-1">
           {/* Headline, not Prompt: Prompt wants a surface with nothing competing, and a twelve-row
               form competes. The sans also means a Cyrillic name and a Latin one land the same. */}
-          <h1 className="truncate text-headline font-semibold text-ink">
-            {draft.name || 'New client'}
-          </h1>
+          <h1 className="truncate text-headline font-semibold text-ink">{displayName}</h1>
           <p className="mt-1 text-caption text-text2">
             {manual ? (
               'Nothing to read — fill this in yourself.'
