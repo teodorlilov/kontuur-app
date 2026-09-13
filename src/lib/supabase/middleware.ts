@@ -1,8 +1,17 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 import { AUTH_USER_ID_HEADER, AUTH_USER_NAME_HEADER } from '@/lib/auth/headers'
+import { SIGN_IN_PATH } from '@/utils/constants'
 import type { Database } from '@/types/database'
 
+/**
+ * Verifies the session on every matched request and hands the identity to the render pass.
+ *
+ * A signed-out visitor to a protected path is sent straight to the sign-in dialog
+ * (`SIGN_IN_PATH`), one hop; `/login` stays public only so links from outside the app still
+ * work. A signed-in visitor to `/` is sent to `/dashboard`, which is also where a
+ * `redirect(SIGN_IN_PATH)` issued during a signed-in render ends up.
+ */
 export async function updateSession(request: NextRequest) {
   // Deleted before anything else runs: these headers are a trust channel from this function to the
   // render pass, so a client-supplied value must never survive to be read as a validated identity.
@@ -70,9 +79,7 @@ export async function updateSession(request: NextRequest) {
   }
 
   if (!claims && !isPublicPath) {
-    const url = request.nextUrl.clone()
-    url.pathname = '/login'
-    return NextResponse.redirect(url)
+    return NextResponse.redirect(new URL(SIGN_IN_PATH, request.url))
   }
 
   if (!claims) return supabaseResponse

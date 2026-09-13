@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input'
 import { toast } from '@/components/ui/toast'
 import { createBrowserSupabaseClient } from '@/lib/supabase/client'
 import { validatePassword } from '@/lib/validation'
+import { RESET_PASSWORD_PATH } from '@/utils/constants'
 import { AuthFormError, AuthPanel, FIELD_SURFACE } from './auth-panel'
 import { useAuthForm } from './use-auth-form'
 
@@ -56,7 +57,7 @@ export function SetupPasswordForm() {
 
     if (!user) {
       toast.error('Session expired. Please use your invite link again or reset your password.')
-      window.location.href = '/?auth=reset'
+      window.location.href = RESET_PASSWORD_PATH
       return
     }
 

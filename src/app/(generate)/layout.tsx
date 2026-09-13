@@ -1,11 +1,9 @@
-import { redirect } from 'next/navigation'
-import { getAuthUserId } from '@/lib/auth/session'
+import { requireAuthUserId } from '@/lib/auth/session'
 import { AuthProvider } from '@/components/providers/auth-provider'
 import { ContourField } from '@/components/layout/contour-field'
 
 export default async function GenerateLayout({ children }: { children: React.ReactNode }) {
-  const userId = await getAuthUserId()
-  if (!userId) redirect('/login')
+  await requireAuthUserId()
 
   return (
     <AuthProvider>

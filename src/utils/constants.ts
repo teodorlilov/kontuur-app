@@ -51,6 +51,17 @@ export const POST_IMAGES_BUCKET = 'post-images'
 export const CLIENT_FILES_BUCKET = 'client-files'
 
 /**
+ * Where sign-in, sign-up and password reset live: the landing page, which opens the matching
+ * dialog from `?auth=` (the values `AUTH_VIEWS` in `src/app/page.tsx` accepts). Every in-app
+ * sender — the middleware, the signed-in gates, the auth listener, the callback and invite
+ * handlers — goes here directly, so a signed-out visitor pays one navigation. `/login`, `/signup`
+ * and `/forgot-password` exist only for links that live outside the app and redirect here too.
+ */
+export const SIGN_IN_PATH = '/?auth=signin'
+export const SIGN_UP_PATH = '/?auth=signup'
+export const RESET_PASSWORD_PATH = '/?auth=reset'
+
+/**
  * Per-client identity colours — the one job here is telling clients apart, so
  * these step through hue AND lightness. A pure green ramp was tried and failed:
  * at pill opacity, forest vs forest-deep and spring vs sea read as the same

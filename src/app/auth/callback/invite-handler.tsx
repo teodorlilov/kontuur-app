@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createBrowserSupabaseClient } from '@/lib/supabase/client'
+import { SIGN_IN_PATH } from '@/utils/constants'
 
 export function InviteHandler() {
   const router = useRouter()
@@ -12,7 +13,7 @@ export function InviteHandler() {
     async function handleInvite() {
       const hash = window.location.hash
       if (!hash || !hash.includes('access_token')) {
-        router.replace('/login')
+        router.replace(SIGN_IN_PATH)
         return
       }
 
@@ -21,7 +22,7 @@ export function InviteHandler() {
       const refreshToken = params.get('refresh_token')
 
       if (!accessToken || !refreshToken) {
-        router.replace('/login')
+        router.replace(SIGN_IN_PATH)
         return
       }
 
@@ -50,7 +51,7 @@ export function InviteHandler() {
         {error ? (
           <>
             <p className="text-danger mb-4">{error}</p>
-            <a href="/login" className="text-forest hover:underline text-body">
+            <a href={SIGN_IN_PATH} className="text-forest hover:underline text-body">
               Back to login
             </a>
           </>

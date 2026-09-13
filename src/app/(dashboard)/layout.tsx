@@ -6,8 +6,8 @@ import { createUserRecord } from '@/lib/auth/create-user-record'
 import {
   getAuthDisplayName,
   getAuthUser,
-  getAuthUserId,
   getCachedUserRecord,
+  requireAuthUserId,
 } from '@/lib/auth/session'
 import {
   getCachedAgency,
@@ -28,6 +28,7 @@ import { ReconnectPrompt } from '@/features/clients/components/reconnect-prompt'
 import { requireBusinessSetup } from '@/features/onboarding/lib/require-business-setup'
 import { fetchActiveRuns } from '@/lib/generation/runs'
 import { isConnectionRetired } from '@/lib/meta/token-expiry'
+import { SIGN_IN_PATH } from '@/utils/constants'
 import { formatLongDate } from '@/utils/date-helpers'
 import { extractInitials } from '@/utils/format'
 import { AuthProvider } from '@/components/providers/auth-provider'
@@ -46,11 +47,7 @@ import type { ActiveRun } from '@/types/api'
  * email-confirmation callback, sign-in and setup-password all end there.
  */
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const userId = await getAuthUserId()
-
-  if (!userId) {
-    redirect('/login')
-  }
+  const userId = await requireAuthUserId()
 
   const supabase = await createServerSupabaseClient()
 
@@ -63,7 +60,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
     // The one path that needs more than an id, so it pays for the full user here rather than
     // making every navigation fetch email and metadata it will not read.
     const user = await getAuthUser()
-    if (!user) redirect('/login')
+    if (!user) redirect(SIGN_IN_PATH)
 
     const admin = createAdminSupabaseClient()
     await createUserRecord(admin, {

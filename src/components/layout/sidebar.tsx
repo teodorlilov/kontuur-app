@@ -2,11 +2,10 @@
 
 import { useState, useSyncExternalStore } from 'react'
 import Link from 'next/link'
-import { usePathname, useRouter } from 'next/navigation'
+import { usePathname } from 'next/navigation'
 import { AltArrowLeftIcon, CloseIcon, HamburgerMenuIcon } from '@solar-icons/react/linear'
 import { Logout2Icon } from '@solar-icons/react/line-duotone'
 import { Icon } from '@/components/ui/icon'
-import { toast } from '@/components/ui/toast'
 import { createBrowserSupabaseClient } from '@/lib/supabase/client'
 import { extractInitials } from '@/utils/format'
 import { cn } from '@/utils/cn'
@@ -232,7 +231,6 @@ export function Sidebar({
   commentsCount,
   activeRuns,
 }: SidebarProps) {
-  const router = useRouter()
   const [mobileOpen, setMobileOpen] = useState(false)
   const collapsed = useSyncExternalStore(subscribeToCollapse, readCollapsed, () => false)
   // The server count is a per-hard-load snapshot; a surface that mutates the
@@ -241,14 +239,6 @@ export function Sidebar({
   // Polled once here, then handed to both the rail and the drawer as data —
   // two SidebarContent instances must not mean two pollers.
   const runs = useActiveRuns(activeRuns)
-
-  async function handleSignOut() {
-    const supabase = createBrowserSupabaseClient()
-    await supabase.auth.signOut()
-    toast('Signed out')
-    router.push('/login')
-    router.refresh()
-  }
 
   const badgeCounts: Record<NavBadge, number> = {
     pending: livePendingCount ?? pendingCount,
@@ -260,7 +250,7 @@ export function Sidebar({
     agencyName,
     badgeCounts,
     activeRuns: runs,
-    onSignOut: handleSignOut,
+    onSignOut: () => void createBrowserSupabaseClient().auth.signOut(),
   }
 
   return (

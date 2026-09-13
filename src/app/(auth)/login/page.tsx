@@ -1,14 +1,13 @@
 import { redirect } from 'next/navigation'
+import { SIGN_IN_PATH } from '@/utils/constants'
 
 /**
- * Sign-in is a dialog over the landing page now.
+ * Sign-in is a dialog over the landing page.
  *
- * The route survives as a redirect rather than being deleted, because eleven
- * places still send people here — every `redirect('/login')` behind an
- * unauthenticated page, the sign-out in the sidebar, the auth provider's
- * session watcher, and the invite handler — and Supabase's own email templates
- * are configured against these paths.
+ * This route is an entry point for links that live outside the app — old bookmarks, and auth
+ * emails configured in the Supabase dashboard. Nothing inside the app sends anyone here: every
+ * in-app sender uses `SIGN_IN_PATH` directly, so this hop is paid only by an external link.
  */
 export default function LoginPage() {
-  redirect('/?auth=signin')
+  redirect(SIGN_IN_PATH)
 }

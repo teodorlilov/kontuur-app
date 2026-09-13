@@ -6,6 +6,7 @@ import { useSearchParams } from 'next/navigation'
 import { LetterIcon } from '@solar-icons/react/linear'
 import { Icon } from '@/components/ui/icon'
 import { AuthPanel } from '@/features/auth/components/auth-panel'
+import { SIGN_IN_PATH } from '@/utils/constants'
 
 /**
  * Where sign-up lands when the Supabase project has email confirmation on.
@@ -40,7 +41,7 @@ function CheckEmailContent() {
             <p className="text-center text-caption text-text2">
               Already confirmed?{' '}
               <Link
-                href="/?auth=signin"
+                href={SIGN_IN_PATH}
                 className="font-medium text-spring-text underline-offset-4 hover:underline"
               >
                 Sign in

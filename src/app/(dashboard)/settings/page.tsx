@@ -11,6 +11,7 @@ import { PlanSection, UpgradeRailAction } from '@/features/settings/components/p
 import { ProfileRail, ProfileTab } from '@/features/settings/components/profile-tab'
 import { TeamRail, TeamTab } from '@/features/settings/components/team-tab'
 import { RailBox } from '@/components/ui/form'
+import { SIGN_IN_PATH } from '@/utils/constants'
 
 export default async function SettingsPage() {
   const { userId, agencyId, role } = await requireSessionUser()
@@ -26,7 +27,7 @@ export default async function SettingsPage() {
     fetchCanvaTeamStatus(agencyId),
   ])
 
-  if (!agency) redirect('/login')
+  if (!agency) redirect(SIGN_IN_PATH)
 
   const agencyMode: 'agency' | 'solo' = agencyData?.mode === 'solo' ? 'solo' : 'agency'
 

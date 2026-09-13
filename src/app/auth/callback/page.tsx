@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import { createUserRecord } from '@/lib/auth/create-user-record'
+import { SIGN_IN_PATH } from '@/utils/constants'
 import { InviteHandler } from './invite-handler'
 
 export default async function AuthCallbackPage({
@@ -58,7 +59,7 @@ export default async function AuthCallbackPage({
     // `/login?error=confirmation_failed`, and nothing on that page ever read
     // the param — an expired confirmation link dropped a visitor on a blank
     // sign-in form with no explanation at all.
-    redirect('/?auth=signin&error=confirmation_failed')
+    redirect(`${SIGN_IN_PATH}&error=confirmation_failed`)
   }
 
   // No code param — implicit flow (invite link with hash fragment tokens).
