@@ -53,7 +53,7 @@ Onboard client → configure brand profile + research sources
   → Analytics + the weekly platform brief
 ```
 
-Surfaces: Dashboard, Clients, Generate (full-screen wizard), Review queue, Calendar, Client ideas, Analytics, Settings — renamed in solo mode (Create content, My drafts, My calendar, My comments, My results; the one client's settings appear as My business). Public, login-free surfaces: the approval portal and the idea submission form. Plus a marketing site (landing, pricing, privacy, terms, data deletion).
+Surfaces: Dashboard, Clients, Generate (full-screen wizard), Review queue, Calendar, Client ideas, Analytics, Settings — renamed in solo mode (Create content, My drafts, My calendar, My comments, My results; the one client's settings appear as My business; the dashboard replaces the client roster with "My week" and the connected-count tile with the account's followers). Public, login-free surfaces: the approval portal and the idea submission form. Plus a marketing site (landing, pricing, privacy, terms, data deletion).
 
 ## Capabilities and Constraints
 

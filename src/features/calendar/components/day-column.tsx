@@ -2,6 +2,7 @@
 
 import { memo, useMemo, useState } from 'react'
 import { cn } from '@/utils/cn'
+import { DayCap } from '@/components/ui/day-cap'
 import { PostCard } from './post-card'
 import { WEEKDAY_LABELS_SHORT as DOW_LABELS } from '@/utils/constants'
 import type { LaneItem } from '@/features/calendar/lib/week-model'
@@ -108,56 +109,7 @@ export const DayColumn = memo(function DayColumn({
         isOver && 'border-solid border-forest bg-wash'
       )}
     >
-      {/* A dateline, not a caption bar: the weekday is the small label and the date is
-          the thing said. The two used to be the same size at opposite ends of the cap,
-          which gave the column no head — nothing to read first, and no anchor for the
-          today plate to sit against. */}
-      <div
-        className={cn(
-          'flex flex-none flex-col gap-0.5 border-b px-3 py-2',
-          // A tinted cap, so seven columns read as seven columns. A white column on
-          // near-white paper separates by 1.05:1 and its hairline edge is 1.13:1 —
-          // together not enough to draw a grid, which is why the header carries it.
-          // It is also now the only tint in the column, so it does that work alone.
-          isToday ? 'border-spring/40 bg-wash' : 'border-line bg-sunken'
-        )}
-      >
-        <span
-          className={cn(
-            'text-label font-semibold uppercase',
-            isToday ? 'text-forest' : 'text-text3'
-          )}
-        >
-          {label}
-        </span>
-        {/* Fixed height on both variants: the lime plate is taller than a bare numeral,
-            and without it today's lane would start three pixels below its neighbours' —
-            seven columns whose cards no longer line up across the week. */}
-        <span className="flex h-6 items-center">
-          {isToday ? (
-            // The Two Facts Rule: today is a plate *behind* the day number, so the lane
-            // below stays free to say whether today is covered. A pill rather than a
-            // fixed circle, so the date keeps the same size it has in the other six
-            // columns — a circle small enough to hold two digits shrank today's number
-            // below every other day's, which is the opposite of what marking it means.
-            <span className="flex h-6 items-center rounded-full bg-accent px-2 text-title font-semibold tabular-nums text-forest-deep shadow-[inset_0_0_0_1px_rgba(12,46,32,0.45)]">
-              {dayNumber}
-            </span>
-          ) : (
-            <span
-              className={cn(
-                'text-title tabular-nums',
-                // The whole signal that a day has passed, now that its lane is white
-                // like every other. Quiet ink rather than a grey ground: it recedes
-                // without claiming the column is a different kind of thing.
-                isPast ? 'font-medium text-text3' : 'font-semibold text-ink'
-              )}
-            >
-              {dayNumber}
-            </span>
-          )}
-        </span>
-      </div>
+      <DayCap label={label} dayNumber={dayNumber} isToday={isToday} isPast={isPast} />
 
       <div className="flex min-h-0 flex-1 flex-col gap-1.5 overflow-y-auto p-1.5">
         {items.length === 0 ? (

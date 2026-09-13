@@ -1,7 +1,12 @@
 import Link from 'next/link'
 import { cn } from '@/utils/cn'
 import { extractInitials } from '@/utils/format'
-import type { DayState } from '@/lib/queries/cache'
+import { countWeek, describeWeek } from '@/features/dashboard/lib/metrics'
+import {
+  DAY_STATE_CLASSES,
+  DAY_STATE_CLASSES_ON_DARK,
+} from '@/features/dashboard/lib/day-state-classes'
+import type { WeekDay } from '@/lib/queries/week-coverage'
 
 /**
  * Capsule tiers, lightest first. Decorative rhythm from the design direction —
@@ -15,7 +20,7 @@ export const TIER_COUNT = TIER_CLASSES.length
 interface CoverageRowProps {
   clientId: string
   name: string
-  week: DayState[]
+  week: WeekDay[]
   pendingCount: number
   /**
    * Which capsule tier to wear. Derived from the client's place in the whole
@@ -28,9 +33,8 @@ interface CoverageRowProps {
 /** One client's week: published, scheduled, or still open. */
 export function CoverageRow({ clientId, name, week, pendingCount, tier }: CoverageRowProps) {
   const isDark = tier === DARK_TIER_INDEX
-  const publishedCount = week.filter((day) => day === 'published').length
-  // Anything not open is on the books, published or merely scheduled.
-  const filledCount = week.filter((day) => day !== 'open').length
+  const { published, scheduled } = countWeek(week)
+  const filledCount = published + scheduled
   const isEmpty = filledCount === 0
   const needsReview = pendingCount > 0
 
@@ -42,12 +46,6 @@ export function CoverageRow({ clientId, name, week, pendingCount, tier }: Covera
       ]
         .filter(Boolean)
         .join(' · ')
-
-  // The chips are a graphic, so they carry no text — this is the same week
-  // stated once for anyone who cannot see them.
-  const chipSummary =
-    `${publishedCount} published, ${filledCount - publishedCount} scheduled, ` +
-    `${week.length - filledCount} open`
 
   return (
     <div
@@ -76,7 +74,7 @@ export function CoverageRow({ clientId, name, week, pendingCount, tier }: Covera
         </div>
       </div>
 
-      <span className="sr-only">{chipSummary}</span>
+      <span className="sr-only">{describeWeek(week)}</span>
 
       <div className="flex shrink-0 gap-1.5" aria-hidden="true">
         {week.map((day, index) => (
@@ -84,12 +82,7 @@ export function CoverageRow({ clientId, name, week, pendingCount, tier }: Covera
             key={index}
             className={cn(
               'size-[13px] rounded-[4.5px] box-border',
-              day === 'published' && (isDark ? 'bg-surface' : 'bg-forest'),
-              day === 'scheduled' &&
-                (isDark
-                  ? 'bg-transparent shadow-[inset_0_0_0_1.5px_rgba(255,255,255,0.65)]'
-                  : 'bg-surface shadow-[inset_0_0_0_1.5px_rgba(22,68,48,0.45)]'),
-              day === 'open' && (isDark ? 'slot-open-inv' : 'slot-open')
+              (isDark ? DAY_STATE_CLASSES_ON_DARK : DAY_STATE_CLASSES)[day.state]
             )}
           />
         ))}

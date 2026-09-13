@@ -622,6 +622,16 @@ export const PENDING_PREVIEW_COLUMNS =
  */
 export type PendingPreviewColumns = Pick<PostRow, (typeof PENDING_PREVIEW_KEYS)[number]>
 
+/** One post as the solo dashboard's My week card previews it: the caption behind a day's title. */
+const WEEK_PREVIEW_KEYS = ['id', 'caption'] as const satisfies readonly (keyof PostRow)[]
+
+export const WEEK_PREVIEW_COLUMNS = WEEK_PREVIEW_KEYS.join(', ') as Join<
+  typeof WEEK_PREVIEW_KEYS,
+  ', '
+>
+
+export type WeekPreviewColumns = Pick<PostRow, (typeof WEEK_PREVIEW_KEYS)[number]>
+
 /** A post whose client asked for changes, with the token carrying the note. */
 export const CHANGE_REQUEST_COLUMNS =
   'id, client_id, caption, post_type, slides_json, scheduled_at, ' +

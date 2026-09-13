@@ -35,12 +35,18 @@ interface StatCardProps {
   children?: React.ReactNode
 }
 
-/** One figure from the week, with the pill and footer that qualify it. */
+/**
+ * One figure from the week, with the pill and footer that qualify it.
+ *
+ * Fills whatever row it is placed in and pins its footer to the bottom: the four stat cards hold
+ * different amounts — a dark one carries the week strip, another a paragraph, another a two-line
+ * footer — and a row of like cards reads as one object only when their edges and footers align.
+ */
 export function StatCard({ label, value, icon, pill, footer, dark, children }: StatCardProps) {
   return (
     <div
       className={cn(
-        'rounded-card px-[18px] py-4',
+        'flex h-full flex-col rounded-card px-[18px] py-4',
         dark
           ? 'surface-dark border-transparent text-white shadow-dark'
           : 'border border-ink/[0.05] bg-surface'
@@ -89,7 +95,7 @@ export function StatCard({ label, value, icon, pill, footer, dark, children }: S
       {footer && (
         <div
           className={cn(
-            'mt-3 flex items-center gap-2 text-caption',
+            'mt-auto flex items-center gap-2 pt-3 text-caption',
             dark ? 'text-white/60' : 'text-text3'
           )}
         >

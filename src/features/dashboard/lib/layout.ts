@@ -1,8 +1,8 @@
 /**
- * Geometry shared by the two columns under the stat row. The coverage list and
- * the review queue sit side by side, so their scroll areas have to resolve to
- * the same height — reserving it here keeps a part-full page of clients from
- * shrinking the section, and keeps the two files from drifting apart.
+ * Geometry shared by the two columns under the stat row. The left column — the coverage roster
+ * for an agency, My week for a solo user — sits beside the review queue, so their row areas have
+ * to resolve to the same height: reserving it here keeps a part-full page of clients, or a week
+ * with nothing planned, from shrinking the section, and keeps the three files from drifting apart.
  */
 
 /** Clients per page of the coverage list. */

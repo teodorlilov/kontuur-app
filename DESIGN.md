@@ -488,6 +488,7 @@ Reach for these before writing a new one:
 | `components/ui/section-heading.tsx`     | An `h2` with its icon chip; `tone="wash" \| "marker"`.                                |
 | `components/ui/icon.tsx`                | Every icon: a Solar glyph at a step of the closed size ramp — see Icons above.        |
 | `components/ui/action-link.tsx`         | A `next/link` styled as an action.                                                    |
+| `components/ui/day-cap.tsx`             | A day's dateline: weekday label over the date, today on the lime plate.               |
 | `components/ui/button.tsx`              | A button that acts. Sizes mirror `ActionLink`: caption / body / title.                |
 | `components/ui/form/form-section.tsx`   | A settings panel — titled, with a divider header.                                     |
 | `components/ui/form/control-classes.ts` | The one definition of how a form control looks, including the Mobile Input Exemption. |

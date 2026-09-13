@@ -68,3 +68,15 @@ export async function fetchImagesByPost(postIds: string[]): Promise<Map<string, 
   }
   return imagesByPost
 }
+
+/**
+ * The URL a post is shown by: its first image by position, or null when it has none. The one
+ * spelling of `get(id)?.[0]?.publicUrl` — three readers (the review queue, the comments queue,
+ * My week) each need exactly this off the map `fetchImagesByPost` returns.
+ */
+export function firstPublicUrl(
+  imagesByPost: ReadonlyMap<string, ReadonlyArray<{ publicUrl: string }>>,
+  postId: string
+): string | null {
+  return imagesByPost.get(postId)?.[0]?.publicUrl ?? null
+}

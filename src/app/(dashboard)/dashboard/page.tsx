@@ -17,6 +17,7 @@ import { fetchDashboardData } from '@/features/dashboard/queries/dashboard-data'
 import { getCachedBriefing } from '@/features/dashboard/queries/briefing'
 import { countFilledPerDay } from '@/features/dashboard/lib/metrics'
 import { DAYS_PER_WEEK } from '@/utils/constants'
+import { emptyWeek } from '@/lib/queries/week-coverage'
 import { cn } from '@/utils/cn'
 import { SectionHeading } from '@/components/ui/section-heading'
 // Deep import, not the re-export index: that file forwards four 'use client'
@@ -27,12 +28,23 @@ import { DashboardHeader } from '@/features/dashboard/components/dashboard-heade
 import { StatCard } from '@/features/dashboard/components/stat-card'
 import { MiniWeek } from '@/features/dashboard/components/mini-week'
 import { ClientCoverage } from '@/features/dashboard/components/client-coverage'
+import { MyWeek } from '@/features/dashboard/components/my-week'
+import { FollowersStat } from '@/features/dashboard/components/followers-stat'
 import { PendingReviewList } from '@/features/dashboard/components/pending-review-list'
 import { BriefingBar } from '@/features/dashboard/components/briefing-bar'
 import { QuickActionsStrip } from '@/features/dashboard/components/quick-actions-strip'
 import { NextUpCard } from '@/features/dashboard/components/next-up-card'
 import { ChangeRequestCard } from '@/features/dashboard/components/change-request-card'
 
+/**
+ * One page, two compositions. The header, stat row, brief bar and quick actions are the same for
+ * an agency and a solo user; only the third stat and the band under the stats differ — a solo
+ * user gets the account's Followers tile and My week where an agency gets its client count and
+ * the coverage roster. `business` is the solo user's one client: the layout's
+ * `requireBusinessSetup` sends a solo agency with no client to /clients/new before this renders,
+ * so whenever `isSolo` holds, `clients[0]` does. "Today" is decided once, here, so MiniWeek and
+ * My week can never disagree on which column it is.
+ */
 export default async function DashboardPage() {
   const { agencyId } = await requireSessionUser()
 
@@ -43,10 +55,12 @@ export default async function DashboardPage() {
   ])
 
   const isSolo = agency?.mode === 'solo'
+  const business = isSolo ? clients[0] : undefined
   const timezone = agency?.timezone ?? 'UTC'
   // The week is the agency's, not the server's — otherwise the "today" marker
   // can point at a day outside the week the data was fetched for.
   const weekStartISO = getMondayISO(new Date(), timezone)
+  const todayIndex = getWeekdayIndex(new Date(), timezone)
 
   const [data, coverage, briefing] = await Promise.all([
     fetchDashboardData(agencyId, clients, weekStartISO, timezone),
@@ -83,7 +97,7 @@ export default async function DashboardPage() {
                 tone: 'positive',
               }}
             >
-              <MiniWeek counts={filledPerDay} todayIndex={getWeekdayIndex(new Date(), timezone)} />
+              <MiniWeek counts={filledPerDay} todayIndex={todayIndex} />
             </StatCard>
           </div>
 
@@ -106,21 +120,25 @@ export default async function DashboardPage() {
           </div>
 
           <div className="rv [--d:70ms]">
-            <StatCard
-              label={isSolo ? 'Platforms connected' : 'Active clients'}
-              value={isSolo ? metrics.connectedClientCount : clients.length}
-              icon={<Icon glyph={UsersGroupRoundedIcon} size="lg" />}
-              pill={
-                metrics.clientsAddedThisMonth > 0
-                  ? { text: `+${metrics.clientsAddedThisMonth} this month`, tone: 'positive' }
-                  : { text: 'No change this month', tone: 'muted' }
-              }
-              footer={
-                clients.length === 0
-                  ? 'Add a client to get started'
-                  : `${metrics.connectedClientCount} of ${clients.length} connected to a platform`
-              }
-            />
+            {business ? (
+              <FollowersStat agencyId={agencyId} clientId={business.id} timeZone={timezone} />
+            ) : (
+              <StatCard
+                label="Active clients"
+                value={clients.length}
+                icon={<Icon glyph={UsersGroupRoundedIcon} size="lg" />}
+                pill={
+                  metrics.clientsAddedThisMonth > 0
+                    ? { text: `+${metrics.clientsAddedThisMonth} this month`, tone: 'positive' }
+                    : { text: 'No change this month', tone: 'muted' }
+                }
+                footer={
+                  clients.length === 0
+                    ? 'Add a client to get started'
+                    : `${metrics.connectedClientCount} of ${clients.length} connected to a platform`
+                }
+              />
+            )}
           </div>
 
           <div className="rv [--d:105ms]">
@@ -155,13 +173,30 @@ export default async function DashboardPage() {
         {/* Container queries, not viewport ones: the sidebar collapses, so how much
           room these two sections actually have is not a function of window width.
           minmax(0,…) keeps a long client name from resizing the tracks per page. */}
-        <div className="mt-4 grid grid-cols-1 items-start gap-4 @2xl:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)]">
+        <div
+          className={cn(
+            'mt-4 grid grid-cols-1 items-start gap-4',
+            business
+              ? '@2xl:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]'
+              : '@2xl:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)]'
+          )}
+        >
           <div className="rv [--d:170ms]">
-            <ClientCoverage
-              clients={clients}
-              coverage={coverage}
-              clientPendingMap={metrics.clientPendingMap}
-            />
+            {business ? (
+              <MyWeek
+                clientName={business.name}
+                week={coverage[business.id] ?? emptyWeek()}
+                weekStartISO={weekStartISO}
+                timeZone={timezone}
+                todayIndex={todayIndex}
+              />
+            ) : (
+              <ClientCoverage
+                clients={clients}
+                coverage={coverage}
+                clientPendingMap={metrics.clientPendingMap}
+              />
+            )}
           </div>
           <div className="rv [--d:200ms]">
             <PendingReviewList posts={data.pendingPosts} totalPending={metrics.pendingCount} />

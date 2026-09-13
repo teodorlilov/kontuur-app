@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import Image from 'next/image'
 import Link from 'next/link'
 import { UnreadIcon } from '@solar-icons/react/linear'
 import { CheckCircleIcon } from '@solar-icons/react/line-duotone'
@@ -9,10 +8,10 @@ import { Icon } from '@/components/ui/icon'
 import { toast } from '@/components/ui/toast'
 import { schedulePost, updatePost } from '@/lib/actions/post-actions'
 import { formatRelativeTime, parseTimestamp, toPreviewLine } from '@/utils/format'
-import { hasCyrillic } from '@/lib/canvas/font-library'
 import { cn } from '@/utils/cn'
 import { Card } from '@/components/ui/card'
 import { IconChip } from '@/components/ui/icon-chip'
+import { PostThumbnail } from '@/features/dashboard/components/post-thumbnail'
 import { SectionHeading } from '@/components/ui/section-heading'
 import { COVERAGE_LIST_HEIGHT } from '@/features/dashboard/lib/layout'
 import type { PendingPostPreview } from '@/features/dashboard/types'
@@ -164,9 +163,6 @@ function PendingRow({
   isApproving: boolean
   onApprove: () => void
 }) {
-  // Spread, not slice(0,1): an emoji or any astral character is two code units,
-  // and slicing one of them yields a broken glyph.
-  const initial = [...post.clientName.trim()][0]?.toUpperCase() ?? '?'
   // `|| 'Untitled draft'` covered an EMPTY caption; a null one reached toPreviewLine, which calls
   // .replace on it unguarded. The row type used to claim this could not be null.
   const preview = (post.caption && toPreviewLine(post.caption)) || 'Untitled draft'
@@ -179,26 +175,11 @@ function PendingRow({
         isApproving && 'translate-x-6 opacity-0'
       )}
     >
-      {post.imageUrl ? (
-        <Image
-          src={post.imageUrl}
-          alt=""
-          width={44}
-          height={44}
-          className="size-[44px] shrink-0 rounded-sm object-cover"
-        />
-      ) : (
-        <span
-          className={cn(
-            'grid h-[44px] w-[44px] shrink-0 place-items-center rounded-sm bg-wash text-display text-forest',
-            // Instrument Serif ships no Cyrillic, so a Bulgarian client's
-            // initial would silently fall back to a mismatched system face.
-            hasCyrillic(initial) ? 'font-sans font-medium not-italic' : 'font-display italic'
-          )}
-        >
-          {initial}
-        </span>
-      )}
+      <PostThumbnail
+        src={post.imageUrl}
+        name={post.clientName}
+        className="size-[44px] rounded-sm"
+      />
 
       <div className="min-w-0 flex-1">
         <p className="line-clamp-2 break-words text-body font-medium leading-[1.4] text-ink">

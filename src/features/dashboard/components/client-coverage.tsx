@@ -7,15 +7,13 @@ import { UsersGroupRoundedIcon } from '@solar-icons/react/line-duotone'
 import { Icon } from '@/components/ui/icon'
 import { SectionHeading } from '@/components/ui/section-heading'
 import { CoverageRow, TIER_COUNT } from '@/features/dashboard/components/coverage-row'
+import { CoverageLegend } from '@/features/dashboard/components/coverage-legend'
 import { COVERAGE_LIST_HEIGHT, COVERAGE_ROWS_PER_PAGE } from '@/features/dashboard/lib/layout'
-import { DAYS_PER_WEEK } from '@/utils/constants'
-import type { DayState } from '@/lib/queries/cache'
-
-const EMPTY_WEEK: DayState[] = Array<DayState>(DAYS_PER_WEEK).fill('open')
+import { emptyWeek, type WeekDay } from '@/lib/queries/week-coverage'
 
 interface ClientCoverageProps {
   clients: Array<{ id: string; name: string }>
-  coverage: Record<string, DayState[]>
+  coverage: Record<string, WeekDay[]>
   clientPendingMap: Record<string, number>
 }
 
@@ -35,20 +33,7 @@ export function ClientCoverage({ clients, coverage, clientPendingMap }: ClientCo
         <SectionHeading icon={<Icon glyph={UsersGroupRoundedIcon} size="sm" />}>
           Client coverage
         </SectionHeading>
-        <span className="flex items-center gap-3 text-micro text-text3">
-          <span className="flex items-center gap-1.5">
-            <i className="size-2.5 rounded-[3.5px] bg-forest" />
-            Published
-          </span>
-          <span className="flex items-center gap-1.5">
-            <i className="size-2.5 rounded-[3.5px] bg-surface shadow-[inset_0_0_0_1.5px_rgba(22,68,48,0.45)]" />
-            Scheduled
-          </span>
-          <span className="flex items-center gap-1.5">
-            <i className="slot-open size-2.5 rounded-[3.5px]" />
-            Open
-          </span>
-        </span>
+        <CoverageLegend />
       </div>
 
       {clients.length === 0 ? (
@@ -69,7 +54,7 @@ export function ClientCoverage({ clients, coverage, clientPendingMap }: ClientCo
                 key={client.id}
                 clientId={client.id}
                 name={client.name}
-                week={coverage[client.id] ?? EMPTY_WEEK}
+                week={coverage[client.id] ?? emptyWeek()}
                 pendingCount={clientPendingMap[client.id] ?? 0}
                 // Tier follows the client's place in the whole roster, so each
                 // page still reads lime → sage → dark while a given client

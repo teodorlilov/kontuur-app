@@ -11,7 +11,7 @@ import {
   type CommentedPostColumns,
   type PlatformCommentColumns,
 } from '@/lib/queries/select-columns'
-import { fetchImagesByPost } from '@/lib/posts/fetch-post-images'
+import { fetchImagesByPost, firstPublicUrl } from '@/lib/posts/fetch-post-images'
 import { commentStatus, isOurs } from '@/features/comments/lib/comment-status'
 import type { CommentGroup, QueuedComment, QueuedCommentReply } from '@/types/api'
 import type { PlatformPostMetricsRow } from '@/types/index'
@@ -346,7 +346,7 @@ function assemble(
       // for the publication row as well would be a second query for one timestamp.
       publishedAt: facts?.posted_at ?? null,
       imageUrl:
-        (row.post_id ? context.images.get(row.post_id)?.[0]?.publicUrl : null) ??
+        (row.post_id ? firstPublicUrl(context.images, row.post_id) : null) ??
         facts?.thumbnail_url ??
         null,
       permalink: facts?.permalink ?? null,

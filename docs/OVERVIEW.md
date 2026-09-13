@@ -458,8 +458,11 @@ newsrooms and trade outlets). Written by the generate cron on the first tick of 
 breakdown, top posts, post-day breakdown), an AI summary strip, report history, and PDF export
 via jsPDF. Backed by the `client_post_stats` RPC and `analytics_reports`.
 
-**Dashboard** — Stat cards, client rows with pending counts, the weekly brief bar, change-request
-cards, quick actions, and recent post previews (agency and solo variants).
+**Dashboard** — Stat cards, the weekly brief bar, change-request cards, quick actions, and recent
+post previews. Agency mode shows client rows with pending counts; solo mode shows "My week" (seven
+day columns with each day's post or an open slot, built from the same coverage reader) and a
+Followers tile (the account's last-7-days ledger from the analytics report) in place of the
+roster and the connected-count tile.
 
 **Notifications & settings** — Notification bell with unread badge; settings for account, profile,
 team (invite/members), integrations (Canva/Meta), plan, and a danger zone.

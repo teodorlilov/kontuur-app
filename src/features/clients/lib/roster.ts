@@ -123,7 +123,7 @@ interface RosterSummary {
  * dashed "missing" chip rather than vanishing, so the column stays legible
  * across rows. Canva rows share this table and are filtered out here.
  */
-function buildChannels(rows: RosterConnectionRow[], now: Date): RosterChannel[] {
+export function buildChannels(rows: RosterConnectionRow[], now: Date): RosterChannel[] {
   return POST_PLATFORMS.map((platform) => {
     const row = rows.find((r) => toPublishingPlatform(r.platform) === platform)
     if (!row) {
@@ -163,7 +163,7 @@ export function hasLiveChannel(rows: RosterConnectionRow[], now: Date): boolean 
 }
 
 /** A channel the publish pipeline can use right now. */
-function isLiveChannel(channel: RosterChannel): boolean {
+export function isLiveChannel(channel: RosterChannel): boolean {
   return channel.state === 'connected' || channel.state === 'expiring'
 }
 
