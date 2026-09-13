@@ -2,6 +2,7 @@ import { type NextRequest, NextResponse } from 'next/server'
 import { revalidateTag } from 'next/cache'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import { syncAllClientComments } from '@/features/comments/lib/sync-comments'
+import { fetchEntitledClients } from '@/lib/billing/entitled-clients'
 import { PLATFORM_COMMENTS_TAG } from '@/features/comments/queries/comment-queue'
 
 export const maxDuration = 300
@@ -26,7 +27,11 @@ export async function GET(request: NextRequest) {
   const startedAt = Date.now()
   const admin = createAdminSupabaseClient()
   try {
-    const result = await syncAllClientComments(admin, { timeBudgetMs: TIME_BUDGET_MS })
+    const entitledClientIds = new Set((await fetchEntitledClients(admin, 'publish')).keys())
+    const result = await syncAllClientComments(admin, {
+      timeBudgetMs: TIME_BUDGET_MS,
+      entitledClientIds,
+    })
     // Only when something actually moved. The common case is a run that fetched
     // nothing, and busting the tag then would throw away a warm queue for no reason.
     if (result.fetched > 0) revalidateTag(PLATFORM_COMMENTS_TAG, 'max')

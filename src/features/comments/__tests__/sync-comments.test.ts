@@ -446,7 +446,10 @@ describe('syncAllClientComments on a dead token', () => {
       from: vi.fn(() => ({ select: roster, delete: del })),
     } as unknown as SupabaseClient
 
-    const outcome = await syncAllClientComments(admin, { timeBudgetMs: 10_000 })
+    const outcome = await syncAllClientComments(admin, {
+      timeBudgetMs: 10_000,
+      entitledClientIds: new Set(['c1']),
+    })
 
     expect(outcome.failed).toBe(1)
     expect(retireConnection).toHaveBeenCalledWith(admin, {

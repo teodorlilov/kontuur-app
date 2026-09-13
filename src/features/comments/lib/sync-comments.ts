@@ -80,7 +80,14 @@ interface CommentsSyncOutcome {
  */
 export async function syncAllClientComments(
   admin: SupabaseClient,
-  { timeBudgetMs }: { timeBudgetMs: number }
+  {
+    timeBudgetMs,
+    entitledClientIds,
+  }: {
+    timeBudgetMs: number
+    /** Clients whose workspace may still publish — the cron resolves it once per tick. */
+    entitledClientIds: ReadonlySet<string>
+  }
 ): Promise<CommentsSyncOutcome> {
   const startedAt = Date.now()
   const outcome: CommentsSyncOutcome = {
@@ -107,7 +114,9 @@ export async function syncAllClientComments(
     .not('account_id', 'is', null)
   if (error) throw new Error(`connection roster query failed: ${error.message}`)
   // WHY as: the shared SupabaseClient param is untyped, so the projection does not infer.
-  const connections = (data ?? []) as SyncableConnection[]
+  const roster = (data ?? []) as SyncableConnection[]
+  const connections = roster.filter((c) => c.client_id && entitledClientIds.has(c.client_id))
+  outcome.skipped += roster.length - connections.length
 
   for (const [index, connection] of connections.entries()) {
     // Between clients, not inside one: a client's comments either come whole or not at all.

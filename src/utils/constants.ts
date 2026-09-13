@@ -148,10 +148,17 @@ export const LANGUAGE_FORMALITY_OPTIONS = [
   { value: 'casual', label: 'Casual' },
 ] as const
 
+/**
+ * The most posts one generation run may produce — the wizard's stepper ceiling and, since the
+ * draft allowance is reserved per run, the ceiling the server holds the wire to as well
+ * (`targetPostCount`, `priorityPosts`, `frequency_value`, `posts_per_week`).
+ */
+export const MAX_POSTS_PER_RUN = 7
+
 /** How many posts one generation run produces. */
-export const POSTS_PER_RUN_OPTIONS = [1, 2, 3, 4, 5, 6, 7].map((n) => ({
-  value: String(n),
-  label: String(n),
+export const POSTS_PER_RUN_OPTIONS = Array.from({ length: MAX_POSTS_PER_RUN }, (_, i) => ({
+  value: String(i + 1),
+  label: String(i + 1),
 }))
 
 /** Run size assumed when a client has no posts_per_week set. */

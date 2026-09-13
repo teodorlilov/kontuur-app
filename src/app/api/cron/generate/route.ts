@@ -14,7 +14,14 @@ import {
 import { writeWeeklyBriefing } from '@/features/dashboard/lib/write-briefing'
 import { runAsSpender } from '@/lib/billing/spend-context'
 import { allowanceUsedUp } from '@/lib/billing/copy'
-import { DEFAULT_CAROUSEL_SLIDES, MS_PER_HOUR, STYLE_MEMO_REFRESH_DAYS } from '@/utils/constants'
+import {
+  DEFAULT_CAROUSEL_SLIDES,
+  MAX_CAROUSEL_SLIDES,
+  MIN_CAROUSEL_SLIDES,
+  MS_PER_HOUR,
+  STYLE_MEMO_REFRESH_DAYS,
+} from '@/utils/constants'
+import { clamp } from '@/lib/canvas/clamp'
 import { distillStyleMemo } from '@/ai/learning/distill-style-memo'
 import { fetchScheduleContext, getScheduleDue } from './helpers'
 import type { PostType } from '@/types/api'
@@ -182,7 +189,11 @@ export async function GET(request: NextRequest) {
       const client = { ...clientResult.data, exemplars, styleMemo }
 
       const postType = (brandProfile?.default_post_type ?? 'single') as PostType
-      const slideCount = brandProfile?.default_carousel_slides ?? DEFAULT_CAROUSEL_SLIDES
+      const slideCount = clamp(
+        brandProfile?.default_carousel_slides ?? DEFAULT_CAROUSEL_SLIDES,
+        MIN_CAROUSEL_SLIDES,
+        MAX_CAROUSEL_SLIDES
+      )
 
       // Under hourly ticks the run row IS the slot's dedup key: a batch
       // generated without one would be regenerated every remaining tick

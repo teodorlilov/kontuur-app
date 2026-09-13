@@ -45,12 +45,16 @@ const POST_LOOKBACK_DAYS = 30
 /** Nightly Page metrics for every client with a live Facebook connection. */
 export async function syncAllFacebookMetrics(
   admin: SupabaseClient,
-  { timeBudgetMs }: { timeBudgetMs: number }
+  {
+    timeBudgetMs,
+    entitledClientIds,
+  }: { timeBudgetMs: number; entitledClientIds: ReadonlySet<string> }
 ): Promise<MetricsSyncOutcome> {
   return syncRoster(admin, {
     platform: 'facebook',
     networkLabel: PLATFORM_NAMES.facebook,
     timeBudgetMs,
+    entitledClientIds,
     syncOne: (connection) => syncClientPageMetrics(admin, connection),
   })
 }

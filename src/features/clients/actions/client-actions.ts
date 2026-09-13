@@ -25,6 +25,10 @@ import {
   type UpdateClientInput,
 } from '@/features/clients/schemas'
 import { provisionClient } from '@/features/clients/lib/provision-client'
+import { countClientsByAgency } from '@/lib/queries/db'
+import { getCachedEntitlement } from '@/lib/queries/cache'
+import { requireEntitledAction } from '@/lib/billing/require-entitled'
+import { brandCapReached } from '@/lib/billing/copy'
 import { CLIENT_FILES_BUCKET, POST_IMAGES_BUCKET } from '@/utils/constants'
 import type { ActionResult } from '@/lib/actions/types'
 
@@ -47,6 +51,8 @@ export async function createClient(input: CreateClientInput): Promise<ActionResu
   const auth = await resolveActionAuth()
   if (!auth.ok) return { ok: false, error: auth.error }
   const { supabase, agencyId } = auth
+  const refused = await requireEntitledAction(agencyId, 'create')
+  if (refused) return refused
 
   const parsed = createClientSchema.safeParse(input)
   if (!parsed.success) {
@@ -55,7 +61,18 @@ export async function createClient(input: CreateClientInput): Promise<ActionResu
   }
   const data = parsed.data
 
-  const result = await provisionClient(supabase, {
+  // The brand cap, judged here and nowhere else. The tenant role cannot insert into `clients`
+  // since 20260854, so the admin client below is the only way a brand comes into existence and
+  // this count is the only door past the cap.
+  const entitlement = await getCachedEntitlement(agencyId)
+  if (!entitlement.brandsUnlimited) {
+    const brands = await countClientsByAgency(supabase, agencyId)
+    if (brands >= entitlement.brands) {
+      return { ok: false, error: brandCapReached(entitlement.brands, entitlement.plan) }
+    }
+  }
+
+  const result = await provisionClient(createAdminSupabaseClient(), {
     agencyId,
     name: data.name,
     niche: data.niche,

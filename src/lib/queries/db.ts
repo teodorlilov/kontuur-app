@@ -63,6 +63,22 @@ export async function fetchClientById(
   return data as Omit<ClientRow, 'agency_id'> | null
 }
 
+/**
+ * How many brands the workspace holds — the number the brand cap is judged against and the
+ * settings meter shows, from one query so the two can never disagree.
+ */
+export async function countClientsByAgency(
+  supabase: SupabaseClient,
+  agencyId: string
+): Promise<number> {
+  const { count, error } = await supabase
+    .from('clients')
+    .select('id', { count: 'exact', head: true })
+    .eq('agency_id', agencyId)
+  if (error) throw new Error(`countClientsByAgency failed: ${error.message}`)
+  return count ?? 0
+}
+
 // ---------- brand_profiles ----------
 
 /**

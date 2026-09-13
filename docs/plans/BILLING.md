@@ -36,9 +36,15 @@ Written against files opened in this session; see the verified table at the end.
   from the plan as written: `generatePostVisual` lets `AllowanceError` propagate instead of adding a
   typed `images_allowance` reason (one refusal type everywhere), and `subscribeFal`'s exported
   wrappers keep their signatures because identity comes from the spender context, not a parameter.
-- Steps 4 and 5 are partly in: the draft reservation and refund live in `startGenerationRun` /
-  `finishGenerationRun` with both callers migrated; the generate and visuals crons are gated; the
-  publish, metrics and comments rosters and the wire caps are still to do.
+- **Steps 4, 5 and 6 complete** (second batch, uncommitted): the wire caps (`MAX_POSTS_PER_RUN`
+  holds `targetPostCount`, `priorityPosts`, `frequency_value`, `posts_per_week`; the cron clamps
+  slides); the publish scheduler filters both its queries by the entitled clients ahead of its
+  LIMIT, the metrics and comments rosters take one entitled set per tick from their cron route;
+  `cron-invariants` proves every cron except `refresh-tokens` reaches the gate; the brand cap and
+  `create` gate in `createClient` (provisioning now through the admin client — apply
+  `supabase/migrations/20260854_clients_insert_admin_only.sql` with this deploy), `publish` gates
+  on publish-now and scheduling (unscheduling stays open); `gate-coverage` pins the allowlist and
+  requires any file calling the AI/visuals limiter to be in it.
 
 ## Placeholders (one constants file, `src/lib/billing/plans.ts` (new))
 

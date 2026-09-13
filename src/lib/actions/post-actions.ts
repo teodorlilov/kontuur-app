@@ -26,6 +26,7 @@ import { removeStoragePrefix } from '@/lib/storage/remove-prefix'
 import type { PostImageRow } from '@/types'
 import { copyPostImageObject, postImagePrefix, putPostImages } from '@/features/assets/lib/storage'
 import { POST_IMAGES_BUCKET } from '@/utils/constants'
+import { requireEntitledAction } from '@/lib/billing/require-entitled'
 
 const deletePostOptionsSchema = z.object({ reason: z.enum(DISCARD_REASONS).optional() }).optional()
 
@@ -454,6 +455,13 @@ export async function schedulePosts(
   const auth = await resolveActionAuth()
   if (!auth.ok) return { ok: false, error: auth.error }
   const { supabase, agencyId } = auth
+
+  // Scheduling is publishing, deferred; taking a post OFF the calendar is not, and a paused
+  // workspace must still be able to do that.
+  if (items.some((item) => item.scheduledAt !== null)) {
+    const refused = await requireEntitledAction(agencyId, 'publish')
+    if (refused) return refused
+  }
 
   const allIds = items.map((i) => i.postId)
   const verifiedIds = await verifyPostsOwnership(supabase, allIds, agencyId)

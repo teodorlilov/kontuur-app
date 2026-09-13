@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { MAX_POSTS_PER_RUN } from '@/utils/constants'
 import { formatZodIssues } from '@/lib/validation/format-issues'
 import { visualIdentitySchema } from '@/lib/visual/identity-schema'
 import type { SourceKind } from '@/types/visual'
@@ -45,7 +46,7 @@ export const brandProfileInputSchema = z.object({
 export const scheduleInputSchema = z.object({
   is_active: z.boolean().optional(),
   frequency_type: z.string().optional(),
-  frequency_value: z.number().int().positive().optional(),
+  frequency_value: z.number().int().positive().max(MAX_POSTS_PER_RUN).optional(),
   auto_generate_day: z.string().optional(),
   auto_generate_time: z.string().optional(),
 })
@@ -53,7 +54,7 @@ export const scheduleInputSchema = z.object({
 /** Core client columns, all optional — shared by the create and update shapes. */
 const clientFieldsSchema = z.object({
   niche: z.string().nullable().optional(),
-  posts_per_week: z.number().int().positive().optional(),
+  posts_per_week: z.number().int().positive().max(MAX_POSTS_PER_RUN).optional(),
   language: z.string().optional(),
   website_url: z.string().nullable().optional(),
   contact_email: z.string().nullable().optional(),

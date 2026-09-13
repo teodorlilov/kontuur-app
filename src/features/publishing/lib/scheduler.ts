@@ -14,6 +14,7 @@ import { MAX_ATTEMPTS, type Publication } from './publication-store'
 import { PUBLICATION_COLUMNS } from '@/lib/queries/select-columns'
 import { fetchConnection } from '@/lib/queries/db'
 import { MS_PER_DAY } from '@/utils/constants'
+import { fetchEntitledClients } from '@/lib/billing/entitled-clients'
 
 /** How far back a due post is still worth publishing. Older posts are marked failed so they surface. */
 const PUBLISH_WINDOW_MS = MS_PER_DAY
@@ -97,6 +98,15 @@ export async function publishDuePosts(): Promise<PublishSchedulerResult> {
   const windowStart = new Date(now.getTime() - PUBLISH_WINDOW_MS).toISOString()
   const staleClaimCutoff = new Date(now.getTime() - STALE_CLAIM_MS).toISOString()
 
+  // Who may still publish, resolved once and applied INSIDE both queries below — ahead of the
+  // BATCH_LIMIT — so a paused workspace's rows neither occupy the window nor get swept: they
+  // stay 'scheduled', unclaimed, and go out on the next tick after the workspace is back.
+  const entitled = await fetchEntitledClients(admin, 'publish')
+  const entitledClientIds = [...entitled.keys()]
+  if (entitledClientIds.length === 0) {
+    return { processed: 0, published: 0, failed: 0, pending: 0, unreconciled: [], writeErrors: [] }
+  }
+
   /**
    * Destinations that missed the window entirely (cron outage, repeated timeouts), failed
    * one at a time through the same function every other failure goes through.
@@ -128,6 +138,7 @@ export async function publishDuePosts(): Promise<PublishSchedulerResult> {
       ].join(',')
     )
     .lt('posts.scheduled_at', windowStart)
+    .in('posts.client_id', entitledClientIds)
   if (sweepError) throw new Error(`missed-window sweep failed: ${sweepError.message}`)
 
   /**
@@ -170,6 +181,7 @@ export async function publishDuePosts(): Promise<PublishSchedulerResult> {
     .select(`${PUBLICATION_COLUMNS}, posts!inner(${PUBLISHABLE_POST_COLUMNS}, scheduled_at)`)
     .lte('posts.scheduled_at', now.toISOString())
     .gte('posts.scheduled_at', windowStart)
+    .in('posts.client_id', entitledClientIds)
     .or(
       [
         /**

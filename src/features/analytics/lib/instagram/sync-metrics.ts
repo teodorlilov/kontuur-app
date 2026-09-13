@@ -59,12 +59,16 @@ const CONSOLIDATION_DAYS = 7
  */
 export async function syncAllClientMetrics(
   admin: SupabaseClient,
-  { timeBudgetMs }: { timeBudgetMs: number }
+  {
+    timeBudgetMs,
+    entitledClientIds,
+  }: { timeBudgetMs: number; entitledClientIds: ReadonlySet<string> }
 ): Promise<MetricsSyncOutcome> {
   return syncRoster(admin, {
     platform: 'instagram',
     networkLabel: PLATFORM_NAMES.instagram,
     timeBudgetMs,
+    entitledClientIds,
     syncOne: (connection) => syncClientMetrics(admin, connection),
   })
 }

@@ -3,6 +3,7 @@ import { revalidateTag } from 'next/cache'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import { syncAllClientMetrics } from '@/features/analytics/lib/instagram/sync-metrics'
 import { syncAllFacebookMetrics } from '@/features/analytics/lib/facebook/sync-facebook-metrics'
+import { fetchEntitledClients } from '@/lib/billing/entitled-clients'
 import { IG_METRICS_TAG } from '@/features/analytics/lib/instagram/report-data'
 import { FB_METRICS_TAG } from '@/features/analytics/lib/facebook/facebook-report-data'
 
@@ -22,7 +23,12 @@ export async function GET(request: NextRequest) {
   const startedAt = Date.now()
   const admin = createAdminSupabaseClient()
   try {
-    const result = await syncAllClientMetrics(admin, { timeBudgetMs: TIME_BUDGET_MS })
+    // One roster of who may still publish, shared by both networks' syncs this tick.
+    const entitledClientIds = new Set((await fetchEntitledClients(admin, 'publish')).keys())
+    const result = await syncAllClientMetrics(admin, {
+      timeBudgetMs: TIME_BUDGET_MS,
+      entitledClientIds,
+    })
     if (result.synced > 0) {
       // Fresh rows exist — the analytics document and its narrative re-read them.
       revalidateTag(IG_METRICS_TAG, 'max')
@@ -34,7 +40,7 @@ export async function GET(request: NextRequest) {
     const facebookBudgetMs = TIME_BUDGET_MS - (Date.now() - startedAt)
     const facebook =
       facebookBudgetMs > 5_000
-        ? await syncAllFacebookMetrics(admin, { timeBudgetMs: facebookBudgetMs })
+        ? await syncAllFacebookMetrics(admin, { timeBudgetMs: facebookBudgetMs, entitledClientIds })
         : { synced: 0, skipped: 0, failed: 0, errors: [] }
     if (facebook.synced > 0) {
       revalidateTag(FB_METRICS_TAG, 'max')

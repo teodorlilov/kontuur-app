@@ -141,3 +141,54 @@ describe('the publish queue can always be re-entered', () => {
     ])
   })
 })
+
+describe('every cron that can spend money or publish is gated by the entitlement', () => {
+  /**
+   * The crons run as the service role with no request and no user, so nothing upstream of them
+   * says whether a workspace may still spend or publish. Each one has to ask — by resolving the
+   * entitled clients (`@/lib/billing/entitled-clients`) or deriving entitlements from its own
+   * agency read (`@/lib/billing/entitlement`) — before it claims a slot, paints an image, publishes
+   * a post or syncs a network. A cron that forgets is a paused workspace still costing money.
+   *
+   * The gate may sit in the route or in the first-level module the route hands its work to
+   * (`./helpers`, the publish scheduler), so the check resolves those imports one level down.
+   */
+  const EXEMPT: Record<string, string> = {
+    'refresh-tokens':
+      'One free Meta call per expiring token keeps a paused workspace reconnectable; gating it would make reactivation require a reconnect.',
+  }
+  const GATE = /@\/lib\/billing\/entitl/
+
+  function firstLevelImports(file: string): string[] {
+    const src = readFileSync(file, 'utf8')
+    return [...src.matchAll(/from\s+'([^']+)'/g)]
+      .map((m) => m[1] ?? '')
+      .flatMap((spec) => {
+        if (spec.startsWith('@/')) return [path.join(SRC, spec.slice(2))]
+        if (spec.startsWith('./')) return [path.join(path.dirname(file), spec)]
+        return []
+      })
+      .flatMap((base) => ['.ts', '.tsx', '/index.ts'].map((ext) => base + ext))
+      .filter((candidate) => {
+        try {
+          return readFileSync(candidate, 'utf8').length > 0
+        } catch {
+          return false
+        }
+      })
+  }
+
+  it('each cron route reaches the gate directly or through what it delegates to', () => {
+    const routes = cronSources.filter((file) => file.endsWith('route.ts'))
+    const ungated = routes
+      .filter((file) => !(path.basename(path.dirname(file)) in EXEMPT))
+      .filter((file) => {
+        const sources = [file, ...firstLevelImports(file)].map((f) => readFileSync(f, 'utf8'))
+        return !sources.some((src) => GATE.test(src))
+      })
+      .map((file) => path.relative(CRON, file))
+
+    expect(ungated).toEqual([])
+    expect(routes.length).toBeGreaterThanOrEqual(6)
+  })
+})

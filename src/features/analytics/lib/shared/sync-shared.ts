@@ -72,10 +72,16 @@ export async function syncRoster(
     /** The network's display name, for the copy that asks someone to reconnect. */
     networkLabel: string
     timeBudgetMs: number
+    /**
+     * Clients whose workspace may still publish — resolved ONCE per tick by the cron route
+     * (`fetchEntitledClients`) and shared by every network's roster, so a paused workspace's
+     * connections are dropped here and counted as skipped rather than synced for nobody.
+     */
+    entitledClientIds: ReadonlySet<string>
     syncOne: (connection: SyncableConnection & { client_id: string }) => Promise<void>
   }
 ): Promise<MetricsSyncOutcome> {
-  const { platform, networkLabel, timeBudgetMs, syncOne } = options
+  const { platform, networkLabel, timeBudgetMs, entitledClientIds, syncOne } = options
   const startedAt = Date.now()
   const outcome: MetricsSyncOutcome = { synced: 0, skipped: 0, failed: 0, errors: [] }
 
@@ -86,7 +92,9 @@ export async function syncRoster(
     .not('access_token', 'is', null)
     .not('account_id', 'is', null)
   if (error) throw new Error(`${platform} connection roster query failed: ${error.message}`)
-  const connections = (data ?? []) as SyncableConnection[]
+  const roster = (data ?? []) as SyncableConnection[]
+  const connections = roster.filter((c) => c.client_id && entitledClientIds.has(c.client_id))
+  outcome.skipped += roster.length - connections.length
 
   const noteSideEffectFailure = (clientId: string, what: 'notify' | 'retire', err: unknown) =>
     outcome.errors.push({

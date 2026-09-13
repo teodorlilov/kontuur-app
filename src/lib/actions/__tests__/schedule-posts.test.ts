@@ -49,6 +49,11 @@ vi.mock('@/lib/auth/helpers', () => ({
   verifyPostsOwnership: mocks.verifyPostsOwnership,
   fetchOwnedPost: mocks.fetchOwnedPost,
 }))
+// The entitlement gate is the boundary's own concern; these tests are about what happens past it.
+const requireEntitledAction = vi.fn(async () => null as { ok: false; error: string } | null)
+vi.mock('@/lib/billing/require-entitled', () => ({
+  requireEntitledAction: (...args: unknown[]) => requireEntitledAction(...(args as [])),
+}))
 vi.mock('next/cache', () => ({
   revalidateTag: mocks.revalidateTag,
   revalidatePath: mocks.revalidatePath,
@@ -248,5 +253,29 @@ describe('schedulePosts — the destinations half', () => {
 
     expect(mocks.assignDestinations).not.toHaveBeenCalled()
     expect(mocks.withdrawPendingPublications).not.toHaveBeenCalled()
+  })
+})
+
+describe('schedulePosts and the entitlement', () => {
+  it('refuses to schedule for a paused workspace, but still lets it unschedule', async () => {
+    mocks.resolveActionAuth.mockResolvedValue({
+      ok: true,
+      supabase: fakeSupabase(null),
+      agencyId: 'agency-1',
+      userId: 'user-1',
+    })
+    mocks.verifyPostsOwnership.mockResolvedValue(new Set([POST_ID]))
+    mocks.withdrawPendingPublications.mockResolvedValue(undefined)
+
+    requireEntitledAction.mockResolvedValueOnce({ ok: false, error: 'paused' })
+    const scheduled = await schedulePosts([
+      { postId: POST_ID, scheduledAt: '2026-09-20T09:00:00.000Z', platforms: ['instagram'] },
+    ])
+    expect(scheduled).toEqual({ ok: false, error: 'paused' })
+
+    requireEntitledAction.mockClear()
+    const unscheduled = await schedulePosts([{ postId: POST_ID, scheduledAt: null, platforms: [] }])
+    expect(unscheduled.ok).toBe(true)
+    expect(requireEntitledAction).not.toHaveBeenCalled()
   })
 })

@@ -51,6 +51,18 @@ vi.mock('@/features/assets/lib/storage', () => ({
 vi.mock('@/features/clients/lib/provision-client', () => ({
   provisionClient: mocks.provisionClient,
 }))
+const requireEntitledAction = vi.fn(async () => null as { ok: false; error: string } | null)
+const getCachedEntitlement = vi.fn()
+const countClientsByAgency = vi.fn(async () => 0)
+vi.mock('@/lib/billing/require-entitled', () => ({
+  requireEntitledAction: (...args: unknown[]) => requireEntitledAction(...(args as [])),
+}))
+vi.mock('@/lib/queries/cache', () => ({
+  getCachedEntitlement: (...args: unknown[]) => getCachedEntitlement(...(args as [])),
+}))
+vi.mock('@/lib/queries/db', () => ({
+  countClientsByAgency: (...args: unknown[]) => countClientsByAgency(...(args as [])),
+}))
 // unstable_cache is required, not incidental: the module imports IG_METRICS_TAG
 // from report-data.ts, which calls unstable_cache at module scope — without it
 // the file throws on import and every test here fails before it runs.
@@ -169,6 +181,28 @@ describe('createClient', () => {
       userId: 'user-1',
     })
     mocks.provisionClient.mockResolvedValue({ ok: true, clientId: CLIENT_ID })
+    requireEntitledAction.mockResolvedValue(null)
+    getCachedEntitlement.mockResolvedValue({ plan: 'trial', brands: 3, brandsUnlimited: false })
+    countClientsByAgency.mockResolvedValue(0)
+  })
+
+  it('refuses the brand past the plan cap without provisioning', async () => {
+    countClientsByAgency.mockResolvedValue(3)
+    const { createClient } = await import('../client-actions')
+    const result = await createClient({ name: 'Acme', niche: 'Branding' })
+
+    expect(result.ok).toBe(false)
+    expect(mocks.provisionClient).not.toHaveBeenCalled()
+  })
+
+  it('refuses a paused workspace before reading anything', async () => {
+    requireEntitledAction.mockResolvedValue({ ok: false, error: 'paused' })
+    const { createClient } = await import('../client-actions')
+    const result = await createClient({ name: 'Acme', niche: 'Branding' })
+
+    expect(result).toEqual({ ok: false, error: 'paused' })
+    expect(countClientsByAgency).not.toHaveBeenCalled()
+    expect(mocks.provisionClient).not.toHaveBeenCalled()
   })
 
   it('provisions through the one client writer and busts the roster immediately', async () => {

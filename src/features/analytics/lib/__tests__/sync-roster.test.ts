@@ -46,7 +46,12 @@ function fakeAdmin() {
   return { client, health }
 }
 
-const OPTIONS = { platform: 'instagram', networkLabel: 'Instagram', timeBudgetMs: 10_000 }
+const OPTIONS = {
+  platform: 'instagram',
+  networkLabel: 'Instagram',
+  timeBudgetMs: 10_000,
+  entitledClientIds: new Set(['c1']),
+}
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -95,5 +100,21 @@ describe('syncRoster on a dead token', () => {
       clientId: 'c1',
       error: 'retire failed: retire failed for client c1: boom',
     })
+  })
+})
+
+describe('syncRoster and the entitled set', () => {
+  it('drops a connection whose workspace may not publish, and counts it as skipped', async () => {
+    const { client, health } = fakeAdmin()
+    const syncOne = vi.fn(() => Promise.resolve())
+    const outcome = await syncRoster(client, {
+      ...OPTIONS,
+      entitledClientIds: new Set<string>(),
+      syncOne,
+    })
+    expect(syncOne).not.toHaveBeenCalled()
+    expect(outcome.skipped).toBe(1)
+    expect(outcome.synced).toBe(0)
+    expect(health).toHaveLength(0)
   })
 })

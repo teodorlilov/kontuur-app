@@ -1,4 +1,4 @@
-import type { AllowanceKind } from './plans'
+import { PLAN_LABELS, type AllowanceKind, type PlanId } from './plans'
 
 /**
  * Every billing sentence a person reads, in one file — so the Bulgarian strings are a one-file
@@ -37,6 +37,12 @@ export function allowanceWarning(
   periodKey: string
 ): string {
   return `${used} of ${quota} ${ALLOWANCE_NOUNS[kind]} used this period (${periodKey}).`
+}
+
+/** Why a new brand was refused — the plan's cap, and the way past it. */
+export function brandCapReached(cap: number, plan: PlanId): string {
+  const way = plan === 'trial' ? 'Choose a plan to add more.' : 'Move to Agency to add more.'
+  return `${PLAN_LABELS[plan]} includes ${cap === 1 ? 'one brand' : `${cap} brands`}. ${way}`
 }
 
 export const WORKSPACE_LOCKED =

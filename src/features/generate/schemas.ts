@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { MAX_CAROUSEL_SLIDES, MIN_CAROUSEL_SLIDES } from '@/utils/constants'
+import { MAX_CAROUSEL_SLIDES, MAX_POSTS_PER_RUN, MIN_CAROUSEL_SLIDES } from '@/utils/constants'
 import { colorSchemeSchema } from '@/lib/visual/identity-schema'
 import type { PriorityPost } from '@/types/api'
 
@@ -114,8 +114,10 @@ export const generateStreamSchema = z.object({
   // above, so a hand-made request could ask the writer for a 500-slide carousel —
   // one prompt, one very expensive call, and a draft nothing in the app can render.
   slideCount: z.number().int().min(MIN_CAROUSEL_SLIDES).max(MAX_CAROUSEL_SLIDES).optional(),
-  targetPostCount: z.number().int().min(0).default(0),
-  priorityPosts: z.array(priorityPostSchema).optional(),
+  // Bounded above too, since the run reserves this many drafts from the allowance before
+  // any model call: the stepper offers up to MAX_POSTS_PER_RUN and the wire holds the same line.
+  targetPostCount: z.number().int().min(0).max(MAX_POSTS_PER_RUN).default(0),
+  priorityPosts: z.array(priorityPostSchema).max(MAX_POSTS_PER_RUN).optional(),
   preloadedClientData: clientDataSchema,
 })
 
