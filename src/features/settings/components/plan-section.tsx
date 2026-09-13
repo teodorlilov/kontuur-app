@@ -1,82 +1,137 @@
 // No 'use client': plan and usage are read-only, and the settings page passes these in as
 // elements rather than importing them into the client view.
-import { Button } from '@/components/ui/button'
 import { FormSection } from '@/components/ui/form'
-import { StatusPill } from '@/components/ui/status-pill'
+import { StatusPill, type PillTone } from '@/components/ui/status-pill'
 import { cn } from '@/utils/cn'
-import { capitalize, formatLongDate } from '@/utils/format'
-import type { AgencyInfo } from '@/types/api'
+import { formatLongDate } from '@/utils/format'
+import type { Entitlement, EntitlementState } from '@/lib/billing/entitlement'
+import { ALLOWANCE_NOUNS } from '@/lib/billing/copy'
+import { PLAN_LABELS, type Allowance, type AllowanceKind } from '@/lib/billing/plans'
 
 interface PlanSectionProps {
-  agency: AgencyInfo
-  /** Real client count — the plan limit is meaningless without the usage beside it. */
-  clientCount: number
+  entitlement: Entitlement
+  /** What the workspace has used this period — the meters mean nothing without it. */
+  usage: Allowance
+  /** Real brand count, beside the allowance so the cap is legible. */
+  brandCount: number
 }
 
-/** Plan, trial status and usage against the client allowance. */
-export function PlanSection({ agency, clientCount }: PlanSectionProps) {
-  const isTrial = agency.subscription_status === 'trialing'
-  const isExpired = agency.subscription_status === 'expired'
-  const isActive = agency.subscription_status === 'active'
+/** Share of an allowance at which the meter turns Amber. */
+const WARN_AT = 0.8
+
+/**
+ * Status in the fixed pairs only: Amber for attention, Clay for the two states that need an
+ * action, Wash for a paying workspace. The plan name is a neutral label — a permanent property,
+ * never lime (DESIGN.md, Fill-Only Lime).
+ */
+const STATUS: Record<EntitlementState, { label: string; tone: PillTone }> = {
+  trial: { label: 'Trial', tone: 'warn' },
+  trial_grace: { label: 'Trial ended', tone: 'bad' },
+  active: { label: 'Active', tone: 'ok' },
+  past_due: { label: 'Payment failed', tone: 'warn' },
+  locked: { label: 'Paused', tone: 'bad' },
+}
+
+const METERS: AllowanceKind[] = ['draft', 'image', 'rewrite']
+
+/** Plan, status, the date that matters next, and usage against every allowance. */
+export function PlanSection({ entitlement, usage, brandCount }: PlanSectionProps) {
+  const status = STATUS[entitlement.state]
+  const dateLabel =
+    entitlement.state === 'trial' || entitlement.state === 'trial_grace'
+      ? 'Trial ends'
+      : entitlement.state === 'active' || entitlement.state === 'past_due'
+        ? 'Renews on'
+        : null
 
   return (
-    <FormSection legend="Plan &amp; billing" description="Usage limits and trial status.">
+    <FormSection
+      legend="Plan &amp; billing"
+      description="Your plan, its allowances, and how much of them this period has used."
+    >
       <div className="col-span-12">
-        <PlanRow label="Current plan" note={isActive ? undefined : 'No card on file'}>
-          <StatusPill tone={isActive ? 'ok' : 'mark'}>{capitalize(agency.plan)}</StatusPill>
+        <PlanRow label="Current plan">
+          <StatusPill tone="neutral">{PLAN_LABELS[entitlement.plan]}</StatusPill>
         </PlanRow>
 
         <PlanRow label="Status">
-          <StatusPill tone={isActive ? 'ok' : isExpired ? 'bad' : 'warn'}>
-            {isTrial ? 'Trial' : capitalize(agency.subscription_status)}
-          </StatusPill>
+          <StatusPill tone={status.tone}>{status.label}</StatusPill>
         </PlanRow>
 
-        {(isTrial || isExpired) && agency.trial_ends_at && (
-          <PlanRow label="Trial ends">
-            <span className={cn('text-body font-medium', isExpired ? 'text-danger' : 'text-ink')}>
-              {formatLongDate(new Date(agency.trial_ends_at))}
-              {isExpired ? ' · expired' : ''}
+        {dateLabel && entitlement.resetsOn && (
+          <PlanRow label={dateLabel}>
+            <span
+              className={cn(
+                'text-body font-medium tabular-nums',
+                entitlement.state === 'trial_grace' ? 'text-danger' : 'text-ink'
+              )}
+            >
+              {formatLongDate(entitlement.resetsOn)}
             </span>
           </PlanRow>
         )}
 
-        <PlanRow label="Clients">
-          <ClientUsage used={clientCount} limit={agency.plan_client_limit} />
+        <PlanRow label="Brands">
+          <Meter
+            used={brandCount}
+            limit={entitlement.brandsUnlimited ? null : entitlement.brands}
+            noun="brands"
+          />
         </PlanRow>
 
-        <PlanRow label="Mode" isLast>
-          <span className="text-body font-medium text-ink">
-            {agency.mode === 'solo' ? 'Solo' : 'Agency'}
-          </span>
-        </PlanRow>
+        {METERS.map((kind, index) => (
+          <PlanRow key={kind} label={ALLOWANCE_NOUNS[kind]} isLast={index === METERS.length - 1}>
+            <Meter
+              used={usage[kind]}
+              limit={entitlement.limits[kind]}
+              noun={ALLOWANCE_NOUNS[kind]}
+            />
+          </PlanRow>
+        ))}
       </div>
     </FormSection>
   )
 }
 
-/** Usage against the plan's client allowance, with a meter once there is a finite limit. */
-function ClientUsage({ used, limit }: { used: number; limit: number }) {
-  if (limit === -1) {
-    return <span className="text-body font-medium tabular-nums text-ink">{used} of unlimited</span>
+/**
+ * Usage against an allowance, with a bar once there is a finite limit. Amber from 80 %, Clay
+ * at the cap — the same thresholds the bell notifications fire at.
+ */
+function Meter({ used, limit, noun }: { used: number; limit: number | null; noun: string }) {
+  if (limit === null) {
+    return (
+      <span className="text-body font-medium tabular-nums text-ink">
+        {used} {noun}
+      </span>
+    )
   }
 
-  const pct = limit > 0 ? Math.min(100, Math.round((used / limit) * 100)) : 0
-  const atLimit = used >= limit
+  const pct = limit > 0 ? Math.min(100, Math.round((used / limit) * 100)) : 100
+  const atLimit = limit === 0 || used >= limit
+  const warning = !atLimit && used >= limit * WARN_AT
 
   return (
     <span className="flex items-center gap-2.5">
       <span
-        className={cn('text-body font-medium tabular-nums', atLimit ? 'text-pending' : 'text-ink')}
+        className={cn(
+          'text-body font-medium tabular-nums',
+          atLimit ? 'text-danger' : warning ? 'text-pending' : 'text-ink'
+        )}
       >
-        {used} of {limit} used
+        {used} of {limit}
       </span>
       <span aria-hidden className="block h-1.5 w-24 overflow-hidden rounded-full bg-line">
         {/* Computed width: the one inline style DESIGN.md allows, because it encodes a value. */}
         <span
-          className={cn('block h-full rounded-full', atLimit ? 'bg-pending' : 'bg-forest')}
+          className={cn(
+            'block h-full rounded-full',
+            atLimit ? 'bg-danger' : warning ? 'bg-pending' : 'bg-forest'
+          )}
           style={{ width: `${pct}%` }}
         />
+      </span>
+      <span className="sr-only">
+        {used} of {limit} {noun} used this period
       </span>
     </span>
   )
@@ -84,12 +139,10 @@ function ClientUsage({ used, limit }: { used: number; limit: number }) {
 
 function PlanRow({
   label,
-  note,
   children,
   isLast,
 }: {
   label: string
-  note?: string
   children: React.ReactNode
   isLast?: boolean
 }) {
@@ -100,24 +153,8 @@ function PlanRow({
         !isLast && 'border-b border-line'
       )}
     >
-      <div>
-        <b className="block text-body font-semibold text-ink">{label}</b>
-        {note && <span className="text-caption text-text3">{note}</span>}
-      </div>
+      <b className="block text-body font-semibold text-ink">{label}</b>
       {children}
     </div>
-  )
-}
-
-/** Upgrade prompt for the Account rail. */
-export function UpgradeRailAction() {
-  return (
-    <>
-      {/* Disabled rather than a live-looking button that reports "coming soon" after the click. */}
-      <Button className="w-full" disabled>
-        Upgrade plan
-      </Button>
-      <p className="mt-2.5 text-center text-caption text-text3">Billing is not connected yet.</p>
-    </>
   )
 }

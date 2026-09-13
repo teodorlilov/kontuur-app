@@ -7,6 +7,8 @@ import { fetchClientById, fetchBrandProfileByClient } from '@/lib/queries/db'
 import { distillStyleMemo } from '@/ai/learning/distill-style-memo'
 import { parseActionId } from '@/lib/actions/parse-input'
 import type { ActionResult } from '@/lib/actions/types'
+import { requireEntitledAction } from '@/lib/billing/require-entitled'
+import { runAsSpender } from '@/lib/billing/spend-context'
 
 /**
  * On-demand distillation from the client settings surface. Force-runs (no
@@ -22,16 +24,20 @@ export async function refreshStyleMemo(
   const auth = await resolveActionAuth()
   if (!auth.ok) return { ok: false, error: auth.error }
   const { supabase, agencyId } = auth
+  const refused = await requireEntitledAction(agencyId, 'spend')
+  if (refused) return refused
 
   const client = await fetchClientById(supabase, clientId, agencyId)
   if (!client) return { ok: false, error: 'Client not found' }
 
   try {
     const profile = await fetchBrandProfileByClient(supabase, clientId)
-    const result = await distillStyleMemo(createAdminSupabaseClient(), clientId, {
-      language: client.language,
-      languageNotes: profile?.language_notes ?? '',
-    })
+    const result = await runAsSpender({ agencyId, clientId, flow: 'style_memo' }, () =>
+      distillStyleMemo(createAdminSupabaseClient(), clientId, {
+        language: client.language,
+        languageNotes: profile?.language_notes ?? '',
+      })
+    )
     revalidatePath(`/clients/${clientId}/edit`)
     return { ok: true, data: result }
   } catch (err) {

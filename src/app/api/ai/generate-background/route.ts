@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server'
 import { resolveAuth } from '@/lib/auth/resolve-auth'
 import { visualsRateLimitResponse } from '@/lib/auth/rate-limit'
+import { requireEntitledRoute } from '@/lib/billing/require-entitled'
+import { runAsSpender } from '@/lib/billing/spend-context'
+import { allowanceResponse } from '@/lib/billing/usage'
 import { fetchIdentityForGeneration, generateVisual } from '@/lib/visual/generate-visual'
 import { resolveScheme } from '@/lib/visual/post-color'
 import { carouselSlideText, sanitizePromptText, singlePostText } from '@/lib/visual/prompt'
@@ -55,6 +58,8 @@ export async function POST(request: Request) {
 
   const limited = visualsRateLimitResponse(auth.userId)
   if (limited) return limited
+  const refused = await requireEntitledRoute(auth.agencyId, 'spend')
+  if (refused) return refused
 
   let body: GenerateBackgroundBody
   try {
@@ -69,56 +74,62 @@ export async function POST(request: Request) {
   }
 
   try {
-    const { position, total } = slidePlace(body)
-    // The same colour pair the slide's siblings wear. Without it this route was the one generation
-    // path that produced art with no ground and no accent instruction — a picture that could not
-    // belong to the post it was being made for. A post's pair is read from its row; a draft's rides
-    // in on the request, because there is no row to read until approve.
-    //
-    // Passing `postId` is what makes a post-target generation WRITE the pair it derives. It used to
-    // only read: a post with no stored pair got one picked, spent a generation on it and threw it
-    // away, so the next press could land somewhere else as the client's recent posts moved
-    // underneath it. The comment here claimed this path healed a half-written row; it did not.
-    // ONE read of the client's kit for the whole generation — the scheme and the prompt both need it.
-    // Resolved against the VERIFIED owner, never the caller-supplied clientId: this decides whose
-    // palette and brand style the paid generation runs against.
-    const identity = await fetchIdentityForGeneration(destination.clientId)
-    const scheme = await resolveScheme({
-      clientId: destination.clientId,
-      identity,
-      ...(destination.postId ? { postId: destination.postId } : {}),
-      base: body.postId ?? body.draftId ?? destination.clientId,
-      // A post's pair came back on the ownership check; a draft's rides in on the request.
-      ...(destination.storedScheme
-        ? { stored: destination.storedScheme }
-        : body.scheme
-          ? { stored: body.scheme }
-          : {}),
-    })
+    return await runAsSpender(
+      { agencyId: auth.agencyId, clientId: destination.clientId, flow: 'editor' },
+      async () => {
+        const { position, total } = slidePlace(body)
+        // The same colour pair the slide's siblings wear. Without it this route was the one generation
+        // path that produced art with no ground and no accent instruction — a picture that could not
+        // belong to the post it was being made for. A post's pair is read from its row; a draft's rides
+        // in on the request, because there is no row to read until approve.
+        //
+        // Passing `postId` is what makes a post-target generation WRITE the pair it derives. It used to
+        // only read: a post with no stored pair got one picked, spent a generation on it and threw it
+        // away, so the next press could land somewhere else as the client's recent posts moved
+        // underneath it. The comment here claimed this path healed a half-written row; it did not.
+        // ONE read of the client's kit for the whole generation — the scheme and the prompt both need it.
+        // Resolved against the VERIFIED owner, never the caller-supplied clientId: this decides whose
+        // palette and brand style the paid generation runs against.
+        const identity = await fetchIdentityForGeneration(destination.clientId)
+        const scheme = await resolveScheme({
+          clientId: destination.clientId,
+          identity,
+          ...(destination.postId ? { postId: destination.postId } : {}),
+          base: body.postId ?? body.draftId ?? destination.clientId,
+          // A post's pair came back on the ownership check; a draft's rides in on the request.
+          ...(destination.storedScheme
+            ? { stored: destination.storedScheme }
+            : body.scheme
+              ? { stored: body.scheme }
+              : {}),
+        })
 
-    const visual = await generateVisual({
-      spender: { agencyId: auth.agencyId },
-      identity,
-      textBlock: editorTextBlock(body),
-      scheme,
-      // Rerolled per press: the editor's whole point is "give me another one", and an empty nonce
-      // would hand back the same framing every time while only the model's own noise differed.
-      variation: {
-        subject: body.postId ?? body.draftId ?? '',
-        position,
-        total,
-        nonce: body.nonce ?? '',
-      },
-      // Sanitized like every other user string that reaches the model (URLs, #tags, @mentions out).
-      ...(body.direction ? { direction: sanitizePromptText(body.direction) } : {}),
-    })
-    const { publicUrl, storagePath } = await destination.upload(
-      visual.buffer,
-      visual.contentType,
-      'background.jpg'
+        const visual = await generateVisual({
+          identity,
+          textBlock: editorTextBlock(body),
+          scheme,
+          // Rerolled per press: the editor's whole point is "give me another one", and an empty nonce
+          // would hand back the same framing every time while only the model's own noise differed.
+          variation: {
+            subject: body.postId ?? body.draftId ?? '',
+            position,
+            total,
+            nonce: body.nonce ?? '',
+          },
+          // Sanitized like every other user string that reaches the model (URLs, #tags, @mentions out).
+          ...(body.direction ? { direction: sanitizePromptText(body.direction) } : {}),
+        })
+        const { publicUrl, storagePath } = await destination.upload(
+          visual.buffer,
+          visual.contentType,
+          'background.jpg'
+        )
+        return NextResponse.json({ publicUrl, storagePath })
+      }
     )
-    return NextResponse.json({ publicUrl, storagePath })
   } catch (err) {
+    const refusal = allowanceResponse(err)
+    if (refusal) return refusal
     console.error('[generate-background] failed:', err)
     const message = err instanceof Error ? err.message : 'Background generation failed'
     return NextResponse.json({ error: message }, { status: 502 })

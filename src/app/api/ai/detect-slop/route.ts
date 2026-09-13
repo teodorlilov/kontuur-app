@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { resolveAuth } from '@/lib/auth/resolve-auth'
 import { aiRateLimitResponse } from '@/lib/auth/rate-limit'
+import { requireEntitledRoute } from '@/lib/billing/require-entitled'
+import { runAsSpender } from '@/lib/billing/spend-context'
 import { validateQuality } from '@/ai/validation/prompts/prompt-builder'
 import { deriveSlopFromQuality } from '@/ai/validation/content-rules/compute-scores'
 import type { SlopDetection } from '@/types/api'
@@ -27,6 +29,8 @@ export async function POST(request: Request) {
   // cheapest way to spend the account's tokens in a loop.
   const limited = aiRateLimitResponse('detect-slop', auth.userId)
   if (limited) return limited
+  const refused = await requireEntitledRoute(auth.agencyId, 'spend')
+  if (refused) return refused
 
   const parsed = detectSlopSchema.safeParse(await request.json().catch(() => null))
   if (!parsed.success) {
@@ -34,7 +38,9 @@ export async function POST(request: Request) {
   }
 
   try {
-    const raw = await validateQuality({ caption: parsed.data.text })
+    const raw = await runAsSpender({ agencyId: auth.agencyId, flow: 'rewrite' }, () =>
+      validateQuality({ caption: parsed.data.text })
+    )
     if (raw.human_score === null) {
       // The judge answered without judging. Returning a null-filled body would look
       // like a measurement to a caller whose whole purpose is to obtain one.

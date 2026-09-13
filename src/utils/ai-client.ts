@@ -1,5 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk'
 import type { Message, MessageParam } from '@anthropic-ai/sdk/resources'
+import { currentSpender } from '@/lib/billing/spend-context'
+import { anthropicUsageOf, recordAiUsage } from '@/lib/billing/telemetry'
 
 if (!process.env.ANTHROPIC_API_KEY) {
   throw new Error('ANTHROPIC_API_KEY is not set')
@@ -81,7 +83,18 @@ function isRetryable(err: unknown): boolean {
   return false
 }
 
+/**
+ * Every Claude call the app makes, with retries and the forced-tool output shape.
+ *
+ * Two billing rules live here because this is the one door: the call is refused when no spender
+ * is in scope — the boundary (a gated route, an action, a cron's per-client loop) declares one
+ * with `runAsSpender`, so a new caller cannot burn money unattributed — and the final message's
+ * `usage` is recorded to `ai_usage_daily` for that spender. The recording never blocks or throws.
+ */
 export async function callAnthropic(opts: CallAnthropicOptions): Promise<Message> {
+  if (!currentSpender()) {
+    throw new Error('callAnthropic: no spender in scope — wrap the boundary in runAsSpender')
+  }
   const {
     systemPrompt,
     userMessage,
@@ -138,7 +151,9 @@ export async function callAnthropic(opts: CallAnthropicOptions): Promise<Message
           onToken(text)
         })
       }
-      return await stream.finalMessage()
+      const message = await stream.finalMessage()
+      void recordAiUsage({ provider: 'anthropic', model, usage: anthropicUsageOf(message) })
+      return message
     } catch (err) {
       if (isRetryable(err) && !emittedTokens && attempt < MAX_RETRIES) {
         const delay = RETRY_BASE_DELAY_MS * 2 ** attempt

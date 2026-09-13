@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { resolveAuth } from '@/lib/auth/resolve-auth'
 import { aiRateLimitResponse } from '@/lib/auth/rate-limit'
+import { requireEntitledRoute } from '@/lib/billing/require-entitled'
+import { runAsSpender } from '@/lib/billing/spend-context'
 import { suggestSourcesCached } from '@/ai/suggest-sources/suggest-sources'
 import type { SourceSuggestion } from '@/types/api'
 
@@ -27,6 +29,8 @@ export async function POST(request: Request) {
 
   const limited = aiRateLimitResponse('suggest-sources', userId)
   if (limited) return limited
+  const refused = await requireEntitledRoute(agencyId, 'spend')
+  if (refused) return refused
 
   const parsed = suggestSourcesSchema.safeParse(await request.json().catch(() => null))
   if (!parsed.success) {
@@ -39,13 +43,15 @@ export async function POST(request: Request) {
     : undefined
 
   try {
-    const results = await suggestSourcesCached(agencyId, {
-      niche: body.niche,
-      clientName: body.clientName,
-      pillars,
-      targetAudience: body.targetAudience,
-      language: body.language,
-    })
+    const results = await runAsSpender({ agencyId, flow: 'sources' }, () =>
+      suggestSourcesCached(agencyId, {
+        niche: body.niche,
+        clientName: body.clientName,
+        pillars,
+        targetAudience: body.targetAudience,
+        language: body.language,
+      })
+    )
     const suggestions: SourceSuggestion[] = results.map((s) => ({
       url: s.url,
       label: s.label,

@@ -42,47 +42,115 @@ export type Database = {
       agencies: {
         Row: {
           agency_logo: string | null
+          billing_updated_at: string | null
+          cancel_at_period_end: boolean
           created_at: string | null
+          current_period_end: string | null
+          current_period_start: string | null
           id: string
           mode: string | null
           name: string
-          plan: string | null
-          plan_client_limit: number | null
+          past_due_since: string | null
+          plan: string
           stripe_customer_id: string | null
           stripe_subscription_id: string | null
+          subscription_quantity: number | null
           subscription_status: string | null
           timezone: string
           trial_ends_at: string | null
         }
         Insert: {
           agency_logo?: string | null
+          billing_updated_at?: string | null
+          cancel_at_period_end?: boolean
           created_at?: string | null
+          current_period_end?: string | null
+          current_period_start?: string | null
           id?: string
           mode?: string | null
           name: string
-          plan?: string | null
-          plan_client_limit?: number | null
+          past_due_since?: string | null
+          plan?: string
           stripe_customer_id?: string | null
           stripe_subscription_id?: string | null
+          subscription_quantity?: number | null
           subscription_status?: string | null
           timezone?: string
           trial_ends_at?: string | null
         }
         Update: {
           agency_logo?: string | null
+          billing_updated_at?: string | null
+          cancel_at_period_end?: boolean
           created_at?: string | null
+          current_period_end?: string | null
+          current_period_start?: string | null
           id?: string
           mode?: string | null
           name?: string
-          plan?: string | null
-          plan_client_limit?: number | null
+          past_due_since?: string | null
+          plan?: string
           stripe_customer_id?: string | null
           stripe_subscription_id?: string | null
+          subscription_quantity?: number | null
           subscription_status?: string | null
           timezone?: string
           trial_ends_at?: string | null
         }
         Relationships: []
+      }
+      ai_usage_daily: {
+        Row: {
+          agency_id: string | null
+          cache_creation_tokens: number
+          cache_read_tokens: number
+          calls: number
+          cost_eur_cents: number
+          day: string
+          flow: string
+          id: number
+          input_tokens: number
+          model: string
+          output_tokens: number
+          provider: string
+        }
+        Insert: {
+          agency_id?: string | null
+          cache_creation_tokens?: number
+          cache_read_tokens?: number
+          calls?: number
+          cost_eur_cents?: number
+          day: string
+          flow: string
+          id?: never
+          input_tokens?: number
+          model: string
+          output_tokens?: number
+          provider: string
+        }
+        Update: {
+          agency_id?: string | null
+          cache_creation_tokens?: number
+          cache_read_tokens?: number
+          calls?: number
+          cost_eur_cents?: number
+          day?: string
+          flow?: string
+          id?: never
+          input_tokens?: number
+          model?: string
+          output_tokens?: number
+          provider?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_usage_daily_agency_id_fkey"
+            columns: ["agency_id"]
+            isOneToOne: false
+            referencedRelation: "agencies"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       analytics_reports: {
         Row: {
@@ -124,6 +192,47 @@ export type Database = {
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      billing_events: {
+        Row: {
+          agency_id: string | null
+          created: string
+          error: string | null
+          id: string
+          object_id: string | null
+          payload: Json
+          processed_at: string | null
+          type: string
+        }
+        Insert: {
+          agency_id?: string | null
+          created: string
+          error?: string | null
+          id: string
+          object_id?: string | null
+          payload: Json
+          processed_at?: string | null
+          type: string
+        }
+        Update: {
+          agency_id?: string | null
+          created?: string
+          error?: string | null
+          id?: string
+          object_id?: string | null
+          payload?: Json
+          processed_at?: string | null
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "billing_events_agency_id_fkey"
+            columns: ["agency_id"]
+            isOneToOne: false
+            referencedRelation: "agencies"
             referencedColumns: ["id"]
           },
         ]
@@ -877,32 +986,6 @@ export type Database = {
           },
         ]
       }
-      image_generation_usage: {
-        Row: {
-          agency_id: string
-          count: number
-          month: string
-        }
-        Insert: {
-          agency_id: string
-          count?: number
-          month: string
-        }
-        Update: {
-          agency_id?: string
-          count?: number
-          month?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "image_generation_usage_agency_id_fkey"
-            columns: ["agency_id"]
-            isOneToOne: false
-            referencedRelation: "agencies"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       intelligence_briefings: {
         Row: {
           created_at: string
@@ -1597,6 +1680,35 @@ export type Database = {
           },
         ]
       }
+      usage_counters: {
+        Row: {
+          agency_id: string
+          count: number
+          kind: string
+          period: string
+        }
+        Insert: {
+          agency_id: string
+          count?: number
+          kind: string
+          period: string
+        }
+        Update: {
+          agency_id?: string
+          count?: number
+          kind?: string
+          period?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "usage_counters_agency_id_fkey"
+            columns: ["agency_id"]
+            isOneToOne: false
+            referencedRelation: "agencies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       users: {
         Row: {
           agency_id: string
@@ -1634,6 +1746,22 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      add_ai_usage: {
+        Args: {
+          p_agency_id: string
+          p_cache_creation_tokens: number
+          p_cache_read_tokens: number
+          p_calls: number
+          p_cost_eur_cents: number
+          p_day: string
+          p_flow: string
+          p_input_tokens: number
+          p_model: string
+          p_output_tokens: number
+          p_provider: string
+        }
+        Returns: undefined
+      }
       client_edit_stats: {
         Args: { p_client_id: string }
         Returns: {
@@ -1644,11 +1772,12 @@ export type Database = {
           scheduled_count: number
         }[]
       }
-      consume_image_credits: {
+      consume_usage: {
         Args: {
           p_agency_id: string
           p_cost: number
-          p_month: string
+          p_kind: string
+          p_period: string
           p_quota: number
         }
         Returns: {
@@ -1656,8 +1785,13 @@ export type Database = {
           used: number
         }[]
       }
-      refund_image_credits: {
-        Args: { p_agency_id: string; p_cost: number; p_month: string }
+      refund_usage: {
+        Args: {
+          p_agency_id: string
+          p_cost: number
+          p_kind: string
+          p_period: string
+        }
         Returns: undefined
       }
     }

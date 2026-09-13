@@ -1,6 +1,8 @@
 import { NextResponse, after } from 'next/server'
 import { z } from 'zod'
 import { resolveAuth } from '@/lib/auth/resolve-auth'
+import { requireEntitledRoute } from '@/lib/billing/require-entitled'
+import { runAsSpender } from '@/lib/billing/spend-context'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import { extractIdentity } from '@/lib/visual/extract-identity'
 import { buildDefaultIdentity } from '@/lib/visual/identity'
@@ -28,6 +30,8 @@ export async function POST(request: Request) {
   const auth = await resolveAuth()
   if (!auth.ok) return auth.response
   const { agencyId } = auth
+  const refused = await requireEntitledRoute(agencyId, 'create')
+  if (refused) return refused
 
   const parsed = startExtractionSchema.safeParse(await request.json().catch(() => null))
   if (!parsed.success) {
@@ -58,7 +62,10 @@ export async function POST(request: Request) {
 
   after(async () => {
     try {
-      const result = await extractIdentity({ url: websiteUrl })
+      // `after` runs outside the request's async context, so the spender is declared here.
+      const result = await runAsSpender({ agencyId, flow: 'onboarding' }, () =>
+        extractIdentity({ url: websiteUrl })
+      )
       await writeExtraction(admin, sessionId, {
         status: result.report.source === 'website' ? 'ready' : 'fallback',
         agencyId,

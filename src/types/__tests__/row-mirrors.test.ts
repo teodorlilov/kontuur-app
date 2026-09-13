@@ -94,10 +94,10 @@ const EXEMPT: Record<string, string> = {
  * you derive it and forget. Rationale per entry: docs/TECH-DEBT.md §7.3.
  */
 const KNOWN_MIRRORS: string[] = [
-  // Everything the 2026-08-31 tightening surfaced has since been derived, so this list holds only
-  // AgencyInfo. Keep it as a list rather than deleting it: the guard's value is that a NEW mirror
-  // has to be named here on purpose, and an empty array says that more clearly than no array.
-  'types/api.ts:AgencyInfo',
+  // Everything the 2026-08-31 tightening surfaced has since been derived — AgencyInfo, the last
+  // one, on 2026-09-13 with the billing migration. Keep it as a list rather than deleting it: the
+  // guard's value is that a NEW mirror has to be named here on purpose, and an empty array says
+  // that more clearly than no array.
 ]
 
 function sourceFiles(): string[] {

@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server'
 import { resolveAuth } from '@/lib/auth/resolve-auth'
 import { visualsRateLimitResponse } from '@/lib/auth/rate-limit'
+import { requireEntitledRoute } from '@/lib/billing/require-entitled'
+import { runAsSpender } from '@/lib/billing/spend-context'
+import { allowanceResponse } from '@/lib/billing/usage'
 import { parseHex, type Rgb } from '@/lib/visual/extract/color'
 import { downloadFalFile, generateVectorAsset } from '@/lib/visual/fal'
 import { fetchVisualIdentityOrDefault } from '@/lib/visual/queries'
@@ -28,6 +31,8 @@ export async function POST(request: Request) {
 
   const limited = visualsRateLimitResponse(auth.userId)
   if (limited) return limited
+  const refused = await requireEntitledRoute(auth.agencyId, 'spend')
+  if (refused) return refused
 
   const parsed = generateSvgSchema.safeParse(await request.json().catch(() => null))
   if (!parsed.success) {
@@ -49,7 +54,10 @@ export async function POST(request: Request) {
       .map(parseHex)
       .filter((rgb): rgb is Rgb => rgb !== null)
 
-    const svgUrl = await generateVectorAsset(prompt, colors)
+    const svgUrl = await runAsSpender(
+      { agencyId: auth.agencyId, clientId: destination.clientId, flow: 'editor' },
+      () => generateVectorAsset(prompt, colors)
+    )
     const raw = (await downloadFalFile(svgUrl)).toString('utf8')
     const rejection = svgRejectionReason(raw)
     if (rejection) {
@@ -70,6 +78,8 @@ export async function POST(request: Request) {
     const size = svgNaturalSize(svg) ?? FALLBACK_SVG_SIZE
     return NextResponse.json({ publicUrl, storagePath, width: size.width, height: size.height })
   } catch (err) {
+    const refusal = allowanceResponse(err)
+    if (refusal) return refusal
     console.error('[generate-svg] failed:', err)
     const message = err instanceof Error ? err.message : 'Vector generation failed'
     return NextResponse.json({ error: message }, { status: 500 })

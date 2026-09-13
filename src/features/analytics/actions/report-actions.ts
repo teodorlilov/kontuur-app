@@ -6,7 +6,7 @@ import { fetchClientWithOwnership, resolveActionAuth } from '@/lib/auth/helpers'
 import { parseActionId } from '@/lib/actions/parse-input'
 import type { ActionResult } from '@/lib/actions/types'
 import type { Json } from '@/types'
-import { getCachedAgency } from '@/lib/queries/cache'
+import { getCachedAgency, getCachedEntitlement } from '@/lib/queries/cache'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import { fetchConnection, fetchConnectionSyncState, fetchIgConnectionState } from '@/lib/queries/db'
 import { retireConnection } from '@/lib/meta/connection-store'
@@ -29,6 +29,9 @@ import { buildFallbackNarrative, getNarrative } from '../lib/instagram/narrative
 import type { AnalyticsReportData } from '../lib/instagram/build-report'
 
 interface ReportScope {
+  agencyId: string
+  /** Whether the report may spend on its written narrative; a paused workspace gets the fallback. */
+  canNarrate: boolean
   client: { id: string; name: string }
   timezone: string
   period: AnalyticsPeriod
@@ -86,10 +89,15 @@ async function resolveReportScope(
   const client = await fetchClientWithOwnership(supabase, clientId, agencyId)
   if (!client) return { ok: false, error: 'Not found' }
 
-  const agency = await getCachedAgency(agencyId)
+  const [agency, entitlement] = await Promise.all([
+    getCachedAgency(agencyId),
+    getCachedEntitlement(agencyId),
+  ])
   return {
     ok: true,
     scope: {
+      agencyId,
+      canNarrate: entitlement.canSpend,
       client: { id: client.id, name: client.name },
       timezone: agency?.timezone ?? 'UTC',
       period: periodFromBounds(preset, start, end),
@@ -162,14 +170,16 @@ export async function archiveReport(input: ArchiveReportInput): Promise<ActionRe
       return { ok: false, error: 'Nothing to export yet — the first sync runs tonight' }
     }
     const narrative =
-      (
-        await getFacebookNarrative(
-          scope.client.id,
-          scope.client.name,
-          scope.period,
-          scope.timezone,
-          report.lastSyncAt
-        )
+      (scope.canNarrate
+        ? await getFacebookNarrative(
+            scope.agencyId,
+            scope.client.id,
+            scope.client.name,
+            scope.period,
+            scope.timezone,
+            report.lastSyncAt
+          )
+        : null
       )?.text ??
       buildFacebookFallbackNarrative(report) ??
       ''
@@ -186,14 +196,16 @@ export async function archiveReport(input: ArchiveReportInput): Promise<ActionRe
     return { ok: false, error: 'Nothing to export yet — the first sync runs tonight' }
   }
   const narrative =
-    (
-      await getNarrative(
-        scope.client.id,
-        scope.client.name,
-        scope.period,
-        scope.timezone,
-        report.lastSyncAt
-      )
+    (scope.canNarrate
+      ? await getNarrative(
+          scope.agencyId,
+          scope.client.id,
+          scope.client.name,
+          scope.period,
+          scope.timezone,
+          report.lastSyncAt
+        )
+      : null
     )?.text ??
     buildFallbackNarrative(report) ??
     ''

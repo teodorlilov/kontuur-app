@@ -5,6 +5,10 @@ import { generateStreamSchema } from '@/features/generate/schemas'
 import { fetchClientById, fetchEngineContext } from '@/lib/queries/db'
 import { DEFAULT_CAROUSEL_SLIDES } from '@/utils/constants'
 import { aiRateLimitResponse } from '@/lib/auth/rate-limit'
+import { getCachedEntitlement } from '@/lib/queries/cache'
+import { requireEntitledRoute } from '@/lib/billing/require-entitled'
+import { runAsSpender } from '@/lib/billing/spend-context'
+import { allowanceResponse } from '@/lib/billing/usage'
 import { performResearch } from '@/ai/research/research-orchestrator'
 import {
   finishGenerationRun,
@@ -41,6 +45,8 @@ export async function POST(request: Request) {
 
   const limited = aiRateLimitResponse('generate', userId)
   if (limited) return limited
+  const refused = await requireEntitledRoute(agencyId, 'spend')
+  if (refused) return refused
 
   let body: GenerateStreamRequestBody
   try {
@@ -80,12 +86,20 @@ export async function POST(request: Request) {
   const client = { ...body.preloadedClientData, exemplars, styleMemo }
 
   const targetCount = body.targetPostCount + (body.priorityPosts?.length ?? 0)
-  // No slot key: a run a human asked for is never deduped against a schedule.
-  const { runId } = await startGenerationRun(supabase, {
+  const entitlement = await getCachedEntitlement(agencyId)
+  // No slot key: a run a human asked for is never deduped against a schedule. The draft
+  // allowance is reserved inside, before any model call — a refusal is a 402 before the stream opens.
+  const claim = await startGenerationRun(supabase, {
     clientId: body.clientId,
+    agencyId,
+    entitlement,
     targetCount,
     kind: 'manual',
   })
+  if ('refused' in claim) return allowanceResponse(claim.refused)
+  const { runId } = claim
+  const spender = { agencyId, clientId: body.clientId, flow: 'generation' as const }
+  let produced = 0
 
   const encoder = new TextEncoder()
   const stream = new ReadableStream<Uint8Array>({
@@ -116,19 +130,25 @@ export async function POST(request: Request) {
 
         // Run research — phase messages stream; topics collected for generation
         const topics: ResearchTopic[] = []
-        await performResearch({
-          supabase,
-          clientId: body.clientId,
-          niche: client.niche,
-          count: body.targetPostCount,
-          briefs,
-          preloadedClientData: body.preloadedClientData,
-          onPhase: (message, phase) =>
-            send({ type: 'phase', message, stage: phase === 'gathering' ? 'sources' : 'research' }),
-          onTopic: (topic) => topics.push(topic),
-          onSkippedPillars: (pillars, skippedCount) =>
-            send({ type: 'skipped_pillars', pillars, skippedCount }),
-        })
+        await runAsSpender(spender, () =>
+          performResearch({
+            supabase,
+            clientId: body.clientId,
+            niche: client.niche,
+            count: body.targetPostCount,
+            briefs,
+            preloadedClientData: body.preloadedClientData,
+            onPhase: (message, phase) =>
+              send({
+                type: 'phase',
+                message,
+                stage: phase === 'gathering' ? 'sources' : 'research',
+              }),
+            onTopic: (topic) => topics.push(topic),
+            onSkippedPillars: (pillars, skippedCount) =>
+              send({ type: 'skipped_pillars', pillars, skippedCount }),
+          })
+        )
 
         if (topics.length === 0 && priorityPosts.length === 0) {
           runFailed = true
@@ -165,21 +185,27 @@ export async function POST(request: Request) {
           .map(toTheme)
         const themes: Theme[] = [...briefThemes, ...researchThemes]
 
-        await runGenerationBatch({
-          client,
-          postType: body.postType,
-          slideCount: body.slideCount || client.defaultCarouselSlides || DEFAULT_CAROUSEL_SLIDES,
-          themes,
-          trackTheme: (theme, postCount) => trackGenerationTheme(supabase, runId, theme, postCount),
-          onResult: (result) => send({ type: 'result', data: result }),
-          // The two longest stages, each previously silent about which one it was.
-          onProgress: (theme, phase) =>
-            send(
-              phase === 'writing'
-                ? { type: 'phase', message: `Writing: ${theme}`, stage: 'writing' }
-                : { type: 'phase', message: `Checking: ${theme}`, stage: 'quality' }
-            ),
-        })
+        await runAsSpender(spender, () =>
+          runGenerationBatch({
+            client,
+            postType: body.postType,
+            slideCount: body.slideCount || client.defaultCarouselSlides || DEFAULT_CAROUSEL_SLIDES,
+            themes,
+            trackTheme: (theme, postCount) =>
+              trackGenerationTheme(supabase, runId, theme, postCount),
+            onResult: (result) => {
+              produced++
+              send({ type: 'result', data: result })
+            },
+            // The two longest stages, each previously silent about which one it was.
+            onProgress: (theme, phase) =>
+              send(
+                phase === 'writing'
+                  ? { type: 'phase', message: `Writing: ${theme}`, stage: 'writing' }
+                  : { type: 'phase', message: `Checking: ${theme}`, stage: 'quality' }
+              ),
+          })
+        )
       } catch (err) {
         runFailed = true
         // This is the boundary: rethrowing alone only errors the ReadableStream,
@@ -188,7 +214,12 @@ export async function POST(request: Request) {
         console.error(`[generate-stream] run failed for client ${body.clientId}:`, err)
         send({ type: 'error', message: err instanceof Error ? err.message : 'Generation failed' })
       } finally {
-        if (runId) await finishGenerationRun(supabase, runId, runFailed ? 'failed' : 'complete')
+        if (runId)
+          await finishGenerationRun(supabase, runId, runFailed ? 'failed' : 'complete', {
+            agencyId,
+            entitlement,
+            unused: Math.max(0, targetCount - produced),
+          })
         controller.close()
       }
     },

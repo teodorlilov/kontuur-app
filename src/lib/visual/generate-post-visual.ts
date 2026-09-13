@@ -21,7 +21,10 @@ type GeneratePostVisualResult =
  * Generate the AI visual for one post position and store it as a regular
  * post image — the single server path shared by the visuals endpoint and the
  * visuals cron. Missing posts and copy-less positions return a typed refusal;
- * generation and storage failures throw for the caller's boundary to log.
+ * generation and storage failures throw for the caller's boundary to log, and
+ * so does an exhausted image allowance (`AllowanceError`, src/lib/billing/usage.ts),
+ * which the route answers with a 402 and the cron counts as a skip. The caller
+ * declares who is spending with `runAsSpender` before calling.
  */
 export async function generatePostVisual(input: {
   postId: string
@@ -64,8 +67,6 @@ export async function generatePostVisual(input: {
   const replacing = await existingImageAt(admin, postId, position)
 
   const visual = await generateVisual({
-    // The cron reaches this with a client and no agency, so the client is what it can attribute to.
-    spender: { clientId },
     identity,
     textBlock,
     scheme,

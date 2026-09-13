@@ -2,6 +2,9 @@ import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { resolveAuth } from '@/lib/auth/resolve-auth'
 import { visualsRateLimitResponse } from '@/lib/auth/rate-limit'
+import { requireEntitledRoute } from '@/lib/billing/require-entitled'
+import { runAsSpender } from '@/lib/billing/spend-context'
+import { allowanceResponse } from '@/lib/billing/usage'
 import { fetchOwnedPost } from '@/lib/auth/helpers'
 import { generatePostVisual } from '@/lib/visual/generate-post-visual'
 
@@ -21,6 +24,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
   const limited = visualsRateLimitResponse(auth.userId)
   if (limited) return limited
+  const refused = await requireEntitledRoute(auth.agencyId, 'spend')
+  if (refused) return refused
 
   const post = await fetchOwnedPost(auth.supabase, postId, auth.agencyId)
   if (!post) return NextResponse.json({ error: 'Post not found' }, { status: 404 })
@@ -33,7 +38,10 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   }
 
   try {
-    const result = await generatePostVisual({ postId, clientId: post.client_id, position })
+    const result = await runAsSpender(
+      { agencyId: auth.agencyId, clientId: post.client_id, flow: 'editor' },
+      () => generatePostVisual({ postId, clientId: post.client_id, position })
+    )
     if (!result.ok) {
       return result.reason === 'not_found'
         ? NextResponse.json({ error: 'Post not found' }, { status: 404 })
@@ -44,6 +52,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     }
     return NextResponse.json({ image: result.image })
   } catch (err) {
+    const refusal = allowanceResponse(err)
+    if (refusal) return refusal
     console.error('[visuals] generation failed:', err)
     const message = err instanceof Error ? err.message : 'Visual generation failed'
     return NextResponse.json({ error: message }, { status: 502 })

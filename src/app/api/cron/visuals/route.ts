@@ -3,7 +3,10 @@ import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import { createSemaphore } from '@/lib/concurrency'
 import { fetchImagesByPost } from '@/lib/posts/fetch-post-images'
 import { generatePostVisual } from '@/lib/visual/generate-post-visual'
-import { pickVisualBacklog, type BacklogPost } from '@/lib/visual/visual-backlog'
+import { fetchEntitledClients } from '@/lib/billing/entitled-clients'
+import { runAsSpender } from '@/lib/billing/spend-context'
+import { AllowanceError, readUsage } from '@/lib/billing/usage'
+import { pickVisualBacklog, totalVisualSlots, type BacklogPost } from '@/lib/visual/visual-backlog'
 import { VISUAL_BACKLOG_POST_COLUMNS } from '@/lib/queries/select-columns'
 import { MS_PER_HOUR, QUALITY_FLOOR } from '@/utils/constants'
 
@@ -59,9 +62,24 @@ export async function GET(request: NextRequest) {
   // milliseconds apart — a post sitting exactly on the boundary could pass SQL and fail JS.
   const now = new Date()
   const retryCutoff = new Date(now.getTime() - RETRY_SPACING_MS).toISOString()
+  // Entitled clients first, so a paused workspace's posts never occupy the fetch window or an
+  // image slot a paying one needs — the filter sits in the query, ahead of the LIMIT.
+  const entitled = await fetchEntitledClients(admin, 'spend')
+  if (entitled.size === 0) {
+    return NextResponse.json({
+      posts: 0,
+      generated: 0,
+      failed: 0,
+      skipped_no_copy: 0,
+      skipped_allowance: 0,
+      skipped_for_time: 0,
+      duration_ms: Date.now() - startedAt,
+    })
+  }
   const { data: rows, error } = await admin
     .from('posts')
     .select(VISUAL_BACKLOG_POST_COLUMNS)
+    .in('client_id', [...entitled.keys()])
     .eq('status', 'pending_review')
     .lt('visuals_attempts', MAX_VISUAL_ATTEMPTS)
     .or(`quality_score_avg.is.null,quality_score_avg.gte.${QUALITY_FLOOR}`)
@@ -80,13 +98,37 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
-  const posts = (rows ?? []) as BacklogPost[]
+  const loaded = (rows ?? []) as BacklogPost[]
+  // A post is painted whole or not at all: it needs as many image credits as it has slots left in
+  // its agency's pool this tick. The atomic counter in subscribeFal is the backstop for a race
+  // with a wizard user in the same minute; this pre-read is what keeps refusals off the attempt
+  // count in the ordinary case.
+  const remaining = new Map<string, number>()
+  for (const { agencyId, entitlement } of entitled.values()) {
+    if (remaining.has(agencyId)) continue
+    const used = await readUsage(agencyId, entitlement.periodKey)
+    remaining.set(agencyId, entitlement.limits.image - used.image)
+  }
+  let skippedAllowance = 0
+  const posts = loaded.filter((post) => {
+    const owner = entitled.get(post.client_id)
+    if (!owner) return false
+    const need = totalVisualSlots(post)
+    const left = remaining.get(owner.agencyId) ?? 0
+    if (left < need) {
+      skippedAllowance++
+      return false
+    }
+    remaining.set(owner.agencyId, left - need)
+    return true
+  })
   if (posts.length === 0) {
     return NextResponse.json({
       posts: 0,
       generated: 0,
       failed: 0,
       skipped_no_copy: 0,
+      skipped_allowance: skippedAllowance,
       skipped_for_time: 0,
       duration_ms: Date.now() - startedAt,
     })
@@ -151,14 +193,18 @@ export async function GET(request: NextRequest) {
             attemptCounted.add(job.postId)
             await countAttempt(job.postId)
           }
-          const result = await generatePostVisual({
-            postId: job.postId,
-            clientId: job.clientId,
-            position,
-          })
+          const owner = entitled.get(job.clientId)
+          const result = await runAsSpender(
+            { agencyId: owner?.agencyId ?? null, clientId: job.clientId, flow: 'generation' },
+            () => generatePostVisual({ postId: job.postId, clientId: job.clientId, position })
+          )
           if (result.ok) generated++
           else skippedNoCopy++
         } catch (err) {
+          if (err instanceof AllowanceError) {
+            skippedAllowance++
+            return
+          }
           failed++
           console.error(`[cron/visuals] post ${job.postId} position ${position} failed:`, err)
         } finally {
@@ -173,6 +219,7 @@ export async function GET(request: NextRequest) {
     generated,
     failed,
     skipped_no_copy: skippedNoCopy,
+    skipped_allowance: skippedAllowance,
     skipped_for_time: skippedForTime,
     duration_ms: Date.now() - startedAt,
   })

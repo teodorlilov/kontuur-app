@@ -112,8 +112,11 @@ Meta's data-deletion callback that erases third parties.
 | Close a generation run | `finishGenerationRun` | [lib/generation/runs.ts](../src/lib/generation/runs.ts) |
 | Generate a client's batch of drafts when its slot comes due | `GET` | [app/api/cron/generate/route.ts](../src/app/api/cron/generate/route.ts) |
 | Log a discarded draft | `recordDiscardedDraft` | [lib/queries/discarded-drafts.ts](../src/lib/queries/discarded-drafts.ts) |
-| Open a generation run | `startGenerationRun` | [lib/generation/runs.ts](../src/lib/generation/runs.ts) |
+| Open a generation run (and reserve its drafts from the allowance) | `startGenerationRun` | [lib/generation/runs.ts](../src/lib/generation/runs.ts) |
 | Record a theme a run produced | `trackGenerationTheme` | [lib/generation/runs.ts](../src/lib/generation/runs.ts) |
+| Reserve allowance units — drafts, images, rewrites — against a period's counter | `consumeUsage` | [lib/billing/usage.ts](../src/lib/billing/usage.ts) |
+| Give back allowance units a reservation did not use | `refundUsage` | [lib/billing/usage.ts](../src/lib/billing/usage.ts) |
+| Add a provider call's tokens and cost to the day's telemetry row | `recordAiUsage` | [lib/billing/telemetry.ts](../src/lib/billing/telemetry.ts) |
 | Record topics a post covered | `recordPostTopics` | [lib/queries/post-history.ts](../src/lib/queries/post-history.ts) |
 | Write the week's global platform brief (one row per UTC Monday) | `writeWeeklyBriefing` | [features/dashboard/lib/write-briefing.ts](../src/features/dashboard/lib/write-briefing.ts) |
 
@@ -173,7 +176,6 @@ operation below is about a destination, not about a post — which is why none o
 | Generate and store a post slide's visual | `generatePostVisual` | [lib/visual/generate-post-visual.ts](../src/lib/visual/generate-post-visual.ts) |
 | Paint missing visuals for pending drafts (cron) | `GET` | [app/api/cron/visuals/route.ts](../src/app/api/cron/visuals/route.ts) |
 | Put an image at a slide position | `putPostImage` | [features/assets/lib/storage.ts](../src/features/assets/lib/storage.ts) |
-| Record image spend | `recordImageSpend` | [lib/visual/image-spend.ts](../src/lib/visual/image-spend.ts) |
 | Remove a slide image | `DELETE` | [app/api/posts/[id]/images/route.ts](../src/app/api/posts/[id]/images/route.ts) |
 | Store a client's visual identity | `upsertVisualIdentity` | [lib/visual/queries.ts](../src/lib/visual/queries.ts) |
 | Store a slide's editable canvas document | `upsertCanvasDoc` | [lib/canvas/doc-store.ts](../src/lib/canvas/doc-store.ts) |

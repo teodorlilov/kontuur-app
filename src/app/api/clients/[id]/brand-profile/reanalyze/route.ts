@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
 import { resolveAuth } from '@/lib/auth/resolve-auth'
 import { aiRateLimitResponse } from '@/lib/auth/rate-limit'
+import { requireEntitledRoute } from '@/lib/billing/require-entitled'
+import { runAsSpender } from '@/lib/billing/spend-context'
 import { analyzeBrand } from '@/lib/sources/analyze-brand'
 import { resolveClientWebsite } from '@/lib/clients/resolve-client-website'
 
@@ -26,12 +28,16 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
   // this fetches a stored URL, so unthrottled it is also a way to aim our egress at a third party.
   const limited = aiRateLimitResponse('analyze-url', userId)
   if (limited) return limited
+  const refused = await requireEntitledRoute(agencyId, 'spend')
+  if (refused) return refused
 
   const site = await resolveClientWebsite(supabase, id, agencyId)
   if (!site.ok) return site.response
 
   try {
-    const analysis = await analyzeBrand({ websiteUrl: site.websiteUrl })
+    const analysis = await runAsSpender({ agencyId, clientId: id, flow: 'onboarding' }, () =>
+      analyzeBrand({ websiteUrl: site.websiteUrl })
+    )
     if (!analysis) {
       return NextResponse.json({ error: 'Could not read that website' }, { status: 422 })
     }

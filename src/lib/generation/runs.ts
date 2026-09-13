@@ -7,6 +7,8 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { formatClientName } from '@/utils/format'
 import type { ActiveRun } from '@/types/api'
+import type { Entitlement } from '@/lib/billing/entitlement'
+import { AllowanceError, consumeUsage, refundUsage } from '@/lib/billing/usage'
 
 /** A run is only shown as active this long — a crashed invocation cannot mark itself done. */
 const ACTIVE_RUN_WINDOW_MS = 6 * 60_000
@@ -37,26 +39,51 @@ const UNIQUE_VIOLATION = '23505'
  * batch right now and there is nothing to report, while a failed insert means
  * tracking broke and the batch is deferred.
  */
-type GenerationRunClaim = { runId: string } | { runId: null; slotTaken: boolean }
+type GenerationRunClaim =
+  | { runId: string }
+  | { runId: null; slotTaken: boolean }
+  | { runId: null; refused: AllowanceError }
 
 /**
  * Claims a generation batch, returning the run id.
+ *
+ * The draft allowance is reserved here, BEFORE the insert and before any model call: this is the
+ * one moment the number of drafts is known and nothing has been spent, so a refused workspace
+ * costs nothing (docs/plans/BILLING.md, layer 1). A refusal is a claim of its own that both
+ * callers must honour — the "generation proceeds without a run row" path below is for a failed
+ * insert, never for a refusal, and a reservation whose insert then fails is given back.
  *
  * `slotKey` is the scheduled instant a cron batch belongs to. Passing it makes the
  * insert the dedup: `generation_runs_one_batch_per_slot` lets exactly one invocation
  * of a tick through, which a snapshot read of recent runs can never do on its own
  * (Vercel cron is at-least-once, so two invocations read "nothing ran" together).
- * Manual runs pass none and are never deduped.
+ * Manual runs pass none and are never deduped. A lost slot race also gives the reservation back.
  */
 export async function startGenerationRun(
   supabase: SupabaseClient,
   input: {
     clientId: string
+    agencyId: string
+    entitlement: Entitlement
     targetCount: number
     kind: GenerationRunKind
     slotKey?: Date
   }
 ): Promise<GenerationRunClaim> {
+  const reserved = await consumeUsage(input.entitlement, input.agencyId, 'draft', input.targetCount)
+  if (!reserved.allowed) {
+    return {
+      runId: null,
+      refused: new AllowanceError(
+        'draft',
+        reserved.used,
+        reserved.quota,
+        input.entitlement.resetsOn
+      ),
+    }
+  }
+  const giveBack = () => refundUsage(input.entitlement, input.agencyId, 'draft', input.targetCount)
+
   const { data, error } = await supabase
     .from('generation_runs')
     .insert({
@@ -72,6 +99,7 @@ export async function startGenerationRun(
     .single()
 
   if (error) {
+    await giveBack()
     // A lost race is the constraint doing its job, not a fault: the invocation that
     // won is generating this batch, and saying so at error level would train whoever
     // reads these logs to ignore them.
@@ -83,15 +111,22 @@ export async function startGenerationRun(
   }
 
   const runId = (data as { id: string } | null)?.id
+  if (!runId) await giveBack()
   return runId ? { runId } : { runId: null, slotTaken: false }
 }
 
-/** Marks a run terminal so the shell stops reporting it as in flight. */
+/**
+ * Marks a run terminal so the shell stops reporting it as in flight, and gives back the drafts
+ * the reservation did not turn into posts — research that found fewer topics than asked, or a
+ * run that failed before writing — so a customer is charged for what was written, not requested.
+ */
 export async function finishGenerationRun(
   supabase: SupabaseClient,
   runId: string,
-  status: 'complete' | 'failed'
+  status: 'complete' | 'failed',
+  reservation: { agencyId: string; entitlement: Entitlement; unused: number }
 ): Promise<void> {
+  await refundUsage(reservation.entitlement, reservation.agencyId, 'draft', reservation.unused)
   const { error } = await supabase
     .from('generation_runs')
     .update({ status, completed_at: new Date().toISOString() })

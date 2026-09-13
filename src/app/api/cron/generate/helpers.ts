@@ -1,6 +1,8 @@
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import { getZonedParts } from '@/utils/date-helpers'
 import type { BrandProfileRow, ClientRow, PostingScheduleRow } from '@/types'
+import { AGENCY_ENTITLEMENT_COLUMNS } from '@/lib/queries/select-columns'
+import { entitlementFor, type Entitlement } from '@/lib/billing/entitlement'
 
 type AdminClient = ReturnType<typeof createAdminSupabaseClient>
 
@@ -19,12 +21,18 @@ type BrandProfileContext = Pick<
 >
 
 interface ScheduleContext {
+  /** Per agency, what it may do this tick — absent means the agency cannot spend. */
+  entitlements: Map<string, Entitlement>
   clients: Map<string, ClientContext>
   brandProfiles: Map<string, BrandProfileContext>
   agencyTimezones: Map<string, string>
 }
 
-/** Batch-fetch all clients, brand profiles, and agency timezones for active schedules. */
+/**
+ * Batch-fetch all clients, brand profiles, and agency timezones for active schedules — and each
+ * agency's entitlement from the same read, so the route can drop clients whose workspace cannot
+ * spend before it claims a slot for them.
+ */
 export async function fetchScheduleContext(
   supabase: AdminClient,
   schedules: ScheduleRow[]
@@ -56,15 +64,18 @@ export async function fetchScheduleContext(
   const agencyIds = [...new Set([...clients.values()].map((c) => c.agency_id))]
   const { data: agencyRows, error: agencyError } = await supabase
     .from('agencies')
-    .select('id, timezone, mode')
+    .select(AGENCY_ENTITLEMENT_COLUMNS)
     .in('id', agencyIds)
   // Falling back to UTC for every agency would fire each slot at the wrong local hour.
   if (agencyError) throw new Error(`agency timezone query failed: ${agencyError.message}`)
 
   const agencyTimezones = new Map<string, string>()
-  // as: explicit column projection — Supabase types from the table, not the select
-  for (const row of (agencyRows ?? []) as Array<{ id: string; timezone: string }>) {
+  const entitlements = new Map<string, Entitlement>()
+  const now = new Date()
+  for (const row of agencyRows ?? []) {
     agencyTimezones.set(row.id, row.timezone)
+    const entitlement = entitlementFor(row, now)
+    if (entitlement.canSpend) entitlements.set(row.id, entitlement)
   }
 
   const brandProfiles = new Map<string, BrandProfileContext>()
@@ -72,7 +83,7 @@ export async function fetchScheduleContext(
     brandProfiles.set(row.client_id, row)
   }
 
-  return { clients, brandProfiles, agencyTimezones }
+  return { clients, brandProfiles, agencyTimezones, entitlements }
 }
 
 /** Rows saved before the time column was honoured match the historical 09:00 fire. */

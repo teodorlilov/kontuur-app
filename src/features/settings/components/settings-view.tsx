@@ -9,7 +9,7 @@ import { TabRail, type TabItem } from '@/components/layout/page-header/tab-rail'
 import { PAGE_SHELL } from '@/components/layout/page-header/shared'
 import { useTabParam } from '@/components/layout/page-header/use-tab-param'
 import { cn } from '@/utils/cn'
-import { capitalize } from '@/utils/format'
+import { PLAN_LABELS, type PlanId } from '@/lib/billing/plans'
 import { clearQueryParams } from '@/utils/url'
 import type { ReactNode } from 'react'
 import type { AgencyInfo, SettingsTab } from '@/types/api'
@@ -105,7 +105,8 @@ export function SettingsView({
               agencyMode === 'solo'
                 ? 'Solo workspace'
                 : `${memberCount} member${memberCount === 1 ? '' : 's'}`,
-              `${capitalize(agency.plan)} plan`,
+              // WHY as: `plan` is a CHECK-constrained text column the generated type cannot narrow.
+              `${PLAN_LABELS[agency.plan as PlanId] ?? agency.plan} plan`,
             ]}
           />
         }

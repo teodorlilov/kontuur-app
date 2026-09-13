@@ -1,5 +1,6 @@
 import type Anthropic from '@anthropic-ai/sdk'
 import { anthropic, DEFAULT_MODEL } from '@/utils/ai-client'
+import { anthropicUsageOf, recordAiUsage } from '@/lib/billing/telemetry'
 import { sanitizeAndParseJson } from '@/utils/ai'
 import { briefingItemSchema, type BriefingItem } from './schema'
 
@@ -126,6 +127,12 @@ export async function generateBriefing(window: BriefingWindow): Promise<Briefing
       },
     ],
     messages: [{ role: 'user', content: buildPrompt(window) }],
+  })
+
+  void recordAiUsage({
+    provider: 'anthropic',
+    model: DEFAULT_MODEL,
+    usage: anthropicUsageOf(response),
   })
 
   const text = stripCiteTags(

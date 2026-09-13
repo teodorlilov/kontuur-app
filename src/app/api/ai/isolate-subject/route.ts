@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
 import { resolveAuth } from '@/lib/auth/resolve-auth'
 import { visualsRateLimitResponse } from '@/lib/auth/rate-limit'
+import { requireEntitledRoute } from '@/lib/billing/require-entitled'
+import { runAsSpender } from '@/lib/billing/spend-context'
 import { downloadFalFile, removeImageBackground } from '@/lib/visual/fal'
 import {
   foreignStoragePathResponse,
@@ -18,6 +20,8 @@ export async function POST(request: Request) {
 
   const limited = visualsRateLimitResponse(auth.userId)
   if (limited) return limited
+  const refused = await requireEntitledRoute(auth.agencyId, 'spend')
+  if (refused) return refused
 
   const parsed = isolateSubjectSchema.safeParse(await request.json().catch(() => null))
   if (!parsed.success) {
@@ -32,7 +36,10 @@ export async function POST(request: Request) {
   if (foreignPath) return foreignPath
 
   try {
-    const cutoutUrl = await removeImageBackground(publicPostImageUrl(body.storagePath))
+    const cutoutUrl = await runAsSpender(
+      { agencyId: auth.agencyId, clientId: destination.clientId, flow: 'editor' },
+      () => removeImageBackground(publicPostImageUrl(body.storagePath))
+    )
     const buffer = await downloadFalFile(cutoutUrl)
     const { publicUrl, storagePath } = await destination.upload(buffer, 'image/png', 'cutout.png')
     return NextResponse.json({ publicUrl, storagePath })

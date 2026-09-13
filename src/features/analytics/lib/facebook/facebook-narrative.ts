@@ -15,6 +15,7 @@ import {
   type NarrativeSpec,
 } from '../shared/narrative-shared'
 import type { AnalyticsPeriod } from '../compute/period'
+import { runAsSpender } from '@/lib/billing/spend-context'
 
 /**
  * The Facebook document's narrative — the sibling of `narrative.ts`, composing the same
@@ -83,16 +84,26 @@ const FB_NARRATIVE: NarrativeSpec<FacebookReportData> = {
  * from the callback's own source text, and this callback is line-for-line Instagram's.
  */
 const _fetchFacebookNarrative = unstable_cache(
-  async (args: NarrativeArgs, syncStamp: string): Promise<NarrativeResult | null> => {
+  async (
+    args: NarrativeArgs,
+    syncStamp: string,
+    agencyId: string
+  ): Promise<NarrativeResult | null> => {
     void syncStamp
-    return resolveNarrative(FB_NARRATIVE, args)
+    return runAsSpender({ agencyId, clientId: args.clientId, flow: 'analytics' }, () =>
+      resolveNarrative(FB_NARRATIVE, args)
+    )
   },
   ['facebook-narrative-v1', 'facebook'],
   { revalidate: 86_400, tags: [FB_METRICS_TAG] }
 )
 
-/** The Facebook narrative for one client and period, cached until the next nightly sync. */
+/**
+ * The Facebook narrative for one client and period, cached until the next nightly sync. The
+ * agency is declared as the spender INSIDE the cached function — see `getNarrative`.
+ */
 export async function getFacebookNarrative(
+  agencyId: string,
   clientId: string,
   clientName: string,
   period: AnalyticsPeriod,
@@ -102,7 +113,8 @@ export async function getFacebookNarrative(
   return guardNarrative(clientId, PLATFORM_NAMES.facebook, () =>
     _fetchFacebookNarrative(
       { clientId, clientName, period, timezone },
-      lastSyncAt?.slice(0, 10) ?? 'never'
+      lastSyncAt?.slice(0, 10) ?? 'never',
+      agencyId
     )
   )
 }

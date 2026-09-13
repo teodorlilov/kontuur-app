@@ -18,6 +18,11 @@ vi.mock('@/lib/sources/discover-feed-url', () => ({
 vi.mock('@/lib/sources/validate-url', () => ({
   validateSourceUrl: (...args: unknown[]) => mockValidateSourceUrl(...args),
 }))
+// The route is the boundary that declares who is spending; these tests call the module directly.
+vi.mock('@/lib/billing/spend-context', () => ({
+  currentSpender: () => ({ agencyId: 'agency-1', flow: 'sources' }),
+}))
+vi.mock('@/lib/billing/telemetry', () => ({ recordAiUsage: vi.fn() }))
 
 import { suggestSources } from '../suggest-sources'
 

@@ -1,6 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 vi.mock('@/utils/ai-client')
+vi.mock('@/lib/billing/telemetry', () => ({
+  anthropicUsageOf: () => ({}),
+  recordAiUsage: vi.fn(),
+}))
 
 import { anthropic } from '@/utils/__mocks__/ai-client'
 import { generateBriefing } from '../generate-briefing'
@@ -27,8 +31,17 @@ function answer(items: unknown[]) {
   return { type: 'text', text: JSON.stringify(items), citations: null }
 }
 
+/** The real response shape: `usage` rides on every message and the telemetry reads it. */
+const USAGE = {
+  input_tokens: 300,
+  output_tokens: 800,
+  cache_read_input_tokens: 0,
+  cache_creation_input_tokens: 0,
+  server_tool_use: { web_search_requests: 3 },
+}
+
 function respondWith(...content: unknown[]) {
-  anthropic.messages.create.mockResolvedValue({ content })
+  anthropic.messages.create.mockResolvedValue({ content, usage: USAGE })
 }
 
 const GRID = {

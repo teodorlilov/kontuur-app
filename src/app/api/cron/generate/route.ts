@@ -12,6 +12,8 @@ import {
   trackGenerationTheme,
 } from '@/lib/generation/runs'
 import { writeWeeklyBriefing } from '@/features/dashboard/lib/write-briefing'
+import { runAsSpender } from '@/lib/billing/spend-context'
+import { allowanceUsedUp } from '@/lib/billing/copy'
 import { DEFAULT_CAROUSEL_SLIDES, MS_PER_HOUR, STYLE_MEMO_REFRESH_DAYS } from '@/utils/constants'
 import { distillStyleMemo } from '@/ai/learning/distill-style-memo'
 import { fetchScheduleContext, getScheduleDue } from './helpers'
@@ -52,10 +54,17 @@ export async function GET(request: NextRequest) {
     skipped_for_time: [] as string[],
     /** Clients whose slot another invocation of this tick claimed first — see startGenerationRun. */
     slot_already_claimed: [] as string[],
+    /** Clients whose workspace cannot spend this tick — trial over, unpaid, paused. */
+    skipped_unentitled: [] as string[],
+    /** Clients whose workspace has used its draft allowance for the period. */
+    skipped_over_allowance: [] as string[],
   }
 
   try {
-    const brief = await writeWeeklyBriefing(supabase)
+    // The brief belongs to nobody: recorded under a null agency, never against a customer.
+    const brief = await runAsSpender({ agencyId: null, flow: 'brief' }, () =>
+      writeWeeklyBriefing(supabase)
+    )
     if (brief.written) {
       console.info(
         `[cron] weekly brief written: ${brief.itemCount} items, ${brief.unverified} unverified dropped`
@@ -128,6 +137,10 @@ export async function GET(request: NextRequest) {
     .flatMap((schedule) => {
       const clientRow = ctx.clients.get(schedule.client_id)
       if (!clientRow) return []
+      if (!ctx.entitlements.has(clientRow.agency_id)) {
+        results.skipped_unentitled.push(clientRow.id)
+        return []
+      }
       const agencyTimezone = ctx.agencyTimezones.get(clientRow.agency_id) ?? 'UTC'
       const { due, scheduledAt, localHour } = getScheduleDue(schedule, agencyTimezone)
       if (!due) return []
@@ -138,11 +151,20 @@ export async function GET(request: NextRequest) {
     .sort((a, b) => b.localHour - a.localHour)
 
   for (const { schedule, clientRow, scheduledAt } of dueClients) {
-    // Declared outside the try so the catch can mark an interrupted run failed.
+    // Declared outside the try so the catch can mark an interrupted run failed and give back
+    // the drafts it reserved.
     let runId: string | null = null
+    const { id: clientId, agency_id: agencyId } = clientRow
+    const entitlement = ctx.entitlements.get(agencyId)
+    if (!entitlement) continue
+    const total = (schedule as { frequency_value: number }).frequency_value || 1
+    const reservation = (produced: number) => ({
+      agencyId,
+      entitlement,
+      unused: Math.max(0, total - produced),
+    })
+    const spender = { agencyId, clientId, flow: 'generation' as const }
     try {
-      const { id: clientId, agency_id: agencyId } = clientRow
-
       if (Date.now() - startedAt > TIME_BUDGET_MS) {
         results.skipped_for_time.push(clientId)
         console.error(`[cron] Time budget exceeded — skipping client ${clientId} this run`)
@@ -167,14 +189,33 @@ export async function GET(request: NextRequest) {
       // today. Skip instead — the next tick retries the insert.
       //
       // Claimed before any model call, so a lost race costs two DB reads rather
-      // than a duplicate batch.
-      const total = (schedule as { frequency_value: number }).frequency_value || 1
+      // than a duplicate batch — and the draft allowance is reserved in the same step.
       const claim = await startGenerationRun(supabase, {
         clientId,
+        agencyId,
+        entitlement,
         targetCount: total,
         kind: 'cron',
         slotKey: scheduledAt,
       })
+      if ('refused' in claim) {
+        // Not an error and not retried this day: the allowance resets on its own date. One bell
+        // per period, keyed on the refusal's own sentence.
+        results.skipped_over_allowance.push(clientId)
+        await notify(supabase, {
+          agencyId,
+          clientId,
+          type: 'allowance_reached',
+          message: allowanceUsedUp(
+            'draft',
+            claim.refused.used,
+            claim.refused.quota,
+            claim.refused.resetsOn
+          ),
+          cooldownDays: 31,
+        })
+        continue
+      }
       if (claim.runId === null) {
         // A slot another invocation already holds is not this run's work and not an
         // error — recording it as one would make every at-least-once redelivery look
@@ -192,17 +233,19 @@ export async function GET(request: NextRequest) {
       runId = claim.runId
 
       const researchStartedAt = Date.now()
-      const researchTopics = await performResearch({
-        supabase,
-        clientId,
-        niche: client.niche,
-        count: total,
-        preloadedClientData: client,
-      })
+      const researchTopics = await runAsSpender(spender, () =>
+        performResearch({
+          supabase,
+          clientId,
+          niche: client.niche,
+          count: total,
+          preloadedClientData: client,
+        })
+      )
 
       if (researchTopics.length === 0) {
         console.error(`[cron] No research topics for client ${clientId} — skipping generation`)
-        if (runId) await finishGenerationRun(supabase, runId, 'failed')
+        if (runId) await finishGenerationRun(supabase, runId, 'failed', reservation(0))
         continue
       }
 
@@ -210,13 +253,15 @@ export async function GET(request: NextRequest) {
 
       const researchMs = Date.now() - researchStartedAt
       const generationStartedAt = Date.now()
-      const generationResults = await runGenerationBatch({
-        client,
-        postType,
-        slideCount,
-        themes,
-        trackTheme: (theme, postCount) => trackGenerationTheme(supabase, runId, theme, postCount),
-      })
+      const generationResults = await runAsSpender(spender, () =>
+        runGenerationBatch({
+          client,
+          postType,
+          slideCount,
+          themes,
+          trackTheme: (theme, postCount) => trackGenerationTheme(supabase, runId, theme, postCount),
+        })
+      )
       const generationMs = Date.now() - generationStartedAt
 
       // Batch insert rather than N serial round-trips.
@@ -257,7 +302,7 @@ export async function GET(request: NextRequest) {
       if (generationResults.length === 0) {
         console.error(`[cron] Generation produced no posts for client ${clientId}`)
         results.errors.push({ clientId, error: 'generation produced no posts' })
-        if (runId) await finishGenerationRun(supabase, runId, 'failed')
+        if (runId) await finishGenerationRun(supabase, runId, 'failed', reservation(0))
         continue
       }
 
@@ -265,7 +310,13 @@ export async function GET(request: NextRequest) {
       // guard trusts 'failed' to mean "nothing saved", so a failure in any
       // follow-up past this point must not relabel a saved batch and trigger a
       // duplicate next tick.
-      if (runId) await finishGenerationRun(supabase, runId, 'complete')
+      if (runId)
+        await finishGenerationRun(
+          supabase,
+          runId,
+          'complete',
+          reservation(generationResults.length)
+        )
 
       try {
         // Every finished run is worth announcing, and the count varies anyway — the message is
@@ -282,11 +333,13 @@ export async function GET(request: NextRequest) {
         // relabel the saved batch. The distiller
         // itself skips when the memo is fresh or there are too few new edits,
         // and only advances its cursor after a successful write.
-        await distillStyleMemo(supabase, clientId, {
-          language: client.language,
-          languageNotes: client.languageNotes,
-          skipIfFresherThanDays: STYLE_MEMO_REFRESH_DAYS,
-        })
+        await runAsSpender({ ...spender, flow: 'style_memo' }, () =>
+          distillStyleMemo(supabase, clientId, {
+            language: client.language,
+            languageNotes: client.languageNotes,
+            skipIfFresherThanDays: STYLE_MEMO_REFRESH_DAYS,
+          })
+        )
       } catch (err) {
         console.error(`[cron] post-save follow-ups failed for client ${clientId}:`, err)
       }
@@ -298,7 +351,7 @@ export async function GET(request: NextRequest) {
           `${generationResults.length} posts`
       )
     } catch (err) {
-      if (runId) await finishGenerationRun(supabase, runId, 'failed')
+      if (runId) await finishGenerationRun(supabase, runId, 'failed', reservation(0))
       results.errors.push({
         clientId: schedule.client_id,
         error: err instanceof Error ? err.message : 'Unknown error',

@@ -1,6 +1,6 @@
 import { requireSessionUser } from '@/lib/auth/session'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
-import { getCachedAgency, getCachedAgencyClients } from '@/lib/queries/cache'
+import { getCachedAgency, getCachedAgencyClients, getCachedEntitlement } from '@/lib/queries/cache'
 import {
   fetchConnectionsByClient,
   fetchConnectionSyncState,
@@ -55,11 +55,15 @@ interface AnalyticsPageProps {
  */
 export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps) {
   const [{ agencyId }, params] = await Promise.all([requireSessionUser(), searchParams])
-  const [cachedClients, agency] = await Promise.all([
+  const [cachedClients, agency, entitlement] = await Promise.all([
     getCachedAgencyClients(agencyId),
     getCachedAgency(agencyId),
+    getCachedEntitlement(agencyId),
   ])
   const timezone = agency?.timezone ?? 'UTC'
+  // A paused workspace keeps its numbers but gets the written fallback: the narrative is a
+  // Haiku call on a cache miss, and only a workspace that may spend gets one.
+  const canNarrate = entitlement.canSpend
   const clients = cachedClients
     .map((client) => ({ id: client.id, name: client.name }))
     .sort((a, b) => a.name.localeCompare(b.name))
@@ -133,9 +137,17 @@ export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps
       countUnfilledDays(supabase, fbMarkers(clientId, facebook!.account_id), period, todayKey),
     ])
 
-    const fbNarrativeResult = fbData.hasHistory
-      ? await getFacebookNarrative(clientId, client.name, period, timezone, fbData.lastSyncAt)
-      : null
+    const fbNarrativeResult =
+      fbData.hasHistory && canNarrate
+        ? await getFacebookNarrative(
+            agencyId,
+            clientId,
+            client.name,
+            period,
+            timezone,
+            fbData.lastSyncAt
+          )
+        : null
     const fbNarrative =
       fbNarrativeResult?.text ?? (fbData.hasHistory ? buildFacebookFallbackNarrative(fbData) : null)
 
@@ -205,9 +217,10 @@ export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps
   const hasConnection = instagram !== null && !isConnectionRetired(instagram)
   const handle = instagram?.account_name?.replace(/^@/, '') ?? null
 
-  const narrativeResult = data.hasHistory
-    ? await getNarrative(clientId, client.name, period, timezone, data.lastSyncAt)
-    : null
+  const narrativeResult =
+    data.hasHistory && canNarrate
+      ? await getNarrative(agencyId, clientId, client.name, period, timezone, data.lastSyncAt)
+      : null
   const narrative = narrativeResult?.text ?? (data.hasHistory ? buildFallbackNarrative(data) : null)
 
   return (

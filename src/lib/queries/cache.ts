@@ -3,6 +3,7 @@ import 'server-only'
 import { cache } from 'react'
 import { unstable_cache } from 'next/cache'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
+import { entitlementFor, noEntitlement, type Entitlement } from '@/lib/billing/entitlement'
 import {
   AGENCY_COLUMNS,
   CLIENT_LIST_COLUMNS,
@@ -53,6 +54,17 @@ const _fetchAgency = unstable_cache(
 )
 
 export const getCachedAgency = cache(_fetchAgency)
+
+/**
+ * What the workspace may do, derived from the same cached agency read every dashboard render
+ * already makes — no second agencies query. Inherits that read's 60 s staleness and its
+ * 'agencies' tag: whatever changes the billing columns (the settings PUT, the Stripe webhook)
+ * must `revalidateTag('agencies')`. A missing row is a locked workspace, never an open one.
+ */
+export const getCachedEntitlement = cache(async (agencyId: string): Promise<Entitlement> => {
+  const agency = await getCachedAgency(agencyId)
+  return agency ? entitlementFor(agency, new Date()) : noEntitlement()
+})
 
 /**
  * Returns all clients for the given agencyId with commonly needed columns.

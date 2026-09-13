@@ -117,7 +117,7 @@ export async function fetchAgencyById(
   supabase: SupabaseClient,
   agencyId: string
 ): Promise<AgencyInfo | null> {
-  const data = unwrap(
+  return unwrap(
     await supabase
       .from('agencies')
       .select(AGENCY_SETTINGS_COLUMNS)
@@ -125,7 +125,6 @@ export async function fetchAgencyById(
       .maybeSingle(),
     'fetchAgencyById'
   )
-  return data as AgencyInfo | null
 }
 
 // ---------- users ----------

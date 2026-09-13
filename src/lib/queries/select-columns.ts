@@ -9,6 +9,7 @@
  */
 
 import type {
+  AgencyRow,
   ClientRow,
   ClientSourceRow,
   FbPageMetricsRow,
@@ -232,11 +233,71 @@ export const POSTING_SCHEDULE_DUE_COLUMNS =
   'id, client_id, is_active, frequency_value, auto_generate_day, auto_generate_time'
 
 // agencies
-export const AGENCY_COLUMNS =
-  'id, name, plan, mode, agency_logo, stripe_customer_id, stripe_subscription_id, subscription_status, trial_ends_at, plan_client_limit, timezone, created_at'
 
-export const AGENCY_SETTINGS_COLUMNS =
-  'id, name, plan, mode, subscription_status, trial_ends_at, plan_client_limit, timezone'
+/**
+ * Everything `entitlementFor` (src/lib/billing/entitlement.ts) reads to decide what a workspace
+ * may do. One list, so the cached agency read and the settings read cannot drift apart on a
+ * billing column — the two used to be typed by hand and carried `plan_client_limit`, a column
+ * migration 20260852 dropped.
+ */
+const AGENCY_BILLING_KEYS = [
+  'plan',
+  'mode',
+  'stripe_customer_id',
+  'stripe_subscription_id',
+  'subscription_status',
+  'subscription_quantity',
+  'trial_ends_at',
+  'current_period_start',
+  'current_period_end',
+  'cancel_at_period_end',
+  'past_due_since',
+] as const satisfies readonly (keyof AgencyRow)[]
+
+const AGENCY_KEYS = [
+  'id',
+  'name',
+  'agency_logo',
+  'timezone',
+  'created_at',
+  'billing_updated_at',
+  ...AGENCY_BILLING_KEYS,
+] as const satisfies readonly (keyof AgencyRow)[]
+
+export const AGENCY_COLUMNS = AGENCY_KEYS.join(', ') as Join<typeof AGENCY_KEYS, ', '>
+
+/** The settings page's read: identity plus the billing columns, without the logo or timestamps. */
+const AGENCY_SETTINGS_KEYS = [
+  'id',
+  'name',
+  'timezone',
+  ...AGENCY_BILLING_KEYS,
+] as const satisfies readonly (keyof AgencyRow)[]
+
+export const AGENCY_SETTINGS_COLUMNS = AGENCY_SETTINGS_KEYS.join(', ') as Join<
+  typeof AGENCY_SETTINGS_KEYS,
+  ', '
+>
+
+export type AgencySettingsColumns = Pick<AgencyRow, (typeof AGENCY_SETTINGS_KEYS)[number]>
+
+/** The row `entitlementFor` takes — any read that carries the billing keys satisfies it. */
+export type AgencyBillingColumns = Pick<AgencyRow, (typeof AGENCY_BILLING_KEYS)[number]>
+
+/**
+ * A cron's roster read of every agency: the id to key on, the columns the entitlement needs, and
+ * the timezone the generate cron fires slots in — one read serves both.
+ */
+const AGENCY_ENTITLEMENT_KEYS = [
+  'id',
+  'timezone',
+  ...AGENCY_BILLING_KEYS,
+] as const satisfies readonly (keyof AgencyRow)[]
+
+export const AGENCY_ENTITLEMENT_COLUMNS = AGENCY_ENTITLEMENT_KEYS.join(', ') as Join<
+  typeof AGENCY_ENTITLEMENT_KEYS,
+  ', '
+>
 
 // client_sources
 export const CLIENT_SOURCE_COLUMNS =

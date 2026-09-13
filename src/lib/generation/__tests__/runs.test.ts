@@ -1,6 +1,24 @@
-import { describe, it, expect, vi, afterEach } from 'vitest'
+import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest'
 import { startGenerationRun } from '../runs'
 import type { SupabaseClient } from '@supabase/supabase-js'
+import type { Entitlement } from '@/lib/billing/entitlement'
+
+const consumeUsage = vi.fn()
+const refundUsage = vi.fn()
+vi.mock('@/lib/billing/usage', () => ({
+  consumeUsage: (...args: unknown[]) => consumeUsage(...args),
+  refundUsage: (...args: unknown[]) => refundUsage(...args),
+  AllowanceError: class AllowanceError extends Error {
+    constructor(
+      readonly kind: string,
+      readonly used: number,
+      readonly quota: number,
+      readonly resetsOn: Date | null
+    ) {
+      super('allowance')
+    }
+  },
+}))
 
 type InsertResult = {
   data: { id: string } | null
@@ -23,7 +41,25 @@ function makeSupabase(result: InsertResult) {
   return { supabase, inserted }
 }
 
-const INPUT = { clientId: 'c1', platform: 'Instagram', targetCount: 3, kind: 'cron' as const }
+const ENTITLEMENT = {
+  state: 'active',
+  limits: { draft: 40, image: 120, rewrite: 30 },
+  periodKey: '2026-09-01',
+  resetsOn: new Date('2026-10-01T00:00:00Z'),
+} as unknown as Entitlement
+
+const INPUT = {
+  clientId: 'c1',
+  agencyId: 'a1',
+  entitlement: ENTITLEMENT,
+  targetCount: 3,
+  kind: 'cron' as const,
+}
+
+beforeEach(() => {
+  consumeUsage.mockReset().mockResolvedValue({ allowed: true, used: 3, quota: 40 })
+  refundUsage.mockReset().mockResolvedValue(undefined)
+})
 
 afterEach(() => {
   vi.restoreAllMocks()
@@ -66,6 +102,20 @@ describe('startGenerationRun', () => {
       slotTaken: true,
     })
     expect(error).not.toHaveBeenCalled()
+    // The winner holds the reservation; the loser's must not stay charged.
+    expect(refundUsage).toHaveBeenCalledWith(ENTITLEMENT, 'a1', 'draft', 3)
+  })
+
+  it('reserves the whole batch before the insert and refuses without inserting', async () => {
+    consumeUsage.mockResolvedValue({ allowed: false, used: 39, quota: 40 })
+    const { supabase, inserted } = makeSupabase({ data: { id: 'run-9' }, error: null })
+
+    const claim = await startGenerationRun(supabase, INPUT)
+    expect(consumeUsage).toHaveBeenCalledWith(ENTITLEMENT, 'a1', 'draft', 3)
+    expect(claim.runId).toBeNull()
+    expect('refused' in claim && claim.refused.used).toBe(39)
+    expect(inserted).toHaveLength(0)
+    expect(refundUsage).not.toHaveBeenCalled()
   })
 
   it('a real insert failure is logged and is not a lost race', async () => {
@@ -77,7 +127,8 @@ describe('startGenerationRun', () => {
 
     expect(await startGenerationRun(supabase, INPUT)).toEqual({ runId: null, slotTaken: false })
     // The cron defers the client on this branch, so losing the reason would make a
-    // stalled schedule undiagnosable.
+    // stalled schedule undiagnosable — and the drafts it reserved go back.
     expect(error).toHaveBeenCalled()
+    expect(refundUsage).toHaveBeenCalledWith(ENTITLEMENT, 'a1', 'draft', 3)
   })
 })

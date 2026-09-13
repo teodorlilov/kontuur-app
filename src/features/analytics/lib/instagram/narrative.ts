@@ -15,6 +15,7 @@ import {
 } from '../shared/narrative-shared'
 import type { AnalyticsPeriod } from '../compute/period'
 import { getAnalyticsReport, IG_METRICS_TAG } from './report-data'
+import { runAsSpender } from '@/lib/billing/spend-context'
 
 /**
  * The narrative block: this period's numbers written as a short pull-quote.
@@ -114,16 +115,27 @@ const IG_NARRATIVE: NarrativeSpec<AnalyticsReportData> = {
  * `narrative-shared.ts` explains why the two call sites stay in their own modules.
  */
 const _fetchNarrative = unstable_cache(
-  async (args: NarrativeArgs, syncStamp: string): Promise<NarrativeResult | null> => {
+  async (
+    args: NarrativeArgs,
+    syncStamp: string,
+    agencyId: string
+  ): Promise<NarrativeResult | null> => {
     void syncStamp
-    return resolveNarrative(IG_NARRATIVE, args)
+    return runAsSpender({ agencyId, clientId: args.clientId, flow: 'analytics' }, () =>
+      resolveNarrative(IG_NARRATIVE, args)
+    )
   },
   ['analytics-narrative-v2', 'instagram'],
   { revalidate: 86_400, tags: [IG_METRICS_TAG] }
 )
 
-/** The narrative for one client and period, cached until the next nightly sync. */
+/**
+ * The narrative for one client and period, cached until the next nightly sync. The agency is
+ * declared as the spender INSIDE the cached function, so the Haiku call is attributed whether or
+ * not the request's async context survives `unstable_cache`.
+ */
 export async function getNarrative(
+  agencyId: string,
   clientId: string,
   clientName: string,
   period: AnalyticsPeriod,
@@ -131,6 +143,10 @@ export async function getNarrative(
   lastSyncAt: string | null
 ): Promise<NarrativeResult | null> {
   return guardNarrative(clientId, PLATFORM_NAMES.instagram, () =>
-    _fetchNarrative({ clientId, clientName, period, timezone }, lastSyncAt?.slice(0, 10) ?? 'never')
+    _fetchNarrative(
+      { clientId, clientName, period, timezone },
+      lastSyncAt?.slice(0, 10) ?? 'never',
+      agencyId
+    )
   )
 }

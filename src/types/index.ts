@@ -16,6 +16,7 @@ export type IGAudienceSnapshotsRow = Tables<'ig_audience_snapshots'>
 export type PlatformCommentRow = Tables<'platform_comments'>
 export type SocialConnectionRow = Tables<'social_connections'>
 export type UserRow = Tables<'users'>
+export type AgencyRow = Tables<'agencies'>
 export type ClientSourceRow = Tables<'client_sources'>
 export type AnalyticsReportRow = Tables<'analytics_reports'>
 export type LanguageRuleRow = Tables<'language_rules'>

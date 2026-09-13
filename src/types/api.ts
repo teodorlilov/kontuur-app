@@ -2,7 +2,7 @@
 // this file — going through it would make the two circular.
 import type { Tables } from './database'
 import type { SlideText } from './slide'
-import type { PostColumns, UserColumns } from '@/lib/queries/select-columns'
+import type { AgencySettingsColumns, PostColumns, UserColumns } from '@/lib/queries/select-columns'
 import type { PublicationSummary } from '@/lib/posts/publish-state'
 // Imported rather than only re-exported at the foot of the file: `ValidationData` below is
 // built from these, and a bare `export … from` re-export does not bring a name into scope here.
@@ -296,6 +296,12 @@ export type NotificationType =
   | 'approval_sent'
   | 'connection_retired'
   | 'publish_failed'
+  | 'allowance_warning'
+  | 'allowance_reached'
+  | 'trial_ending'
+  | 'trial_ended'
+  | 'workspace_paused'
+  | 'payment_failed'
 
 export type EnrichedNotification = Pick<
   NotificationRow,
@@ -321,16 +327,11 @@ export type EnrichedNotification = Pick<
  */
 export type TeamMember = UserColumns
 
-export interface AgencyInfo {
-  id: string
-  name: string
-  plan: string
-  mode: string
-  subscription_status: string
-  trial_ends_at: string
-  plan_client_limit: number
-  timezone: string
-}
+/**
+ * Derived, not restated. The hand-written version typed `trial_ends_at` as non-null and carried
+ * `plan_client_limit`, which migration 20260852 dropped; `fetchAgencyById` applied it by cast.
+ */
+export type AgencyInfo = AgencySettingsColumns
 
 export type SettingsTab = 'team' | 'account' | 'integrations' | 'profile'
 

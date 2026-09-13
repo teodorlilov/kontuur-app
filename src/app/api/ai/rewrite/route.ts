@@ -3,6 +3,10 @@ import { z } from 'zod'
 import { resolveAuth } from '@/lib/auth/resolve-auth'
 import { fetchClientData } from '@/lib/clients/fetch-client-data'
 import { aiRateLimitResponse } from '@/lib/auth/rate-limit'
+import { getCachedEntitlement } from '@/lib/queries/cache'
+import { requireEntitledRoute } from '@/lib/billing/require-entitled'
+import { runAsSpender } from '@/lib/billing/spend-context'
+import { AllowanceError, allowanceResponse, consumeUsage } from '@/lib/billing/usage'
 import { performRewrite } from '@/ai/rewrite/rewrite-post'
 import { MAX_CAROUSEL_SLIDES } from '@/utils/constants'
 
@@ -52,6 +56,8 @@ export async function POST(request: Request) {
 
     const limited = aiRateLimitResponse('rewrite', userId)
     if (limited) return limited
+    const refused = await requireEntitledRoute(agencyId, 'spend')
+    if (refused) return refused
 
     const parsed = rewriteSchema.safeParse(await request.json().catch(() => null))
     if (!parsed.success) {
@@ -63,17 +69,29 @@ export async function POST(request: Request) {
     if ('error' in clientResult)
       return NextResponse.json({ error: clientResult.error }, { status: 404 })
 
-    const result = await performRewrite({
-      caption: body.caption,
-      postType: body.postType,
-      slidesJson: body.slidesJson,
-      aiTells: body.aiTells ?? [],
-      qualityIssues: body.qualityIssues,
-      sourceExcerpt: body.sourceExcerpt,
-      sourceUrl: body.sourceUrl,
-      rewriteReason: body.rewriteReason ?? 'manual',
-      client: clientResult.data,
-    })
+    // One rewrite from the allowance, reserved before the model runs — the last unbounded
+    // Sonnet path once drafts and images are metered.
+    const entitlement = await getCachedEntitlement(agencyId)
+    const reserved = await consumeUsage(entitlement, agencyId, 'rewrite', 1)
+    if (!reserved.allowed) {
+      return allowanceResponse(
+        new AllowanceError('rewrite', reserved.used, reserved.quota, entitlement.resetsOn)
+      )
+    }
+
+    const result = await runAsSpender({ agencyId, clientId: body.clientId, flow: 'rewrite' }, () =>
+      performRewrite({
+        caption: body.caption,
+        postType: body.postType,
+        slidesJson: body.slidesJson,
+        aiTells: body.aiTells ?? [],
+        qualityIssues: body.qualityIssues,
+        sourceExcerpt: body.sourceExcerpt,
+        sourceUrl: body.sourceUrl,
+        rewriteReason: body.rewriteReason ?? 'manual',
+        client: clientResult.data,
+      })
+    )
 
     return NextResponse.json(result)
   } catch (error) {

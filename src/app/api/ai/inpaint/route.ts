@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server'
 import { resolveAuth } from '@/lib/auth/resolve-auth'
 import { visualsRateLimitResponse } from '@/lib/auth/rate-limit'
+import { requireEntitledRoute } from '@/lib/billing/require-entitled'
+import { runAsSpender } from '@/lib/billing/spend-context'
+import { allowanceResponse } from '@/lib/billing/usage'
 import { downloadFalFile, editImageWithMask, uploadFalTempFile } from '@/lib/visual/fal'
 import {
   assetTargetFromForm,
@@ -53,6 +56,8 @@ export async function POST(request: Request) {
 
   const limited = visualsRateLimitResponse(auth.userId)
   if (limited) return limited
+  const refused = await requireEntitledRoute(auth.agencyId, 'spend')
+  if (refused) return refused
 
   const formData = await request.formData()
   const fields = parseInpaintFields(formData)
@@ -70,13 +75,17 @@ export async function POST(request: Request) {
 
   try {
     const maskUrl = await uploadFalTempFile(fields.mask)
-    const editedUrl = await editImageWithMask({
-      imageUrl: publicPostImageUrl(fields.storagePath),
-      maskUrl,
-      prompt: fields.prompt,
-      width: roundTo16(fields.width),
-      height: roundTo16(fields.height),
-    })
+    const editedUrl = await runAsSpender(
+      { agencyId: auth.agencyId, clientId: destination.clientId, flow: 'editor' },
+      () =>
+        editImageWithMask({
+          imageUrl: publicPostImageUrl(fields.storagePath),
+          maskUrl,
+          prompt: fields.prompt,
+          width: roundTo16(fields.width),
+          height: roundTo16(fields.height),
+        })
+    )
     const buffer = await downloadFalFile(editedUrl)
     const { publicUrl, storagePath } = await destination.upload(
       buffer,
@@ -85,6 +94,8 @@ export async function POST(request: Request) {
     )
     return NextResponse.json({ publicUrl, storagePath })
   } catch (err) {
+    const refusal = allowanceResponse(err)
+    if (refusal) return refusal
     console.error('[inpaint] failed:', err)
     const message = err instanceof Error ? err.message : 'Inpainting failed'
     return NextResponse.json({ error: message }, { status: 500 })

@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { resolveAuth } from '@/lib/auth/resolve-auth'
 import { aiRateLimitResponse } from '@/lib/auth/rate-limit'
+import { requireEntitledRoute } from '@/lib/billing/require-entitled'
+import { runAsSpender } from '@/lib/billing/spend-context'
 import { analyzeBrand } from '@/lib/sources/analyze-brand'
 
 // A sitemap lookup, up to seven page fetches (8s timeout each, in two parallel waves) and a model
@@ -24,6 +26,8 @@ export async function POST(request: Request) {
   // to aim our egress at a third party.
   const limited = aiRateLimitResponse('analyze-url', auth.userId)
   if (limited) return limited
+  const refused = await requireEntitledRoute(auth.agencyId, 'spend')
+  if (refused) return refused
 
   let body: z.infer<typeof analyzeUrlSchema>
   try {
@@ -40,10 +44,12 @@ export async function POST(request: Request) {
   }
 
   try {
-    const analysis = await analyzeBrand({
-      websiteUrl: body.websiteUrl,
-      instagramHandle: body.instagramHandle,
-    })
+    const analysis = await runAsSpender({ agencyId: auth.agencyId, flow: 'onboarding' }, () =>
+      analyzeBrand({
+        websiteUrl: body.websiteUrl,
+        instagramHandle: body.instagramHandle,
+      })
+    )
     if (!analysis) {
       return NextResponse.json(
         { error: 'Could not fetch content from the provided URLs' },

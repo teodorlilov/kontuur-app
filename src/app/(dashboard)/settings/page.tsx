@@ -1,24 +1,25 @@
 import { redirect } from 'next/navigation'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { requireSessionUser } from '@/lib/auth/session'
-import { getCachedAgency } from '@/lib/queries/cache'
 import { fetchAgencyById, fetchTeamMembersByAgency } from '@/lib/queries/db'
+import { entitlementFor } from '@/lib/billing/entitlement'
+import { readUsage } from '@/lib/billing/usage'
 import { fetchCanvaTeamStatus } from '@/features/settings/lib/canva-team'
 import { SettingsView } from '@/features/settings/components/settings-view'
 import { AccountRail, AccountTab } from '@/features/settings/components/account-tab'
 import { IntegrationsRail, IntegrationsTab } from '@/features/settings/components/integrations-tab'
-import { PlanSection, UpgradeRailAction } from '@/features/settings/components/plan-section'
+import { PlanSection } from '@/features/settings/components/plan-section'
 import { ProfileRail, ProfileTab } from '@/features/settings/components/profile-tab'
 import { TeamRail, TeamTab } from '@/features/settings/components/team-tab'
-import { RailBox } from '@/components/ui/form'
 import { SIGN_IN_PATH } from '@/utils/constants'
 
 export default async function SettingsPage() {
   const { userId, agencyId, role } = await requireSessionUser()
   const supabase = await createServerSupabaseClient()
 
-  const [agencyData, agency, members, { count: clientCount }, canvaTeam] = await Promise.all([
-    getCachedAgency(agencyId),
+  // One uncached agency read: this page follows the account PUT and the Checkout return, so it
+  // must never show a stale row — and the entitlement is derived from the same read.
+  const [agency, members, { count: clientCount }, canvaTeam] = await Promise.all([
     fetchAgencyById(supabase, agencyId),
     fetchTeamMembersByAgency(agencyId),
     supabase.from('clients').select('id', { count: 'exact', head: true }).eq('agency_id', agencyId),
@@ -29,7 +30,9 @@ export default async function SettingsPage() {
 
   if (!agency) redirect(SIGN_IN_PATH)
 
-  const agencyMode: 'agency' | 'solo' = agencyData?.mode === 'solo' ? 'solo' : 'agency'
+  const entitlement = entitlementFor(agency, new Date())
+  const usage = await readUsage(agencyId, entitlement.periodKey)
+  const agencyMode = entitlement.mode
 
   const isAdmin = role === 'admin'
 
@@ -57,7 +60,7 @@ export default async function SettingsPage() {
         account: (
           <>
             <AccountTab agency={agency} currentUserRole={role} />
-            <PlanSection agency={agency} clientCount={clientCount ?? 0} />
+            <PlanSection entitlement={entitlement} usage={usage} brandCount={clientCount ?? 0} />
           </>
         ),
         integrations: <IntegrationsTab currentUserId={userId} members={canvaTeam} />,
@@ -65,14 +68,7 @@ export default async function SettingsPage() {
       }}
       rails={{
         team: <TeamRail />,
-        account: (
-          <>
-            <AccountRail clientCount={clientCount ?? 0} isAdmin={isAdmin} />
-            <RailBox title="Plan">
-              <UpgradeRailAction />
-            </RailBox>
-          </>
-        ),
+        account: <AccountRail clientCount={clientCount ?? 0} isAdmin={isAdmin} />,
         integrations: <IntegrationsRail />,
         profile: <ProfileRail />,
       }}
