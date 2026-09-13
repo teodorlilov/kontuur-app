@@ -119,6 +119,22 @@ Don't assume. Don't hide confusion. Surface tradeoffs.
 - Unclear? **Stop.** Name what's confusing. Ask. Do not keep writing code with an
   open question outstanding — that is how a 60-file unreviewable change happens.
 
+**Plans are written from read code, never from summaries of it.** A plan — or a change — may
+name a function, constant, component, route param or cache tag only after the file defining it
+has been opened in this session. A survey agent can say *where* something is; it cannot say
+what it does, whether it is exported, whether it throws or degrades, or what a query param
+actually controls — and those are exactly the things that have cost rework. So every plan
+carries a table: symbol · file:line · exported? · throws or degrades · cache key/tag · params,
+filled from the reads; and for everything to be created, its grep-by-shape result ("none" is
+an answer). If a row cannot be filled, the plan is not ready. **`npm run plan:check -- <plan.md>`
+is the last step before a plan is presented**: it fails on any cited path that does not exist,
+any table row whose symbol is not in the cited file, any "exported" that is private (or the
+reverse), and any line number that no longer sits near the symbol — the mechanical half of the
+rule. It cannot check throws-or-degrades, cache tags or what a param does; only reading can.
+(Added 2026-09-12 after two plans in one session needed 17 and 25 review findings of this one
+class — private functions called, throwing readers treated as degrading, a route param that did
+nothing, a select string that already existed.)
+
 ### 2. Simplicity first
 Minimum code that solves the problem. Nothing speculative.
 - No features beyond what was asked.

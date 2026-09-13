@@ -23,7 +23,8 @@
     "prepare": "husky",
     "arch": "node scripts/module-ownership.mjs",
     "writers": "node scripts/table-writers.mjs",
-    "comments": "node scripts/comment-placement.mjs"
+    "comments": "node scripts/comment-placement.mjs",
+    "plan:check": "node scripts/plan-check.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.80.0",
