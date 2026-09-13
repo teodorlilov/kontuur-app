@@ -9,9 +9,16 @@
 --    arrive together or not at all, and a counter never goes negative (`refund_usage` already
 --    clamps at zero; this makes the invariant the table's, not the function's).
 --
+-- 3. A fourth plan value, 'house': the company's own and partner workspaces — no Stripe row, no
+--    brand cap, no allowance, never locks (src/lib/billing/plans.ts). Set by hand, never from the
+--    app: `update public.agencies set plan = 'house' where id = '<agency id>'`.
+--
 -- Apply after 20260852, in the dashboard SQL editor, before the Stripe webhook (step 9) exists.
+-- Re-runnable: every policy and constraint is dropped before it is created, because the file grew
+-- (item 3) after its first run had already committed and a second run hit "already exists".
 
 drop policy if exists "ai_usage_daily_agency_isolation" on public.ai_usage_daily;
+drop policy if exists "ai_usage_daily_admin_read" on public.ai_usage_daily;
 create policy "ai_usage_daily_admin_read" on public.ai_usage_daily
   for select to public
   using (
@@ -27,6 +34,7 @@ grant select (
 ) on public.ai_usage_daily to authenticated;
 
 drop policy if exists "billing_events_agency_isolation" on public.billing_events;
+drop policy if exists "billing_events_admin_read" on public.billing_events;
 create policy "billing_events_admin_read" on public.billing_events
   for select to public
   using (
@@ -35,10 +43,16 @@ create policy "billing_events_admin_read" on public.billing_events
     )
   );
 
+alter table public.agencies drop constraint if exists agencies_plan_check;
+alter table public.agencies
+  add constraint agencies_plan_check check (plan in ('trial', 'starter', 'agency', 'house'));
+
+alter table public.agencies drop constraint if exists agencies_subscription_pair_check;
 alter table public.agencies
   add constraint agencies_subscription_pair_check
   check ((stripe_subscription_id is null) = (subscription_status is null));
 
+alter table public.usage_counters drop constraint if exists usage_counters_count_check;
 alter table public.usage_counters
   add constraint usage_counters_count_check check (count >= 0);
 

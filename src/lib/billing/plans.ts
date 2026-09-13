@@ -9,10 +9,16 @@
  * `minimumBrands`), 1 on `starter`, and the trial cap on `trial`. The trial numbers are for the
  * WHOLE fourteen days, not per month — the trial has one period, 'trial'.
  *
- * 'agency' sets `maxBrands` to `Infinity`: the count is what the customer pays for.
+ * 'agency' sets `maxBrands` to `Infinity`: the count is what the customer pays for. 'house' is the
+ * company's own and partner workspaces: no Stripe row, no cap, no allowance, never locks — set by
+ * hand in the database, never from the app. Its usage is still counted, against a ceiling the
+ * counter cannot reach, so the telemetry and the meters stay honest.
  */
 
-export type PlanId = 'trial' | 'starter' | 'agency'
+export type PlanId = 'trial' | 'starter' | 'agency' | 'house'
+
+/** A quota the compare-and-set cannot reach — the old image counter's "no ceiling" figure. */
+export const UNMETERED = 2_000_000_000
 
 export type AllowanceKind = 'draft' | 'image' | 'rewrite'
 
@@ -27,7 +33,7 @@ interface PaidPlan {
   perBrand: Allowance
 }
 
-export const PLANS: Record<Exclude<PlanId, 'trial'>, PaidPlan> = {
+export const PLANS: Record<Exclude<PlanId, 'trial' | 'house'>, PaidPlan> = {
   starter: {
     priceCents: 2900,
     minimumBrands: 1,
@@ -56,4 +62,5 @@ export const PLAN_LABELS: Record<PlanId, string> = {
   trial: 'Trial',
   starter: 'Starter',
   agency: 'Agency',
+  house: 'Internal',
 }

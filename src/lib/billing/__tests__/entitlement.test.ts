@@ -139,4 +139,14 @@ describe('entitlementFor — paid', () => {
   it('cancel at period end stays active until Stripe ends the subscription', () => {
     expect(entitlementFor(paid({ cancel_at_period_end: true }), NOW).state).toBe('active')
   })
+
+  it("a 'house' workspace is always active, uncapped and unmetered, with no Stripe row", () => {
+    const e = entitlementFor(row({ plan: 'house', trial_ends_at: daysFromNow(-90) }), NOW)
+    expect(e.state).toBe('active')
+    expect([e.canSpend, e.canPublish, e.canCreate]).toEqual([true, true, true])
+    expect(e.brandsUnlimited).toBe(true)
+    expect(e.limits.draft).toBeGreaterThan(1_000_000)
+    expect(e.periodKey).toBe('2026-09')
+    expect(e.resetsOn).toBeNull()
+  })
 })

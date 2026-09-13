@@ -5,6 +5,7 @@ import {
   PLANS,
   TRIAL_BRANDS,
   TRIAL_PER_BRAND,
+  UNMETERED,
   type Allowance,
   type AllowanceKind,
   type PlanId,
@@ -26,6 +27,7 @@ import {
  *                not stop a paying agency's autopilot; the grace counts from `past_due_since`,
  *                not from `current_period_end`, which Stripe advances on the renewal invoice;
  *   locked       everything else: read-only.
+ * A 'house' workspace (plans.ts) is always `active` with an unmetered allowance and no cap.
  *
  * `periodKey` is the usage bucket: 'trial' before any paid period, else the ISO date the Stripe
  * period started, so a customer who subscribes on the 20th does not get two allowances for one
@@ -53,7 +55,7 @@ export interface Entitlement {
 }
 
 function isPlanId(value: string): value is PlanId {
-  return value === 'trial' || value === 'starter' || value === 'agency'
+  return value === 'trial' || value === 'starter' || value === 'agency' || value === 'house'
 }
 
 function zeroAllowance(): Allowance {
@@ -130,6 +132,23 @@ export function entitlementFor(row: AgencyBillingColumns, now: Date): Entitlemen
       periodKey: 'trial',
       trialEndsAt,
       resetsOn: trialEndsAt,
+    }
+  }
+
+  if (plan === 'house') {
+    return {
+      state: 'active',
+      plan,
+      mode,
+      canSpend: true,
+      canPublish: true,
+      canCreate: true,
+      brands: Infinity,
+      brandsUnlimited: true,
+      limits: { draft: UNMETERED, image: UNMETERED, rewrite: UNMETERED },
+      periodKey: now.toISOString().slice(0, 7),
+      trialEndsAt: null,
+      resetsOn: null,
     }
   }
 

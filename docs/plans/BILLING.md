@@ -45,6 +45,7 @@ Written against files opened in this session; see the verified table at the end.
 | Plan | Price (net) | Brands | Per brand per period, pooled |
 |---|---|---|---|
 | trial (14 days, no card) | — | 3 in agency mode, 1 in solo | 20 AI drafts · 50 AI images · 15 rewrites, for the whole trial |
+| house (the company's own and partner workspaces; set by hand, never from the app) | — | no cap | unmetered — counted, never refused; never locks |
 | starter | €29 | 1 | 40 · 120 · 30 |
 | agency | €19 per brand, minimum 3 (€57) | any | 40 · 120 · 30 per paid brand |
 

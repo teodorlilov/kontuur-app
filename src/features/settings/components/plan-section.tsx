@@ -3,10 +3,10 @@
 import { FormSection } from '@/components/ui/form'
 import { StatusPill, type PillTone } from '@/components/ui/status-pill'
 import { cn } from '@/utils/cn'
-import { formatLongDate } from '@/utils/format'
+import { capitalize, formatLongDate } from '@/utils/format'
 import type { Entitlement, EntitlementState } from '@/lib/billing/entitlement'
 import { ALLOWANCE_NOUNS } from '@/lib/billing/copy'
-import { PLAN_LABELS, type Allowance, type AllowanceKind } from '@/lib/billing/plans'
+import { PLAN_LABELS, UNMETERED, type Allowance, type AllowanceKind } from '@/lib/billing/plans'
 
 interface PlanSectionProps {
   entitlement: Entitlement
@@ -80,10 +80,14 @@ export function PlanSection({ entitlement, usage, brandCount }: PlanSectionProps
         </PlanRow>
 
         {METERS.map((kind, index) => (
-          <PlanRow key={kind} label={ALLOWANCE_NOUNS[kind]} isLast={index === METERS.length - 1}>
+          <PlanRow
+            key={kind}
+            label={capitalize(ALLOWANCE_NOUNS[kind])}
+            isLast={index === METERS.length - 1}
+          >
             <Meter
               used={usage[kind]}
-              limit={entitlement.limits[kind]}
+              limit={entitlement.limits[kind] >= UNMETERED ? null : entitlement.limits[kind]}
               noun={ALLOWANCE_NOUNS[kind]}
             />
           </PlanRow>
