@@ -182,7 +182,13 @@ describe('createClient', () => {
     })
     mocks.provisionClient.mockResolvedValue({ ok: true, clientId: CLIENT_ID })
     requireEntitledAction.mockResolvedValue(null)
-    getCachedEntitlement.mockResolvedValue({ plan: 'trial', brands: 3, brandsUnlimited: false })
+    getCachedEntitlement.mockResolvedValue({
+      plan: 'trial',
+      mode: 'agency',
+      canCreate: true,
+      brands: 3,
+      brandsUnlimited: false,
+    })
     countClientsByAgency.mockResolvedValue(0)
   })
 

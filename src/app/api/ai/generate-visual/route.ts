@@ -2,8 +2,8 @@ import { NextResponse } from 'next/server'
 import { resolveAuth } from '@/lib/auth/resolve-auth'
 import { visualsRateLimitResponse } from '@/lib/auth/rate-limit'
 import { requireEntitledRoute } from '@/lib/billing/require-entitled'
-import { runAsSpender } from '@/lib/billing/spend-context'
-import { allowanceResponse } from '@/lib/billing/usage'
+import { runAsSpender, type Spender } from '@/lib/billing/spend-context'
+import { allowanceResponse, releaseCharged } from '@/lib/billing/usage'
 import { fetchClientById } from '@/lib/queries/db'
 import {
   uploadDraftVisual,
@@ -19,7 +19,11 @@ import { deleteDraftVisualsSchema, generateDraftVisualSchema } from '@/features/
 // One gpt-image-2 generation (~52s) + download + storage upload per request.
 export const maxDuration = 120
 
-/** Generate an AI visual for an in-memory wizard draft; the image is stored, the DB row waits for approve. */
+/**
+ * Generate an AI visual for an in-memory wizard draft; the image is stored, the DB row waits for
+ * approve. A picture that never reached storage is not charged: the failure path releases what
+ * the fal call reserved.
+ */
 export async function POST(request: Request) {
   const auth = await resolveAuth()
   if (!auth.ok) return auth.response
@@ -51,58 +55,57 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'No slide copy to generate from' }, { status: 400 })
   }
 
+  const spender: Spender = { agencyId: auth.agencyId, clientId: body.clientId, flow: 'editor' }
   try {
-    return await runAsSpender(
-      { agencyId: auth.agencyId, clientId: body.clientId, flow: 'editor' },
-      async () => {
-        // ONE read of the client's kit for the whole generation — the scheme and the prompt both need it.
-        const identity = await fetchIdentityForGeneration(body.clientId)
+    return await runAsSpender(spender, async () => {
+      // ONE read of the client's kit for the whole generation — the scheme and the prompt both need it.
+      const identity = await fetchIdentityForGeneration(body.clientId)
 
-        // How this draft gets its colours, in three cases:
-        //
-        //  - FIRST generation of a batch — `runBase` places the run, `runIndex` walks along it. The base
-        //    must be shared by the whole batch: passing the per-draft id instead left the offset doing
-        //    nothing measurable (34.1% of three-draft runs repeated a scheme, against 34.0% with no
-        //    offset at all), because shifting one independent hash by a constant leaves it independent.
-        //  - REGENERATE — the surface sends the pair back and it short-circuits the pick, the draft-side
-        //    equivalent of reading `posts.visual_ground`. Re-deriving would land on offset 0 while the
-        //    first generation used the run offset, recolouring one slide away from its own siblings.
-        //  - A LONE retry after a failure — no batch to spread against, so the draft id places it.
-        //
-        // The answer rides back on the response so approve can carry it onto the post.
-        const scheme = await resolveScheme({
-          clientId: body.clientId,
-          identity,
-          base: body.runBase ?? body.draftId,
-          ...(body.scheme ? { stored: body.scheme } : {}),
-          offset: body.runIndex ?? 0,
-        })
+      // How this draft gets its colours, in three cases:
+      //
+      //  - FIRST generation of a batch — `runBase` places the run, `runIndex` walks along it. The base
+      //    must be shared by the whole batch: passing the per-draft id instead left the offset doing
+      //    nothing measurable (34.1% of three-draft runs repeated a scheme, against 34.0% with no
+      //    offset at all), because shifting one independent hash by a constant leaves it independent.
+      //  - REGENERATE — the surface sends the pair back and it short-circuits the pick, the draft-side
+      //    equivalent of reading `posts.visual_ground`. Re-deriving would land on offset 0 while the
+      //    first generation used the run offset, recolouring one slide away from its own siblings.
+      //  - A LONE retry after a failure — no batch to spread against, so the draft id places it.
+      //
+      // The answer rides back on the response so approve can carry it onto the post.
+      const scheme = await resolveScheme({
+        clientId: body.clientId,
+        identity,
+        base: body.runBase ?? body.draftId,
+        ...(body.scheme ? { stored: body.scheme } : {}),
+        offset: body.runIndex ?? 0,
+      })
 
-        const visual = await generateVisual({
-          identity,
-          textBlock,
-          scheme,
-          variation: {
-            subject: body.draftId,
-            position: body.position,
-            // The same count the persisted path and the cron use. `parseSlides` filters an array as
-            // happily as it parses a blob, so an already-parsed `slides` goes straight in.
-            total: totalVisualSlots({ post_type: body.postType, slides_json: body.slides }),
-            nonce: body.previousStoragePath ?? '',
-          },
-        })
-        const { publicUrl, storagePath } = await uploadDraftVisual(
-          visual.buffer,
-          body.clientId,
-          body.draftId,
-          body.position
-        )
-        return NextResponse.json({ publicUrl, storagePath, scheme })
-      }
-    )
+      const visual = await generateVisual({
+        identity,
+        textBlock,
+        scheme,
+        variation: {
+          subject: body.draftId,
+          position: body.position,
+          // The same count the persisted path and the cron use. `parseSlides` filters an array as
+          // happily as it parses a blob, so an already-parsed `slides` goes straight in.
+          total: totalVisualSlots({ post_type: body.postType, slides_json: body.slides }),
+          nonce: body.previousStoragePath ?? '',
+        },
+      })
+      const { publicUrl, storagePath } = await uploadDraftVisual(
+        visual.buffer,
+        body.clientId,
+        body.draftId,
+        body.position
+      )
+      return NextResponse.json({ publicUrl, storagePath, scheme })
+    })
   } catch (err) {
     const refusal = allowanceResponse(err)
     if (refusal) return refusal
+    await releaseCharged(spender)
     console.error('[generate-visual] draft generation failed:', err)
     const message = err instanceof Error ? err.message : 'Visual generation failed'
     return NextResponse.json({ error: message }, { status: 502 })

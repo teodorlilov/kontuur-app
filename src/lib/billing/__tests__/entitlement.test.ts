@@ -13,6 +13,7 @@ function row(overrides: Partial<AgencyBillingColumns> = {}): AgencyBillingColumn
   return {
     plan: 'trial',
     mode: 'agency',
+    timezone: 'Europe/Sofia',
     stripe_customer_id: null,
     stripe_subscription_id: null,
     subscription_status: null,
@@ -48,7 +49,10 @@ describe('entitlementFor — the trial', () => {
     expect(e.brands).toBe(TRIAL_BRANDS.agency)
     expect(e.limits.draft).toBe(TRIAL_PER_BRAND.draft * TRIAL_BRANDS.agency)
     expect(e.periodKey).toBe('trial')
-    expect(e.resetsOn?.toISOString()).toBe(daysFromNow(7))
+    expect(e.trialEndsAt?.toISOString()).toBe(daysFromNow(7))
+    expect(e.resetsOn).toBeNull()
+    expect(e.graceEndsAt).toBeNull()
+    expect(e.timezone).toBe('Europe/Sofia')
   })
 
   it('a solo trial is one brand with one brand of allowance', () => {
@@ -58,11 +62,12 @@ describe('entitlementFor — the trial', () => {
     expect(e.limits.image).toBe(TRIAL_PER_BRAND.image)
   })
 
-  it('an ended trial inside the grace publishes but spends nothing', () => {
+  it('an ended trial inside the grace publishes but spends nothing, until the grace ends', () => {
     const e = entitlementFor(row({ trial_ends_at: daysFromNow(-2) }), NOW)
     expect(e.state).toBe('trial_grace')
     expect([e.canSpend, e.canPublish, e.canCreate]).toEqual([false, true, false])
     expect(e.limits).toEqual({ draft: 0, image: 0, rewrite: 0 })
+    expect(e.graceEndsAt?.toISOString()).toBe(daysFromNow(GRACE_DAYS - 2))
   })
 
   it('an ended trial past the grace is locked', () => {
@@ -118,6 +123,8 @@ describe('entitlementFor — paid', () => {
     )
     expect(inside.state).toBe('past_due')
     expect(inside.canSpend).toBe(true)
+    expect(inside.graceEndsAt?.toISOString()).toBe(daysFromNow(GRACE_DAYS - 3))
+    expect(inside.periodKey).toBe('2026-09-01')
     const beyond = entitlementFor(
       paid({ subscription_status: 'past_due', past_due_since: daysFromNow(-(GRACE_DAYS + 1)) }),
       NOW
@@ -127,6 +134,12 @@ describe('entitlementFor — paid', () => {
 
   it('past_due with no recorded start locks rather than granting an endless grace', () => {
     expect(entitlementFor(paid({ subscription_status: 'past_due' }), NOW).state).toBe('locked')
+  })
+
+  it('a paid row with no period start is locked rather than let into the trial bucket', () => {
+    const e = entitlementFor(paid({ current_period_start: null }), NOW)
+    expect(e.state).toBe('locked')
+    expect(e.limits.draft).toBe(0)
   })
 
   it.each(['canceled', 'unpaid', 'paused', 'incomplete', 'incomplete_expired'])(

@@ -327,10 +327,7 @@ export type EnrichedNotification = Pick<
  */
 export type TeamMember = UserColumns
 
-/**
- * Derived, not restated. The hand-written version typed `trial_ends_at` as non-null and carried
- * `plan_client_limit`, which migration 20260852 dropped; `fetchAgencyById` applied it by cast.
- */
+/** The settings page's agency row — derived from the projection it selects, never restated. */
 export type AgencyInfo = AgencySettingsColumns
 
 export type SettingsTab = 'team' | 'account' | 'integrations' | 'profile'

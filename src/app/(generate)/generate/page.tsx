@@ -1,7 +1,9 @@
 import { notFound, redirect } from 'next/navigation'
 import { requireSessionUser } from '@/lib/auth/session'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
-import { getCachedAgency, getCachedAgencyClients } from '@/lib/queries/cache'
+import { getCachedAgency, getCachedAgencyClients, getCachedEntitlement } from '@/lib/queries/cache'
+import { readUsage } from '@/lib/billing/usage'
+import { meteredLimit } from '@/lib/billing/plans'
 import {
   fetchClientSourceSummaries,
   fetchConnectionsByClient,
@@ -26,6 +28,10 @@ interface PageProps {
  * solo workspace with no client that deep-links here is sent to /clients/new rather than shown the
  * agency-worded empty state. The client list it reads is fresh because `createClient`
  * (features/clients/actions/client-actions.ts) busts its tag with `{ expire: 0 }`.
+ *
+ * It also reads what this run may still draw on, so the stepper and the Generate button can say
+ * so before anyone presses it — the server reserves the same number, so the two never disagree.
+ * An unmetered workspace passes null: no cap to show.
  */
 export default async function GeneratePage({ searchParams }: PageProps) {
   // The params do not depend on the session, and the idea does not depend on the client list, so
@@ -37,13 +43,17 @@ export default async function GeneratePage({ searchParams }: PageProps) {
   // The agency's zone rides along in the same wave. This route group has no
   // ShellProvider, so `useShell` is unavailable below and the scheduling dialog was
   // resolving wall-clock times against the operator's browser instead.
-  const [clients, initialIdea, agency] = await Promise.all([
+  const [clients, initialIdea, agency, entitlement] = await Promise.all([
     getCachedAgencyClients(agencyId),
     ideaId ? fetchIdeaById(ideaId, agencyId) : null,
     getCachedAgency(agencyId),
+    getCachedEntitlement(agencyId),
   ])
+  const usage = await readUsage(agencyId, entitlement.periodKey)
+  const draftLimit = meteredLimit(entitlement.limits.draft)
+  const draftsLeft = draftLimit === null ? null : Math.max(0, draftLimit - usage.draft)
 
-  requireBusinessSetup(agency?.mode, clients.length)
+  requireBusinessSetup(agency?.mode, clients.length, entitlement.canCreate)
 
   // An `?ideaId=` that resolves to nothing used to fall through to `clients[0]`, so a
   // deleted, mistyped or other-agency id silently opened a full batch run for the
@@ -94,7 +104,10 @@ export default async function GeneratePage({ searchParams }: PageProps) {
       timeZone={agency?.timezone ?? 'UTC'}
       initialClients={clients}
       initialClientData={initialClientData}
-      initialTargetPostCount={initialTargetPostCount}
+      initialTargetPostCount={
+        draftsLeft === null ? initialTargetPostCount : Math.min(initialTargetPostCount, draftsLeft)
+      }
+      draftsLeft={draftsLeft}
       initialIdea={initialIdea ?? undefined}
       initialClientId={requestedClientId}
       initialSources={initialSources}

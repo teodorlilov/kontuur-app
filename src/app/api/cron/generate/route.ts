@@ -13,7 +13,6 @@ import {
 } from '@/lib/generation/runs'
 import { writeWeeklyBriefing } from '@/features/dashboard/lib/write-briefing'
 import { runAsSpender } from '@/lib/billing/spend-context'
-import { allowanceUsedUp } from '@/lib/billing/copy'
 import {
   DEFAULT_CAROUSEL_SLIDES,
   MAX_CAROUSEL_SLIDES,
@@ -23,7 +22,7 @@ import {
 } from '@/utils/constants'
 import { clamp } from '@/lib/canvas/clamp'
 import { distillStyleMemo } from '@/ai/learning/distill-style-memo'
-import { fetchScheduleContext, getScheduleDue } from './helpers'
+import { fetchScheduleContext, getScheduleDue, notifyDraftsExhausted } from './helpers'
 import type { PostType } from '@/types/api'
 import type { Theme } from '@/ai/generation/types'
 import { POSTING_SCHEDULE_DUE_COLUMNS } from '@/lib/queries/select-columns'
@@ -44,7 +43,15 @@ const TIME_BUDGET_MS = 240_000
  * writer costs a lookup on every tick and one web-searched model call on the first tick of a new
  * week, and running it after the generation loop would leave that call to be killed by
  * `maxDuration` on the weeks generation spends its whole budget. A failed brief is logged and does
- * not stop generation; the next hourly tick simply tries again.
+ * not stop generation; the next hourly tick simply tries again. It is recorded under a null agency:
+ * it belongs to nobody.
+ *
+ * Billing, per due client: a workspace that cannot spend is dropped before its slot is claimed
+ * (`skipped_unentitled`); a period with fewer drafts left than the schedule asks for gets the batch
+ * that is left, and one bell per period when nothing is; a same-tick race with a wizard run can
+ * still take the last drafts after the budget said yes — a skip, not an error, and not retried
+ * that day, since the allowance resets on its own date. `runId` is held outside each client's try
+ * so an interrupted run is closed and its drafts given back.
  */
 export async function GET(request: NextRequest) {
   const authHeader = request.headers.get('authorization')
@@ -68,7 +75,6 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    // The brief belongs to nobody: recorded under a null agency, never against a customer.
     const brief = await runAsSpender({ agencyId: null, flow: 'brief' }, () =>
       writeWeeklyBriefing(supabase)
     )
@@ -144,27 +150,39 @@ export async function GET(request: NextRequest) {
     .flatMap((schedule) => {
       const clientRow = ctx.clients.get(schedule.client_id)
       if (!clientRow) return []
-      if (!ctx.entitlements.has(clientRow.agency_id)) {
-        results.skipped_unentitled.push(clientRow.id)
-        return []
-      }
       const agencyTimezone = ctx.agencyTimezones.get(clientRow.agency_id) ?? 'UTC'
       const { due, scheduledAt, localHour } = getScheduleDue(schedule, agencyTimezone)
       if (!due) return []
       if ((lastRunAt.get(clientRow.id) ?? 0) >= scheduledAt.getTime() - GENERATION_GRACE_MS)
         return []
+      if (!ctx.entitlements.has(clientRow.agency_id)) {
+        results.skipped_unentitled.push(clientRow.id)
+        return []
+      }
       return [{ schedule, clientRow, localHour, scheduledAt }]
     })
     .sort((a, b) => b.localHour - a.localHour)
 
   for (const { schedule, clientRow, scheduledAt } of dueClients) {
-    // Declared outside the try so the catch can mark an interrupted run failed and give back
-    // the drafts it reserved.
     let runId: string | null = null
     const { id: clientId, agency_id: agencyId } = clientRow
     const entitlement = ctx.entitlements.get(agencyId)
-    if (!entitlement) continue
-    const total = (schedule as { frequency_value: number }).frequency_value || 1
+    const budget = ctx.draftBudgets.get(agencyId)
+    if (!entitlement || !budget) continue
+    const asked = (schedule as { frequency_value: number }).frequency_value || 1
+    const total = Math.min(asked, Math.max(0, budget.quota - budget.used))
+    if (total === 0) {
+      results.skipped_over_allowance.push(clientId)
+      await notifyDraftsExhausted(supabase, {
+        agencyId,
+        clientId,
+        used: budget.used,
+        quota: budget.quota,
+        needed: asked,
+        entitlement,
+      })
+      continue
+    }
     const reservation = (produced: number) => ({
       agencyId,
       entitlement,
@@ -210,20 +228,14 @@ export async function GET(request: NextRequest) {
         slotKey: scheduledAt,
       })
       if ('refused' in claim) {
-        // Not an error and not retried this day: the allowance resets on its own date. One bell
-        // per period, keyed on the refusal's own sentence.
         results.skipped_over_allowance.push(clientId)
-        await notify(supabase, {
+        await notifyDraftsExhausted(supabase, {
           agencyId,
           clientId,
-          type: 'allowance_reached',
-          message: allowanceUsedUp(
-            'draft',
-            claim.refused.used,
-            claim.refused.quota,
-            claim.refused.resetsOn
-          ),
-          cooldownDays: 31,
+          used: claim.refused.used,
+          quota: claim.refused.quota,
+          needed: claim.refused.needed,
+          entitlement,
         })
         continue
       }
@@ -242,6 +254,7 @@ export async function GET(request: NextRequest) {
         continue
       }
       runId = claim.runId
+      budget.used += total
 
       const researchStartedAt = Date.now()
       const researchTopics = await runAsSpender(spender, () =>

@@ -429,6 +429,9 @@ export async function schedulePost(
  *
  * The ownership check and the Instagram caption check stay: they are this function's own, and the
  * single-post caller gains both by coming through here.
+ *
+ * Scheduling is publishing, deferred, so it carries the publish gate; taking a post OFF the
+ * calendar is not, and a paused workspace must still be able to do that.
  */
 export async function schedulePosts(
   items: Array<{
@@ -456,8 +459,6 @@ export async function schedulePosts(
   if (!auth.ok) return { ok: false, error: auth.error }
   const { supabase, agencyId } = auth
 
-  // Scheduling is publishing, deferred; taking a post OFF the calendar is not, and a paused
-  // workspace must still be able to do that.
   if (items.some((item) => item.scheduledAt !== null)) {
     const refused = await requireEntitledAction(agencyId, 'publish')
     if (refused) return refused

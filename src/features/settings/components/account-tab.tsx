@@ -13,7 +13,8 @@ import { getGroupedTimezones } from '@/lib/timezones'
 import type { AgencyInfo } from '@/types/api'
 
 interface AccountTabProps {
-  agency: AgencyInfo
+  /** The two columns this form edits — the billing columns never reach the browser. */
+  agency: Pick<AgencyInfo, 'name' | 'timezone'>
   currentUserRole: string
 }
 

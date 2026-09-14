@@ -25,6 +25,7 @@ const startExtractionSchema = z.object({
 /**
  * Kick off async brand-visual-identity extraction for an onboarding session. Writes a `pending` row,
  * schedules the capture via `after()`, and returns immediately so the interview never waits.
+ * `after` runs outside the request's async context, so the spender is declared inside it.
  */
 export async function POST(request: Request) {
   const auth = await resolveAuth()
@@ -62,7 +63,6 @@ export async function POST(request: Request) {
 
   after(async () => {
     try {
-      // `after` runs outside the request's async context, so the spender is declared here.
       const result = await runAsSpender({ agencyId, flow: 'onboarding' }, () =>
         extractIdentity({ url: websiteUrl })
       )

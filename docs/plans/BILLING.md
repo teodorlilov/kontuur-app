@@ -45,6 +45,51 @@ Written against files opened in this session; see the verified table at the end.
   `supabase/migrations/20260854_clients_insert_admin_only.sql` with this deploy), `publish` gates
   on publish-now and scheduling (unscheduling stays open); `gate-coverage` pins the allowlist and
   requires any file calling the AI/visuals limiter to be in it.
+- **Step 7 complete** (third batch, uncommitted): `BillingBanner` above every dashboard page for
+  a trial in its last three days (Amber), the grace (Clay, with the day publishing stops) and a
+  failed renewal (Amber) — derived from the agency row the layout already holds, no usage read
+  (the 80 % warning is the bell's job via `consumeUsage`); `BillingWall` replaces every page but
+  Settings when locked; the (generate) and (onboarding) layouts redirect a workspace that may not
+  spend or create to Plan & billing; the wizard's visuals hook treats a 402 as an allowance
+  refusal with the server's sentence instead of the retry toast (the editor and the wizard's
+  stream already surface the 402 body's `error`). The calendar's "paused" pill was dropped: the
+  wall already says it on that page.
+- **Fourth batch, from the founder's first test pass** (uncommitted): a refusal is honest about a
+  partial allowance — `AllowanceError` carries `needed`, so "2 left, this needs 3" replaces "all
+  60 used"; the wizard receives `draftsLeft` from the server render, caps its stepper at it and
+  disables Generate with the sentence and the Plan & billing link, the cron writes a partial batch
+  (`draftBudgets`, one `readUsage` per entitled agency per tick) instead of skipping the client.
+  Only what exists is charged: the rewrite route refunds when the model call throws, and every
+  image boundary (the three visual routes, inpaint, SVG, the visuals cron) counts the images fal
+  actually returned on `spender.charged` and releases them with `releaseCharged` when the request
+  fails after the reservation. "Add client" is disabled where it stands with the reason beside it
+  (`AddClientAction`, over the same `addBrandRefusal` rule `createClient` applies) rather than
+  redirecting a member through the form. Analytics for a workspace that cannot spend shows the
+  non-AI sentence both narratives already fall back to (`buildFallbackNarrative`,
+  `buildFacebookFallbackNarrative`); the wall covers the locked state.
+- **Review batch** (2026-09-14, uncommitted; the by-hand review's 24 findings): the solo
+  redirect loop closed — `requireBusinessSetup` takes `canCreate` and leaves a lapsed workspace
+  on the wall instead of bouncing it to onboarding and back; a refused rewrite now reaches the
+  person in the route's own words (`rewriteDraft` returns the 402 body's sentence); the 80 % bell
+  can no longer undo a reservation (`consumeUsage` catches its own notify); the cron's exhausted
+  bell reads the budget it draws down (`DraftBudget {used, quota}`, one `notifyDraftsExhausted`);
+  the trial no longer promises a reset (`resetsOn` is null on the trial and the sentence ends
+  "Choose a plan to keep generating."); the entitlement carries `timezone` and `graceEndsAt`, so
+  every date it says — the banner, Settings, a 402, a bell — is the customer's day and past_due
+  says by when the card is due; `allows()` and the entitlement derivation each exist once
+  (`getCachedEntitlement` in the layout and the roster); every wizard sentence comes from copy.ts;
+  `ALLOWANCE_WARN_SHARE`, `meteredLimit` and `PLAN_AND_BILLING_PATH` are defined once; the
+  visuals cron budgets the slots still missing and reads usage only for agencies with posts
+  loaded; `paste-from-url` is no longer gated (it spends nothing) and gate-coverage now keys on
+  `runAsSpender` with an exempt list; a paid row with no period start is locked rather than let
+  into the trial bucket; the thing a plan counts is called what the app calls it — "client" (or
+  "business" in solo) on every surface, "brand" only here and in the price table. Cut from step 7,
+  recorded: the "Ends on" label and the cancel banner land with the webhook that sets
+  `cancel_at_period_end` (step 9); the `busy-hint` sentence is not needed — the editor shows the
+  402 body's own sentence through `parseAssetResponse`; the `ShellProvider` hand-off was never
+  needed, the banner and the wall derive from the layout's read. New tests: fal metering,
+  `callAnthropic` fail-closed, `fetchEntitledClients`, the gate pair, the wire caps, the publish
+  scheduler's entitled filter, `PlanSection` per state, `rewriteDraft`, and the loop rule.
 
 ## Placeholders (one constants file, `src/lib/billing/plans.ts` (new))
 
@@ -145,7 +190,7 @@ is composed, never copied. The existing helpers it builds on are named so nothin
 | `src/lib/billing/plans.ts` (new) | the plan table: prices, allowances, caps, minimum quantity | — | entitlement, Settings, checkout, catalogue script |
 | `src/lib/billing/entitlement.ts` (new) | `entitlementFor(row, now)` — the ONLY interpretation of the agencies row | `plans.ts` | everything below; nobody else reads `plan`/`trial_ends_at`/`subscription_status` |
 | `getCachedEntitlement` in `src/lib/queries/cache.ts` (existing file) | the per-request entitlement, derived from `getCachedAgency` — **no second agencies read** | `getCachedAgency`, `entitlementFor` | routes, actions, layouts, pages |
-| `src/lib/billing/entitled-clients.ts` (new) | `fetchEntitledClientIds(admin, need)` — one agencies read + one clients read **per cron tick** | `entitlementFor` | visuals, publish, metrics, comments crons (generate uses its widened `fetchScheduleContext` instead — one read there too) |
+| `src/lib/billing/entitled-clients.ts` (new) | `fetchEntitledClients(admin, need)` → `Map<clientId, { agencyId, entitlement }>` — one agencies read + one clients read **per cron tick** | `entitlementFor` | visuals, publish, metrics, comments crons (generate uses its widened `fetchScheduleContext` instead — one read there too) |
 | `src/lib/billing/spend-context.ts` (new) | `runAsSpender` / `currentSpender` — who is spending, declared once at the boundary | `AsyncLocalStorage` | gated routes, spending action, cron loops |
 | `src/lib/billing/usage.ts` (new) | `consumeUsage` / `refundUsage` / `readUsage`, `AllowanceError`, `allowanceResponse` (the one 402 shape), the one 80 % notification | `consume_usage` RPC, `notify` | `startGenerationRun`, `subscribeFal`, rewrite route, Settings, wizard readout |
 | `src/lib/billing/telemetry.ts` (new) + `ai-prices.ts` | `recordAiUsage` and the one price/rate constant | `add_ai_usage` RPC, `currentSpender` | `callAnthropic`, `subscribeFal`, `queryTavily` |
@@ -202,7 +247,7 @@ Code in the same change:
 - `src/lib/billing/plans.ts` (new): `PLANS` — prices, per-brand allowances, brand caps, `agency` minimum quantity 3, trial allowances keyed on `mode`.
 - `src/lib/billing/entitlement.ts` (new): `entitlementFor(row, now)` → states `trial | trial_grace | active | past_due | locked`; `active` requires `subscription_status='active'` — a Stripe `'trialing'` subscription (an early converter with a deferred `trial_end`) keeps **trial** limits until the first paid invoice lands; `past_due` grace counts from `past_due_since`, not from `current_period_end` (Stripe advances that on the renewal invoice); `periodKey` = `'trial'` before any subscription, else the ISO date of `current_period_start`; limits = per-brand × `max(subscription_quantity, minimum)` on agency, ×1 on starter, trial constants by mode; all zero when the workspace cannot spend.
 - `getCachedEntitlement(agencyId)` beside `getCachedAgency` in `src/lib/queries/cache.ts:41-55` — `entitlementFor(await getCachedAgency(id))`, so it inherits the 60 s `'agencies'` tag; anything that changes the row must `revalidateTag('agencies')` (the settings `PUT` already does at `src/app/api/settings/account/route.ts:59`).
-- `src/lib/billing/entitled-clients.ts` (new): `fetchEntitledClientIds(admin, need)` — one read of every agency's billing columns (the table is tens of rows), `entitlementFor` each, one read of `clients.id` for the entitled agencies → `Set<string>`. Note in its doc: an `.in()` filter carries the ids in the URL; past a few hundred clients this becomes a flag column, not a bigger list.
+- `src/lib/billing/entitled-clients.ts` (new): `fetchEntitledClients(admin, need)` — one read of every agency's billing columns (the table is tens of rows), `entitlementFor` each, one read of `clients.id, agency_id` for the entitled agencies → `Map<clientId, { agencyId, entitlement }>`, so a cron can spend against the right entitlement without a second read. Note in its doc: an `.in()` filter carries the ids in the URL; past a few hundred clients this becomes a flag column, not a bigger list.
 
 → verify: `src/lib/billing/__tests__/entitlement.test.ts` (new) covers every state × need, both modes, the Stripe-`trialing` case, past_due inside/after 7 days, cancel_at_period_end; `entitled-clients` test asserts one `.from('agencies')` and one `.from('clients')` call for a fixture across three agencies.
 
@@ -265,7 +310,7 @@ Design direction: `docs/redesign-mocks/direction-01.html` (paper ground, one for
 - `stripe` added to `package.json`; `src/lib/billing/stripe.ts` (new): the client with a pinned API version. `scripts/stripe-catalogue.ts` (new): idempotent by `lookup_key` — `starter_monthly` €29 per_unit qty 1, `agency_monthly` €19 per_unit with `unit_label 'brand'`, both `tax_code txcd_10103001`, `tax_behavior exclusive`. No metered, annual or add-on prices.
 - `src/app/api/billing/checkout/route.ts` (new): `resolveAuth` + `verifyAdminRole` (`src/lib/auth/helpers.ts:257`); zod body `{ plan }`; solo workspaces may only pass `starter`; `starter` refused while the workspace has more than one brand (the same rule `changePlan` applies); `ensureStripeCustomer` (lazy, one per workspace); `checkout.sessions.create({ mode: 'subscription', client_reference_id: agencyId, line_items: [{ price, quantity: plan === 'agency' ? max(3, brands) : 1 }], subscription_data: { metadata, trial_end: trialEndsAt if ≥ 48 h away }, payment_method_collection: 'always', automatic_tax, tax_id_collection: { enabled: true, required: 'if_supported' }, billing_address_collection: 'required', consent_collection: { terms_of_service: 'required' }, locale: 'auto' })` → 303. **Business-only at launch**: business name and tax ID required at Checkout — the founder's call to confirm; it is one parameter either way. Never provision from the success URL.
 - `src/app/api/billing/portal/route.ts` (new): admin only; portal configured for card, address/tax ID, invoices, cancel at period end; `subscription_update` disabled (plan changes go through `changePlan` so the brand-count rule holds).
-- `src/app/api/billing/webhook/route.ts` (new): `runtime = 'nodejs'`, raw `request.text()` + `stripe-signature` → `constructEvent`; `recordBillingEvent` insert-on-conflict-do-nothing (duplicate → 200); for every `customer.subscription.*` / `invoice.*` event **re-fetch the subscription** (events are unordered) and `applySubscriptionSnapshot` — the ONE billing writer of `agencies` — setting plan (from the price lookup key), `subscription_status`, ids, `subscription_quantity`, `current_period_start/end` (item-level under the pinned version), `cancel_at_period_end`, `past_due_since` (from `invoice.payment_failed`, cleared on `invoice.paid`), `billing_updated_at`; skip an event older than the stored stamp; then `revalidateTag('agencies')` and `revalidateTag(USER_RECORD_TAG)`; 500 on a processing failure so Stripe retries. Add the route to `EXEMPT` in `src/app/api/__tests__/boundary-validation.test.ts:42` with the reason "body proven by Stripe's signature over the raw bytes, then the object is re-fetched".
+- `src/app/api/billing/webhook/route.ts` (new): `runtime = 'nodejs'`, raw `request.text()` + `stripe-signature` → `constructEvent`; `recordBillingEvent` insert-on-conflict-do-nothing (duplicate → 200); for every `customer.subscription.*` / `invoice.*` event **re-fetch the subscription** (events are unordered) and `applySubscriptionSnapshot` — the ONE billing writer of `agencies` — setting plan (from the price lookup key), `subscription_status`, ids, `subscription_quantity`, `current_period_start/end` (item-level under the pinned version) — **written only on `invoice.paid`**, never on a failed renewal: `entitlementFor` keys the usage bucket on them, and a period that moved on the failed invoice would hand the grace days a fresh allowance — `cancel_at_period_end`, `past_due_since` (from `invoice.payment_failed`, cleared on `invoice.paid`), `billing_updated_at`; skip an event older than the stored stamp; then `revalidateTag('agencies')` and `revalidateTag(USER_RECORD_TAG)`; 500 on a processing failure so Stripe retries. Add the route to `EXEMPT` in `src/app/api/__tests__/boundary-validation.test.ts:42` with the reason "body proven by Stripe's signature over the raw bytes, then the object is re-fetched".
 - `src/features/settings/actions/billing-actions.ts` (new): `changePlan(plan)` — brand-count rule, `invoices.createPreview` for the confirm step, `subscriptions.update` with `proration_behavior: 'always_invoice'` so "€X today" is true; `src/lib/billing/quantity-sync.ts` (new): called by `createClient`/`deleteClient` on an active agency subscription (increase with `always_invoice` before provisioning — no Stripe success, no brand; decrease with `'none'`, never below 3; idempotency key includes the client id); the daily reconcile in the billing cron compares `count(clients)` with `max(3, subscription_quantity)` and re-syncs, notifying on repeated drift.
 - Settings wiring: Choose plan → checkout; Change plan → `changePlan` with the preview; Manage billing → portal; the settings return page reads `fetchAgencyById` (uncached) and polls up to ~10 s for the webhook's snapshot.
 - `docs/OPERATIONS.md` Account rows: `ensureStripeCustomer`, `applySubscriptionSnapshot` (`src/lib/billing/subscription-store.ts` (new)), `recordBillingEvent` / `finishBillingEvent` (`src/lib/billing/billing-events.ts` (new)); `scripts/table-writers.json` accordingly.
@@ -309,7 +354,7 @@ Design direction: `docs/redesign-mocks/direction-01.html` (paper ground, one for
 | `generatePostVisual` | `src/lib/visual/generate-post-visual.ts:26` | yes | typed refusal `not_found`/`no_copy`; throws otherwise | — | shared by the visuals route and the visuals cron |
 | `pickVisualBacklog`, `totalVisualSlots`, `BacklogPost` | `src/lib/visual/visual-backlog.ts:14-49` | yes | pure | — | |
 | `GET` (generate cron) | `src/app/api/cron/generate/route.ts:40` | yes | 401 without bearer; 500 on the two roster queries | — | `TIME_BUDGET_MS` (:28) private; `dueClients` flatMap at :127; `startGenerationRun` at :172; slide count at :163 |
-| `fetchScheduleContext`, `getScheduleDue` | `src/app/api/cron/generate/helpers.ts:28-98` | yes | throws on any context query error | — | agencies select is `id, timezone, mode` (:58-59) |
+| `fetchScheduleContext`, `getScheduleDue` | `src/app/api/cron/generate/helpers.ts:51,158` | yes | throws on any context query error | — | agencies select is `id, timezone, mode` (:58-59) |
 | `GET` (visuals cron) | `src/app/api/cron/visuals/route.ts:43` | yes | 401; 500 on the backlog query | — | `MAX_IMAGES_PER_RUN` (:16), `MAX_VISUAL_ATTEMPTS` (:17), `BACKLOG_FETCH_LIMIT` (:35) private; `countAttempt` (:115) before `generatePostVisual` (:154) |
 | `publishDuePosts` | `src/features/publishing/lib/scheduler.ts:93` | yes | throws on the due query error | — | `BATCH_LIMIT` (:67) private; `posts!inner` embed filtered by `.lte('posts.scheduled_at')` at :171; per-(client, platform) loop at :242 |
 | `syncRoster`, `MetricsSyncOutcome` | `src/features/analytics/lib/shared/sync-shared.ts:22-100` | yes | throws on the roster query error | — | serves Instagram and Facebook metrics; `outcome.skipped` exists |

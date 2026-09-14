@@ -5,6 +5,8 @@ import { cn } from '@/utils/cn'
 import { Button } from '@/components/ui/button'
 import { ContentMixList } from './content-mix-list'
 import type { RunPlan } from '@/features/generate/lib/run-plan'
+import { draftsLeft as draftsLeftLine } from '@/lib/billing/copy'
+import { PLAN_AND_BILLING_PATH } from '@/utils/constants'
 
 interface RunPanelProps {
   runPlan: RunPlan
@@ -12,6 +14,8 @@ interface RunPanelProps {
   postCount: number
   /** Priority briefs riding on top; the server writes postCount + briefCount. */
   briefCount: number
+  /** AI drafts left this period, or null when unmetered — the run cannot exceed it. */
+  draftsLeft: number | null
   metaLine: string
   clientId: string
   generating: boolean
@@ -22,11 +26,16 @@ interface RunPanelProps {
  * The dark capsule answering "what will this run produce". On Pine Deep the
  * lime relationship inverts and New Growth becomes the figure — the count and
  * the Generate button are the field band's one lime answer: the commitment.
+ *
+ * It refuses in words before the server does: when the run wants more drafts than the period
+ * has left, the button is disabled and the footnote says the sentence the reservation would
+ * answer with, with the way to the plan beside it.
  */
 export function RunPanel({
   runPlan,
   postCount,
   briefCount,
+  draftsLeft,
   metaLine,
   clientId,
   generating,
@@ -35,6 +44,8 @@ export function RunPanel({
   const { publishState, webResearchActive, starvedPillars, webOnlyPillars } = runPlan
   // The headline promises what actually lands — briefs write extra posts.
   const totalCount = postCount + briefCount
+  const refusal =
+    draftsLeft !== null && totalCount > draftsLeft ? draftsLeftLine(draftsLeft, totalCount) : null
 
   return (
     <aside className="surface-dark-capsule flex flex-col overflow-hidden rounded-card bg-forest-deep text-ink-inv shadow-dark lg:sticky lg:top-6">
@@ -116,13 +127,25 @@ export function RunPanel({
           onClick={onGenerate}
           // 0 is expressible (briefs-only runs) but not runnable: a zero-post run
           // opens a generation_runs row just to fail with a misleading error.
-          disabled={totalCount === 0}
+          disabled={totalCount === 0 || refusal !== null}
           className="w-full bg-accent text-forest-deep hover:bg-accent-deep hover:shadow-none"
         >
           Generate {totalCount} post{totalCount === 1 ? '' : 's'}
         </Button>
         <p className="mt-3 text-center text-micro text-ink-inv/55">
-          Nothing publishes from here. You review every draft first.
+          {refusal ? (
+            <>
+              {refusal}{' '}
+              <Link
+                href={PLAN_AND_BILLING_PATH}
+                className="text-accent underline decoration-accent/40 underline-offset-2"
+              >
+                Plan &amp; billing
+              </Link>
+            </>
+          ) : (
+            'Nothing publishes from here. You review every draft first.'
+          )}
         </p>
       </div>
     </aside>

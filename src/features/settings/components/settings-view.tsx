@@ -9,10 +9,9 @@ import { TabRail, type TabItem } from '@/components/layout/page-header/tab-rail'
 import { PAGE_SHELL } from '@/components/layout/page-header/shared'
 import { useTabParam } from '@/components/layout/page-header/use-tab-param'
 import { cn } from '@/utils/cn'
-import { PLAN_LABELS, type PlanId } from '@/lib/billing/plans'
 import { clearQueryParams } from '@/utils/url'
 import type { ReactNode } from 'react'
-import type { AgencyInfo, SettingsTab } from '@/types/api'
+import type { SettingsTab } from '@/types/api'
 
 const TAB_LABELS: ReadonlyArray<{ id: SettingsTab; label: string }> = [
   { id: 'team', label: 'Team' },
@@ -39,7 +38,9 @@ const PANEL_COPY: Record<SettingsTab, { title: string; description: string }> = 
 }
 
 interface SettingsViewProps {
-  agency: AgencyInfo
+  agencyName: string
+  /** The plan's human label, read off the entitlement by the server page — never the raw column. */
+  planLabel: string
   /** For the header meta line only — the member list itself lives inside the Team panel. */
   memberCount: number
   agencyMode: 'agency' | 'solo'
@@ -56,7 +57,8 @@ interface SettingsViewProps {
 
 /** Settings page orchestrator. Owns the header: the tab rail is its state. */
 export function SettingsView({
-  agency,
+  agencyName,
+  planLabel,
   memberCount,
   agencyMode,
   panels,
@@ -101,12 +103,11 @@ export function SettingsView({
         meta={
           <HeaderMeta
             parts={[
-              agency.name,
+              agencyName,
               agencyMode === 'solo'
                 ? 'Solo workspace'
                 : `${memberCount} member${memberCount === 1 ? '' : 's'}`,
-              // WHY as: `plan` is a CHECK-constrained text column the generated type cannot narrow.
-              `${PLAN_LABELS[agency.plan as PlanId] ?? agency.plan} plan`,
+              `${planLabel} plan`,
             ]}
           />
         }

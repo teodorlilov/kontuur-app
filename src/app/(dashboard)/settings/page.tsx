@@ -3,6 +3,7 @@ import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { requireSessionUser } from '@/lib/auth/session'
 import { countClientsByAgency, fetchAgencyById, fetchTeamMembersByAgency } from '@/lib/queries/db'
 import { entitlementFor } from '@/lib/billing/entitlement'
+import { PLAN_LABELS } from '@/lib/billing/plans'
 import { readUsage } from '@/lib/billing/usage'
 import { fetchCanvaTeamStatus } from '@/features/settings/lib/canva-team'
 import { SettingsView } from '@/features/settings/components/settings-view'
@@ -13,12 +14,16 @@ import { ProfileRail, ProfileTab } from '@/features/settings/components/profile-
 import { TeamRail, TeamTab } from '@/features/settings/components/team-tab'
 import { SIGN_IN_PATH } from '@/utils/constants'
 
+/**
+ * One uncached agency read: this page follows the account PUT and the Checkout return, so it
+ * must never show a stale row — and the entitlement is derived from that same read, the one
+ * place a page derives it itself rather than through `getCachedEntitlement`. The client
+ * components below receive only the fields they edit or show; the billing columns stay here.
+ */
 export default async function SettingsPage() {
   const { userId, agencyId, role } = await requireSessionUser()
   const supabase = await createServerSupabaseClient()
 
-  // One uncached agency read: this page follows the account PUT and the Checkout return, so it
-  // must never show a stale row — and the entitlement is derived from the same read.
   const [agency, members, clientCount, canvaTeam] = await Promise.all([
     fetchAgencyById(supabase, agencyId),
     fetchTeamMembersByAgency(agencyId),
@@ -33,6 +38,7 @@ export default async function SettingsPage() {
   const entitlement = entitlementFor(agency, new Date())
   const usage = await readUsage(agencyId, entitlement.periodKey)
   const agencyMode = entitlement.mode
+  const account = { name: agency.name, timezone: agency.timezone }
 
   const isAdmin = role === 'admin'
 
@@ -45,7 +51,8 @@ export default async function SettingsPage() {
    */
   return (
     <SettingsView
-      agency={agency}
+      agencyName={agency.name}
+      planLabel={PLAN_LABELS[entitlement.plan]}
       memberCount={members.length}
       agencyMode={agencyMode}
       panels={{
@@ -59,7 +66,7 @@ export default async function SettingsPage() {
         ),
         account: (
           <>
-            <AccountTab agency={agency} currentUserRole={role} />
+            <AccountTab agency={account} currentUserRole={role} />
             <PlanSection entitlement={entitlement} usage={usage} brandCount={clientCount} />
           </>
         ),

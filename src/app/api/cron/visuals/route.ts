@@ -4,9 +4,9 @@ import { createSemaphore } from '@/lib/concurrency'
 import { fetchImagesByPost } from '@/lib/posts/fetch-post-images'
 import { generatePostVisual } from '@/lib/visual/generate-post-visual'
 import { fetchEntitledClients } from '@/lib/billing/entitled-clients'
-import { runAsSpender } from '@/lib/billing/spend-context'
-import { AllowanceError, readUsage } from '@/lib/billing/usage'
-import { pickVisualBacklog, totalVisualSlots, type BacklogPost } from '@/lib/visual/visual-backlog'
+import { runAsSpender, type Spender } from '@/lib/billing/spend-context'
+import { AllowanceError, readUsage, releaseCharged } from '@/lib/billing/usage'
+import { missingPositions, pickVisualBacklog, type BacklogPost } from '@/lib/visual/visual-backlog'
 import { VISUAL_BACKLOG_POST_COLUMNS } from '@/lib/queries/select-columns'
 import { MS_PER_HOUR, QUALITY_FLOOR } from '@/utils/constants'
 
@@ -42,6 +42,14 @@ const BACKLOG_FETCH_LIMIT = 100
  * queue as finished creatives. Runs after the generate cron; quality-gated so
  * likely-discards get no art spend. Text composition stays browser-side —
  * the queue bakes copy onto these clean images on first open.
+ *
+ * Billing: entitled clients are filtered in the query, ahead of the LIMIT, so a paused
+ * workspace's posts never occupy the fetch window or an image slot a paying one needs. A post is
+ * then painted whole or not at all — it needs as many image credits as it has slots still
+ * missing, out of its agency's pool this tick — and one usage read per agency with posts loaded
+ * keeps those refusals off the attempt count; the atomic counter in `subscribeFal` is the
+ * backstop for a race with a wizard user in the same minute. A picture that never reached storage
+ * is not charged, though the attempt still counts.
  */
 export async function GET(request: NextRequest) {
   const authHeader = request.headers.get('authorization')
@@ -62,8 +70,6 @@ export async function GET(request: NextRequest) {
   // milliseconds apart — a post sitting exactly on the boundary could pass SQL and fail JS.
   const now = new Date()
   const retryCutoff = new Date(now.getTime() - RETRY_SPACING_MS).toISOString()
-  // Entitled clients first, so a paused workspace's posts never occupy the fetch window or an
-  // image slot a paying one needs — the filter sits in the query, ahead of the LIMIT.
   const entitled = await fetchEntitledClients(admin, 'spend')
   if (entitled.size === 0) {
     return NextResponse.json({
@@ -99,23 +105,21 @@ export async function GET(request: NextRequest) {
   }
 
   const loaded = (rows ?? []) as BacklogPost[]
-  // A post is painted whole or not at all: it needs as many image credits as it has slots left in
-  // its agency's pool this tick. The atomic counter in subscribeFal is the backstop for a race
-  // with a wizard user in the same minute; this pre-read is what keeps refusals off the attempt
-  // count in the ordinary case.
+  const imagesByPost = await fetchImagesByPost(loaded.map((p) => p.id))
   const remaining = new Map<string, number>()
-  for (const { agencyId, entitlement } of entitled.values()) {
-    if (remaining.has(agencyId)) continue
-    const used = await readUsage(agencyId, entitlement.periodKey)
-    remaining.set(agencyId, entitlement.limits.image - used.image)
+  for (const post of loaded) {
+    const owner = entitled.get(post.client_id)
+    if (!owner || remaining.has(owner.agencyId)) continue
+    const used = await readUsage(owner.agencyId, owner.entitlement.periodKey)
+    remaining.set(owner.agencyId, owner.entitlement.limits.image - used.image)
   }
   let skippedAllowance = 0
   const posts = loaded.filter((post) => {
     const owner = entitled.get(post.client_id)
     if (!owner) return false
-    const need = totalVisualSlots(post)
+    const need = missingPositions(post, imagesByPost.get(post.id) ?? []).length
     const left = remaining.get(owner.agencyId) ?? 0
-    if (left < need) {
+    if (need > left) {
       skippedAllowance++
       return false
     }
@@ -133,7 +137,6 @@ export async function GET(request: NextRequest) {
       duration_ms: Date.now() - startedAt,
     })
   }
-  const imagesByPost = await fetchImagesByPost(posts.map((p) => p.id))
   const jobs = pickVisualBacklog(
     posts,
     imagesByPost,
@@ -194,12 +197,21 @@ export async function GET(request: NextRequest) {
             await countAttempt(job.postId)
           }
           const owner = entitled.get(job.clientId)
-          const result = await runAsSpender(
-            { agencyId: owner?.agencyId ?? null, clientId: job.clientId, flow: 'generation' },
-            () => generatePostVisual({ postId: job.postId, clientId: job.clientId, position })
-          )
-          if (result.ok) generated++
-          else skippedNoCopy++
+          const spender: Spender = {
+            agencyId: owner?.agencyId ?? null,
+            clientId: job.clientId,
+            flow: 'generation',
+          }
+          try {
+            const result = await runAsSpender(spender, () =>
+              generatePostVisual({ postId: job.postId, clientId: job.clientId, position })
+            )
+            if (result.ok) generated++
+            else skippedNoCopy++
+          } catch (err) {
+            if (!(err instanceof AllowanceError)) await releaseCharged(spender)
+            throw err
+          }
         } catch (err) {
           if (err instanceof AllowanceError) {
             skippedAllowance++

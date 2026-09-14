@@ -5,8 +5,14 @@ import { StatusPill, type PillTone } from '@/components/ui/status-pill'
 import { cn } from '@/utils/cn'
 import { capitalize, formatLongDate } from '@/utils/format'
 import type { Entitlement, EntitlementState } from '@/lib/billing/entitlement'
-import { ALLOWANCE_NOUNS } from '@/lib/billing/copy'
-import { PLAN_LABELS, UNMETERED, type Allowance, type AllowanceKind } from '@/lib/billing/plans'
+import { ALLOWANCE_NOUNS, brandsLabel, brandWord } from '@/lib/billing/copy'
+import {
+  ALLOWANCE_WARN_SHARE,
+  meteredLimit,
+  PLAN_LABELS,
+  type Allowance,
+  type AllowanceKind,
+} from '@/lib/billing/plans'
 
 interface PlanSectionProps {
   entitlement: Entitlement
@@ -15,9 +21,6 @@ interface PlanSectionProps {
   /** Real brand count, beside the allowance so the cap is legible. */
   brandCount: number
 }
-
-/** Share of an allowance at which the meter turns Amber. */
-const WARN_AT = 0.8
 
 /**
  * Status in the fixed pairs only: Amber for attention, Clay for the two states that need an
@@ -34,15 +37,23 @@ const STATUS: Record<EntitlementState, { label: string; tone: PillTone }> = {
 
 const METERS: AllowanceKind[] = ['draft', 'image', 'rewrite']
 
+/**
+ * The one date that matters next, by state: when the trial ends, when a failed card pauses the
+ * workspace, when a paid allowance renews. Null when there is nothing to wait for.
+ */
+function nextDate(entitlement: Entitlement): { label: string; at: Date } | null {
+  const { state, trialEndsAt, graceEndsAt, resetsOn } = entitlement
+  if ((state === 'trial' || state === 'trial_grace') && trialEndsAt)
+    return { label: 'Trial ends', at: trialEndsAt }
+  if (state === 'past_due' && graceEndsAt) return { label: 'Update your card by', at: graceEndsAt }
+  if (state === 'active' && resetsOn) return { label: 'Renews on', at: resetsOn }
+  return null
+}
+
 /** Plan, status, the date that matters next, and usage against every allowance. */
 export function PlanSection({ entitlement, usage, brandCount }: PlanSectionProps) {
   const status = STATUS[entitlement.state]
-  const dateLabel =
-    entitlement.state === 'trial' || entitlement.state === 'trial_grace'
-      ? 'Trial ends'
-      : entitlement.state === 'active' || entitlement.state === 'past_due'
-        ? 'Renews on'
-        : null
+  const date = nextDate(entitlement)
 
   return (
     <FormSection
@@ -58,24 +69,24 @@ export function PlanSection({ entitlement, usage, brandCount }: PlanSectionProps
           <StatusPill tone={status.tone}>{status.label}</StatusPill>
         </PlanRow>
 
-        {dateLabel && entitlement.resetsOn && (
-          <PlanRow label={dateLabel}>
+        {date && (
+          <PlanRow label={date.label}>
             <span
               className={cn(
                 'text-body font-medium tabular-nums',
                 entitlement.state === 'trial_grace' ? 'text-danger' : 'text-ink'
               )}
             >
-              {formatLongDate(entitlement.resetsOn)}
+              {formatLongDate(date.at, entitlement.timezone)}
             </span>
           </PlanRow>
         )}
 
-        <PlanRow label="Brands">
+        <PlanRow label={brandsLabel(entitlement.mode)}>
           <Meter
             used={brandCount}
             limit={entitlement.brandsUnlimited ? null : entitlement.brands}
-            noun="brands"
+            noun={brandWord(entitlement.mode, 2)}
           />
         </PlanRow>
 
@@ -87,7 +98,7 @@ export function PlanSection({ entitlement, usage, brandCount }: PlanSectionProps
           >
             <Meter
               used={usage[kind]}
-              limit={entitlement.limits[kind] >= UNMETERED ? null : entitlement.limits[kind]}
+              limit={meteredLimit(entitlement.limits[kind])}
               noun={ALLOWANCE_NOUNS[kind]}
             />
           </PlanRow>
@@ -98,8 +109,9 @@ export function PlanSection({ entitlement, usage, brandCount }: PlanSectionProps
 }
 
 /**
- * Usage against an allowance, with a bar once there is a finite limit. Amber from 80 %, Clay
- * at the cap — the same thresholds the bell notifications fire at.
+ * Usage against an allowance, with a bar once there is a finite limit. Amber from
+ * `ALLOWANCE_WARN_SHARE`, Clay at the cap — the same line the bell fires at. The bar's width is
+ * the one inline style DESIGN.md allows, because it encodes a value.
  */
 function Meter({ used, limit, noun }: { used: number; limit: number | null; noun: string }) {
   if (limit === null) {
@@ -112,7 +124,7 @@ function Meter({ used, limit, noun }: { used: number; limit: number | null; noun
 
   const pct = limit > 0 ? Math.min(100, Math.round((used / limit) * 100)) : 100
   const atLimit = limit === 0 || used >= limit
-  const warning = !atLimit && used >= limit * WARN_AT
+  const warning = !atLimit && used >= limit * ALLOWANCE_WARN_SHARE
 
   return (
     <span className="flex items-center gap-2.5">
@@ -125,7 +137,6 @@ function Meter({ used, limit, noun }: { used: number; limit: number | null; noun
         {used} of {limit}
       </span>
       <span aria-hidden className="block h-1.5 w-24 overflow-hidden rounded-full bg-line">
-        {/* Computed width: the one inline style DESIGN.md allows, because it encodes a value. */}
         <span
           className={cn(
             'block h-full rounded-full',

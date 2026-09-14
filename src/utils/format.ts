@@ -13,11 +13,12 @@ export function formatDate(date: Date): string {
 }
 
 /** Spelled-out date for one-off facts a page states rather than lists — "3 February 2026". */
-export function formatLongDate(date: Date): string {
+export function formatLongDate(date: Date, timeZone?: string): string {
   return date.toLocaleDateString('en-GB', {
     day: 'numeric',
     month: 'long',
     year: 'numeric',
+    ...(timeZone ? { timeZone } : {}),
   })
 }
 

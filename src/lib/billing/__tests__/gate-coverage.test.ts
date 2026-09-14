@@ -11,8 +11,9 @@ const SRC = path.resolve(__dirname, '../../..')
  * that choice is only safe while this list is what "each site must remember" is checked against.
  *
  * Adding a route or action that reaches a provider means adding it here. The second test makes
- * the common case automatic: any file that calls the AI or visuals rate limiter is metering a
- * paid call and must appear in this list.
+ * it automatic: any file under app/ or features/ that declares who is spending (`runAsSpender`)
+ * is about to pay a provider and must appear in this list — or in EXEMPT, with the reason its
+ * gate lives somewhere else.
  */
 const GATED: Record<string, 'spend' | 'publish' | 'create'> = {
   'app/api/ai/analyze-url/route.ts': 'spend',
@@ -23,7 +24,6 @@ const GATED: Record<string, 'spend' | 'publish' | 'create'> = {
   'app/api/ai/generate-visual/route.ts': 'spend',
   'app/api/ai/inpaint/route.ts': 'spend',
   'app/api/ai/isolate-subject/route.ts': 'spend',
-  'app/api/ai/paste-from-url/route.ts': 'spend',
   'app/api/ai/rewrite/route.ts': 'spend',
   'app/api/ai/suggest-sources/route.ts': 'spend',
   'app/api/clients/[id]/brand-profile/reanalyze/route.ts': 'spend',
@@ -46,6 +46,18 @@ function sourceFiles(dir: string, out: string[] = []): string[] {
   return out
 }
 
+/** Spenders whose gate is not a human's: the crons filter by entitlement before they loop, and the two narratives run only after their page or action checked `canSpend`. */
+const EXEMPT: Record<string, string> = {
+  'app/api/cron/generate/route.ts':
+    'a cron — gated per agency by the entitlements its roster read derives (cron-invariants.test.ts)',
+  'app/api/cron/visuals/route.ts':
+    'a cron — gated by fetchEntitledClients ahead of its LIMIT (cron-invariants.test.ts)',
+  'features/analytics/lib/instagram/narrative.ts':
+    'called only after the analytics page or report action checked canSpend; the spender is declared inside the cache callback',
+  'features/analytics/lib/facebook/facebook-narrative.ts':
+    'the Facebook sibling of the Instagram narrative, under the same check',
+}
+
 describe('every human spend, publish and create site carries its gate', () => {
   it('each listed file calls the gate with the need it is listed for', () => {
     const wrong = Object.entries(GATED)
@@ -59,15 +71,15 @@ describe('every human spend, publish and create site carries its gate', () => {
     expect(wrong).toEqual([])
   })
 
-  it('every file that meters a paid call with the AI rate limiter is in the list', () => {
-    const limited = sourceFiles(path.join(SRC, 'app'))
+  it('every file that declares a spender is in the list, or exempt with a reason', () => {
+    const spenders = sourceFiles(path.join(SRC, 'app'))
       .concat(sourceFiles(path.join(SRC, 'features')))
-      .filter((file) => /\b(ai|visuals)RateLimitResponse\(/.test(readFileSync(file, 'utf8')))
+      .filter((file) => /\brunAsSpender\(/.test(readFileSync(file, 'utf8')))
       .map((file) => path.relative(SRC, file))
       .sort()
 
-    const unlisted = limited.filter((rel) => !(rel in GATED))
+    const unlisted = spenders.filter((rel) => !(rel in GATED) && !(rel in EXEMPT))
     expect(unlisted).toEqual([])
-    expect(limited.length).toBeGreaterThanOrEqual(10)
+    expect(spenders.length).toBeGreaterThanOrEqual(15)
   })
 })

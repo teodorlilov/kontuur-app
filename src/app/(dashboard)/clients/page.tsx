@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import { requireSessionUser } from '@/lib/auth/session'
 import {
   getCachedAgency,
+  getCachedEntitlement,
   getCachedClientRoster,
   getCachedPendingApprovalsByClient,
   getCachedUpcomingByClient,
@@ -22,7 +23,8 @@ import { PAGE_SHELL } from '@/components/layout/page-header/shared'
 import { RosterPagination } from '@/features/clients/components/roster/roster-pagination'
 import { RosterSort as RosterSortControl } from '@/features/clients/components/roster/roster-sort'
 import { RosterTable } from '@/features/clients/components/roster/roster-table'
-import { ActionLink } from '@/components/ui/action-link'
+import { AddClientAction } from '@/features/clients/components/roster/add-client-action'
+import { addBrandRefusal } from '@/lib/billing/copy'
 import { formatRelativeTime } from '@/utils/format'
 import { parseParam } from '@/utils/parse-param'
 import { cn } from '@/utils/cn'
@@ -52,7 +54,8 @@ interface ClientsPageProps {
  * `clients[0]` is safe because the dashboard layout's gate (features/onboarding/lib/
  * require-business-setup.ts) redirects a solo workspace with no client before any page renders.
  * The two roster-only reads in the wave are spent on that hop rather than splitting the wave,
- * which would serialise a round trip on the agency path.
+ * which would serialise a round trip on the agency path. The Add-client action is refused where
+ * it stands, by the same rule `createClient` applies, rather than at the end of the form.
  */
 export default async function ClientsPage({ searchParams }: ClientsPageProps) {
   const [{ agencyId }, params] = await Promise.all([requireSessionUser(), searchParams])
@@ -61,16 +64,18 @@ export default async function ClientsPage({ searchParams }: ClientsPageProps) {
   const sort = parseParam(params.sort, SORTS, DEFAULT_SORT)
 
   // None of these depends on another's result — one round trip, not a waterfall.
-  const [agency, clients, upcoming, approvals] = await Promise.all([
+  const [agency, clients, upcoming, approvals, entitlement] = await Promise.all([
     getCachedAgency(agencyId),
     getCachedClientRoster(agencyId),
     getCachedUpcomingByClient(agencyId),
     getCachedPendingApprovalsByClient(agencyId),
+    getCachedEntitlement(agencyId),
   ])
 
   if (agency?.mode === 'solo' && clients[0]) redirect(`/clients/${clients[0].id}/edit`)
 
   const timezone = agency?.timezone ?? 'UTC'
+  const addRefusal = addBrandRefusal(entitlement, clients.length)
   // Derivation is in-memory because status is computed, not stored. Bounded by
   // the agency's client count; past roughly 200 the connections embed is what
   // would need splitting first.
@@ -140,10 +145,7 @@ export default async function ClientsPage({ searchParams }: ClientsPageProps) {
                 name: buildHref(filter, 'name'),
               }}
             />
-            <ActionLink href="/clients/new">
-              Add client
-              <span aria-hidden="true">&rarr;</span>
-            </ActionLink>
+            <AddClientAction refusal={addRefusal} />
           </>
         }
         tabs={<TabRail items={tabs} active={filter} label="Filter clients" />}

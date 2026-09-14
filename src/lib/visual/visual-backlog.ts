@@ -15,6 +15,19 @@ export function totalVisualSlots(post: { post_type: string; slides_json: unknown
   return post.post_type === 'carousel' ? parseSlides(post.slides_json).length : 1
 }
 
+/** The slide positions a post still owes a picture for, in slide order. */
+export function missingPositions(
+  post: { post_type: string; slides_json: unknown },
+  images: PostImage[]
+): number[] {
+  const covered = new Set(images.map((image) => image.position))
+  const positions: number[] = []
+  for (let position = 0; position < totalVisualSlots(post); position++) {
+    if (!covered.has(position)) positions.push(position)
+  }
+  return positions
+}
+
 export type BacklogPost = Pick<
   PostRow,
   | 'id'
@@ -78,13 +91,7 @@ export function pickVisualBacklog(
       if (new Date(post.visuals_attempted_at).getTime() > retryCutoff) continue
     }
 
-    const covered = new Set((imagesByPost.get(post.id) ?? []).map((image) => image.position))
-    const positions: number[] = []
-    for (let position = 0; position < totalVisualSlots(post); position++) {
-      if (covered.has(position)) continue
-      if (positions.length >= budget) break
-      positions.push(position)
-    }
+    const positions = missingPositions(post, imagesByPost.get(post.id) ?? []).slice(0, budget)
     if (positions.length === 0) continue
 
     budget -= positions.length

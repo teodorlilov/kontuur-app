@@ -4,7 +4,9 @@ import { NextResponse } from 'next/server'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import { notify } from '@/lib/notifications/notify'
 import type { Entitlement } from './entitlement'
-import type { Allowance, AllowanceKind } from './plans'
+import { getCachedEntitlement } from '@/lib/queries/cache'
+import type { Spender } from './spend-context'
+import { ALLOWANCE_WARN_SHARE, type Allowance, type AllowanceKind } from './plans'
 import { allowanceUsedUp, allowanceWarning } from './copy'
 
 /**
@@ -18,16 +20,17 @@ import { allowanceUsedUp, allowanceWarning } from './copy'
  * routes turn one into `allowanceResponse` (402) through `AllowanceError`.
  */
 
-/** Warn once per period when an allowance crosses this share. */
-const WARN_AT = 0.8
-
 interface ConsumeResult {
   allowed: boolean
   used: number
   quota: number
 }
 
-/** Reserve `cost` units of `kind` against the entitlement's period; refused when the quota is zero. */
+/**
+ * Reserve `cost` units of `kind` against the entitlement's period; refused when the quota is zero.
+ * The 80 % bell fires on the call that crosses the line and is telemetry: a bell that cannot be
+ * written never undoes a reservation that succeeded.
+ */
 export async function consumeUsage(
   entitlement: Entitlement,
   agencyId: string,
@@ -48,13 +51,18 @@ export async function consumeUsage(
   if (error) throw new Error(`consume_usage failed: ${error.message}`)
   const outcome = data?.[0] ?? { allowed: false, used: 0 }
 
-  if (outcome.allowed && outcome.used >= quota * WARN_AT && outcome.used - cost < quota * WARN_AT) {
-    await notify(admin, {
-      agencyId,
-      type: 'allowance_warning',
-      message: allowanceWarning(kind, outcome.used, quota, entitlement.periodKey),
-      cooldownDays: 31,
-    })
+  const line = quota * ALLOWANCE_WARN_SHARE
+  if (outcome.allowed && outcome.used >= line && outcome.used - cost < line) {
+    try {
+      await notify(admin, {
+        agencyId,
+        type: 'allowance_warning',
+        message: allowanceWarning(kind, outcome.used, quota, entitlement),
+        cooldownDays: 31,
+      })
+    } catch (err) {
+      console.warn(`[billing] could not record the allowance warning for ${agencyId}:`, err)
+    }
   }
   return { allowed: outcome.allowed, used: outcome.used, quota }
 }
@@ -92,17 +100,37 @@ export async function readUsage(agencyId: string, periodKey: string): Promise<Al
   return used
 }
 
-/** A refused spend, carrying what a screen needs to say why. */
+/** A refused spend, carrying what a screen needs to say why, worded in the agency's own zone. */
 export class AllowanceError extends Error {
+  readonly resetsOn: Date | null
+
   constructor(
     readonly kind: AllowanceKind,
     readonly used: number,
     readonly quota: number,
-    readonly resetsOn: Date | null
+    readonly needed: number,
+    entitlement: Pick<Entitlement, 'resetsOn' | 'timezone'>
   ) {
-    super(allowanceUsedUp(kind, used, quota, resetsOn))
+    super(allowanceUsedUp(kind, used, quota, needed, entitlement))
     this.name = 'AllowanceError'
+    this.resetsOn = entitlement.resetsOn
   }
+}
+
+/**
+ * Give back the images a boundary reserved for work that never produced a stored picture.
+ *
+ * `subscribeFal` reserves before the call and counts each paid call it completed on the spender
+ * (`charged`); a download or storage failure after that would otherwise leave the customer
+ * charged for a picture that does not exist. The boundary calls this from its failure path,
+ * once, and the counter resets so a retry starts clean.
+ */
+export async function releaseCharged(spender: Spender): Promise<void> {
+  const charged = spender.charged ?? 0
+  if (!spender.agencyId || charged <= 0) return
+  const entitlement = await getCachedEntitlement(spender.agencyId)
+  await refundUsage(entitlement, spender.agencyId, 'image', charged)
+  spender.charged = 0
 }
 
 /** The one 402 a route returns for an `AllowanceError`; null for any other error. */
@@ -117,6 +145,7 @@ export function allowanceResponse(err: unknown): NextResponse | null {
       kind: err.kind,
       used: err.used,
       quota: err.quota,
+      needed: err.needed,
       resetsOn: err.resetsOn?.toISOString() ?? null,
     },
     { status: 402 }

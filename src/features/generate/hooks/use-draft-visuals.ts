@@ -162,6 +162,11 @@ export function useDraftVisuals() {
     [clientIdentity, enqueueCompose]
   )
 
+  /**
+   * One slide's request, then its compose. A 402 is the image allowance used up or a paused
+   * workspace — not a failure to retry — shown once per run in the server's own words (sonner
+   * dedupes on the toast id).
+   */
   const runJob = useCallback(
     async (
       post: DraftPostInput,
@@ -197,6 +202,13 @@ export function useDraftVisuals() {
           }),
         })
         const data = await res.json()
+        if (res.status === 402) {
+          setVisual(post.id, { position, status: 'error' })
+          toast.error(data.error ?? 'AI images are not available right now', {
+            id: 'draft-visuals-allowance',
+          })
+          return
+        }
         if (!res.ok) throw new Error(data.error ?? 'Visual generation failed')
         const clean = {
           publicUrl: data.publicUrl as string,

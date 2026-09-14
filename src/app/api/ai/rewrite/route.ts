@@ -6,7 +6,7 @@ import { aiRateLimitResponse } from '@/lib/auth/rate-limit'
 import { getCachedEntitlement } from '@/lib/queries/cache'
 import { requireEntitledRoute } from '@/lib/billing/require-entitled'
 import { runAsSpender } from '@/lib/billing/spend-context'
-import { AllowanceError, allowanceResponse, consumeUsage } from '@/lib/billing/usage'
+import { AllowanceError, allowanceResponse, consumeUsage, refundUsage } from '@/lib/billing/usage'
 import { performRewrite } from '@/ai/rewrite/rewrite-post'
 import { MAX_CAROUSEL_SLIDES } from '@/utils/constants'
 
@@ -47,7 +47,11 @@ const rewriteSchema = z.object({
   rewriteReason: z.enum(['quality', 'language', 'source_grounding', 'manual']).optional(),
 })
 
-/** Rewrite one post's copy against its validation evidence and return the fresh draft. */
+/**
+ * Rewrite one post's copy against its validation evidence and return the fresh draft. One rewrite
+ * is reserved from the allowance before the model runs and given back if the model call throws —
+ * only a rewrite that exists is charged.
+ */
 export async function POST(request: Request) {
   try {
     const auth = await resolveAuth()
@@ -69,31 +73,35 @@ export async function POST(request: Request) {
     if ('error' in clientResult)
       return NextResponse.json({ error: clientResult.error }, { status: 404 })
 
-    // One rewrite from the allowance, reserved before the model runs — the last unbounded
-    // Sonnet path once drafts and images are metered.
     const entitlement = await getCachedEntitlement(agencyId)
     const reserved = await consumeUsage(entitlement, agencyId, 'rewrite', 1)
     if (!reserved.allowed) {
       return allowanceResponse(
-        new AllowanceError('rewrite', reserved.used, reserved.quota, entitlement.resetsOn)
+        new AllowanceError('rewrite', reserved.used, reserved.quota, 1, entitlement)
       )
     }
 
-    const result = await runAsSpender({ agencyId, clientId: body.clientId, flow: 'rewrite' }, () =>
-      performRewrite({
-        caption: body.caption,
-        postType: body.postType,
-        slidesJson: body.slidesJson,
-        aiTells: body.aiTells ?? [],
-        qualityIssues: body.qualityIssues,
-        sourceExcerpt: body.sourceExcerpt,
-        sourceUrl: body.sourceUrl,
-        rewriteReason: body.rewriteReason ?? 'manual',
-        client: clientResult.data,
-      })
-    )
-
-    return NextResponse.json(result)
+    try {
+      const result = await runAsSpender(
+        { agencyId, clientId: body.clientId, flow: 'rewrite' },
+        () =>
+          performRewrite({
+            caption: body.caption,
+            postType: body.postType,
+            slidesJson: body.slidesJson,
+            aiTells: body.aiTells ?? [],
+            qualityIssues: body.qualityIssues,
+            sourceExcerpt: body.sourceExcerpt,
+            sourceUrl: body.sourceUrl,
+            rewriteReason: body.rewriteReason ?? 'manual',
+            client: clientResult.data,
+          })
+      )
+      return NextResponse.json(result)
+    } catch (err) {
+      await refundUsage(entitlement, agencyId, 'rewrite', 1)
+      throw err
+    }
   } catch (error) {
     console.error('[rewrite] Unhandled error:', error)
     return NextResponse.json(

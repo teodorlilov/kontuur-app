@@ -2,8 +2,7 @@ import 'server-only'
 
 import type { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import { AGENCY_ENTITLEMENT_COLUMNS } from '@/lib/queries/select-columns'
-import { entitlementFor, type Entitlement } from './entitlement'
-import type { EntitlementNeed } from './require-entitled'
+import { allows, entitlementFor, type Entitlement, type EntitlementNeed } from './entitlement'
 
 type AdminClient = ReturnType<typeof createAdminSupabaseClient>
 
@@ -37,13 +36,7 @@ export async function fetchEntitledClients(
   const entitled = new Map<string, Entitlement>()
   for (const agency of agencies ?? []) {
     const entitlement = entitlementFor(agency, now)
-    const allowed =
-      need === 'spend'
-        ? entitlement.canSpend
-        : need === 'publish'
-          ? entitlement.canPublish
-          : entitlement.canCreate
-    if (allowed) entitled.set(agency.id, entitlement)
+    if (allows(entitlement, need)) entitled.set(agency.id, entitlement)
   }
   if (entitled.size === 0) return new Map()
 

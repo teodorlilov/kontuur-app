@@ -58,6 +58,9 @@ export const CLIENT_FILES_BUCKET = 'client-files'
  * and `/forgot-password` exist only for links that live outside the app and redirect here too.
  */
 export const SIGN_IN_PATH = '/?auth=signin'
+
+/** Where every billing sentence sends a person: the plan, its meters, and (Phase 2) the way to pay. */
+export const PLAN_AND_BILLING_PATH = '/settings?tab=account'
 export const SIGN_UP_PATH = '/?auth=signup'
 export const RESET_PASSWORD_PATH = '/?auth=reset'
 

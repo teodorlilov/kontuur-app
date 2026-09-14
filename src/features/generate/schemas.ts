@@ -106,7 +106,11 @@ type SchemaPriorityPost = z.infer<typeof priorityPostSchema>
 const _priorityPostForward: PriorityPost = null as unknown as SchemaPriorityPost
 void _priorityPostForward
 
-/** Body of POST /api/ai/generate-stream — the wizard's batch run. */
+/**
+ * Body of POST /api/ai/generate-stream — the wizard's batch run. `targetPostCount` and
+ * `priorityPosts` are bounded at MAX_POSTS_PER_RUN, the stepper's own ceiling, because the run
+ * reserves that many drafts from the allowance before any model call.
+ */
 export const generateStreamSchema = z.object({
   clientId: z.string().min(1),
   postType: z.enum(['single', 'carousel']),
@@ -114,8 +118,6 @@ export const generateStreamSchema = z.object({
   // above, so a hand-made request could ask the writer for a 500-slide carousel —
   // one prompt, one very expensive call, and a draft nothing in the app can render.
   slideCount: z.number().int().min(MIN_CAROUSEL_SLIDES).max(MAX_CAROUSEL_SLIDES).optional(),
-  // Bounded above too, since the run reserves this many drafts from the allowance before
-  // any model call: the stepper offers up to MAX_POSTS_PER_RUN and the wire holds the same line.
   targetPostCount: z.number().int().min(0).max(MAX_POSTS_PER_RUN).default(0),
   priorityPosts: z.array(priorityPostSchema).max(MAX_POSTS_PER_RUN).optional(),
   preloadedClientData: clientDataSchema,

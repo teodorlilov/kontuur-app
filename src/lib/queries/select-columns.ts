@@ -236,13 +236,14 @@ export const POSTING_SCHEDULE_DUE_COLUMNS =
 
 /**
  * Everything `entitlementFor` (src/lib/billing/entitlement.ts) reads to decide what a workspace
- * may do. One list, so the cached agency read and the settings read cannot drift apart on a
- * billing column — the two used to be typed by hand and carried `plan_client_limit`, a column
- * migration 20260852 dropped.
+ * may do — the timezone included, because every date the entitlement says out loud is read in
+ * it. One list, so the cached agency read, the settings read and the cron roster cannot drift
+ * apart on a billing column.
  */
 const AGENCY_BILLING_KEYS = [
   'plan',
   'mode',
+  'timezone',
   'stripe_customer_id',
   'stripe_subscription_id',
   'subscription_status',
@@ -258,7 +259,6 @@ const AGENCY_KEYS = [
   'id',
   'name',
   'agency_logo',
-  'timezone',
   'created_at',
   'billing_updated_at',
   ...AGENCY_BILLING_KEYS,
@@ -270,7 +270,6 @@ export const AGENCY_COLUMNS = AGENCY_KEYS.join(', ') as Join<typeof AGENCY_KEYS,
 const AGENCY_SETTINGS_KEYS = [
   'id',
   'name',
-  'timezone',
   ...AGENCY_BILLING_KEYS,
 ] as const satisfies readonly (keyof AgencyRow)[]
 
@@ -284,13 +283,9 @@ export type AgencySettingsColumns = Pick<AgencyRow, (typeof AGENCY_SETTINGS_KEYS
 /** The row `entitlementFor` takes — any read that carries the billing keys satisfies it. */
 export type AgencyBillingColumns = Pick<AgencyRow, (typeof AGENCY_BILLING_KEYS)[number]>
 
-/**
- * A cron's roster read of every agency: the id to key on, the columns the entitlement needs, and
- * the timezone the generate cron fires slots in — one read serves both.
- */
+/** A cron's roster read of every agency: the id to key on and the columns the entitlement needs. */
 const AGENCY_ENTITLEMENT_KEYS = [
   'id',
-  'timezone',
   ...AGENCY_BILLING_KEYS,
 ] as const satisfies readonly (keyof AgencyRow)[]
 

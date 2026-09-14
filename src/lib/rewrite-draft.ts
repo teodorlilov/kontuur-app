@@ -15,10 +15,16 @@ interface RewriteOutcome {
   validation: ValidationData
 }
 
+type RewriteResult = ({ ok: true } & RewriteOutcome) | { ok: false; error: string }
+
+const REWRITE_FAILED = 'Failed to rewrite post'
+
 /**
  * One rewrite pass over a draft: POST /api/ai/rewrite with the working copy,
- * mapped back into the post + validation shape the flow stores. Returns null
- * on failure — the caller owns toasts and state.
+ * mapped back into the post + validation shape the flow stores. A refusal —
+ * the rewrite allowance used up, a paused workspace — comes back with the
+ * route's own sentence so the caller can show it; a transport failure gets
+ * the generic one. The caller owns toasts and state.
  */
 export async function rewriteDraft({
   post,
@@ -26,7 +32,7 @@ export async function rewriteDraft({
   slidesJson,
   aiTells,
   qualityIssues,
-}: RewriteDraftInput): Promise<RewriteOutcome | null> {
+}: RewriteDraftInput): Promise<RewriteResult> {
   try {
     const res = await fetch('/api/ai/rewrite', {
       method: 'POST',
@@ -42,7 +48,10 @@ export async function rewriteDraft({
         sourceUrl: post.source_url ?? null,
       }),
     })
-    if (!res.ok) return null
+    if (!res.ok) {
+      const body = (await res.json().catch(() => null)) as { error?: string } | null
+      return { ok: false, error: body?.error ?? REWRITE_FAILED }
+    }
 
     const data = (await res.json()) as {
       caption: string
@@ -56,6 +65,7 @@ export async function rewriteDraft({
     }
 
     return {
+      ok: true,
       updatedPost: {
         ...post,
         caption: data.caption,
@@ -73,6 +83,6 @@ export async function rewriteDraft({
       },
     }
   } catch {
-    return null
+    return { ok: false, error: REWRITE_FAILED }
   }
 }

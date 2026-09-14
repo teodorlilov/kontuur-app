@@ -52,6 +52,9 @@ interface AnalyticsPageProps {
  * The comparison console. URL-driven like every other dashboard page:
  * ?client= scopes, ?range= or ?from=/?to= pins the period — which is also
  * what makes archive rows plain links and print reproducible.
+ *
+ * A paused workspace keeps its numbers but gets the written fallback: the narrative is a Haiku
+ * call on a cache miss, and only a workspace that may spend gets one.
  */
 export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps) {
   const [{ agencyId }, params] = await Promise.all([requireSessionUser(), searchParams])
@@ -61,8 +64,6 @@ export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps
     getCachedEntitlement(agencyId),
   ])
   const timezone = agency?.timezone ?? 'UTC'
-  // A paused workspace keeps its numbers but gets the written fallback: the narrative is a
-  // Haiku call on a cache miss, and only a workspace that may spend gets one.
   const canNarrate = entitlement.canSpend
   const clients = cachedClients
     .map((client) => ({ id: client.id, name: client.name }))

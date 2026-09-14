@@ -13,6 +13,7 @@ import {
   getCachedAgency,
   getCachedAgencyClients,
   getCachedClientRoster,
+  getCachedEntitlement,
   getCachedNewIdeasCount,
   getCachedPendingRows,
   getCachedUpcomingByClient,
@@ -34,6 +35,10 @@ import { extractInitials } from '@/utils/format'
 import { AuthProvider } from '@/components/providers/auth-provider'
 import { ShellProvider } from '@/components/layout/shell-context'
 import { ContourField } from '@/components/layout/contour-field'
+import { BillingBanner } from '@/components/layout/billing-banner'
+import { BillingWall } from '@/components/layout/billing-wall'
+import { noEntitlement, type Entitlement } from '@/lib/billing/entitlement'
+import { shellNotice } from '@/lib/billing/copy'
 import { Sidebar } from '@/components/layout/sidebar'
 import type { ActiveRun } from '@/types/api'
 
@@ -44,7 +49,12 @@ import type { ActiveRun } from '@/types/api'
  *
  * Also the first-run gate: a solo workspace with no client is redirected to /clients/new here
  * (`requireBusinessSetup`), which covers every entry that lands on /dashboard — sign-up, the
- * email-confirmation callback, sign-in and setup-password all end there.
+ * email-confirmation callback, sign-in and setup-password all end there — unless the workspace
+ * may no longer create a brand, in which case it stays and sees the wall.
+ *
+ * The billing banner and the wall are the shell's explanation of the workspace's state, derived
+ * from the same cached agency read as everything else here; the gates behind every spend, publish
+ * and create are what actually refuse.
  */
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const userId = await requireAuthUserId()
@@ -88,23 +98,34 @@ export default async function DashboardLayout({ children }: { children: React.Re
   let clients: Array<{ id: string; name: string }> = []
   let activeRuns: ActiveRun[] = []
   let retiredCards: RetiredConnectionCard[] = []
+  let entitlement: Entitlement = noEntitlement()
 
   if (userData) {
-    const [agencyData, agencyClients, pendingRows, ideas, commentQueue, runs, roster] =
-      await Promise.all([
-        getCachedAgency(userData.agency_id),
-        getCachedAgencyClients(userData.agency_id),
-        getCachedPendingRows(userData.agency_id),
-        getCachedNewIdeasCount(userData.agency_id),
-        // The same cached read the /comments page uses, not a second count query —
-        // which is what makes the badge and the queue's own tab agree by construction
-        // rather than by two pieces of code being kept in step.
-        getCachedCommentQueue(userData.agency_id),
-        fetchActiveRuns(supabase, userData.agency_id),
-        getCachedClientRoster(userData.agency_id),
-      ])
+    const [
+      agencyData,
+      agencyClients,
+      pendingRows,
+      ideas,
+      commentQueue,
+      runs,
+      roster,
+      cachedEntitlement,
+    ] = await Promise.all([
+      getCachedAgency(userData.agency_id),
+      getCachedAgencyClients(userData.agency_id),
+      getCachedPendingRows(userData.agency_id),
+      getCachedNewIdeasCount(userData.agency_id),
+      // The same cached read the /comments page uses, not a second count query —
+      // which is what makes the badge and the queue's own tab agree by construction
+      // rather than by two pieces of code being kept in step.
+      getCachedCommentQueue(userData.agency_id),
+      fetchActiveRuns(supabase, userData.agency_id),
+      getCachedClientRoster(userData.agency_id),
+      getCachedEntitlement(userData.agency_id),
+    ])
+    entitlement = cachedEntitlement
 
-    requireBusinessSetup(agencyData?.mode, agencyClients.length)
+    requireBusinessSetup(agencyData?.mode, agencyClients.length, entitlement.canCreate)
 
     if (agencyData?.mode === 'solo') agencyMode = 'solo'
     agencyName = agencyData?.name ?? ''
@@ -130,6 +151,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
   // The rail avatar is the signed-in person, not the workspace — the sidebar
   // block already names the agency.
   const displayName = (await getAuthDisplayName()) || 'You'
+  const notice = shellNotice(entitlement, new Date())
 
   return (
     <>
@@ -160,7 +182,10 @@ export default async function DashboardLayout({ children }: { children: React.Re
                 rail carries the workspace utilities. */}
             <div className="relative flex min-w-0 flex-1 flex-col">
               <ContourField />
-              <main className="app-content relative z-[1] flex-1 overflow-y-auto">{children}</main>
+              {notice && <BillingBanner tone={notice.tone} text={notice.text} />}
+              <main className="app-content relative z-[1] flex-1 overflow-y-auto">
+                <BillingWall locked={entitlement.state === 'locked'}>{children}</BillingWall>
+              </main>
             </div>
           </div>
           <ReconnectPrompt cards={retiredCards} />

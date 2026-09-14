@@ -3,7 +3,7 @@ import 'server-only'
 import { NextResponse } from 'next/server'
 import { getCachedEntitlement } from '@/lib/queries/cache'
 import type { ActionResult } from '@/lib/actions/types'
-import type { Entitlement, EntitlementState } from './entitlement'
+import { allows, type EntitlementNeed, type EntitlementState } from './entitlement'
 import { WORKSPACE_LOCKED } from './copy'
 
 /**
@@ -16,16 +16,6 @@ import { WORKSPACE_LOCKED } from './copy'
  * `need` names what the site is about to do: spend money, publish to a network, or create a
  * brand. Which states allow which is `entitlementFor`'s decision, not this file's.
  */
-export type EntitlementNeed = 'spend' | 'publish' | 'create'
-
-function allows(entitlement: Entitlement, need: EntitlementNeed): boolean {
-  return need === 'spend'
-    ? entitlement.canSpend
-    : need === 'publish'
-      ? entitlement.canPublish
-      : entitlement.canCreate
-}
-
 function reasonFor(state: EntitlementState): string {
   return state === 'trial_grace' ? 'trial_ended' : state
 }

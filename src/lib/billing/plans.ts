@@ -17,8 +17,13 @@
 
 export type PlanId = 'trial' | 'starter' | 'agency' | 'house'
 
-/** A quota the compare-and-set cannot reach — the old image counter's "no ceiling" figure. */
+/** A quota the compare-and-set cannot reach: usage is counted against it, never refused. */
 export const UNMETERED = 2_000_000_000
+
+/** A finite limit to show or budget against, or null when the workspace is unmetered. */
+export function meteredLimit(limit: number): number | null {
+  return limit >= UNMETERED ? null : limit
+}
 
 export type AllowanceKind = 'draft' | 'image' | 'rewrite'
 
@@ -56,6 +61,9 @@ export const TRIAL_PER_BRAND: Allowance = { draft: 20, image: 50, rewrite: 15 }
 
 /** Days after the trial ends, and after a failed renewal, before the workspace is paused. */
 export const GRACE_DAYS = 7
+
+/** Share of an allowance at which the bell warns once and the settings meter turns Amber. */
+export const ALLOWANCE_WARN_SHARE = 0.8
 
 /** Human label for a plan, for the settings header and the plan pill. */
 export const PLAN_LABELS: Record<PlanId, string> = {

@@ -28,7 +28,7 @@ import { provisionClient } from '@/features/clients/lib/provision-client'
 import { countClientsByAgency } from '@/lib/queries/db'
 import { getCachedEntitlement } from '@/lib/queries/cache'
 import { requireEntitledAction } from '@/lib/billing/require-entitled'
-import { brandCapReached } from '@/lib/billing/copy'
+import { addBrandRefusal } from '@/lib/billing/copy'
 import { CLIENT_FILES_BUCKET, POST_IMAGES_BUCKET } from '@/utils/constants'
 import type { ActionResult } from '@/lib/actions/types'
 
@@ -44,6 +44,10 @@ import type { ActionResult } from '@/lib/actions/types'
  * `/generate?client=<id>`, whose first-run gate reads `getCachedAgencyClients`, and `'max'` is
  * stale-while-revalidate — it would serve the cached empty list once and send a solo workspace
  * back to setup (the same reason as src/lib/meta/connection-store.ts `retireConnection`).
+ *
+ * The brand cap is judged here and nowhere else. The tenant role cannot insert into `clients`
+ * since migration 20260854, so the admin client below is the only way a brand comes into
+ * existence and this count is the only door past the cap.
  */
 export async function createClient(input: CreateClientInput): Promise<ActionResult<string>> {
   // Auth before validation, for the same reason updateClient does it: parsing first lets an
@@ -61,16 +65,10 @@ export async function createClient(input: CreateClientInput): Promise<ActionResu
   }
   const data = parsed.data
 
-  // The brand cap, judged here and nowhere else. The tenant role cannot insert into `clients`
-  // since 20260854, so the admin client below is the only way a brand comes into existence and
-  // this count is the only door past the cap.
   const entitlement = await getCachedEntitlement(agencyId)
-  if (!entitlement.brandsUnlimited) {
-    const brands = await countClientsByAgency(supabase, agencyId)
-    if (brands >= entitlement.brands) {
-      return { ok: false, error: brandCapReached(entitlement.brands, entitlement.plan) }
-    }
-  }
+  const brands = entitlement.brandsUnlimited ? 0 : await countClientsByAgency(supabase, agencyId)
+  const capped = addBrandRefusal(entitlement, brands)
+  if (capped) return { ok: false, error: capped }
 
   const result = await provisionClient(createAdminSupabaseClient(), {
     agencyId,

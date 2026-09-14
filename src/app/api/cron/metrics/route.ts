@@ -13,7 +13,10 @@ export const maxDuration = 300
 // instead of Vercel killing the function at maxDuration (300s) mid-client.
 const TIME_BUDGET_MS = 240_000
 
-/** Cron endpoint — nightly Instagram and Facebook metrics capture for every connected client. */
+/**
+ * Cron endpoint — nightly Instagram and Facebook metrics capture for every connected client whose
+ * workspace may still publish, resolved once per tick and shared by both networks' syncs.
+ */
 export async function GET(request: NextRequest) {
   const authHeader = request.headers.get('authorization')
   if (!process.env.CRON_SECRET || authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
@@ -23,7 +26,6 @@ export async function GET(request: NextRequest) {
   const startedAt = Date.now()
   const admin = createAdminSupabaseClient()
   try {
-    // One roster of who may still publish, shared by both networks' syncs this tick.
     const entitledClientIds = new Set((await fetchEntitledClients(admin, 'publish')).keys())
     const result = await syncAllClientMetrics(admin, {
       timeBudgetMs: TIME_BUDGET_MS,

@@ -44,6 +44,8 @@ interface GenerateFlowProps {
   initialConnections?: MetaConnection[]
   /** The agency zone, read on the server: this route group has no ShellProvider. */
   timeZone: string
+  /** AI drafts left this period, or null for an unmetered workspace. Read on the server. */
+  draftsLeft: number | null
 }
 
 /**
@@ -54,6 +56,7 @@ interface GenerateFlowProps {
  */
 export function GenerateFlow({
   timeZone,
+  draftsLeft,
   initialClients,
   initialClientData,
   initialTargetPostCount,
@@ -417,6 +420,7 @@ export function GenerateFlow({
             postType={postType}
             slideCount={slideCount}
             postCount={targetPostCount}
+            draftsLeft={draftsLeft}
             briefs={priorityPosts}
             lockedBriefCount={lockedBriefCount}
             runPlan={runPlan}

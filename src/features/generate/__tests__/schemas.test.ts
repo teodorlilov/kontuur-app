@@ -72,3 +72,15 @@ describe('generateStreamSchema', () => {
     expect(parsed).not.toHaveProperty('platform')
   })
 })
+
+describe('the wire caps', () => {
+  it('holds a run to MAX_POSTS_PER_RUN, since the run reserves that many drafts', () => {
+    expect(generateStreamSchema.shape.targetPostCount.safeParse(8).success).toBe(false)
+    expect(generateStreamSchema.shape.targetPostCount.safeParse(7).success).toBe(true)
+    expect(
+      generateStreamSchema.shape.priorityPosts.safeParse(
+        Array.from({ length: 8 }, () => ({ title: 'a brief' }))
+      ).success
+    ).toBe(false)
+  })
+})

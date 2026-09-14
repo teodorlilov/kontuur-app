@@ -53,10 +53,12 @@ async function subscribeFal(model: string, input: Record<string, unknown>) {
     const entitlement = await getCachedEntitlement(spender.agencyId)
     const reserved = await consumeUsage(entitlement, spender.agencyId, 'image', 1)
     if (!reserved.allowed) {
-      throw new AllowanceError('image', reserved.used, reserved.quota, entitlement.resetsOn)
+      throw new AllowanceError('image', reserved.used, reserved.quota, 1, entitlement)
     }
     try {
-      return await callFal(model, input)
+      const result = await callFal(model, input)
+      spender.charged = (spender.charged ?? 0) + 1
+      return result
     } catch (err) {
       await refundUsage(entitlement, spender.agencyId, 'image', 1)
       throw err

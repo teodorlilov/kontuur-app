@@ -78,7 +78,8 @@ export async function startGenerationRun(
         'draft',
         reserved.used,
         reserved.quota,
-        input.entitlement.resetsOn
+        input.targetCount,
+        input.entitlement
       ),
     }
   }

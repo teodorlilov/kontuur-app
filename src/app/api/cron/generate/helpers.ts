@@ -3,6 +3,9 @@ import { getZonedParts } from '@/utils/date-helpers'
 import type { BrandProfileRow, ClientRow, PostingScheduleRow } from '@/types'
 import { AGENCY_ENTITLEMENT_COLUMNS } from '@/lib/queries/select-columns'
 import { entitlementFor, type Entitlement } from '@/lib/billing/entitlement'
+import { readUsage } from '@/lib/billing/usage'
+import { allowanceUsedUp } from '@/lib/billing/copy'
+import { notify } from '@/lib/notifications/notify'
 
 type AdminClient = ReturnType<typeof createAdminSupabaseClient>
 
@@ -20,9 +23,20 @@ type BrandProfileContext = Pick<
   'client_id' | 'weekly_mix_json' | 'default_post_type' | 'default_carousel_slides'
 >
 
+/**
+ * An agency's draft allowance this period, read once per tick; the route moves `used` as it claims
+ * batches, so a second client of the same agency sees what the first one took.
+ */
+interface DraftBudget {
+  used: number
+  quota: number
+}
+
 interface ScheduleContext {
   /** Per agency, what it may do this tick — absent means the agency cannot spend. */
   entitlements: Map<string, Entitlement>
+  /** Per entitled agency, the drafts left — the route draws these down as it claims batches. */
+  draftBudgets: Map<string, DraftBudget>
   clients: Map<string, ClientContext>
   brandProfiles: Map<string, BrandProfileContext>
   agencyTimezones: Map<string, string>
@@ -31,7 +45,8 @@ interface ScheduleContext {
 /**
  * Batch-fetch all clients, brand profiles, and agency timezones for active schedules — and each
  * agency's entitlement from the same read, so the route can drop clients whose workspace cannot
- * spend before it claims a slot for them.
+ * spend before it claims a slot for them, plus one usage read per entitled agency so a client
+ * with fewer drafts left than its schedule asks for gets a smaller batch rather than none.
  */
 export async function fetchScheduleContext(
   supabase: AdminClient,
@@ -78,12 +93,46 @@ export async function fetchScheduleContext(
     if (entitlement.canSpend) entitlements.set(row.id, entitlement)
   }
 
+  const draftBudgets = new Map<string, DraftBudget>()
+  await Promise.all(
+    [...entitlements].map(async ([agencyId, entitlement]) => {
+      const used = await readUsage(agencyId, entitlement.periodKey)
+      const quota = entitlement.limits.draft
+      draftBudgets.set(agencyId, { used: used.draft, quota })
+    })
+  )
+
   const brandProfiles = new Map<string, BrandProfileContext>()
   for (const row of (profileResult.data ?? []) as BrandProfileContext[]) {
     brandProfiles.set(row.client_id, row)
   }
 
-  return { clients, brandProfiles, agencyTimezones, entitlements }
+  return { clients, brandProfiles, agencyTimezones, entitlements, draftBudgets }
+}
+
+/**
+ * The one bell for a period whose drafts are spent, worded by the sentence every other refusal
+ * carries. `notify` dedups on the message for a month, so it lands once per period per client
+ * however many hourly ticks find the pool empty.
+ */
+export async function notifyDraftsExhausted(
+  supabase: AdminClient,
+  input: {
+    agencyId: string
+    clientId: string
+    used: number
+    quota: number
+    needed: number
+    entitlement: Entitlement
+  }
+): Promise<void> {
+  await notify(supabase, {
+    agencyId: input.agencyId,
+    clientId: input.clientId,
+    type: 'allowance_reached',
+    message: allowanceUsedUp('draft', input.used, input.quota, input.needed, input.entitlement),
+    cooldownDays: 31,
+  })
 }
 
 /** Rows saved before the time column was honoured match the historical 09:00 fire. */

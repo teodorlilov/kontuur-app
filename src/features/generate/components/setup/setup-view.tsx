@@ -19,6 +19,8 @@ interface SetupViewProps {
   postType: PostType
   slideCount: number
   postCount: number
+  /** AI drafts left this period, or null when the workspace is unmetered. */
+  draftsLeft: number | null
   briefs: PriorityPost[]
   runPlan: RunPlan
   sourceIdea?: ClientIdea
@@ -88,6 +90,7 @@ export function SetupView(props: SetupViewProps) {
         <SetupGroup title="How many">
           <CountSteppers
             postCount={props.postCount}
+            draftsLeft={props.draftsLeft}
             slideCount={props.slideCount}
             briefCount={props.briefs.length}
             postType={props.postType}
@@ -112,6 +115,7 @@ export function SetupView(props: SetupViewProps) {
         // so the panel's postCount + briefCount is the same sum the server writes.
         postCount={props.postCount}
         briefCount={props.briefs.length}
+        draftsLeft={props.draftsLeft}
         metaLine={metaLine}
         clientId={props.clientId}
         generating={props.generating}

@@ -90,7 +90,12 @@ interface PublishSchedulerResult {
   writeErrors: string[]
 }
 
-/** Find and publish every destination that is due. */
+/**
+ * Find and publish every destination that is due — for the workspaces that may still publish.
+ * That roster is resolved once and applied INSIDE both queries below, ahead of the BATCH_LIMIT,
+ * so a paused workspace's rows neither occupy the window nor get swept: they stay 'scheduled',
+ * unclaimed, and go out on the first tick after the workspace is back.
+ */
 export async function publishDuePosts(): Promise<PublishSchedulerResult> {
   const admin = createAdminSupabaseClient()
   const startedAt = Date.now()
@@ -98,9 +103,6 @@ export async function publishDuePosts(): Promise<PublishSchedulerResult> {
   const windowStart = new Date(now.getTime() - PUBLISH_WINDOW_MS).toISOString()
   const staleClaimCutoff = new Date(now.getTime() - STALE_CLAIM_MS).toISOString()
 
-  // Who may still publish, resolved once and applied INSIDE both queries below — ahead of the
-  // BATCH_LIMIT — so a paused workspace's rows neither occupy the window nor get swept: they
-  // stay 'scheduled', unclaimed, and go out on the next tick after the workspace is back.
   const entitled = await fetchEntitledClients(admin, 'publish')
   const entitledClientIds = [...entitled.keys()]
   if (entitledClientIds.length === 0) {

@@ -511,9 +511,9 @@ export function ReviewQueue({
       aiTells: focused.validation.slop.ai_tells_found,
       qualityIssues: focused.validation.criteria.issues.map((i) => `${i.type}: ${i.description}`),
     })
-    if (!outcome) {
+    if (!outcome.ok) {
       setRewriting(false)
-      toast.error('Failed to rewrite post')
+      toast.error(outcome.error)
       return
     }
     const postId = focused.post.id

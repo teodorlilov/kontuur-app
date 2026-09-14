@@ -5,7 +5,7 @@ import { AsyncLocalStorage } from 'node:async_hooks'
 /**
  * Who is spending, declared once at the boundary and read wherever money is actually spent.
  *
- * `callAnthropic` has fourteen callers deep in `src/ai` with no agency in scope, and `subscribeFal`
+ * `callAnthropic` has many callers deep in `src/ai` with no agency in scope, and `subscribeFal`
  * sits below every image route and the visuals cron. Threading an id through all of them would be
  * a cross-layer change touching most of the engine; instead the boundary that already knows who is
  * spending — a gated route, the spending action, a cron's per-client loop — wraps its work in
@@ -16,8 +16,9 @@ import { AsyncLocalStorage } from 'node:async_hooks'
  * site cannot burn money unattributed. The one legitimate exception is the global weekly brief,
  * which belongs to nobody and declares `flow: 'brief'` with no agency.
  *
- * Whether the context survives `unstable_cache` (the analytics narrative runs inside one) is
- * decided by an observed run — docs/plans/BILLING.md step 3.
+ * The analytics narrative runs inside `unstable_cache`, whose callback need not inherit the
+ * request's async context, so it declares its own spender inside the callback
+ * (src/features/analytics/lib/instagram/narrative.ts) rather than relying on the caller's.
  */
 
 /** The feature a call belongs to — the "what" beside the model's "how much" in `ai_usage_daily`. */
@@ -31,11 +32,13 @@ type SpendFlow =
   | 'style_memo'
   | 'brief'
 
-interface Spender {
+export interface Spender {
   /** Null only for `flow: 'brief'`. */
   agencyId: string | null
   clientId?: string
   flow: SpendFlow
+  /** Paid images `subscribeFal` completed under this spender — what `releaseCharged` gives back. */
+  charged?: number
 }
 
 const storage = new AsyncLocalStorage<Spender>()

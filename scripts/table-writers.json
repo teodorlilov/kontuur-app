@@ -40,10 +40,6 @@
   "discarded_drafts": {
     "src/lib/queries/discarded-drafts.ts": "One insert for both discard sources (wizard, review). reason stays optional — distill-style-memo filters on it being non-null."
   },
-  "fb_page_metrics": {
-    "src/features/analytics/lib/facebook/fb-page-metrics-store.ts": "upsertFbPageMetricDays is the one writer of a Page's daily metrics — a separate table from ig_account_metrics by decision (20260846): five shared columns did not justify squeezing Facebook concepts into Instagram-named ones.",
-    "src/features/analytics/lib/shared/purge-account-metrics.ts": "Deletes a Page's day rows as part of the Meta data-deletion cascade and the reconnect purge, beside the other analytics tables."
-  },
   "generation_runs": {
     "src/lib/generation/runs.ts": "start and finish, paired in one file so a run cannot be opened without a way to close it."
   },
@@ -68,15 +64,6 @@
     "src/components/layout/shell-context.tsx": "The browser toggling is_read for the signed-in user, optimistically. Read state only — it can never create a notification, and it is RLS-scoped rather than admin.",
     "src/lib/notifications/notify.ts": "notify() — the only insert. There were five, four bypassing the dedup. Cooldown is a per-caller decision (NOTIFY_EVERY_TIME), not blanket: two approval emails in a week are two events."
   },
-  "platform_comments": {
-    "src/features/comments/lib/sync-comments.ts": "syncClientComments — the half-hourly capture, and the only writer that brings comments IN. Upserts on Instagram's own comment id and deletes rows the API stopped returning for a post it just refetched, which is how an upstream delete reaches us.",
-    "src/features/comments/actions/comment-actions.ts": "The three moderation actions, each recording the change it just made on Instagram: a reply inserts its own row so the comment reads as answered now rather than after the next cron, hide flips the flag, delete removes the comment and its replies. Not a second sync — the same fact the cron would have brought back, written early by the party that caused it.",
-    "src/features/analytics/lib/shared/purge-account-metrics.ts": "purgeAccountAnalytics erases the audience's comments alongside the ig_* metrics — the part of Meta's data-deletion callback that actually erases third parties."
-  },
-  "platform_post_metrics": {
-    "src/features/analytics/lib/shared/post-metrics-store.ts": "upsertPostMetricRows — the only writer, for the same reason account-metrics-store is: two jobs now write this table and nothing else would keep their conflict target in step. Callers write PARTIAL rows on purpose — the nightly sync writes identity AND measurements, the half-hourly comments sync writes identity only (caption, permalink, thumbnail, post_id) because the queue renders the post a comment sits under and cannot wait until 03:30 for it. The comments sync must never write the measurement columns: a zero there is indistinguishable from a measured zero on the analytics page.",
-    "src/features/analytics/lib/shared/purge-account-metrics.ts": "purgeAccountAnalytics deletes this table for Meta's data-deletion callback and an account switch; deleteClient deliberately leans on the `clients` cascade instead. This was hand-listed until the delete went through a `scoped(table)` helper that hid `.from(table)` from the scan; the deletes are written out now, so the scan finds them and this entry is checked like any other."
-  },
   "post_approval_tokens": {
     "src/features/approval-portal/lib/approval-batch.ts": "createApprovalBatch mints the week's tokens, clearing any superseded batch first.",
     "src/features/approval-portal/actions/approval-actions.ts": "submitApproval records the client's decision on the token they arrived with.",
@@ -92,12 +79,12 @@
     "src/features/assets/lib/storage.ts": "putPostImage / putPostImages — the only way an image lands at a position. There were four, three of which deleted the row and its file before inserting, so a failed insert lost the picture.",
     "src/app/api/posts/[id]/images/route.ts": "DELETE removes a slide the user deleted. A removal, not a write of an image — it has no row to put."
   },
-  "post_publications": {
-    "src/features/publishing/lib/publication-store.ts": "The ONE writer, with seven operations: createPublications records where a post is going, withdrawPendingPublications drops the destinations of a post pulled off the calendar (only ones that have not gone out, so unscheduling cannot erase that it published), claimPublication takes a destination for an attempt, setPublishRef persists the reference a network handed back, markPublicationPublished and markPublicationFailed record the outcome, and rearmPublication is the only place attempts are reset. They are in one file BY DESIGN — they are the states of one lifecycle."
-  },
   "posting_schedules": {
     "src/features/clients/actions/client-actions.ts": "createClient seeds it; updateSchedule is the schedule editor.",
     "src/features/clients/lib/provision-client.ts": "provisionClient — the ONE way a client and its mandatory children are created. Its only caller is createClient, the onboarding flow in both modes."
+  },
+  "post_publications": {
+    "src/features/publishing/lib/publication-store.ts": "The ONE writer, with seven operations: createPublications records where a post is going, withdrawPendingPublications drops the destinations of a post pulled off the calendar (only ones that have not gone out, so unscheduling cannot erase that it published), claimPublication takes a destination for an attempt, setPublishRef persists the reference a network handed back, markPublicationPublished and markPublicationFailed record the outcome, and rearmPublication is the only place attempts are reset. They are in one file BY DESIGN — they are the states of one lifecycle."
   },
   "posts": {
     "src/lib/actions/post-actions.ts": "The agency's edits: updatePost (nine validated columns), savePostCopy (caption and slides, partial — the calendar saves a caption with no slides), persistRewrite, schedulePosts, deletePost, duplicatePostAsDraft (a published post reused as a fresh draft, through draftColumns — never a mutation of the published row, whose publications carry the ids the network knows it by).",
@@ -125,5 +112,18 @@
   "users": {
     "src/lib/auth/create-user-record.ts": "The user row is created with the account, with the email guard — that column is a lookup key and a blank one is an account nobody can recover.",
     "src/features/settings/actions/team-actions.ts": "removeTeamMember."
+  },
+  "platform_comments": {
+    "src/features/comments/lib/sync-comments.ts": "syncClientComments — the half-hourly capture, and the only writer that brings comments IN. Upserts on Instagram's own comment id and deletes rows the API stopped returning for a post it just refetched, which is how an upstream delete reaches us.",
+    "src/features/comments/actions/comment-actions.ts": "The three moderation actions, each recording the change it just made on Instagram: a reply inserts its own row so the comment reads as answered now rather than after the next cron, hide flips the flag, delete removes the comment and its replies. Not a second sync — the same fact the cron would have brought back, written early by the party that caused it.",
+    "src/features/analytics/lib/shared/purge-account-metrics.ts": "purgeAccountAnalytics erases the audience's comments alongside the ig_* metrics — the part of Meta's data-deletion callback that actually erases third parties."
+  },
+  "platform_post_metrics": {
+    "src/features/analytics/lib/shared/post-metrics-store.ts": "upsertPostMetricRows — the only writer, for the same reason account-metrics-store is: two jobs now write this table and nothing else would keep their conflict target in step. Callers write PARTIAL rows on purpose — the nightly sync writes identity AND measurements, the half-hourly comments sync writes identity only (caption, permalink, thumbnail, post_id) because the queue renders the post a comment sits under and cannot wait until 03:30 for it. The comments sync must never write the measurement columns: a zero there is indistinguishable from a measured zero on the analytics page.",
+    "src/features/analytics/lib/shared/purge-account-metrics.ts": "purgeAccountAnalytics deletes this table for Meta's data-deletion callback and an account switch; deleteClient deliberately leans on the `clients` cascade instead. This was hand-listed until the delete went through a `scoped(table)` helper that hid `.from(table)` from the scan; the deletes are written out now, so the scan finds them and this entry is checked like any other."
+  },
+  "fb_page_metrics": {
+    "src/features/analytics/lib/facebook/fb-page-metrics-store.ts": "upsertFbPageMetricDays is the one writer of a Page's daily metrics — a separate table from ig_account_metrics by decision (20260846): five shared columns did not justify squeezing Facebook concepts into Instagram-named ones.",
+    "src/features/analytics/lib/shared/purge-account-metrics.ts": "Deletes a Page's day rows as part of the Meta data-deletion cascade and the reconnect purge, beside the other analytics tables."
   }
 }

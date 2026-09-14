@@ -1,9 +1,19 @@
-import { requireAuthUserId } from '@/lib/auth/session'
+import { redirect } from 'next/navigation'
+import { getCachedUserRecord, requireAuthUserId } from '@/lib/auth/session'
+import { getCachedEntitlement } from '@/lib/queries/cache'
+import { PLAN_AND_BILLING_PATH } from '@/utils/constants'
 import { AuthProvider } from '@/components/providers/auth-provider'
 import { ContourField } from '@/components/layout/contour-field'
 
+/**
+ * The wizard is the one surface outside the dashboard shell that spends, so it checks the
+ * workspace may spend before it renders; a paused or lapsed workspace lands on Plan & billing.
+ */
 export default async function GenerateLayout({ children }: { children: React.ReactNode }) {
-  await requireAuthUserId()
+  const userId = await requireAuthUserId()
+  const record = await getCachedUserRecord(userId)
+  const entitlement = record ? await getCachedEntitlement(record.agency_id) : null
+  if (!entitlement?.canSpend) redirect(PLAN_AND_BILLING_PATH)
 
   return (
     <AuthProvider>

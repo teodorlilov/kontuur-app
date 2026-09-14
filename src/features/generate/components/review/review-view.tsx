@@ -246,8 +246,8 @@ export function ReviewView({
       qualityIssues: focused.criteria.issues.map((i) => `${i.type}: ${i.description}`),
     })
     setRewriting(false)
-    if (!outcome) {
-      toast.error('Failed to rewrite post')
+    if (!outcome.ok) {
+      toast.error(outcome.error)
       return
     }
     toast.success('Post rewritten')

@@ -21,25 +21,37 @@ import {
  *                still 'trialing' (an early converter with a deferred first charge), which keeps
  *                trial limits until the first paid invoice makes it 'active';
  *   trial_grace  the trial ended less than GRACE_DAYS ago: nothing spends, scheduled posts still
- *                publish and syncs continue;
+ *                publish and syncs continue until `graceEndsAt`;
  *   active       a paid subscription;
- *   past_due     a renewal failed less than GRACE_DAYS ago — full access, so a card hiccup does
- *                not stop a paying agency's autopilot; the grace counts from `past_due_since`,
- *                not from `current_period_end`, which Stripe advances on the renewal invoice;
+ *   past_due     a renewal failed less than GRACE_DAYS ago — full access until `graceEndsAt`, so a
+ *                card hiccup does not stop a paying agency's autopilot; the grace counts from
+ *                `past_due_since`, never from the period columns;
  *   locked       everything else: read-only.
  * A 'house' workspace (plans.ts) is always `active` with an unmetered allowance and no cap.
  *
- * `periodKey` is the usage bucket: 'trial' before any paid period, else the ISO date the Stripe
- * period started, so a customer who subscribes on the 20th does not get two allowances for one
- * payment. `limits` are all zero whenever the workspace cannot spend, so a roster that slips past
- * a gate still cannot consume anything.
+ * `periodKey` is the usage bucket: 'trial' for the trial's one allowance; the ISO date the Stripe
+ * period started for a paid plan, so a customer who subscribes on the 20th does not get two
+ * allowances for one payment — and a paid row with no period start is locked rather than let
+ * into the trial's bucket; the UTC calendar month ('YYYY-MM') for a house workspace, whose usage
+ * is counted and never refused. The period columns must advance only on a paid invoice
+ * (docs/plans/BILLING.md step 9): a failed renewal that moved them would hand the grace days a
+ * fresh allowance. `limits` are all zero whenever the workspace cannot spend, so a roster that
+ * slips past a gate still cannot consume anything.
+ *
+ * Every date on the entitlement is read in `timezone`, the agency's own — the row carries it so
+ * a sentence built anywhere (a 402, a bell, the shell) names the day the customer will see.
  */
 export type EntitlementState = 'trial' | 'trial_grace' | 'active' | 'past_due' | 'locked'
+
+/** What a site is about to do: spend money, publish to a network, or create a brand. */
+export type EntitlementNeed = 'spend' | 'publish' | 'create'
 
 export interface Entitlement {
   state: EntitlementState
   plan: PlanId
   mode: 'agency' | 'solo'
+  /** The agency's IANA zone — the one every date below is written out in. */
+  timezone: string
   canSpend: boolean
   canPublish: boolean
   canCreate: boolean
@@ -50,8 +62,19 @@ export interface Entitlement {
   limits: Allowance
   periodKey: string
   trialEndsAt: Date | null
-  /** When the current allowance resets: the period end, or the trial end. */
+  /** When the paid allowance resets — the period end. Null on the trial, whose one allowance never resets, and on house. */
   resetsOn: Date | null
+  /** When a grace runs out: publishing stops (trial_grace) or the workspace pauses (past_due). Null otherwise. */
+  graceEndsAt: Date | null
+}
+
+/** Whether the entitlement allows what a site is about to do. */
+export function allows(entitlement: Entitlement, need: EntitlementNeed): boolean {
+  return need === 'spend'
+    ? entitlement.canSpend
+    : need === 'publish'
+      ? entitlement.canPublish
+      : entitlement.canCreate
 }
 
 function isPlanId(value: string): value is PlanId {
@@ -72,6 +95,10 @@ function dateOf(value: string | null): Date | null {
   return value ? new Date(value) : null
 }
 
+function plusGrace(from: Date): Date {
+  return new Date(from.getTime() + GRACE_DAYS * MS_PER_DAY)
+}
+
 function trialLimits(mode: 'agency' | 'solo'): { brands: number; limits: Allowance } {
   const brands = TRIAL_BRANDS[mode]
   return { brands, limits: scaled(TRIAL_PER_BRAND, brands) }
@@ -83,6 +110,7 @@ export function noEntitlement(): Entitlement {
     state: 'locked',
     plan: 'trial',
     mode: 'agency',
+    timezone: 'UTC',
     canSpend: false,
     canPublish: false,
     canCreate: false,
@@ -92,6 +120,7 @@ export function noEntitlement(): Entitlement {
     periodKey: 'trial',
     trialEndsAt: null,
     resetsOn: null,
+    graceEndsAt: null,
   }
 }
 
@@ -99,13 +128,14 @@ export function noEntitlement(): Entitlement {
 export function entitlementFor(row: AgencyBillingColumns, now: Date): Entitlement {
   const mode: 'agency' | 'solo' = row.mode === 'solo' ? 'solo' : 'agency'
   const plan: PlanId = isPlanId(row.plan) ? row.plan : 'trial'
+  const timezone = row.timezone
   const trialEndsAt = dateOf(row.trial_ends_at)
-  const graceMs = GRACE_DAYS * MS_PER_DAY
 
-  const locked = (state: EntitlementState, resetsOn: Date | null): Entitlement => ({
+  const locked = (state: EntitlementState, graceEndsAt: Date | null): Entitlement => ({
     state,
     plan,
     mode,
+    timezone,
     canSpend: false,
     canPublish: state === 'trial_grace',
     canCreate: false,
@@ -114,7 +144,8 @@ export function entitlementFor(row: AgencyBillingColumns, now: Date): Entitlemen
     limits: zeroAllowance(),
     periodKey: 'trial',
     trialEndsAt,
-    resetsOn,
+    resetsOn: null,
+    graceEndsAt,
   })
 
   const onTrial = (): Entitlement => {
@@ -123,6 +154,7 @@ export function entitlementFor(row: AgencyBillingColumns, now: Date): Entitlemen
       state: 'trial',
       plan,
       mode,
+      timezone,
       canSpend: true,
       canPublish: true,
       canCreate: true,
@@ -131,7 +163,8 @@ export function entitlementFor(row: AgencyBillingColumns, now: Date): Entitlemen
       limits,
       periodKey: 'trial',
       trialEndsAt,
-      resetsOn: trialEndsAt,
+      resetsOn: null,
+      graceEndsAt: null,
     }
   }
 
@@ -140,6 +173,7 @@ export function entitlementFor(row: AgencyBillingColumns, now: Date): Entitlemen
       state: 'active',
       plan,
       mode,
+      timezone,
       canSpend: true,
       canPublish: true,
       canCreate: true,
@@ -149,14 +183,15 @@ export function entitlementFor(row: AgencyBillingColumns, now: Date): Entitlemen
       periodKey: now.toISOString().slice(0, 7),
       trialEndsAt: null,
       resetsOn: null,
+      graceEndsAt: null,
     }
   }
 
   const status = row.subscription_status
   if (!row.stripe_subscription_id || status === 'trialing') {
     if (trialEndsAt && now < trialEndsAt) return onTrial()
-    if (trialEndsAt && now.getTime() < trialEndsAt.getTime() + graceMs)
-      return locked('trial_grace', trialEndsAt)
+    if (trialEndsAt && now < plusGrace(trialEndsAt))
+      return locked('trial_grace', plusGrace(trialEndsAt))
     return locked('locked', null)
   }
 
@@ -164,13 +199,14 @@ export function entitlementFor(row: AgencyBillingColumns, now: Date): Entitlemen
   const state: EntitlementState =
     status === 'active'
       ? 'active'
-      : status === 'past_due' && pastDueSince && now.getTime() < pastDueSince.getTime() + graceMs
+      : status === 'past_due' && pastDueSince && now < plusGrace(pastDueSince)
         ? 'past_due'
         : 'locked'
   if (state === 'locked') return locked('locked', null)
 
   const paid = plan === 'trial' ? null : PLANS[plan]
-  if (!paid) return locked('locked', null)
+  const periodStart = row.current_period_start?.slice(0, 10)
+  if (!paid || !periodStart) return locked('locked', null)
   const quantity = Math.max(paid.minimumBrands, row.subscription_quantity ?? paid.minimumBrands)
   const brands = Math.min(quantity, paid.maxBrands)
 
@@ -178,14 +214,16 @@ export function entitlementFor(row: AgencyBillingColumns, now: Date): Entitlemen
     state,
     plan,
     mode,
+    timezone,
     canSpend: true,
     canPublish: true,
     canCreate: true,
     brands,
     brandsUnlimited: paid.maxBrands === Infinity,
     limits: scaled(paid.perBrand, brands),
-    periodKey: row.current_period_start?.slice(0, 10) ?? 'trial',
+    periodKey: periodStart,
     trialEndsAt,
     resetsOn: dateOf(row.current_period_end),
+    graceEndsAt: state === 'past_due' && pastDueSince ? plusGrace(pastDueSince) : null,
   }
 }

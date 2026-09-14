@@ -37,7 +37,12 @@ type GenerateStreamRequestBody = Omit<
   preloadedClientData: ClientData
 }
 
-/** Stream a batch generation run as ndjson: research, then a post per theme. */
+/**
+ * Stream a batch generation run as ndjson: research, then a post per theme. The run is opened
+ * with no slot key — a run a human asked for is never deduped against a schedule — and the draft
+ * allowance is reserved inside that claim, before any model call, so a refusal is a 402 before
+ * the stream opens.
+ */
 export async function POST(request: Request) {
   const auth = await resolveAuth()
   if (!auth.ok) return auth.response
@@ -87,8 +92,6 @@ export async function POST(request: Request) {
 
   const targetCount = body.targetPostCount + (body.priorityPosts?.length ?? 0)
   const entitlement = await getCachedEntitlement(agencyId)
-  // No slot key: a run a human asked for is never deduped against a schedule. The draft
-  // allowance is reserved inside, before any model call — a refusal is a 402 before the stream opens.
   const claim = await startGenerationRun(supabase, {
     clientId: body.clientId,
     agencyId,
