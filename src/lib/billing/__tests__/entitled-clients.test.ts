@@ -29,7 +29,9 @@ const CLIENTS = [
 
 /**
  * A recorder in place of the admin client: every query resolves to the fixture for its table and
- * the `.in()` filter is applied so the clients read returns only what the real one would.
+ * the `.in()` filter is applied so the clients read returns only what the real one would. Cast
+ * through `unknown` because only `from/select/in` exist — the three the roster calls; a new query
+ * method fails at runtime, which is the intent.
  */
 function makeAdmin() {
   const reads: string[] = []

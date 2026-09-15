@@ -70,10 +70,11 @@ describe('entitlementFor — the trial', () => {
     expect(e.graceEndsAt?.toISOString()).toBe(daysFromNow(GRACE_DAYS - 2))
   })
 
-  it('an ended trial past the grace is locked', () => {
+  it('an ended trial past the grace is locked, and remembers when the grace ran out', () => {
     const e = entitlementFor(row({ trial_ends_at: daysFromNow(-(GRACE_DAYS + 1)) }), NOW)
     expect(e.state).toBe('locked')
     expect([e.canSpend, e.canPublish, e.canCreate]).toEqual([false, false, false])
+    expect(e.graceEndsAt?.toISOString()).toBe(daysFromNow(-1))
   })
 
   it('no trial end and no subscription is locked, never open', () => {

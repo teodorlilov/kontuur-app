@@ -100,6 +100,24 @@ describe('NotificationItem', () => {
     expect(screen.queryByText('requested changes')).not.toBeInTheDocument()
   })
 
+  it('names a billing notice as the workspace’s own, with no client in front of it', () => {
+    renderItem(
+      notification({
+        type: 'trial_ending',
+        client_id: null,
+        message: 'Your trial ends on 27 September — choose a plan to keep generating.',
+      })
+    )
+
+    expect(screen.getByText('Your trial ends soon')).toBeInTheDocument()
+    expect(
+      screen.getByText('Your trial ends on 27 September — choose a plan to keep generating.')
+    ).toBeInTheDocument()
+    expect(screen.getByText('Open plan & billing →')).toBeInTheDocument()
+    expect(screen.queryByText('Acme')).not.toBeInTheDocument()
+    expect(screen.queryByText('requested changes')).not.toBeInTheDocument()
+  })
+
   it('hands the notification itself to onNavigate, so the bell can pick a destination', () => {
     const onNavigate = vi.fn()
     const n = notification({ type: 'connection_retired', message: 'x' })

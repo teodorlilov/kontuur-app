@@ -156,6 +156,8 @@ describe('every cron that can spend money or publish is gated by the entitlement
   const EXEMPT: Record<string, string> = {
     'refresh-tokens':
       'One free Meta call per expiring token keeps a paused workspace reconnectable; gating it would make reactivation require a reconnect.',
+    billing:
+      'Spends nothing and publishes nothing: it reads the entitlement to decide whom to remind of a trial ending, and never a provider.',
   }
   const GATE = /@\/lib\/billing\/entitl/
 

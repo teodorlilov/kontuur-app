@@ -203,6 +203,9 @@ export const CLIENT_WEBSITE_COLUMNS = 'id, website_url'
 // What a channel's state derives from — mirrored by `RosterConnectionRow`; both readers use it.
 export const ROSTER_CONNECTION_COLUMNS = 'platform, account_name, token_expires_at, retired_at'
 
+/** Whose a client is — the cron roster reads, which need nothing else of it. */
+export const CLIENT_OWNER_COLUMNS = 'id, agency_id'
+
 export const CLIENT_ROSTER_COLUMNS = `id, name, niche, social_connections(${ROSTER_CONNECTION_COLUMNS})`
 
 // brand_profiles
@@ -346,6 +349,9 @@ export const USER_COLUMNS = USER_KEYS.join(', ') as Join<typeof USER_KEYS, ', '>
 export type UserColumns = Pick<UserRow, (typeof USER_KEYS)[number]>
 
 export const USER_AUTH_COLUMNS = 'agency_id, role'
+
+/** Whom to mail for a workspace: the billing cron's read of its admins. */
+export const USER_CONTACT_COLUMNS = 'agency_id, email'
 
 // social_connections
 export const SOCIAL_CONNECTION_COLUMNS =

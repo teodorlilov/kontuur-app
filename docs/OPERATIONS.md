@@ -188,6 +188,8 @@ operation below is about a destination, not about a post — which is why none o
 | --- | --- | --- |
 | Mark bell notifications read (one, or all unread) | `markAllRead` | [components/layout/shell-context.tsx](../src/components/layout/shell-context.tsx) |
 | Raise an agency notification | `notify` | [lib/notifications/notify.ts](../src/lib/notifications/notify.ts) |
+| Remind a trial workspace by bell and email — trial ending, ended, paused (daily cron) | `remindTrialWorkspaces` | [lib/billing/reminders.ts](../src/lib/billing/reminders.ts) |
+| Send one email through Resend | `sendEmail` | [lib/email/resend.ts](../src/lib/email/resend.ts) |
 
 ### Storage
 

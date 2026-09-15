@@ -1,6 +1,5 @@
 import { Resend } from 'resend'
-import { renderEmail } from './layout'
-import { approvalEmail } from './templates'
+import { renderEmail, type EmailContent } from './layout'
 
 /**
  * The `From` header, as `Kontuur <hello@kontuur.app>`.
@@ -23,38 +22,30 @@ function senderAddress(): string {
 }
 
 /**
- * Send the client their approval link.
+ * The one send path: every email Kontuur sends at runtime — the approval link, the billing
+ * reminders — is a piece of `templates.ts` content rendered through the shared shell and posted
+ * here, so there is one place the sender, the key and the provider's failures are handled.
  *
  * **The SDK does not throw.** `resend.emails.send()` resolves with `{ data, error }`
  * whatever happens — an unverified sending domain, a sandbox restriction, a bad key, a
  * rate limit all come back as a resolved promise carrying an error object. Awaiting it
- * and discarding the result, which is what this did, meant the route's `try/catch`
- * caught nothing, the API returned 200, the UI toasted "Approval email sent!" and a
- * notification row recorded a send that never happened.
+ * and discarding the result once meant a route returned 200, the UI toasted "Approval
+ * email sent!" and a notification row recorded a send that never happened.
  *
- * So the error is read and thrown. The route above turns it into a 500 carrying the
- * provider's own words, because "your domain is not verified" is the answer, and
- * "check RESEND_API_KEY" was a guess.
- *
- * The markup lives in `layout.ts` and the copy in `templates.ts`, shared with the three
- * Supabase auth templates. It used to be a 60-line HTML literal inlined here, which is
- * why the auth mail could not reuse a line of it.
+ * So the error is read and thrown, named: an unverified `from` domain and a sandbox key
+ * that may only mail its owner both return 403, and only the message distinguishes them.
+ * The caller turns it into its own failure carrying the provider's words.
  */
-export async function sendApprovalEmail({
+export async function sendEmail({
   to,
-  clientName,
-  approvalUrl,
-  postCount,
+  content,
 }: {
-  to: string
-  clientName: string
-  approvalUrl: string
-  postCount: number
+  to: string | string[]
+  content: EmailContent
 }): Promise<void> {
   if (!process.env.RESEND_API_KEY) {
     throw new Error('RESEND_API_KEY is not set')
   }
-  const content = approvalEmail({ clientName, approvalUrl, postCount })
   const resend = new Resend(process.env.RESEND_API_KEY)
   const { error } = await resend.emails.send({
     from: senderAddress(),
@@ -64,9 +55,6 @@ export async function sendApprovalEmail({
   })
 
   if (error) {
-    // Named, because the two most common failures say very different things: an
-    // unverified `from` domain and a sandbox key that may only mail its owner both
-    // return 403, and only the message distinguishes them.
     throw new Error(`${error.name ?? 'send failed'}: ${error.message ?? 'no detail returned'}`)
   }
 }

@@ -1,7 +1,7 @@
 import 'server-only'
 
 import type { createAdminSupabaseClient } from '@/lib/supabase/admin'
-import { AGENCY_ENTITLEMENT_COLUMNS } from '@/lib/queries/select-columns'
+import { AGENCY_ENTITLEMENT_COLUMNS, CLIENT_OWNER_COLUMNS } from '@/lib/queries/select-columns'
 import { allows, entitlementFor, type Entitlement, type EntitlementNeed } from './entitlement'
 
 type AdminClient = ReturnType<typeof createAdminSupabaseClient>
@@ -42,7 +42,7 @@ export async function fetchEntitledClients(
 
   const { data: clients, error: clientError } = await admin
     .from('clients')
-    .select('id, agency_id')
+    .select(CLIENT_OWNER_COLUMNS)
     .in('agency_id', [...entitled.keys()])
   if (clientError) throw new Error(`entitled client roster query failed: ${clientError.message}`)
 

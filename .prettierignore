@@ -22,3 +22,7 @@ src/types/database.ts
 # inline styles is how clients start rendering it differently.
 supabase/templates
 
+
+# The billing-reminder emails, written by the same test as the Supabase templates above and
+# kept as emitted for the same reason.
+src/lib/email/__tests__/__snapshots__

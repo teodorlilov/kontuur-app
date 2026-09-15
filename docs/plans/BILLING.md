@@ -40,7 +40,7 @@ Written against files opened in this session; see the verified table at the end.
   holds `targetPostCount`, `priorityPosts`, `frequency_value`, `posts_per_week`; the cron clamps
   slides); the publish scheduler filters both its queries by the entitled clients ahead of its
   LIMIT, the metrics and comments rosters take one entitled set per tick from their cron route;
-  `cron-invariants` proves every cron except `refresh-tokens` reaches the gate; the brand cap and
+  `cron-invariants` proves every cron except `refresh-tokens` (and, since step 8, `billing`) reaches the gate; the brand cap and
   `create` gate in `createClient` (provisioning now through the admin client — apply
   `supabase/migrations/20260854_clients_insert_admin_only.sql` with this deploy), `publish` gates
   on publish-now and scheduling (unscheduling stays open); `gate-coverage` pins the allowlist and
@@ -90,6 +90,21 @@ Written against files opened in this session; see the verified table at the end.
   needed, the banner and the wall derive from the layout's read. New tests: fal metering,
   `callAnthropic` fail-closed, `fetchEntitledClients`, the gate pair, the wire caps, the publish
   scheduler's entitled filter, `PlanSection` per state, `rewriteDraft`, and the loop rule.
+- **Step 8 complete** (uncommitted): `src/app/api/cron/billing/route.ts` runs daily at 08:00 UTC
+  (`vercel.json`) and calls `remindTrialWorkspaces` (`src/lib/billing/reminders.ts`): one read of
+  the agencies with no subscription, `pickReminder` (pure) picks the moment — the trial's last three
+  days, its grace, or the seven days after the grace ran out — and the sentence is the shell's own
+  (`shellNotice`, `workspacePaused`), dated, so `notify` dedups it; the email goes only behind a
+  bell row that was actually written (`notify` now says whether it wrote, held back or failed),
+  to the workspace's admins — the admins are read before anything is written, so a failed read
+  leaves no row behind; one users read per tick. `sendEmail` is the one Resend path —
+  `sendApprovalEmail` is gone and the approval sender composes `approvalEmail` itself;
+  `resolveAppUrl()` in `src/utils/url.ts` replaces
+  the three copies of the origin fallback. The bell titles billing rows as the workspace's own and
+  sends them to Plan & billing. `cron-invariants` lists `billing` as the second exemption;
+  `unauthorizedCron` (`src/lib/cron/authorize-cron.ts`) is the bearer check all seven cron routes
+  now share, with its own test, as `notify`'s three answers now have theirs. Tests:
+  `reminders.test.ts` (selector and runner), the three reminder snapshots, the bell row.
 
 ## Placeholders (one constants file, `src/lib/billing/plans.ts` (new))
 
@@ -364,7 +379,7 @@ Design direction: `docs/redesign-mocks/direction-01.html` (paper ground, one for
 | `POST` (generate-stream) | `src/app/api/ai/generate-stream/route.ts:37` | yes | JSON errors | — | `startGenerationRun` at :84 before research at :119 |
 | `createClient`, `updateClient`, `deleteClient` | `src/features/clients/actions/client-actions.ts:44-129` | yes | `ActionResult` failure | busts `'agency-clients'` | `createClient` passes the user-scoped client to `provisionClient` at :58; no cap today |
 | `provisionClient` | `src/features/clients/lib/provision-client.ts:42` | yes | `{ ok: false, error }` | — | only caller is `createClient` |
-| `notify`, `NOTIFY_EVERY_TIME` | `src/lib/notifications/notify.ts:32-61` | yes | throws on the cooldown read; logs an insert failure | — | dedup by exact `message` within `cooldownDays` (default 7) |
+| `notify`, `NOTIFY_EVERY_TIME` | `src/lib/notifications/notify.ts:32,66` | yes | throws on the cooldown read; resolves 'written' / 'suppressed' / 'failed' (an insert failure is logged, never thrown) | — | dedup by exact `message` within `cooldownDays` (default 7); the billing cron mails only behind 'written' |
 | `scheduleInputSchema` | `src/features/clients/schemas.ts:45` | yes | zod | — | `frequency_value` (:48) and `posts_per_week` (:56) are `positive()` with no max |
 | `generateStreamSchema` | `src/features/generate/schemas.ts:110` | yes | zod | — | `slideCount` clamped (:116); `targetPostCount` `min(0)` only (:117); `priorityPosts` unbounded (:118) |
 | `MAX_CAROUSEL_SLIDES`, `MIN_CAROUSEL_SLIDES`, `DEFAULT_CAROUSEL_SLIDES`, `QUALITY_FLOOR`, `MS_PER_DAY` | `src/utils/constants.ts:4-19` | yes | — | — | |
@@ -373,8 +388,8 @@ Design direction: `docs/redesign-mocks/direction-01.html` (paper ground, one for
 | `ShellProvider`, `useShell` | `src/components/layout/shell-context.tsx:82-234` | yes | `useShell` throws outside the provider | — | |
 | `createUserRecord` | `src/lib/auth/create-user-record.ts:48` | yes | throws | — | inserts `{ name, mode }` only (:99-101); billing columns come from DB defaults |
 | `createAdminSupabaseClient` | `src/lib/supabase/admin.ts:14` | yes | — | — | |
-| `sendApprovalEmail` | `src/lib/email/resend.ts:43` | yes | — | — | the only Resend sender; `senderAddress` (:17) private, throws without `RESEND_FROM_EMAIL` |
-| `approvalEmail`, `confirmSignupEmail` | `src/lib/email/templates.ts:18-49` | yes | pure | — | snapshot-tested in `src/lib/email/__tests__/templates.test.ts` |
+| `sendEmail` | `src/lib/email/resend.ts:39` | yes | throws with the provider's words | — | the one Resend send path (step 8); `senderAddress` (:17) private, throws without `RESEND_FROM_EMAIL` |
+| `approvalEmail`, `confirmSignupEmail` | `src/lib/email/templates.ts:21,105` | yes | pure | — | snapshot-tested in `src/lib/email/__tests__/templates.test.ts` |
 | `schedulePosts` | `src/lib/actions/post-actions.ts:432` | yes | `ActionResult` | — | need `'publish'` |
 | `PUT` (account settings) | `src/app/api/settings/account/route.ts:26` | yes | JSON errors | busts `'agencies'` at :59 | user-scoped `agencies` update of name/timezone at :53 |
 | `POST` (team invite) | `src/app/api/settings/team/invite/route.ts:19` | yes | JSON errors | — | admin check only; no mode or seat rule — unchanged |

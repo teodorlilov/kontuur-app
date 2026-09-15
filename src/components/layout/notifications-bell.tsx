@@ -10,7 +10,8 @@ import { TOOL_ROW } from '@/components/layout/page-header/shared'
 import { Spinner } from '@/components/ui/spinner'
 import { parseTimestamp } from '@/utils/format'
 import { toDateKey } from '@/utils/date-helpers'
-import { NotificationItem } from './notification-item'
+import { PLAN_AND_BILLING_PATH } from '@/utils/constants'
+import { isBillingNotification, NotificationItem } from './notification-item'
 import type { EnrichedNotification } from '@/types/api'
 
 /**
@@ -184,6 +185,10 @@ export function NotificationsBell() {
     setOpen(false)
     if (from?.type === 'connection_retired' && from.client_id) {
       router.push(`/clients/${from.client_id}/edit?tab=accounts`)
+      return
+    }
+    if (from && isBillingNotification(from)) {
+      router.push(PLAN_AND_BILLING_PATH)
       return
     }
     router.push('/calendar')

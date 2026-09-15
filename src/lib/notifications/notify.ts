@@ -50,17 +50,22 @@ interface NotifyInput {
   cooldownDays?: number
 }
 
+/** What `notify` did: wrote the row, held it back under the cooldown, or could not write it. */
+type NotifyOutcome = 'written' | 'suppressed' | 'failed'
+
 /**
- * Insert an agency notification, at most once per cooldown for the same message.
+ * Insert an agency notification, at most once per cooldown for the same message, and say which
+ * of the three things happened — the billing cron (src/lib/billing/reminders.ts) mails only
+ * behind 'written', so a redelivered tick never mails twice, and reports a 'failed'.
  *
  * Never throws on a failed insert — every caller reaches this after the thing it is reporting has
  * already happened, so failing here would report a completed action as broken. A cooldown-check
  * failure is different and does throw: reading it as "none sent" would re-notify on every tick,
  * which is the outcome the cooldown exists to prevent.
  */
-export async function notify(admin: SupabaseClient, input: NotifyInput): Promise<void> {
+export async function notify(admin: SupabaseClient, input: NotifyInput): Promise<NotifyOutcome> {
   const { agencyId, clientName } = await resolveTarget(admin, input)
-  if (!agencyId) return
+  if (!agencyId) return 'suppressed'
 
   const message =
     typeof input.message === 'function' ? input.message(clientName ?? '') : input.message
@@ -76,7 +81,7 @@ export async function notify(admin: SupabaseClient, input: NotifyInput): Promise
       .gte('created_at', since)
       .limit(1)
     if (error) throw new Error(`notification cooldown check failed: ${error.message}`)
-    if (existing && existing.length > 0) return
+    if (existing && existing.length > 0) return 'suppressed'
   }
 
   const { error } = await admin.from('notifications').insert({
@@ -88,7 +93,11 @@ export async function notify(admin: SupabaseClient, input: NotifyInput): Promise
     feedback_text: input.feedbackText ?? null,
     review_token: input.reviewToken ?? null,
   })
-  if (error) console.error('[notify] insert failed:', error.message)
+  if (error) {
+    console.error('[notify] insert failed:', error.message)
+    return 'failed'
+  }
+  return 'written'
 }
 
 /**

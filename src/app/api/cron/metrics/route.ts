@@ -6,6 +6,7 @@ import { syncAllFacebookMetrics } from '@/features/analytics/lib/facebook/sync-f
 import { fetchEntitledClients } from '@/lib/billing/entitled-clients'
 import { IG_METRICS_TAG } from '@/features/analytics/lib/instagram/report-data'
 import { FB_METRICS_TAG } from '@/features/analytics/lib/facebook/facebook-report-data'
+import { unauthorizedCron } from '@/lib/cron/authorize-cron'
 
 export const maxDuration = 300
 
@@ -18,10 +19,8 @@ const TIME_BUDGET_MS = 240_000
  * workspace may still publish, resolved once per tick and shared by both networks' syncs.
  */
 export async function GET(request: NextRequest) {
-  const authHeader = request.headers.get('authorization')
-  if (!process.env.CRON_SECRET || authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  const unauthorized = unauthorizedCron(request)
+  if (unauthorized) return unauthorized
 
   const startedAt = Date.now()
   const admin = createAdminSupabaseClient()

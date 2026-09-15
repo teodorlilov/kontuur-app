@@ -28,6 +28,7 @@ import type { Theme } from '@/ai/generation/types'
 import { POSTING_SCHEDULE_DUE_COLUMNS } from '@/lib/queries/select-columns'
 import { recordPostTopics } from '@/lib/queries/post-history'
 import { notify, NOTIFY_EVERY_TIME } from '@/lib/notifications/notify'
+import { unauthorizedCron } from '@/lib/cron/authorize-cron'
 
 export const maxDuration = 300
 
@@ -54,10 +55,8 @@ const TIME_BUDGET_MS = 240_000
  * so an interrupted run is closed and its drafts given back.
  */
 export async function GET(request: NextRequest) {
-  const authHeader = request.headers.get('authorization')
-  if (!process.env.CRON_SECRET || authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  const unauthorized = unauthorizedCron(request)
+  if (unauthorized) return unauthorized
 
   const startedAt = Date.now()
   const supabase = createAdminSupabaseClient()

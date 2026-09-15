@@ -9,6 +9,7 @@ import { AllowanceError, readUsage, releaseCharged } from '@/lib/billing/usage'
 import { missingPositions, pickVisualBacklog, type BacklogPost } from '@/lib/visual/visual-backlog'
 import { VISUAL_BACKLOG_POST_COLUMNS } from '@/lib/queries/select-columns'
 import { MS_PER_HOUR, QUALITY_FLOOR } from '@/utils/constants'
+import { unauthorizedCron } from '@/lib/cron/authorize-cron'
 
 export const maxDuration = 300
 // Stop launching new generations past this point so in-flight ones finish
@@ -52,10 +53,8 @@ const BACKLOG_FETCH_LIMIT = 100
  * is not charged, though the attempt still counts.
  */
 export async function GET(request: NextRequest) {
-  const authHeader = request.headers.get('authorization')
-  if (!process.env.CRON_SECRET || authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  const unauthorized = unauthorizedCron(request)
+  if (unauthorized) return unauthorized
 
   const startedAt = Date.now()
   const admin = createAdminSupabaseClient()

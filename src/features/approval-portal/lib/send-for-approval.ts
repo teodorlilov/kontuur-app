@@ -5,7 +5,9 @@ import { revalidateTag } from 'next/cache'
 import { createApprovalBatch } from './approval-batch'
 import { getCachedAgency } from '@/lib/queries/cache'
 import { notify, NOTIFY_EVERY_TIME } from '@/lib/notifications/notify'
-import { sendApprovalEmail } from '@/lib/email/resend'
+import { sendEmail } from '@/lib/email/resend'
+import { approvalEmail } from '@/lib/email/templates'
+import { resolveAppUrl } from '@/utils/url'
 import { pluralise } from '@/utils/format'
 
 /** How the client receives the link: the agency copies it, or we email it for them. */
@@ -87,16 +89,13 @@ export async function sendForApproval(
   )
   if (!result.ok) return { ok: false, error: result.error, status: result.status }
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
-  const url = `${appUrl}/approve/${result.batchId}`
+  const url = `${resolveAppUrl()}/approve/${result.batchId}`
 
   if (channel === 'email' && contactEmail) {
     try {
-      await sendApprovalEmail({
+      await sendEmail({
         to: contactEmail,
-        clientName: name,
-        approvalUrl: url,
-        postCount: result.postCount,
+        content: approvalEmail({ clientName: name, approvalUrl: url, postCount: result.postCount }),
       })
     } catch (err) {
       console.error('[approval] email send failed:', err)

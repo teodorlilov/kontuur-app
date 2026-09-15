@@ -10,7 +10,13 @@ import {
 import { Icon } from '@/components/ui/icon'
 import { formatRelativeTime, parseTimestamp } from '@/utils/format'
 import { cn } from '@/utils/cn'
+import { BILLING_NOTIFICATION_TITLES } from '@/lib/billing/copy'
 import type { EnrichedNotification } from '@/types/api'
+
+/** Whether a notification is about the plan — the bell sends these to Plan & billing. */
+export function isBillingNotification(n: Pick<EnrichedNotification, 'type'>): boolean {
+  return n.type !== null && n.type in BILLING_NOTIFICATION_TITLES
+}
 
 interface NotificationItemProps {
   notification: EnrichedNotification
@@ -29,6 +35,8 @@ interface NotificationItemProps {
 
 /** Build the title line for a notification. */
 function titleForNotification(n: EnrichedNotification): string {
+  const billing = n.type && BILLING_NOTIFICATION_TITLES[n.type]
+  if (billing) return billing
   if (n.type === 'posts_ready') return 'has drafts ready to review'
   if (n.type === 'client_approved_all') return 'approved all posts'
   if (n.type === 'client_feedback') return 'requested changes'
@@ -53,6 +61,7 @@ function bodyForNotification(n: EnrichedNotification): string {
 
 /** The row's call to action, matching where `handleNavigate` sends it. */
 function linkLabelForNotification(n: EnrichedNotification): string {
+  if (isBillingNotification(n)) return 'Open plan & billing →'
   return n.type === 'connection_retired' ? 'Open connected accounts →' : 'Open in calendar →'
 }
 
@@ -72,6 +81,9 @@ export function NotificationItem({
   const isSent = n.type === 'approval_sent'
   const isRetired = n.type === 'connection_retired'
   const isPublishFailed = n.type === 'publish_failed'
+  const isBilling = isBillingNotification(n)
+  const isStopped =
+    n.type === 'workspace_paused' || n.type === 'payment_failed' || n.type === 'allowance_reached'
   const title = titleForNotification(n)
   const body = bodyForNotification(n)
   const feedbackPreview = n.feedback_text
@@ -95,17 +107,19 @@ export function NotificationItem({
         <div
           className={cn(
             'mt-px grid size-8 shrink-0 place-items-center rounded-full',
-            isRetired || isPublishFailed
+            isRetired || isPublishFailed || isStopped
               ? 'bg-danger-bg text-danger'
-              : isApproval || isSent
+              : isApproval || isSent || isBilling
                 ? 'bg-wash text-forest'
                 : 'bg-marker text-forest-deep'
           )}
         >
           {isRetired ? (
             <Icon glyph={UnlinkIcon} size="sm" />
-          ) : isPublishFailed ? (
+          ) : isPublishFailed || isStopped ? (
             <Icon glyph={DangerTriangleIcon} size="sm" />
+          ) : isBilling ? (
+            <Icon glyph={UnreadIcon} size="sm" />
           ) : isSent ? (
             <Icon glyph={PlaneIcon} size="sm" />
           ) : isApproval ? (
@@ -117,7 +131,13 @@ export function NotificationItem({
 
         <div className="min-w-0 flex-1">
           <div className="text-body leading-[1.4] text-ink">
-            <span className="font-semibold">{clientName}</span> {title}
+            {isBilling ? (
+              <span className="font-semibold">{title}</span>
+            ) : (
+              <>
+                <span className="font-semibold">{clientName}</span> {title}
+              </>
+            )}
           </div>
 
           {feedbackPreview && (

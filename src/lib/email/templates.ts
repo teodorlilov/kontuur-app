@@ -1,17 +1,20 @@
 import { pluralise } from '@/utils/format'
-import { type EmailContent, strong } from './layout'
+import { REMINDER_COPY } from '@/lib/billing/copy'
+import type { BillingReminderType } from '@/types/api'
+import { escapeHtml, type EmailContent, strong } from './layout'
 
 /**
- * The four messages Kontuur sends, as content for the shared shell.
+ * The messages Kontuur sends, as content for the shared shell: the approval mail, the three
+ * billing reminders, and the three Supabase auth templates.
  *
- * The three auth templates carry Supabase's own placeholders rather than data:
+ * The auth templates carry Supabase's own placeholders rather than data:
  * `{{ .ConfirmationURL }}` and `{{ .Email }}` are substituted by Supabase when
  * it sends. They are rendered to `supabase/templates/*.html` by
  * `__tests__/templates.test.ts`, so the shell here and the files pasted into the
  * dashboard cannot drift apart.
  *
- * Every one of them says four things the originals did not: what happened, what
- * to do, when the link dies, and what to do if it was not you.
+ * Every one of them says what happened and what to do; the ones that carry a link that
+ * expires also say when, and what to do if it was not you.
  */
 
 /** Sent from the app when a batch is ready for the client to look at. */
@@ -44,6 +47,29 @@ export function approvalEmail(params: {
 
 const SIGNOFF = 'Kontuur — social intelligence for agencies.'
 const PASTE = 'If the button does not work, paste this into your browser:'
+
+/**
+ * A billing reminder, sent by the daily cron to the workspace's admins. `sentence` is the same
+ * dated sentence the bell row carries and the rest of the words are `REMINDER_COPY`, both from
+ * src/lib/billing/copy.ts — the sentence is data, so it is escaped here.
+ */
+export function reminderEmail(
+  kind: BillingReminderType,
+  sentence: string,
+  planUrl: string
+): EmailContent {
+  const reminder = REMINDER_COPY[kind]
+  return {
+    subject: reminder.subject,
+    preview: sentence,
+    label: reminder.label,
+    headline: reminder.headline,
+    paragraphs: [escapeHtml(sentence), reminder.detail],
+    cta: { label: 'Choose a plan', url: planUrl },
+    footnote: PASTE,
+    signoff: SIGNOFF,
+  }
+}
 
 /** Supabase → Authentication → Email Templates → Confirm signup. */
 export const confirmSignupEmail: EmailContent = {

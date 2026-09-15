@@ -64,7 +64,10 @@ export interface Entitlement {
   trialEndsAt: Date | null
   /** When the paid allowance resets — the period end. Null on the trial, whose one allowance never resets, and on house. */
   resetsOn: Date | null
-  /** When a grace runs out: publishing stops (trial_grace) or the workspace pauses (past_due). Null otherwise. */
+  /**
+   * When a grace runs out, or ran out: publishing stops (trial_grace), the workspace pauses
+   * (past_due), or the day a trial's grace ended (locked). Null for a paid subscription that ended.
+   */
   graceEndsAt: Date | null
 }
 
@@ -192,7 +195,7 @@ export function entitlementFor(row: AgencyBillingColumns, now: Date): Entitlemen
     if (trialEndsAt && now < trialEndsAt) return onTrial()
     if (trialEndsAt && now < plusGrace(trialEndsAt))
       return locked('trial_grace', plusGrace(trialEndsAt))
-    return locked('locked', null)
+    return locked('locked', trialEndsAt ? plusGrace(trialEndsAt) : null)
   }
 
   const pastDueSince = dateOf(row.past_due_since)

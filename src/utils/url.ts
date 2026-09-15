@@ -1,3 +1,8 @@
+/** The app's public origin, for links that leave the app — emails, the idea form, invitations. */
+export function resolveAppUrl(): string {
+  return process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
+}
+
 /**
  * Removes one-shot query params from the address bar without a navigation.
  *

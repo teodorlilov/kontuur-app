@@ -4,6 +4,7 @@ import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import { syncAllClientComments } from '@/features/comments/lib/sync-comments'
 import { fetchEntitledClients } from '@/lib/billing/entitled-clients'
 import { PLATFORM_COMMENTS_TAG } from '@/features/comments/queries/comment-queue'
+import { unauthorizedCron } from '@/lib/cron/authorize-cron'
 
 export const maxDuration = 300
 
@@ -19,10 +20,8 @@ const TIME_BUDGET_MS = 240_000
  * costs one Graph call per client.
  */
 export async function GET(request: NextRequest) {
-  const authHeader = request.headers.get('authorization')
-  if (!process.env.CRON_SECRET || authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  const unauthorized = unauthorizedCron(request)
+  if (unauthorized) return unauthorized
 
   const startedAt = Date.now()
   const admin = createAdminSupabaseClient()

@@ -8,6 +8,8 @@ const mocks = vi.hoisted(() => ({
 vi.mock('@/lib/billing/entitled-clients', () => ({
   fetchEntitledClients: (...args: unknown[]) => mocks.fetchEntitledClients(...args),
 }))
+// The chain recorder stands in for the admin client: every builder method returns itself and the
+// query resolves empty, so what is asserted is the filters the scheduler applied, nothing else.
 vi.mock('@/lib/supabase/admin', () => ({
   createAdminSupabaseClient: () => ({
     from(table: string) {

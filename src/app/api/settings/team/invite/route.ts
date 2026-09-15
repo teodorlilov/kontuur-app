@@ -4,6 +4,7 @@ import { resolveAuth } from '@/lib/auth/resolve-auth'
 import { verifyAdminRole } from '@/lib/auth/helpers'
 import { validateEmail } from '@/lib/validation'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
+import { resolveAppUrl } from '@/utils/url'
 
 /**
  * Only these two roles are meaningful: 'admin' is what every permission check in
@@ -62,7 +63,7 @@ export async function POST(request: Request) {
     .eq('id', agencyId)
     .maybeSingle()
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
+  const appUrl = resolveAppUrl()
   // createUserRecord reads `role` out of this metadata when the invite is accepted;
   // `agency_name` is read by the invite email as {{ .Data.agency_name }}.
   const { error: inviteError } = await admin.auth.admin.inviteUserByEmail(email, {

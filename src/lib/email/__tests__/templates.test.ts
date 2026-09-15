@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import { escapeHtml, renderEmail, strong } from '../layout'
-import { approvalEmail, confirmSignupEmail, inviteEmail, resetPasswordEmail } from '../templates'
+import {
+  approvalEmail,
+  confirmSignupEmail,
+  inviteEmail,
+  reminderEmail,
+  resetPasswordEmail,
+} from '../templates'
 
 describe('escapeHtml', () => {
   it('neutralises every character that can break out of email markup', () => {
@@ -42,6 +48,51 @@ describe('approvalEmail', () => {
     )
     expect(many.paragraphs[0]).toContain(
       '4 posts</strong> for <strong style="font-weight:600">A</strong> are'
+    )
+  })
+})
+
+describe('reminderEmail', () => {
+  const planUrl = 'https://kontuur.app/settings?tab=account'
+
+  it('carries the bell sentence as the first paragraph and the preview, escaped', () => {
+    const content = reminderEmail(
+      'trial_ending',
+      'Your trial ends on 27 September — choose a plan & keep generating.',
+      planUrl
+    )
+    expect(content.subject).toBe('Your Kontuur trial ends soon')
+    expect(content.preview).toBe(
+      'Your trial ends on 27 September — choose a plan & keep generating.'
+    )
+    expect(content.paragraphs[0]).toBe(
+      'Your trial ends on 27 September — choose a plan &amp; keep generating.'
+    )
+    expect(content.cta).toEqual({ label: 'Choose a plan', url: planUrl })
+  })
+
+  it('says what a paused workspace keeps, in the wall’s own words', () => {
+    const content = reminderEmail(
+      'workspace_paused',
+      'Your workspace was paused on 4 October.',
+      planUrl
+    )
+    expect(content.paragraphs[1]).toContain('Everything you made is still here to read.')
+  })
+
+  it.each([
+    ['trial_ending', 'Your trial ends on 27 September — choose a plan to keep generating.'],
+    [
+      'trial_ended',
+      'Your trial ended on 27 September. Scheduled posts still go out until 4 October; choose a plan to keep generating.',
+    ],
+    [
+      'workspace_paused',
+      'Your workspace was paused on 4 October. Choose a plan to generate, schedule and publish again.',
+    ],
+  ] as const)('renders %s to its snapshot', async (kind, sentence) => {
+    await expect(renderEmail(reminderEmail(kind, sentence, planUrl))).toMatchFileSnapshot(
+      `./__snapshots__/reminder-${kind.replace('_', '-')}.html`
     )
   })
 })

@@ -1,7 +1,8 @@
 /**
  * The one email shell. Every message Kontuur sends is this markup with a
- * different body — the approval mail sent through Resend at runtime, and the
- * three Supabase auth templates generated from it in `__tests__/templates.test.ts`.
+ * different body — the approval mail and the billing reminders sent through Resend
+ * at runtime, and the three Supabase auth templates generated from it in
+ * `__tests__/templates.test.ts`.
  *
  * Written as tables with inline styles because that is what email clients
  * support: Gmail strips `<style>` blocks and custom fonts, Outlook ignores

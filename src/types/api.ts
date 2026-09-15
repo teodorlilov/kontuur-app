@@ -303,6 +303,12 @@ export type NotificationType =
   | 'workspace_paused'
   | 'payment_failed'
 
+/** The three moments the billing cron reminds a trial workspace of — bell row and email alike. */
+export type BillingReminderType = Extract<
+  NotificationType,
+  'trial_ending' | 'trial_ended' | 'workspace_paused'
+>
+
 export type EnrichedNotification = Pick<
   NotificationRow,
   | 'id'

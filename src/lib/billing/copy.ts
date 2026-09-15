@@ -1,4 +1,5 @@
 import { MS_PER_DAY } from '@/utils/constants'
+import type { BillingReminderType, NotificationType } from '@/types/api'
 import type { Entitlement } from './entitlement'
 import { PLAN_LABELS, type AllowanceKind } from './plans'
 
@@ -154,8 +155,66 @@ export function shellNotice(
   return null
 }
 
-export const WORKSPACE_LOCKED =
-  'Your workspace is paused. Choose a plan to generate, schedule and publish again.'
+/** The way back, said by the wall and by the paused reminder alike. */
+const CHOOSE_PLAN_AGAIN = 'Choose a plan to generate, schedule and publish again.'
+
+export const WORKSPACE_LOCKED = `Your workspace is paused. ${CHOOSE_PLAN_AGAIN}`
 
 export const WORKSPACE_LOCKED_DETAIL =
   'Everything you made is still here to read. Generating, scheduling and publishing resume the moment a plan is active.'
+
+/** The bell and the email once a trial's grace has run out — dated, so a redelivered tick lands once. */
+export function workspacePaused(
+  entitlement: Pick<Entitlement, 'graceEndsAt' | 'timezone'>
+): string {
+  const on = entitlement.graceEndsAt
+    ? ` on ${formatDay(entitlement.graceEndsAt, entitlement.timezone)}`
+    : ''
+  return `Your workspace was paused${on}. ${CHOOSE_PLAN_AGAIN}`
+}
+
+/**
+ * What each reminder email says beyond the bell's own sentence: the subject line, the plate label,
+ * the headline and one paragraph of what it means. The paused detail is the wall's second line,
+ * so the email and the screen agree.
+ */
+export const REMINDER_COPY: Record<
+  BillingReminderType,
+  { subject: string; label: string; headline: { lead: string; accent: string }; detail: string }
+> = {
+  trial_ending: {
+    subject: 'Your Kontuur trial ends soon',
+    label: 'Trial',
+    headline: { lead: 'Your trial is', accent: 'ending' },
+    detail:
+      'Choose a plan to keep generating, scheduling and publishing. Everything you have made stays exactly as it is.',
+  },
+  trial_ended: {
+    subject: 'Your Kontuur trial has ended',
+    label: 'Trial',
+    headline: { lead: 'Your trial has', accent: 'ended' },
+    detail:
+      'Nothing new is generated until a plan is active. Posts already scheduled still go out during the grace days.',
+  },
+  workspace_paused: {
+    subject: 'Your Kontuur workspace is paused',
+    label: 'Account',
+    headline: { lead: 'Your workspace is', accent: 'paused' },
+    detail: WORKSPACE_LOCKED_DETAIL,
+  },
+}
+
+/**
+ * Titles for the bell rows about the workspace's plan rather than one client's content.
+ * `allowance_reached` names the client whose run was refused (`notifyDraftsExhausted`,
+ * src/app/api/cron/generate/helpers.ts), but the pool is the workspace's, so no client leads a
+ * billing title and every one of these rows opens Plan & billing.
+ */
+export const BILLING_NOTIFICATION_TITLES: Partial<Record<NotificationType, string>> = {
+  allowance_warning: 'An allowance is nearly used up',
+  allowance_reached: 'An allowance is used up',
+  trial_ending: 'Your trial ends soon',
+  trial_ended: 'Your trial has ended',
+  workspace_paused: 'Your workspace is paused',
+  payment_failed: 'A payment failed',
+}

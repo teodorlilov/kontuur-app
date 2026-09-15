@@ -201,8 +201,8 @@ async function recordSyncHealth(
  * `notify` dedups on the message text itself, so a wording that changes with the error would
  * re-notify every night. The phase detail lives in `last_sync_error`, which the document reads.
  */
-function notifySyncIncomplete(admin: SupabaseClient, clientId: string): Promise<void> {
-  return notify(admin, {
+async function notifySyncIncomplete(admin: SupabaseClient, clientId: string): Promise<void> {
+  await notify(admin, {
     clientId,
     message: (name) =>
       `Analytics for ${name} did not finish syncing — some sections are out of date`,
@@ -214,12 +214,12 @@ function notifySyncIncomplete(admin: SupabaseClient, clientId: string): Promise<
  * instead). `networkLabel` names the network whose scope is missing — naming Instagram over a
  * Facebook failure sends people to reconnect the wrong account.
  */
-function notifyMetricsBlocked(
+async function notifyMetricsBlocked(
   admin: SupabaseClient,
   clientId: string,
   networkLabel: string
 ): Promise<void> {
-  return notify(admin, {
+  await notify(admin, {
     clientId,
     message: (name) =>
       `${networkLabel} metrics for ${name} could not be synced — please reconnect the account`,

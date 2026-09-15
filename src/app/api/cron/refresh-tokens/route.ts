@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { refreshExpiringTokens } from '@/features/publishing/lib/refresh-tokens'
+import { unauthorizedCron } from '@/lib/cron/authorize-cron'
 
 // 300, not 60: the refresh loop is serial (one Meta call per expiring
 // connection) and this route now solely owns it.
@@ -11,10 +12,8 @@ export const maxDuration = 300
  * publish cron, which now fires every five minutes and must stay lean.
  */
 export async function GET(request: Request) {
-  const authHeader = request.headers.get('authorization')
-  if (!process.env.CRON_SECRET || authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  const unauthorized = unauthorizedCron(request)
+  if (unauthorized) return unauthorized
 
   try {
     const result = await refreshExpiringTokens()

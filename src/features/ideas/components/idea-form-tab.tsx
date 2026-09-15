@@ -12,6 +12,7 @@ import { toast } from '@/components/ui/toast'
 import { ensureIdeaToken } from '@/features/ideas/actions/token-actions'
 import { AWAITING_DECISION } from '@/features/ideas/lib/idea-filters'
 import type { ClientIdea } from '@/types/api'
+import { resolveAppUrl } from '@/utils/url'
 
 /**
  * The canonical public origin, not `window.location.origin`.
@@ -20,7 +21,7 @@ import type { ClientIdea } from '@/types/api'
  * exist. It is also the more correct value: the link is handed to the client, so it must be the
  * app's public address rather than whichever host the manager happens to be browsing from.
  */
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
+const APP_URL = resolveAppUrl()
 
 interface IdeaFormTabProps {
   clientId: string
