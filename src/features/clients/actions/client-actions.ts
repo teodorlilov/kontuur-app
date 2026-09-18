@@ -26,9 +26,10 @@ import {
 } from '@/features/clients/schemas'
 import { provisionClient } from '@/features/clients/lib/provision-client'
 import { countClientsByAgency } from '@/lib/queries/db'
-import { getCachedEntitlement } from '@/lib/queries/cache'
+import { getCachedAgency, getCachedEntitlement } from '@/lib/queries/cache'
 import { requireEntitledAction } from '@/lib/billing/require-entitled'
 import { addBrandRefusal } from '@/lib/billing/copy'
+import { billedSubscriptionId, syncSubscriptionQuantity } from '@/lib/billing/quantity-sync'
 import { CLIENT_FILES_BUCKET, POST_IMAGES_BUCKET } from '@/utils/constants'
 import type { ActionResult } from '@/lib/actions/types'
 
@@ -48,6 +49,10 @@ import type { ActionResult } from '@/lib/actions/types'
  * The brand cap is judged here and nowhere else. The tenant role cannot insert into `clients`
  * since migration 20260854, so the admin client below is the only way a brand comes into
  * existence and this count is the only door past the cap.
+ *
+ * On a paid workspace Stripe is told BEFORE the row exists: the new count is charged pro rata,
+ * and a declined card means no brand and the card's sentence. If the row then cannot be made,
+ * the count is put back with a credit, so nobody pays for a client that does not exist.
  */
 export async function createClient(input: CreateClientInput): Promise<ActionResult<string>> {
   // Auth before validation, for the same reason updateClient does it: parsing first lets an
@@ -65,10 +70,26 @@ export async function createClient(input: CreateClientInput): Promise<ActionResu
   }
   const data = parsed.data
 
-  const entitlement = await getCachedEntitlement(agencyId)
-  const brands = entitlement.brandsUnlimited ? 0 : await countClientsByAgency(supabase, agencyId)
+  const [entitlement, agency] = await Promise.all([
+    getCachedEntitlement(agencyId),
+    getCachedAgency(agencyId),
+  ])
+  const subscriptionId = billedSubscriptionId(entitlement, agency)
+  const brands =
+    entitlement.brandsUnlimited && !subscriptionId
+      ? 0
+      : await countClientsByAgency(supabase, agencyId)
   const capped = addBrandRefusal(entitlement, brands)
   if (capped) return { ok: false, error: capped }
+
+  if (subscriptionId) {
+    try {
+      await syncSubscriptionQuantity(subscriptionId, brands + 1, 'charge')
+    } catch (err) {
+      console.error(`[clients:create] quantity charge failed for ${agencyId}:`, err)
+      return { ok: false, error: err instanceof Error ? err.message : 'Could not add the client' }
+    }
+  }
 
   const result = await provisionClient(createAdminSupabaseClient(), {
     agencyId,
@@ -83,7 +104,14 @@ export async function createClient(input: CreateClientInput): Promise<ActionResu
     identity: data.visual_identity,
     identitySource: data.visual_identity_source,
   })
-  if (!result.ok) return { ok: false, error: result.error }
+  if (!result.ok) {
+    if (subscriptionId) {
+      await syncSubscriptionQuantity(subscriptionId, brands, 'credit').catch((err: unknown) =>
+        console.error(`[clients:create] quantity credit failed for ${agencyId}:`, err)
+      )
+    }
+    return { ok: false, error: result.error }
+  }
 
   revalidateTag('agency-clients', { expire: 0 })
   return { ok: true, data: result.clientId }
@@ -140,6 +168,10 @@ export async function updateClient(
  * call and still reaches the account after this returns. The publish run's follow-up write then
  * updates zero rows, which Supabase does not report as an error, so nothing surfaces. Guarding
  * it would mean refusing the delete for up to one cron tick; that trade was declined.
+ *
+ * On a paid workspace the count reaches Stripe after the row is gone, uncharged (the price drops
+ * from the next renewal). A Stripe failure there is logged, not surfaced: the client is already
+ * gone, and the next count written heals it.
  */
 export async function deleteClient(clientId: string): Promise<ActionResult> {
   // Auth before validation, matching createClient and updateClient above.
@@ -189,6 +221,18 @@ export async function deleteClient(clientId: string): Promise<ActionResult> {
     `[clients:delete] removed "${client.name}" (${parsed.id}) — ` +
       `${imageCount} images, ${fileCount} files`
   )
+
+  const [entitlement, agency] = await Promise.all([
+    getCachedEntitlement(agencyId),
+    getCachedAgency(agencyId),
+  ])
+  const subscriptionId = billedSubscriptionId(entitlement, agency)
+  if (subscriptionId) {
+    const remaining = await countClientsByAgency(supabase, agencyId)
+    await syncSubscriptionQuantity(subscriptionId, remaining, 'none').catch((err: unknown) =>
+      console.error(`[clients:delete] quantity decrease failed for ${agencyId}:`, err)
+    )
+  }
 
   revalidateTag('agency-clients', 'max')
   revalidateTag('client-post-stats', 'max')

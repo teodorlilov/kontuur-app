@@ -235,9 +235,13 @@ export async function fetchClientWithOwnership(
  * this header before stamping its own — so an absent header means no valid session, and the
  * action fails closed. API routes cannot take this path; they are excluded from the matcher
  * and go through requireAuth above.
+ *
+ * The cached role comes back with the agency, so an action that is for admins alone (the
+ * billing actions) needs no second `users` read. `removeTeamMember` keeps its fresh
+ * `verifyAdminRole` read on purpose: it changes who is an admin.
  */
 export async function resolveActionAuth(): Promise<
-  | { ok: true; supabase: SupabaseServerClient; agencyId: string; userId: string }
+  | { ok: true; supabase: SupabaseServerClient; agencyId: string; userId: string; role: string }
   | { ok: false; error: string }
 > {
   const userId = (await headers()).get(AUTH_USER_ID_HEADER)
@@ -245,13 +249,13 @@ export async function resolveActionAuth(): Promise<
     return { ok: false, error: 'Unauthorized' }
   }
 
-  const agencyId = (await getCachedUserRecord(userId))?.agency_id ?? null
-  if (!agencyId) {
+  const record = await getCachedUserRecord(userId)
+  if (!record?.agency_id) {
     return { ok: false, error: 'User not found' }
   }
 
   const supabase = await createServerSupabaseClient()
-  return { ok: true, supabase, agencyId, userId }
+  return { ok: true, supabase, agencyId: record.agency_id, userId, role: record.role }
 }
 
 export async function verifyAdminRole(

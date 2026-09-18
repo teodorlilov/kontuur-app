@@ -1,11 +1,12 @@
-import { pluralise } from '@/utils/format'
+import { formatDocumentNumber, formatLongDate, formatMoney, pluralise } from '@/utils/format'
 import { REMINDER_COPY } from '@/lib/billing/copy'
 import type { BillingReminderType } from '@/types/api'
+import type { SaleDocumentColumns } from '@/lib/queries/select-columns'
 import { escapeHtml, type EmailContent, strong } from './layout'
 
 /**
- * The messages Kontuur sends, as content for the shared shell: the approval mail, the three
- * billing reminders, and the three Supabase auth templates.
+ * The messages Kontuur sends, as content for the shared shell: the approval mail, the billing
+ * reminders, the invoice and credit-note mail, and the three Supabase auth templates.
  *
  * The auth templates carry Supabase's own placeholders rather than data:
  * `{{ .ConfirmationURL }}` and `{{ .Email }}` are substituted by Supabase when
@@ -49,8 +50,8 @@ const SIGNOFF = 'Kontuur — social intelligence for agencies.'
 const PASTE = 'If the button does not work, paste this into your browser:'
 
 /**
- * A billing reminder, sent by the daily cron to the workspace's admins. `sentence` is the same
- * dated sentence the bell row carries and the rest of the words are `REMINDER_COPY`, both from
+ * A billing reminder, sent to the workspace's admins by the daily cron or, for a failed renewal,
+ * by the webhook. `sentence` is the same dated sentence the bell row carries and the rest of the words are `REMINDER_COPY`, both from
  * src/lib/billing/copy.ts — the sentence is data, so it is escaped here.
  */
 export function reminderEmail(
@@ -65,7 +66,36 @@ export function reminderEmail(
     label: reminder.label,
     headline: reminder.headline,
     paragraphs: [escapeHtml(sentence), reminder.detail],
-    cta: { label: 'Choose a plan', url: planUrl },
+    cta: { label: reminder.cta, url: planUrl },
+    footnote: PASTE,
+    signoff: SIGNOFF,
+  }
+}
+
+/**
+ * The invoice or credit note, sent to the payer at the moment of payment with the PDF attached
+ * — the document Наредба Н-18 asks to be handed over electronically (чл. 52о ал. 5). The date is
+ * written in Sofia time, the document's own.
+ */
+export function documentEmail(
+  document: Pick<SaleDocumentColumns, 'kind' | 'number' | 'gross_cents' | 'issued_at'>,
+  planUrl: string
+): EmailContent {
+  const invoice = document.kind === 'invoice'
+  const noun = invoice ? 'invoice' : 'credit note'
+  const number = formatDocumentNumber(document.number)
+  const amount = formatMoney(document.gross_cents)
+  const date = formatLongDate(new Date(document.issued_at), 'Europe/Sofia')
+  return {
+    subject: invoice ? 'Your invoice from Kontuur' : 'Your credit note from Kontuur',
+    preview: `${invoice ? 'Invoice' : 'Credit note'} ${number} for ${amount} is attached.`,
+    label: invoice ? 'Invoice' : 'Credit note',
+    headline: { lead: `Your ${noun} is`, accent: 'attached' },
+    paragraphs: [
+      `${strong(`${invoice ? 'Invoice' : 'Credit note'} № ${number}`)} for ${strong(amount)}, dated ${date}, is attached as a PDF.`,
+      'It is also listed under Plan & billing, where every document stays available to download.',
+    ],
+    cta: { label: 'Open Plan & billing', url: planUrl },
     footnote: PASTE,
     signoff: SIGNOFF,
   }

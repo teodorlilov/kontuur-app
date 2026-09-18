@@ -23,7 +23,7 @@ function senderAddress(): string {
 
 /**
  * The one send path: every email Kontuur sends at runtime — the approval link, the billing
- * reminders — is a piece of `templates.ts` content rendered through the shared shell and posted
+ * reminders, the invoices — is a piece of `templates.ts` content rendered through the shared shell and posted
  * here, so there is one place the sender, the key and the provider's failures are handled.
  *
  * **The SDK does not throw.** `resend.emails.send()` resolves with `{ data, error }`
@@ -39,20 +39,30 @@ function senderAddress(): string {
 export async function sendEmail({
   to,
   content,
+  attachments,
+  idempotencyKey,
 }: {
   to: string | string[]
   content: EmailContent
+  /** The invoice PDF. Resend takes the bytes as they are; the cap is 40 MB per email. */
+  attachments?: Array<{ filename: string; content: Buffer }>
+  /** Resend keeps it 24 h: a retry after a lost "sent" write does not mail twice. */
+  idempotencyKey?: string
 }): Promise<void> {
   if (!process.env.RESEND_API_KEY) {
     throw new Error('RESEND_API_KEY is not set')
   }
   const resend = new Resend(process.env.RESEND_API_KEY)
-  const { error } = await resend.emails.send({
-    from: senderAddress(),
-    to,
-    subject: content.subject,
-    html: renderEmail(content),
-  })
+  const { error } = await resend.emails.send(
+    {
+      from: senderAddress(),
+      to,
+      subject: content.subject,
+      html: renderEmail(content),
+      attachments,
+    },
+    idempotencyKey ? { idempotencyKey } : undefined
+  )
 
   if (error) {
     throw new Error(`${error.name ?? 'send failed'}: ${error.message ?? 'no detail returned'}`)

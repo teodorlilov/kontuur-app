@@ -303,10 +303,13 @@ export type NotificationType =
   | 'workspace_paused'
   | 'payment_failed'
 
-/** The three moments the billing cron reminds a trial workspace of — bell row and email alike. */
+/**
+ * The four moments a workspace is reminded of, bell row and email alike: three by the daily cron
+ * for a trial, one by the Stripe webhook for a failed renewal.
+ */
 export type BillingReminderType = Extract<
   NotificationType,
-  'trial_ending' | 'trial_ended' | 'workspace_paused'
+  'trial_ending' | 'trial_ended' | 'workspace_paused' | 'payment_failed'
 >
 
 export type EnrichedNotification = Pick<

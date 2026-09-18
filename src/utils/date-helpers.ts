@@ -52,15 +52,16 @@ export function toDateKey(date: Date, timeZone?: string): string {
   return `${value('year')}-${value('month')}-${value('day')}`
 }
 
-/** Weekday name (lowercase), hour and minute of an instant in `timezone`, from one formatter pass. */
+/** Weekday name (lowercase), hour, minute and second of an instant in `timezone`, from one formatter pass. */
 export function getZonedParts(
   date: Date,
   timezone = 'UTC'
-): { weekday: string; hour: number; minute: number } {
+): { weekday: string; hour: number; minute: number; second: number } {
   const parts = getFormatter(`zoned:${timezone}`, {
     weekday: 'long',
     hour: '2-digit',
     minute: '2-digit',
+    second: '2-digit',
     hour12: false,
     timeZone: timezone,
   }).formatToParts(date)
@@ -71,6 +72,7 @@ export function getZonedParts(
     // hour12:false reports midnight as 24 in some ICU builds.
     hour: Number(value('hour')) % 24,
     minute: Number(value('minute')),
+    second: Number(value('second')),
   }
 }
 

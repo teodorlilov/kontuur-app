@@ -157,7 +157,12 @@ describe('omitting the zone', () => {
 
 describe('getZonedParts', () => {
   it('reads weekday, hour and minute in the requested zone', () => {
-    expect(getZonedParts(THURSDAY, 'UTC')).toEqual({ weekday: 'thursday', hour: 12, minute: 0 })
+    expect(getZonedParts(THURSDAY, 'UTC')).toEqual({
+      weekday: 'thursday',
+      second: 0,
+      hour: 12,
+      minute: 0,
+    })
   })
 
   it('crosses the day line with the zone, not with UTC', () => {
@@ -167,11 +172,13 @@ describe('getZonedParts', () => {
       weekday: 'friday',
       hour: 9,
       minute: 30,
+      second: 0,
     })
     expect(getZonedParts(lateUtc, 'America/New_York')).toEqual({
       weekday: 'thursday',
       hour: 19,
       minute: 30,
+      second: 0,
     })
   })
 
@@ -323,5 +330,12 @@ describe('getNextDateForDay', () => {
 
   it('returns empty for a name that is not a weekday', () => {
     expect(getNextDateForDay('Someday', SOFIA)).toBe('')
+  })
+})
+
+describe('getZonedParts — the second', () => {
+  it('reports the second beside the hour and minute, in the zone', () => {
+    const parts = getZonedParts(new Date('2025-10-01T18:30:05Z'), 'Europe/Sofia')
+    expect([parts.hour, parts.minute, parts.second]).toEqual([21, 30, 5])
   })
 })

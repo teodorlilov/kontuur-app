@@ -49,6 +49,22 @@ export const USER_AGENT_BOT = 'PostflowBot/1.0'
  */
 export const POST_IMAGES_BUCKET = 'post-images'
 export const CLIENT_FILES_BUCKET = 'client-files'
+/** Private: the invoices and credit notes, read through signed URLs the settings page mints. */
+export const BILLING_DOCUMENTS_BUCKET = 'billing-documents'
+
+/**
+ * The company behind Kontuur, as every invoice and filing must name it (ЗДДС чл. 114). The two
+ * legal pages still spell it by hand; they move onto this with the Phase 3 rewrite.
+ */
+export const COMPANY = {
+  legalName: 'ЧЕЛЛИНГ ООД',
+  legalNameLatin: 'Chelling Ltd',
+  uic: '206770508',
+  vatNumber: 'BG206770508',
+  address: 'ул. Габър 27, 1320 Банкя, България',
+  addressLatin: '27 Gabar St, 1320 Bankya, Bulgaria',
+  domain: 'kontuur.app',
+} as const
 
 /**
  * Where sign-in, sign-up and password reset live: the landing page, which opens the matching

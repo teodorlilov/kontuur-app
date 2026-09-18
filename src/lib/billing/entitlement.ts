@@ -2,7 +2,7 @@ import type { AgencyBillingColumns } from '@/lib/queries/select-columns'
 import { MS_PER_DAY } from '@/utils/constants'
 import {
   GRACE_DAYS,
-  PLANS,
+  PRO_PLAN,
   TRIAL_BRANDS,
   TRIAL_PER_BRAND,
   UNMETERED,
@@ -55,7 +55,7 @@ export interface Entitlement {
   canSpend: boolean
   canPublish: boolean
   canCreate: boolean
-  /** Brands the workspace may hold: the trial cap, 1 on starter, the paid quantity on agency. */
+  /** Brands the workspace may hold: the trial cap, or the paid quantity. */
   brands: number
   /** Whether more brands may be created at all — the paid plan has no ceiling, only a price. */
   brandsUnlimited: boolean
@@ -69,6 +69,8 @@ export interface Entitlement {
    * (past_due), or the day a trial's grace ended (locked). Null for a paid subscription that ended.
    */
   graceEndsAt: Date | null
+  /** The day a cancelled subscription ends — the period end while `cancel_at_period_end`; null otherwise. */
+  endsOn: Date | null
 }
 
 /** Whether the entitlement allows what a site is about to do. */
@@ -81,7 +83,7 @@ export function allows(entitlement: Entitlement, need: EntitlementNeed): boolean
 }
 
 function isPlanId(value: string): value is PlanId {
-  return value === 'trial' || value === 'starter' || value === 'agency' || value === 'house'
+  return value === 'trial' || value === 'pro' || value === 'house'
 }
 
 function zeroAllowance(): Allowance {
@@ -124,6 +126,7 @@ export function noEntitlement(): Entitlement {
     trialEndsAt: null,
     resetsOn: null,
     graceEndsAt: null,
+    endsOn: null,
   }
 }
 
@@ -149,6 +152,7 @@ export function entitlementFor(row: AgencyBillingColumns, now: Date): Entitlemen
     trialEndsAt,
     resetsOn: null,
     graceEndsAt,
+    endsOn: null,
   })
 
   const onTrial = (): Entitlement => {
@@ -168,6 +172,7 @@ export function entitlementFor(row: AgencyBillingColumns, now: Date): Entitlemen
       trialEndsAt,
       resetsOn: null,
       graceEndsAt: null,
+      endsOn: null,
     }
   }
 
@@ -187,6 +192,7 @@ export function entitlementFor(row: AgencyBillingColumns, now: Date): Entitlemen
       trialEndsAt: null,
       resetsOn: null,
       graceEndsAt: null,
+      endsOn: null,
     }
   }
 
@@ -207,11 +213,10 @@ export function entitlementFor(row: AgencyBillingColumns, now: Date): Entitlemen
         : 'locked'
   if (state === 'locked') return locked('locked', null)
 
-  const paid = plan === 'trial' ? null : PLANS[plan]
   const periodStart = row.current_period_start?.slice(0, 10)
-  if (!paid || !periodStart) return locked('locked', null)
-  const quantity = Math.max(paid.minimumBrands, row.subscription_quantity ?? paid.minimumBrands)
-  const brands = Math.min(quantity, paid.maxBrands)
+  if (plan === 'trial' || !periodStart) return locked('locked', null)
+  const brands = Math.max(1, row.subscription_quantity ?? 1)
+  const periodEnd = dateOf(row.current_period_end)
 
   return {
     state,
@@ -222,11 +227,12 @@ export function entitlementFor(row: AgencyBillingColumns, now: Date): Entitlemen
     canPublish: true,
     canCreate: true,
     brands,
-    brandsUnlimited: paid.maxBrands === Infinity,
-    limits: scaled(paid.perBrand, brands),
+    brandsUnlimited: true,
+    limits: scaled(PRO_PLAN.perBrand, brands),
     periodKey: periodStart,
     trialEndsAt,
-    resetsOn: dateOf(row.current_period_end),
+    resetsOn: periodEnd,
     graceEndsAt: state === 'past_due' && pastDueSince ? plusGrace(pastDueSince) : null,
+    endsOn: row.cancel_at_period_end ? periodEnd : null,
   }
 }

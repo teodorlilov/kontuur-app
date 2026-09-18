@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { AgencyBillingColumns } from '@/lib/queries/select-columns'
 import { entitlementFor, noEntitlement } from '../entitlement'
-import { GRACE_DAYS, PLANS, TRIAL_BRANDS, TRIAL_PER_BRAND } from '../plans'
+import { GRACE_DAYS, PRO_PLAN, TRIAL_BRANDS, TRIAL_PER_BRAND } from '../plans'
 
 const NOW = new Date('2026-09-13T12:00:00Z')
 
@@ -29,7 +29,7 @@ function row(overrides: Partial<AgencyBillingColumns> = {}): AgencyBillingColumn
 
 function paid(overrides: Partial<AgencyBillingColumns> = {}): AgencyBillingColumns {
   return row({
-    plan: 'agency',
+    plan: 'pro',
     stripe_customer_id: 'cus_1',
     stripe_subscription_id: 'sub_1',
     subscription_status: 'active',
@@ -52,6 +52,7 @@ describe('entitlementFor — the trial', () => {
     expect(e.trialEndsAt?.toISOString()).toBe(daysFromNow(7))
     expect(e.resetsOn).toBeNull()
     expect(e.graceEndsAt).toBeNull()
+    expect(e.endsOn).toBeNull()
     expect(e.timezone).toBe('Europe/Sofia')
   })
 
@@ -94,27 +95,28 @@ describe('entitlementFor — the trial', () => {
 })
 
 describe('entitlementFor — paid', () => {
-  it('an active agency plan scales the allowance by the paid quantity and buckets by period start', () => {
+  it('an active plan scales the allowance by the paid quantity and buckets by period start', () => {
     const e = entitlementFor(paid(), NOW)
     expect(e.state).toBe('active')
-    expect(e.plan).toBe('agency')
+    expect(e.plan).toBe('pro')
     expect(e.brands).toBe(5)
     expect(e.brandsUnlimited).toBe(true)
-    expect(e.limits.draft).toBe(PLANS.agency.perBrand.draft * 5)
+    expect(e.limits.draft).toBe(PRO_PLAN.perBrand.draft * 5)
     expect(e.periodKey).toBe('2026-09-01')
     expect(e.resetsOn?.toISOString()).toBe('2026-10-01T00:00:00.000Z')
+    expect(e.endsOn).toBeNull()
   })
 
-  it('agency never bills below its minimum quantity', () => {
-    const e = entitlementFor(paid({ subscription_quantity: 1 }), NOW)
-    expect(e.brands).toBe(PLANS.agency.minimumBrands)
+  it('a quantity below one, or none recorded, counts as one brand', () => {
+    expect(entitlementFor(paid({ subscription_quantity: 0 }), NOW).brands).toBe(1)
+    expect(entitlementFor(paid({ subscription_quantity: null }), NOW).brands).toBe(1)
   })
 
-  it('starter is one brand however many the subscription says', () => {
-    const e = entitlementFor(paid({ plan: 'starter', subscription_quantity: 4 }), NOW)
-    expect(e.brands).toBe(1)
-    expect(e.brandsUnlimited).toBe(false)
-    expect(e.limits.image).toBe(PLANS.starter.perBrand.image)
+  it('the paid quantity is the brand count, with no ceiling', () => {
+    const e = entitlementFor(paid({ subscription_quantity: 4 }), NOW)
+    expect(e.brands).toBe(4)
+    expect(e.brandsUnlimited).toBe(true)
+    expect(e.limits.image).toBe(PRO_PLAN.perBrand.image * 4)
   })
 
   it('a failed renewal keeps full access for the grace, counted from past_due_since', () => {
@@ -150,8 +152,10 @@ describe('entitlementFor — paid', () => {
     }
   )
 
-  it('cancel at period end stays active until Stripe ends the subscription', () => {
-    expect(entitlementFor(paid({ cancel_at_period_end: true }), NOW).state).toBe('active')
+  it('cancel at period end stays active until Stripe ends the subscription, and says when', () => {
+    const e = entitlementFor(paid({ cancel_at_period_end: true }), NOW)
+    expect(e.state).toBe('active')
+    expect(e.endsOn?.toISOString()).toBe('2026-10-01T00:00:00.000Z')
   })
 
   it("a 'house' workspace is always active, uncapped and unmetered, with no Stripe row", () => {

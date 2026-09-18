@@ -13,7 +13,7 @@ const NOW = new Date('2026-09-14T12:00:00Z')
 const day = (offset: number) => new Date(NOW.getTime() + offset * 86_400_000)
 const SOFIA = { timezone: 'Europe/Sofia' }
 
-/** A trial row with a week left; the paid overrides turn it into an active Starter subscription. */
+/** A trial row with a week left; the paid overrides turn it into an active subscription. */
 const TRIAL_ROW: AgencyBillingColumns = {
   plan: 'trial',
   mode: 'agency',
@@ -28,7 +28,7 @@ const TRIAL_ROW: AgencyBillingColumns = {
   cancel_at_period_end: false,
   past_due_since: null,
 }
-const STARTER: Partial<AgencyBillingColumns> = {
+const PRO: Partial<AgencyBillingColumns> = {
   stripe_customer_id: 'cus_1',
   stripe_subscription_id: 'sub_1',
   subscription_status: 'active',
@@ -40,10 +40,13 @@ const STARTER: Partial<AgencyBillingColumns> = {
 describe('shellNotice', () => {
   it('says nothing for most of a trial, then warns in the last three days', () => {
     expect(
-      shellNotice({ state: 'trial', trialEndsAt: day(10), graceEndsAt: null, ...SOFIA }, NOW)
+      shellNotice(
+        { state: 'trial', trialEndsAt: day(10), graceEndsAt: null, endsOn: null, ...SOFIA },
+        NOW
+      )
     ).toBeNull()
     const late = shellNotice(
-      { state: 'trial', trialEndsAt: day(2), graceEndsAt: null, ...SOFIA },
+      { state: 'trial', trialEndsAt: day(2), graceEndsAt: null, endsOn: null, ...SOFIA },
       NOW
     )
     expect(late?.tone).toBe('warn')
@@ -52,7 +55,7 @@ describe('shellNotice', () => {
 
   it('names both dates in the grace: when the trial ended and when publishing stops', () => {
     const grace = shellNotice(
-      { state: 'trial_grace', trialEndsAt: day(-2), graceEndsAt: day(5), ...SOFIA },
+      { state: 'trial_grace', trialEndsAt: day(-2), graceEndsAt: day(5), endsOn: null, ...SOFIA },
       NOW
     )
     expect(grace?.tone).toBe('bad')
@@ -63,7 +66,7 @@ describe('shellNotice', () => {
   it('writes the day out in the agency zone, not the server clock', () => {
     const lateEvening = new Date('2026-09-27T22:30:00Z')
     const notice = shellNotice(
-      { state: 'trial', trialEndsAt: lateEvening, graceEndsAt: null, ...SOFIA },
+      { state: 'trial', trialEndsAt: lateEvening, graceEndsAt: null, endsOn: null, ...SOFIA },
       new Date('2026-09-26T12:00:00Z')
     )
     expect(notice?.text).toMatch(/28 September/)
@@ -71,17 +74,32 @@ describe('shellNotice', () => {
 
   it('asks for a card by the day the grace ends, and says nothing when active or paused', () => {
     const failed = shellNotice(
-      { state: 'past_due', trialEndsAt: null, graceEndsAt: day(4), ...SOFIA },
+      { state: 'past_due', trialEndsAt: null, graceEndsAt: day(4), endsOn: null, ...SOFIA },
       NOW
     )
     expect(failed?.tone).toBe('warn')
     expect(failed?.text).toMatch(/by 18 September/)
     expect(
-      shellNotice({ state: 'active', trialEndsAt: null, graceEndsAt: null, ...SOFIA }, NOW)
+      shellNotice(
+        { state: 'active', trialEndsAt: null, graceEndsAt: null, endsOn: null, ...SOFIA },
+        NOW
+      )
     ).toBeNull()
     expect(
-      shellNotice({ state: 'locked', trialEndsAt: day(-30), graceEndsAt: null, ...SOFIA }, NOW)
+      shellNotice(
+        { state: 'locked', trialEndsAt: day(-30), graceEndsAt: null, endsOn: null, ...SOFIA },
+        NOW
+      )
     ).toBeNull()
+  })
+
+  it('says when a cancelled plan ends, while it is still active', () => {
+    const ending = shellNotice(
+      { state: 'active', trialEndsAt: null, graceEndsAt: null, endsOn: day(10), ...SOFIA },
+      NOW
+    )
+    expect(ending?.tone).toBe('warn')
+    expect(ending?.text).toMatch(/Your plan ends on 24 September/)
   })
 })
 
@@ -122,8 +140,8 @@ describe('the refusal sentences', () => {
     expect(addBrandRefusal(trial, 2)).toBeNull()
     expect(addBrandRefusal(trial, 3)).toBe('Trial includes 3 clients. Choose a plan to add more.')
     expect(
-      addBrandRefusal(entitlementFor({ ...TRIAL_ROW, plan: 'starter', ...STARTER }, NOW), 1)
-    ).toBe('Starter includes one client. Move to Agency to add more.')
+      addBrandRefusal(entitlementFor({ ...TRIAL_ROW, plan: 'pro', ...PRO }, NOW), 1)
+    ).toBeNull()
     expect(addBrandRefusal(entitlementFor({ ...TRIAL_ROW, plan: 'house' }, NOW), 40)).toBeNull()
     expect(
       addBrandRefusal(

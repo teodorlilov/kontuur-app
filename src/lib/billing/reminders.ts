@@ -2,6 +2,7 @@ import 'server-only'
 
 import type { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import { AGENCY_ENTITLEMENT_COLUMNS, USER_CONTACT_COLUMNS } from '@/lib/queries/select-columns'
+import { fetchAgencyById, fetchTeamMembersByAgency } from '@/lib/queries/db'
 import { notify } from '@/lib/notifications/notify'
 import { sendEmail } from '@/lib/email/resend'
 import { reminderEmail } from '@/lib/email/templates'
@@ -55,6 +56,44 @@ export function pickReminder(entitlement: Entitlement, now: Date): Reminder | nu
   return null
 }
 
+/** What one reminder came to — the caller tallies, the sender never throws for a send. */
+type RemindOutcome =
+  | { outcome: 'suppressed' | 'unwritten' | 'no_admin' | 'emailed' }
+  | { outcome: 'send_failed'; error: string }
+
+function planUrl(): string {
+  return `${resolveAppUrl()}${PLAN_AND_BILLING_PATH}`
+}
+
+/**
+ * One reminder to one workspace: the bell row through `notify`, and — only behind a row that
+ * was actually written, so a redelivered tick or a retried event never mails twice — one email
+ * to the addresses given. Takes the admin emails rather than reading them, so the cron keeps its
+ * one batched users read per tick and the webhook resolves its one workspace's admins itself.
+ * The bell row is the durable record and the dedup key; a send the provider refuses is reported,
+ * not retried, since retrying would mean writing the row twice. A failed cooldown read throws.
+ */
+export async function remindWorkspace(
+  admin: AdminClient,
+  input: { agencyId: string; type: BillingReminderType; message: string; to: string[] }
+): Promise<RemindOutcome> {
+  const wrote = await notify(admin, {
+    agencyId: input.agencyId,
+    type: input.type,
+    message: input.message,
+    cooldownDays: REMINDER_COOLDOWN_DAYS,
+  })
+  if (wrote === 'suppressed') return { outcome: 'suppressed' }
+  if (wrote === 'failed') return { outcome: 'unwritten' }
+  if (input.to.length === 0) return { outcome: 'no_admin' }
+  try {
+    await sendEmail({ to: input.to, content: reminderEmail(input.type, input.message, planUrl()) })
+    return { outcome: 'emailed' }
+  } catch (err) {
+    return { outcome: 'send_failed', error: err instanceof Error ? err.message : String(err) }
+  }
+}
+
 interface ReminderOutcome {
   /** Trial workspaces examined this tick. */
   checked: number
@@ -65,17 +104,12 @@ interface ReminderOutcome {
 }
 
 /**
- * Reminds every trial workspace whose moment is today: a bell row through `notify`, and — only
- * behind a row that was actually written, so a redelivered tick never mails twice — one email to
- * the workspace's admins.
- *
- * The due list and the admins to mail are resolved before anything is written — one agencies
- * read and one users read per tick — so a failed read leaves no row behind and the next tick is
- * a clean retry. Then, per workspace: the bell row first, because it is the durable record and
- * the dedup key a redelivered tick finds, and the email only behind it. An email the provider
- * refuses is counted in `errors` and not retried, since retrying would mean writing the row
- * twice; a row that could not be written, and a workspace with no admin to mail, are reported
- * the same way — data problems worth seeing in the totals, not ones to hide.
+ * Reminds every trial workspace whose moment is today, through `remindWorkspace`. The due list
+ * and the admins to mail are resolved before anything is written — one agencies read and one
+ * users read per tick — so a failed read leaves no row behind and the next tick is a clean
+ * retry. A row that could not be written, a workspace with no admin to mail and a send the
+ * provider refused are all reported in `errors` — data problems worth seeing in the totals, not
+ * ones to hide. `payment_failed` is the webhook's and stays at zero here.
  */
 export async function remindTrialWorkspaces(
   admin: AdminClient,
@@ -89,7 +123,7 @@ export async function remindTrialWorkspaces(
 
   const outcome: ReminderOutcome = {
     checked: 0,
-    notified: { trial_ending: 0, trial_ended: 0, workspace_paused: 0 },
+    notified: { trial_ending: 0, trial_ended: 0, workspace_paused: 0, payment_failed: 0 },
     emailed: 0,
     errors: [],
   }
@@ -118,31 +152,47 @@ export async function remindTrialWorkspaces(
     emailsByAgency.set(user.agency_id, [...(emailsByAgency.get(user.agency_id) ?? []), user.email])
   }
 
-  const planUrl = `${resolveAppUrl()}${PLAN_AND_BILLING_PATH}`
   for (const item of due) {
     try {
-      const wrote = await notify(admin, {
-        agencyId: item.agencyId,
-        type: item.type,
-        message: item.message,
-        cooldownDays: REMINDER_COOLDOWN_DAYS,
+      const result = await remindWorkspace(admin, {
+        ...item,
+        to: emailsByAgency.get(item.agencyId) ?? [],
       })
-      if (wrote === 'suppressed') continue
-      if (wrote === 'failed') {
+      if (result.outcome === 'suppressed') continue
+      if (result.outcome === 'unwritten') {
         fail(item.agencyId, 'bell row not written')
         continue
       }
       outcome.notified[item.type]++
-      const to = emailsByAgency.get(item.agencyId)
-      if (!to?.length) {
-        fail(item.agencyId, 'no admin to email')
-        continue
-      }
-      await sendEmail({ to, content: reminderEmail(item.type, item.message, planUrl) })
-      outcome.emailed++
+      if (result.outcome === 'no_admin') fail(item.agencyId, 'no admin to email')
+      else if (result.outcome === 'send_failed') fail(item.agencyId, result.error)
+      else outcome.emailed++
     } catch (err) {
       fail(item.agencyId, err)
     }
   }
   return outcome
+}
+
+/**
+ * The webhook's reminder after a failed renewal. The row is read fresh — the snapshot has just
+ * written `past_due_since` — so the sentence says by when the card is due, and the workspace's
+ * admins get the bell and the email through the same sender the cron uses. Nothing when the row
+ * no longer says past_due: a retry that lands after the customer paid, or after the grace ran
+ * out. The dated sentence is what lets `notify` land one bell per failure.
+ */
+export async function remindPaymentFailed(
+  admin: AdminClient,
+  agencyId: string,
+  now: Date = new Date()
+): Promise<RemindOutcome | null> {
+  const row = await fetchAgencyById(admin, agencyId)
+  if (!row) return null
+  const entitlement = entitlementFor(row, now)
+  const notice = shellNotice(entitlement, now)
+  if (entitlement.state !== 'past_due' || !notice) return null
+  const to = (await fetchTeamMembersByAgency(agencyId))
+    .filter((member) => member.role === 'admin')
+    .map((member) => member.email)
+  return remindWorkspace(admin, { agencyId, type: 'payment_failed', message: notice.text, to })
 }

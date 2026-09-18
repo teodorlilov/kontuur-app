@@ -24,7 +24,7 @@ import { RosterPagination } from '@/features/clients/components/roster/roster-pa
 import { RosterSort as RosterSortControl } from '@/features/clients/components/roster/roster-sort'
 import { RosterTable } from '@/features/clients/components/roster/roster-table'
 import { AddClientAction } from '@/features/clients/components/roster/add-client-action'
-import { addBrandRefusal } from '@/lib/billing/copy'
+import { addBrandCost, addBrandRefusal } from '@/lib/billing/copy'
 import { formatRelativeTime } from '@/utils/format'
 import { parseParam } from '@/utils/parse-param'
 import { cn } from '@/utils/cn'
@@ -145,7 +145,7 @@ export default async function ClientsPage({ searchParams }: ClientsPageProps) {
                 name: buildHref(filter, 'name'),
               }}
             />
-            <AddClientAction refusal={addRefusal} />
+            <AddClientAction refusal={addRefusal} note={addBrandCost(entitlement)} />
           </>
         }
         tabs={<TabRail items={tabs} active={filter} label="Filter clients" />}

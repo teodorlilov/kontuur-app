@@ -30,6 +30,8 @@ import {
   CLIENT_SOURCE_RESEARCH_COLUMNS,
   CLIENT_SOURCE_SUMMARY_COLUMNS,
   EXEMPLAR_COLUMNS,
+  SALE_DOCUMENT_COLUMNS,
+  type SaleDocumentColumns,
 } from '@/lib/queries/select-columns'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
@@ -172,6 +174,87 @@ export async function fetchTeamMembersByAgency(agencyId: string): Promise<TeamMe
   // TeamMember is Pick<UserRow, …> — it used to declare created_at non-null over a nullable column,
   // and this cast was the only thing standing between that and the render.
   return (data ?? []) as TeamMember[]
+}
+
+// ---------- sale_documents ----------
+// Admin client throughout: the tenant role never reads a document row directly. The settings page
+// proves the admin role and passes its own agency; the webhook, the cron and the audit file run
+// as the service role by nature.
+
+/** Every invoice and credit note of one workspace, newest first — the Account tab's list. */
+export async function fetchSaleDocumentsByAgency(agencyId: string): Promise<SaleDocumentColumns[]> {
+  return (
+    unwrap(
+      await createAdminSupabaseClient()
+        .from('sale_documents')
+        .select(SALE_DOCUMENT_COLUMNS)
+        .eq('agency_id', agencyId)
+        .order('issued_at', { ascending: false }),
+      'fetchSaleDocumentsByAgency'
+    ) ?? []
+  )
+}
+
+/** One document, for delivery. */
+export async function fetchSaleDocumentById(id: string): Promise<SaleDocumentColumns | null> {
+  return unwrap(
+    await createAdminSupabaseClient()
+      .from('sale_documents')
+      .select(SALE_DOCUMENT_COLUMNS)
+      .eq('id', id)
+      .maybeSingle(),
+    'fetchSaleDocumentById'
+  )
+}
+
+/** The invoice document a Stripe invoice became, or null — what a credit note refunds. */
+export async function fetchSaleDocumentByStripeInvoice(
+  stripeInvoiceId: string
+): Promise<SaleDocumentColumns | null> {
+  return unwrap(
+    await createAdminSupabaseClient()
+      .from('sale_documents')
+      .select(SALE_DOCUMENT_COLUMNS)
+      .eq('kind', 'invoice')
+      .eq('stripe_invoice_id', stripeInvoiceId)
+      .maybeSingle(),
+    'fetchSaleDocumentByStripeInvoice'
+  )
+}
+
+/** Documents issued in `[from, to)`, oldest first — one calendar month for the audit file. */
+export async function fetchSaleDocumentsBetween(
+  fromIso: string,
+  toIso: string
+): Promise<SaleDocumentColumns[]> {
+  return (
+    unwrap(
+      await createAdminSupabaseClient()
+        .from('sale_documents')
+        .select(SALE_DOCUMENT_COLUMNS)
+        .gte('issued_at', fromIso)
+        .lt('issued_at', toIso)
+        .order('number', { ascending: true }),
+      'fetchSaleDocumentsBetween'
+    ) ?? []
+  )
+}
+
+/** Documents nobody has received yet, created before `beforeIso`, oldest first — the daily retry. */
+export async function fetchUndeliveredSaleDocuments(
+  beforeIso: string
+): Promise<SaleDocumentColumns[]> {
+  return (
+    unwrap(
+      await createAdminSupabaseClient()
+        .from('sale_documents')
+        .select(SALE_DOCUMENT_COLUMNS)
+        .is('delivered_at', null)
+        .lt('created_at', beforeIso)
+        .order('created_at', { ascending: true }),
+      'fetchUndeliveredSaleDocuments'
+    ) ?? []
+  )
 }
 
 // ---------- social_connections ----------

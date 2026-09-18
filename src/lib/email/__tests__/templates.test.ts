@@ -3,6 +3,7 @@ import { escapeHtml, renderEmail, strong } from '../layout'
 import {
   approvalEmail,
   confirmSignupEmail,
+  documentEmail,
   inviteEmail,
   reminderEmail,
   resetPasswordEmail,
@@ -90,11 +91,46 @@ describe('reminderEmail', () => {
       'workspace_paused',
       'Your workspace was paused on 4 October. Choose a plan to generate, schedule and publish again.',
     ],
+    [
+      'payment_failed',
+      'Your last payment failed. Update your card by 18 September to keep your workspace running.',
+    ],
   ] as const)('renders %s to its snapshot', async (kind, sentence) => {
     await expect(renderEmail(reminderEmail(kind, sentence, planUrl))).toMatchFileSnapshot(
       `./__snapshots__/reminder-${kind.replace('_', '-')}.html`
     )
   })
+})
+
+describe('documentEmail', () => {
+  const planUrl = 'https://kontuur.app/settings?tab=account'
+  const invoice = {
+    kind: 'invoice',
+    number: 1_000_000_001,
+    gross_cents: 6840,
+    issued_at: '2025-10-01T18:30:05.000Z',
+  }
+
+  it('names the document, its amount and its Sofia date, and points at Plan & billing', () => {
+    const content = documentEmail(invoice, planUrl)
+    expect(content.subject).toBe('Your invoice from Kontuur')
+    expect(content.preview).toBe('Invoice 1000000001 for €68.40 is attached.')
+    expect(content.paragraphs[0]).toContain('Invoice № 1000000001')
+    expect(content.paragraphs[0]).toContain('dated 1 October 2025')
+    expect(content.cta).toEqual({ label: 'Open Plan & billing', url: planUrl })
+    expect(documentEmail({ ...invoice, kind: 'credit_note' }, planUrl).subject).toBe(
+      'Your credit note from Kontuur'
+    )
+  })
+
+  it.each(['invoice', 'credit_note'] as const)(
+    'renders the %s mail to its snapshot',
+    async (kind) => {
+      await expect(renderEmail(documentEmail({ ...invoice, kind }, planUrl))).toMatchFileSnapshot(
+        `./__snapshots__/document-${kind.replace('_', '-')}.html`
+      )
+    }
+  )
 })
 
 describe('strong', () => {

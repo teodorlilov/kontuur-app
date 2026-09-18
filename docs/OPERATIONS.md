@@ -49,6 +49,19 @@ true.
 | Edit workspace name and timezone | `PUT` | [app/api/settings/account/route.ts](../src/app/api/settings/account/route.ts) |
 | Provision an account on sign-up | `createUserRecord` | [lib/auth/create-user-record.ts](../src/lib/auth/create-user-record.ts) |
 | Remove a teammate | `removeTeamMember` | [features/settings/actions/team-actions.ts](../src/features/settings/actions/team-actions.ts) |
+| Create the Stripe customer for a workspace, once | `ensureStripeCustomer` | [lib/billing/subscription-store.ts](../src/lib/billing/subscription-store.ts) |
+| Write what a Stripe subscription says onto the agency row | `applySubscriptionSnapshot` | [lib/billing/subscription-store.ts](../src/lib/billing/subscription-store.ts) |
+| Keep the paid quantity equal to the client count | `syncSubscriptionQuantity` | [lib/billing/quantity-sync.ts](../src/lib/billing/quantity-sync.ts) |
+| Record a Stripe event, then stamp it done or failed | `POST` | [app/api/billing/webhook/route.ts](../src/app/api/billing/webhook/route.ts) |
+
+### Invoices
+
+| Operation | Function | File |
+| --- | --- | --- |
+| Deliver a document — PDF to the private bucket, email to the payer, once | `deliverSaleDocument` | [lib/billing/documents.ts](../src/lib/billing/documents.ts) |
+| Issue a credit note for a Stripe credit note that refunded money | `issueCreditNote` | [lib/billing/documents.ts](../src/lib/billing/documents.ts) |
+| Issue the invoice for a paid Stripe invoice — also the Н-18 sale document | `issueSaleDocument` | [lib/billing/documents.ts](../src/lib/billing/documents.ts) |
+| Retry every document nobody has received (daily cron) | `retryUndeliveredDocuments` | [lib/billing/documents.ts](../src/lib/billing/documents.ts) |
 
 ### Sources
 

@@ -6,15 +6,29 @@ import { PLAN_AND_BILLING_PATH } from '@/utils/constants'
 /**
  * The roster header's one primary action. When the plan has no room for another brand the action
  * is disabled where it stands, with the reason and the way past it beside it — a member is not
- * walked through the whole new-client form to be refused at the end of it.
+ * walked through the whole new-client form to be refused at the end of it. On a paid workspace
+ * the line under the link says what one more costs, before the form is opened.
  */
-export function AddClientAction({ refusal }: { refusal: string | null }) {
+export function AddClientAction({
+  refusal,
+  note,
+}: {
+  refusal: string | null
+  note?: string | null
+}) {
   if (refusal === null) {
-    return (
+    const link = (
       <ActionLink href="/clients/new">
         Add client
         <span aria-hidden="true">&rarr;</span>
       </ActionLink>
+    )
+    if (!note) return link
+    return (
+      <div className="flex flex-col items-end gap-1">
+        {link}
+        <p className="text-caption text-text2">{note}</p>
+      </div>
     )
   }
   return (

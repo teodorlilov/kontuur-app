@@ -52,7 +52,10 @@ const EXEMPT: Record<string, string> = {
  * Adding an entry here means accepting that posture for that table. Say why, and say what
  * checks ownership instead.
  */
-const POLICYLESS: Record<string, string> = {}
+const POLICYLESS: Record<string, string> = {
+  document_counters:
+    'One counter row, read and written by the service role alone through the issue_sale_document RPC (migration 20260855). No tenant ever selects it, so no predicate could name a caller; the row belongs to nobody, and ownership is not a concept here.',
+}
 
 interface Policy {
   file: string

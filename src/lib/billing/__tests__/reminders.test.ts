@@ -2,15 +2,29 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import type { AgencyBillingColumns } from '@/lib/queries/select-columns'
 
-const mocks = vi.hoisted(() => ({ notify: vi.fn(), sendEmail: vi.fn() }))
+const mocks = vi.hoisted(() => ({
+  notify: vi.fn(),
+  sendEmail: vi.fn(),
+  fetchAgencyById: vi.fn(),
+  fetchTeamMembersByAgency: vi.fn(),
+}))
 vi.mock('@/lib/notifications/notify', () => ({
   notify: (...args: unknown[]) => mocks.notify(...args),
 }))
 vi.mock('@/lib/email/resend', () => ({
   sendEmail: (...args: unknown[]) => mocks.sendEmail(...args),
 }))
+vi.mock('@/lib/queries/db', () => ({
+  fetchAgencyById: (...args: unknown[]) => mocks.fetchAgencyById(...args),
+  fetchTeamMembersByAgency: (...args: unknown[]) => mocks.fetchTeamMembersByAgency(...args),
+}))
 
-import { pickReminder, remindTrialWorkspaces } from '../reminders'
+import {
+  pickReminder,
+  remindPaymentFailed,
+  remindTrialWorkspaces,
+  remindWorkspace,
+} from '../reminders'
 import { entitlementFor } from '../entitlement'
 import { GRACE_DAYS } from '../plans'
 
@@ -66,7 +80,7 @@ describe('pickReminder — which moment a trial workspace is at', () => {
     expect(pickReminder(entitlementFor(row({ plan: 'house' }), NOW), NOW)).toBeNull()
     const paid = entitlementFor(
       row({
-        plan: 'agency',
+        plan: 'pro',
         stripe_customer_id: 'cus_1',
         stripe_subscription_id: 'sub_1',
         subscription_status: 'active',
@@ -150,7 +164,12 @@ describe('remindTrialWorkspaces', () => {
       ['eq', 'role', 'admin'],
     ])
     expect(outcome.checked).toBe(2)
-    expect(outcome.notified).toEqual({ trial_ending: 1, trial_ended: 0, workspace_paused: 0 })
+    expect(outcome.notified).toEqual({
+      trial_ending: 1,
+      trial_ended: 0,
+      workspace_paused: 0,
+      payment_failed: 0,
+    })
     expect(mocks.notify).toHaveBeenCalledTimes(1)
     expect(mocks.notify).toHaveBeenCalledWith(
       admin,
@@ -206,5 +225,103 @@ describe('remindTrialWorkspaces', () => {
       { agencyId: 'mailed', error: 'validation_error: domain not verified' },
       { agencyId: 'orphan', error: 'no admin to email' },
     ])
+  })
+})
+
+describe('remindWorkspace — the one sender', () => {
+  beforeEach(() => {
+    mocks.notify.mockReset().mockResolvedValue('written')
+    mocks.sendEmail.mockReset().mockResolvedValue(undefined)
+  })
+
+  it('writes the bell first and mails only behind a written row, with the cooldown that dedups a retry', async () => {
+    const { admin } = makeAdmin([], [])
+    const result = await remindWorkspace(admin, {
+      agencyId: 'a1',
+      type: 'payment_failed',
+      message:
+        'Your last payment failed. Update your card by 18 September to keep your workspace running.',
+      to: ['owner@a1.test'],
+    })
+    expect(result).toEqual({ outcome: 'emailed' })
+    expect(mocks.notify).toHaveBeenCalledWith(
+      admin,
+      expect.objectContaining({ type: 'payment_failed', cooldownDays: 31 })
+    )
+    expect(mocks.sendEmail).toHaveBeenCalledWith({
+      to: ['owner@a1.test'],
+      content: expect.objectContaining({
+        subject: 'Your Kontuur payment failed',
+        cta: expect.objectContaining({ label: 'Update your card' }),
+      }),
+    })
+  })
+
+  it('names each way it can come to nothing, without throwing for a refused send', async () => {
+    const { admin } = makeAdmin([], [])
+    const input = { agencyId: 'a1', type: 'trial_ending' as const, message: 'x', to: ['o@a.test'] }
+    mocks.notify.mockResolvedValueOnce('suppressed')
+    expect(await remindWorkspace(admin, input)).toEqual({ outcome: 'suppressed' })
+    mocks.notify.mockResolvedValueOnce('failed')
+    expect(await remindWorkspace(admin, input)).toEqual({ outcome: 'unwritten' })
+    expect(await remindWorkspace(admin, { ...input, to: [] })).toEqual({ outcome: 'no_admin' })
+    mocks.sendEmail.mockRejectedValueOnce(new Error('domain not verified'))
+    expect(await remindWorkspace(admin, input)).toEqual({
+      outcome: 'send_failed',
+      error: 'domain not verified',
+    })
+  })
+})
+
+describe('remindPaymentFailed — the webhook’s reminder', () => {
+  const pastDue = row({
+    id: 'a1',
+    plan: 'pro',
+    stripe_customer_id: 'cus_1',
+    stripe_subscription_id: 'sub_1',
+    subscription_status: 'past_due',
+    subscription_quantity: 2,
+    current_period_start: '2026-09-01T00:00:00Z',
+    current_period_end: '2026-10-01T00:00:00Z',
+    past_due_since: day(-1),
+    trial_ends_at: day(-40),
+  })
+
+  beforeEach(() => {
+    mocks.notify.mockReset().mockResolvedValue('written')
+    mocks.sendEmail.mockReset().mockResolvedValue(undefined)
+    mocks.fetchAgencyById.mockReset().mockResolvedValue(pastDue)
+    mocks.fetchTeamMembersByAgency.mockReset().mockResolvedValue([
+      { id: 'u1', email: 'owner@a1.test', role: 'admin', created_at: null },
+      { id: 'u2', email: 'member@a1.test', role: 'member', created_at: null },
+    ])
+  })
+
+  it('tells the admins by when the card is due, in the workspace’s own words', async () => {
+    const { admin } = makeAdmin([], [])
+    expect(await remindPaymentFailed(admin, 'a1', NOW)).toEqual({ outcome: 'emailed' })
+    expect(mocks.notify).toHaveBeenCalledWith(
+      admin,
+      expect.objectContaining({
+        agencyId: 'a1',
+        type: 'payment_failed',
+        message:
+          'Your last payment failed. Update your card by 20 September to keep your workspace running.',
+      })
+    )
+    expect(mocks.sendEmail).toHaveBeenCalledWith(expect.objectContaining({ to: ['owner@a1.test'] }))
+  })
+
+  it('says nothing once the row no longer reads past_due — the customer paid, or the grace ran out', async () => {
+    const { admin } = makeAdmin([], [])
+    mocks.fetchAgencyById.mockResolvedValue({
+      ...pastDue,
+      subscription_status: 'active',
+      past_due_since: null,
+    })
+    expect(await remindPaymentFailed(admin, 'a1', NOW)).toBeNull()
+    mocks.fetchAgencyById.mockResolvedValue({ ...pastDue, past_due_since: day(-9) })
+    expect(await remindPaymentFailed(admin, 'a1', NOW)).toBeNull()
+    expect(mocks.notify).not.toHaveBeenCalled()
   })
 })

@@ -53,12 +53,27 @@ vi.mock('@/features/clients/lib/provision-client', () => ({
 }))
 const requireEntitledAction = vi.fn(async () => null as { ok: false; error: string } | null)
 const getCachedEntitlement = vi.fn()
+const getCachedAgency = vi.fn(async () => ({ stripe_subscription_id: null as string | null }))
 const countClientsByAgency = vi.fn(async () => 0)
+const syncSubscriptionQuantity = vi.fn(async () => undefined)
 vi.mock('@/lib/billing/require-entitled', () => ({
   requireEntitledAction: (...args: unknown[]) => requireEntitledAction(...(args as [])),
 }))
 vi.mock('@/lib/queries/cache', () => ({
   getCachedEntitlement: (...args: unknown[]) => getCachedEntitlement(...(args as [])),
+  getCachedAgency: (...args: unknown[]) => getCachedAgency(...(args as [])),
+}))
+vi.mock('@/lib/billing/quantity-sync', () => ({
+  // The real rule, so the tests exercise "paid and live" rather than a stub of it.
+  billedSubscriptionId: (
+    entitlement: { plan: string; state: string },
+    agency: { stripe_subscription_id: string | null } | null
+  ) =>
+    entitlement.plan === 'pro' &&
+    (entitlement.state === 'active' || entitlement.state === 'past_due')
+      ? (agency?.stripe_subscription_id ?? null)
+      : null,
+  syncSubscriptionQuantity: (...args: unknown[]) => syncSubscriptionQuantity(...(args as [])),
 }))
 vi.mock('@/lib/queries/db', () => ({
   countClientsByAgency: (...args: unknown[]) => countClientsByAgency(...(args as [])),
@@ -103,6 +118,9 @@ describe('deleteClient', () => {
     mocks.removeStoragePrefix.mockImplementation(async () => {
       return 0
     })
+    // A trial workspace: the delete tells Stripe nothing.
+    getCachedEntitlement.mockResolvedValue({ plan: 'trial', state: 'trial' })
+    getCachedAgency.mockResolvedValue({ stripe_subscription_id: null })
   })
 
   it('scopes the delete by agency, not by client id alone', async () => {
@@ -233,5 +251,104 @@ describe('createClient', () => {
 
     expect(result).toEqual({ ok: false, error: 'Unauthorized' })
     expect(mocks.provisionClient).not.toHaveBeenCalled()
+  })
+
+  describe('on a paid workspace', () => {
+    beforeEach(() => {
+      getCachedEntitlement.mockResolvedValue({
+        plan: 'pro',
+        state: 'active',
+        mode: 'agency',
+        canCreate: true,
+        brands: 3,
+        brandsUnlimited: true,
+      })
+      getCachedAgency.mockResolvedValue({ stripe_subscription_id: 'sub_1' })
+      countClientsByAgency.mockResolvedValue(3)
+      syncSubscriptionQuantity.mockReset().mockResolvedValue(undefined)
+    })
+
+    it('charges Stripe for the new count before the row exists', async () => {
+      const order: string[] = []
+      syncSubscriptionQuantity.mockImplementation(async () => {
+        order.push('stripe')
+      })
+      mocks.provisionClient.mockImplementation(async () => {
+        order.push('provision')
+        return { ok: true, clientId: CLIENT_ID }
+      })
+
+      const { createClient } = await import('../client-actions')
+      const result = await createClient({ name: 'Acme', niche: 'Branding' })
+
+      expect(result).toEqual({ ok: true, data: CLIENT_ID })
+      expect(syncSubscriptionQuantity).toHaveBeenCalledWith('sub_1', 4, 'charge')
+      expect(order).toEqual(['stripe', 'provision'])
+    })
+
+    it('adds no client when the card is declined, and says why', async () => {
+      syncSubscriptionQuantity.mockRejectedValue(new Error('The card on file was declined: …'))
+      const { createClient } = await import('../client-actions')
+      const result = await createClient({ name: 'Acme', niche: 'Branding' })
+
+      expect(result).toEqual({ ok: false, error: 'The card on file was declined: …' })
+      expect(mocks.provisionClient).not.toHaveBeenCalled()
+    })
+
+    it('credits the charge back when the row cannot be made', async () => {
+      mocks.provisionClient.mockResolvedValue({ ok: false, error: 'insert failed' })
+      const { createClient } = await import('../client-actions')
+      const result = await createClient({ name: 'Acme', niche: 'Branding' })
+
+      expect(result).toEqual({ ok: false, error: 'insert failed' })
+      expect(syncSubscriptionQuantity).toHaveBeenLastCalledWith('sub_1', 3, 'credit')
+    })
+
+    it('never asks Stripe for anything on a trial', async () => {
+      getCachedEntitlement.mockResolvedValue({
+        plan: 'trial',
+        state: 'trial',
+        mode: 'agency',
+        canCreate: true,
+        brands: 3,
+        brandsUnlimited: false,
+      })
+      const { createClient } = await import('../client-actions')
+      await createClient({ name: 'Acme', niche: 'Branding' })
+      expect(syncSubscriptionQuantity).not.toHaveBeenCalled()
+    })
+  })
+})
+
+describe('deleteClient on a paid workspace', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mocks.resolveActionAuth.mockResolvedValue({
+      ok: true,
+      supabase: {} as never,
+      agencyId: AGENCY_ID,
+      userId: 'user-1',
+    })
+    mocks.fetchClientWithOwnership.mockResolvedValue({ id: CLIENT_ID, name: 'Dr Kamberova' })
+    mocks.removeStoragePrefix.mockResolvedValue(0)
+    mocks.createAdminSupabaseClient.mockReturnValue(recordingAdmin().client)
+    getCachedEntitlement.mockResolvedValue({ plan: 'pro', state: 'active' })
+    getCachedAgency.mockResolvedValue({ stripe_subscription_id: 'sub_1' })
+    countClientsByAgency.mockResolvedValue(2)
+    syncSubscriptionQuantity.mockReset().mockResolvedValue(undefined)
+  })
+
+  it('tells Stripe the remaining count, uncharged, after the row is gone', async () => {
+    const { deleteClient } = await import('../client-actions')
+    expect(await deleteClient(CLIENT_ID)).toEqual({ ok: true, data: undefined })
+    expect(syncSubscriptionQuantity).toHaveBeenCalledWith('sub_1', 2, 'none')
+  })
+
+  it('logs a Stripe failure there rather than failing a delete that already happened', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    syncSubscriptionQuantity.mockRejectedValue(new Error('rate limited'))
+    const { deleteClient } = await import('../client-actions')
+    expect(await deleteClient(CLIENT_ID)).toEqual({ ok: true, data: undefined })
+    expect(console.error).toHaveBeenCalled()
   })
 })

@@ -43,7 +43,7 @@ describe('PlanSection', () => {
       <PlanSection
         entitlement={entitlement({
           state: 'past_due',
-          plan: 'agency',
+          plan: 'pro',
           graceEndsAt: new Date('2026-10-08T00:00:00Z'),
           resetsOn: new Date('2026-11-01T00:00:00Z'),
         })}
@@ -62,7 +62,7 @@ describe('PlanSection', () => {
       <PlanSection
         entitlement={entitlement({
           state: 'active',
-          plan: 'starter',
+          plan: 'pro',
           resetsOn: new Date('2026-10-01T00:00:00Z'),
         })}
         usage={USAGE}
@@ -71,6 +71,23 @@ describe('PlanSection', () => {
     )
     expect(screen.getByText('Renews on')).toBeInTheDocument()
     expect(screen.getByText('1 October 2026')).toBeInTheDocument()
+  })
+
+  it('a cancelled plan says when it ends instead of when it renews', () => {
+    render(
+      <PlanSection
+        entitlement={entitlement({
+          state: 'active',
+          plan: 'pro',
+          resetsOn: new Date('2026-10-01T00:00:00Z'),
+          endsOn: new Date('2026-10-01T00:00:00Z'),
+        })}
+        usage={USAGE}
+        brandCount={1}
+      />
+    )
+    expect(screen.getByText('Ends on')).toBeInTheDocument()
+    expect(screen.queryByText('Renews on')).not.toBeInTheDocument()
   })
 
   it('a paused workspace has no next date, and a solo one counts a business', () => {

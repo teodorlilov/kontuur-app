@@ -682,6 +682,21 @@ export type Database = {
           },
         ]
       }
+      document_counters: {
+        Row: {
+          last: number
+          series: string
+        }
+        Insert: {
+          last: number
+          series: string
+        }
+        Update: {
+          last?: number
+          series?: string
+        }
+        Relationships: []
+      }
       fb_page_metrics: {
         Row: {
           client_id: string
@@ -1614,6 +1629,93 @@ export type Database = {
           },
         ]
       }
+      sale_documents: {
+        Row: {
+          agency_id: string | null
+          created_at: string
+          customer: Json
+          delivered_at: string | null
+          delivery_error: string | null
+          gross_cents: number
+          id: string
+          issued_at: string
+          kind: string
+          lines: Json
+          net_cents: number
+          number: number
+          refunds: string | null
+          storage_path: string | null
+          stripe_charge_id: string | null
+          stripe_credit_note_id: string | null
+          stripe_invoice_id: string | null
+          stripe_refund_id: string | null
+          vat_basis: string
+          vat_cents: number
+          vat_rate: number
+        }
+        Insert: {
+          agency_id?: string | null
+          created_at?: string
+          customer: Json
+          delivered_at?: string | null
+          delivery_error?: string | null
+          gross_cents: number
+          id?: string
+          issued_at: string
+          kind: string
+          lines: Json
+          net_cents: number
+          number: number
+          refunds?: string | null
+          storage_path?: string | null
+          stripe_charge_id?: string | null
+          stripe_credit_note_id?: string | null
+          stripe_invoice_id?: string | null
+          stripe_refund_id?: string | null
+          vat_basis: string
+          vat_cents: number
+          vat_rate: number
+        }
+        Update: {
+          agency_id?: string | null
+          created_at?: string
+          customer?: Json
+          delivered_at?: string | null
+          delivery_error?: string | null
+          gross_cents?: number
+          id?: string
+          issued_at?: string
+          kind?: string
+          lines?: Json
+          net_cents?: number
+          number?: number
+          refunds?: string | null
+          storage_path?: string | null
+          stripe_charge_id?: string | null
+          stripe_credit_note_id?: string | null
+          stripe_invoice_id?: string | null
+          stripe_refund_id?: string | null
+          vat_basis?: string
+          vat_cents?: number
+          vat_rate?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sale_documents_agency_id_fkey"
+            columns: ["agency_id"]
+            isOneToOne: false
+            referencedRelation: "agencies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sale_documents_refunds_fkey"
+            columns: ["refunds"]
+            isOneToOne: false
+            referencedRelation: "sale_documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       social_connections: {
         Row: {
           access_token: string | null
@@ -1784,6 +1886,38 @@ export type Database = {
           allowed: boolean
           used: number
         }[]
+      }
+      issue_sale_document: {
+        Args: { p: Json }
+        Returns: {
+          agency_id: string | null
+          created_at: string
+          customer: Json
+          delivered_at: string | null
+          delivery_error: string | null
+          gross_cents: number
+          id: string
+          issued_at: string
+          kind: string
+          lines: Json
+          net_cents: number
+          number: number
+          refunds: string | null
+          storage_path: string | null
+          stripe_charge_id: string | null
+          stripe_credit_note_id: string | null
+          stripe_invoice_id: string | null
+          stripe_refund_id: string | null
+          vat_basis: string
+          vat_cents: number
+          vat_rate: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "sale_documents"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       refund_usage: {
         Args: {

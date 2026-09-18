@@ -21,6 +21,7 @@ import type {
   PostRow,
   SocialConnectionRow,
   UserRow,
+  SaleDocumentRow,
 } from '@/types'
 
 /**
@@ -296,6 +297,10 @@ export const AGENCY_ENTITLEMENT_COLUMNS = AGENCY_ENTITLEMENT_KEYS.join(', ') as 
   typeof AGENCY_ENTITLEMENT_KEYS,
   ', '
 >
+
+/** What the Stripe snapshot must know about the row before it writes it (src/lib/billing/subscription-store.ts). */
+export const AGENCY_SNAPSHOT_COLUMNS =
+  'stripe_subscription_id, current_period_start, past_due_since'
 
 // client_sources
 export const CLIENT_SOURCE_COLUMNS =
@@ -701,3 +706,40 @@ export const CHANGE_REQUEST_COLUMNS =
 
 /** Token rows used to work out a post's place within its approval batch. */
 export const BATCH_POSITION_COLUMNS = 'batch_id, post_id'
+
+// sale_documents
+
+/**
+ * The whole document: the invoice / credit-note renderer, the Account tab's list and the audit
+ * file each read a different part, and one projection keeps their row type one type.
+ */
+const SALE_DOCUMENT_KEYS = [
+  'id',
+  'number',
+  'kind',
+  'agency_id',
+  'stripe_invoice_id',
+  'stripe_credit_note_id',
+  'stripe_charge_id',
+  'stripe_refund_id',
+  'refunds',
+  'issued_at',
+  'customer',
+  'lines',
+  'net_cents',
+  'vat_cents',
+  'gross_cents',
+  'vat_rate',
+  'vat_basis',
+  'storage_path',
+  'delivered_at',
+  'delivery_error',
+  'created_at',
+] as const satisfies readonly (keyof SaleDocumentRow)[]
+
+export const SALE_DOCUMENT_COLUMNS = SALE_DOCUMENT_KEYS.join(', ') as Join<
+  typeof SALE_DOCUMENT_KEYS,
+  ', '
+>
+
+export type SaleDocumentColumns = Pick<SaleDocumentRow, (typeof SALE_DOCUMENT_KEYS)[number]>

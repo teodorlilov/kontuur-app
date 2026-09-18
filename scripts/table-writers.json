@@ -1,7 +1,11 @@
 {
   "agencies": {
     "src/lib/auth/create-user-record.ts": "The agency is created with the account. Provisioning is idempotent and lives only here — the signup route and the auth callback both delegate, after a period where both provisioned and raced.",
-    "src/app/api/settings/account/route.ts": "The agency name and timezone as edited in settings."
+    "src/app/api/settings/account/route.ts": "The agency name and timezone as edited in settings.",
+    "src/lib/billing/subscription-store.ts": "The billing columns, written by the Stripe webhook alone: ensureStripeCustomer sets stripe_customer_id once, applySubscriptionSnapshot writes what a re-fetched subscription says (plan, status, quantity, cancel flag, the period on a paid invoice, past_due_since). Nothing else may write these columns — entitlementFor is their only reader."
+  },
+  "billing_events": {
+    "src/app/api/billing/webhook/route.ts": "recordBillingEvent inserts every Stripe event before any work (ignoreDuplicates, then read back — a processed duplicate is answered 200, a failed one runs again on Stripe's retry); finishBillingEvent stamps processed_at, the agency it concerned, or the error."
   },
   "ai_usage_daily": {
     "src/lib/billing/telemetry.ts": "[hand-listed] recordAiUsage writes through the add_ai_usage RPC (migration 20260852), which the scan cannot see. Telemetry only — never a gate — called from the three provider wrappers (callAnthropic, subscribeFal, queryTavily) and the brief."
@@ -94,6 +98,9 @@
     "src/features/calendar/actions/post-recovery.ts": "rearmFailedPublication — the user putting a failed destination back in the queue. It writes the post's SLOT (scheduled_at with the status statusForSlot pairs with it) and nothing else; the attempt counter it used to reset belongs to the publication now, in rearmPublication.",
     "src/app/api/cron/visuals/route.ts": "The visuals lane's own attempt counter and status, which is separate from the publish counter on purpose.",
     "src/lib/visual/post-color.ts": "claimScheme — a compare-and-swap on visual_ground/visual_accent so two lanes generating one carousel cannot split its colours."
+  },
+  "sale_documents": {
+    "src/lib/billing/documents.ts": "issueSaleDocument / issueCreditNote insert through the issue_sale_document RPC (migration 20260855), which the scan cannot see — the one gapless-numbered writer; deliverSaleDocument stamps storage_path / delivered_at / delivery_error, which the scan does see."
   },
   "social_connections": {
     "src/features/publishing/lib/refresh-tokens.ts": "Rotates an expiring Instagram token without the user (update by id, never touching account identity). Retiring a dead one is retireConnection in lib/meta/connection-store.ts — this file only calls it.",

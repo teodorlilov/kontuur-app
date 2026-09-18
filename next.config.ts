@@ -63,11 +63,14 @@ const nextConfig: NextConfig = {
   // binary extraction on Vercel (the headless Chrome used for brand visual-identity extraction).
   serverExternalPackages: ['pdf-parse', 'pdfjs-dist', 'puppeteer-core', '@sparticuz/chromium'],
   // @sparticuz reads its Chromium binary from bin/ at runtime, which Vercel's file tracing misses
-  // (it isn't `require`d). Force-include it in the functions that launch the browser, otherwise the
-  // binary is absent on Vercel and extraction fails with "…/@sparticuz/chromium/bin does not exist".
+  // (it isn't `require`d). Force-include it in the functions that launch the browser — brand
+  // extraction, and the two that print a sale document to PDF — otherwise the binary is absent
+  // on Vercel and the launch fails with "…/@sparticuz/chromium/bin does not exist".
   outputFileTracingIncludes: {
     '/api/extract/start': ['./node_modules/@sparticuz/chromium/bin/**/*'],
     '/api/clients/[id]/visual-identity/reanalyze': ['./node_modules/@sparticuz/chromium/bin/**/*'],
+    '/api/billing/webhook': ['./node_modules/@sparticuz/chromium/bin/**/*'],
+    '/api/cron/billing': ['./node_modules/@sparticuz/chromium/bin/**/*'],
   },
   images: {
     remotePatterns: [...REMOTE_IMAGE_HOSTS],

@@ -39,13 +39,15 @@ const METERS: AllowanceKind[] = ['draft', 'image', 'rewrite']
 
 /**
  * The one date that matters next, by state: when the trial ends, when a failed card pauses the
- * workspace, when a paid allowance renews. Null when there is nothing to wait for.
+ * workspace, when a cancelled plan ends, when a paid allowance renews. Null when there is
+ * nothing to wait for.
  */
 function nextDate(entitlement: Entitlement): { label: string; at: Date } | null {
-  const { state, trialEndsAt, graceEndsAt, resetsOn } = entitlement
+  const { state, trialEndsAt, graceEndsAt, resetsOn, endsOn } = entitlement
   if ((state === 'trial' || state === 'trial_grace') && trialEndsAt)
     return { label: 'Trial ends', at: trialEndsAt }
   if (state === 'past_due' && graceEndsAt) return { label: 'Update your card by', at: graceEndsAt }
+  if (state === 'active' && endsOn) return { label: 'Ends on', at: endsOn }
   if (state === 'active' && resetsOn) return { label: 'Renews on', at: resetsOn }
   return null
 }
