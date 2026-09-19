@@ -46,7 +46,8 @@ interface ClientSetupFlowProps {
  * `isSolo=false, businessName=''` is the agency path exactly as before this component existed.
  * Solo differs only in copy, a pre-filled name, and having no Cancel or Discard: the workspace is
  * redirected here until its one client exists, so there is nowhere to leave to. Both modes exit
- * to `/clients/<id>/sources` (stepper dismissed) or `/generate?client=<id>` (success).
+ * to `/clients/<id>/sources` (stepper dismissed), and from the success screen to
+ * `/generate?client=<id>` or `/dashboard`.
  */
 export function ClientSetupFlow({ isSolo, businessName }: ClientSetupFlowProps) {
   const router = useRouter()
@@ -380,7 +381,7 @@ export function ClientSetupFlow({ isSolo, businessName }: ClientSetupFlowProps) 
           clientName={draft.name}
           summary={stepperSummary}
           onGenerate={() => router.push(`/generate?client=${savedClientId}`)}
-          onViewSources={() => router.push(`/clients/${savedClientId}/sources`)}
+          onOpenDashboard={() => router.push('/dashboard')}
         />
       )}
     </>

@@ -2,7 +2,13 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { CalendarDateIcon, LetterIcon, RestartIcon, UnreadIcon } from '@solar-icons/react/linear'
+import {
+  CalendarDateIcon,
+  LetterIcon,
+  RestartIcon,
+  UnreadIcon,
+  Widget2Icon,
+} from '@solar-icons/react/linear'
 import { Icon } from '@/components/ui/icon'
 import { cn } from '@/utils/cn'
 import { toast } from '@/components/ui/toast'
@@ -105,6 +111,12 @@ export function DoneView({
           title="Generate another run"
           sub="Same client, or switch to a different one"
           onClick={onNewRun}
+        />
+        <NextAction
+          icon={<Icon glyph={Widget2Icon} />}
+          title="Back to dashboard"
+          sub="Your week at a glance"
+          onClick={() => router.push('/dashboard')}
         />
       </div>
     </div>

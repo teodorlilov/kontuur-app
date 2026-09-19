@@ -102,7 +102,7 @@ describe('ClientSetupFlow — agency', () => {
     expect(screen.getByRole('textbox', { name: 'Client website' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Set them up by hand' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Cancel' })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /kontuur/i })).toHaveAttribute('href', '/clients')
+    expect(screen.getByRole('link', { name: /kontuur/i })).toHaveAttribute('href', '/dashboard')
   })
 
   it('blocks a blank form on the name and saves a client once it has one', async () => {
@@ -190,6 +190,8 @@ describe('ClientSetupFlow — solo', () => {
     expect(await screen.findByRole('heading', { name: 'Acme is ready' })).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Generate first post ideas' }))
     expect(push).toHaveBeenCalledWith('/generate?client=client-1')
+    await user.click(screen.getByRole('button', { name: 'Back to dashboard' }))
+    expect(push).toHaveBeenCalledWith('/dashboard')
   })
 })
 

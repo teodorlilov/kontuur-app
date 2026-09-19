@@ -7,7 +7,7 @@ interface OnboardingSuccessProps {
   clientName: string
   summary: StepperSummary
   onGenerate: () => void
-  onViewSources: () => void
+  onOpenDashboard: () => void
 }
 
 function buildRecap(summary: StepperSummary): string {
@@ -25,12 +25,12 @@ function buildRecap(summary: StepperSummary): string {
   return parts.join('  —  ')
 }
 
-/** Full-screen overlay marking a finished client onboarding, with the generate-first-ideas payoff CTA. */
+/** Full-screen overlay marking a finished client onboarding: the generate-first-ideas payoff CTA, and the way back to the dashboard. */
 export function OnboardingSuccess({
   clientName,
   summary,
   onGenerate,
-  onViewSources,
+  onOpenDashboard,
 }: OnboardingSuccessProps) {
   const recap = buildRecap(summary)
 
@@ -81,8 +81,8 @@ export function OnboardingSuccess({
           <Button size="lg" onClick={onGenerate}>
             Generate first post ideas
           </Button>
-          <Button variant="ghost" size="sm" onClick={onViewSources}>
-            Review sources instead
+          <Button variant="ghost" size="sm" onClick={onOpenDashboard}>
+            Back to dashboard
           </Button>
         </div>
       </div>

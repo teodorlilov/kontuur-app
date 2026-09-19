@@ -6,6 +6,8 @@ interface WordmarkProps {
   markOnly?: boolean
   /** Omit to render as static text rather than a link home. */
   href?: string
+  /** Reaches the link only. A flow with work to lose intercepts here and confirms before leaving. */
+  onClick?: React.MouseEventHandler<HTMLAnchorElement>
   className?: string
 }
 
@@ -28,7 +30,7 @@ interface WordmarkProps {
  * their ascenders against the dark ground wherever they overflow the swipe. A
  * dark-surface lockup needs its own drawing, not a colour flag.
  */
-export function Wordmark({ markOnly = false, href, className }: WordmarkProps) {
+export function Wordmark({ markOnly = false, href, onClick, className }: WordmarkProps) {
   const body = (
     <span className="relative inline-block">
       {/*
@@ -64,7 +66,7 @@ export function Wordmark({ markOnly = false, href, className }: WordmarkProps) {
   if (!href) return <span className={shell}>{body}</span>
 
   return (
-    <Link href={href} className={shell}>
+    <Link href={href} className={shell} onClick={onClick}>
       {body}
     </Link>
   )

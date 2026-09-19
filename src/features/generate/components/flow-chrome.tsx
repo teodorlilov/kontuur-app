@@ -17,9 +17,13 @@ interface FlowChromeProps {
 }
 
 /**
- * The flow's only chrome: wordmark, the three-step rail, and the one exit.
+ * The flow's only chrome: wordmark, the three-step rail, and the exit.
  * Leaving mid-run discards unsaved drafts, so the exit is a danger action and
  * confirms before anything is lost; from a clean setup it just leaves.
+ * The wordmark is the same exit — it links to the dashboard but never navigates
+ * on its own, because a plain link would skip the abort and the visual cleanup
+ * `onCancelConfirmed` does. At `done` the Cancel button is gone and the
+ * wordmark is the way out.
  */
 export function FlowChrome({
   step,
@@ -31,9 +35,20 @@ export function FlowChrome({
   const [confirming, setConfirming] = useState(false)
   const hasWorkToLose = liveDraftCount > 0 || isGenerating
 
+  function requestLeave() {
+    if (hasWorkToLose) setConfirming(true)
+    else onCancelConfirmed()
+  }
+
   return (
     <header className="flex flex-none items-center gap-6 border-b border-line bg-paper/[0.88] px-4 py-3 backdrop-blur-sm md:px-8">
-      <Wordmark />
+      <Wordmark
+        href="/dashboard"
+        onClick={(event) => {
+          event.preventDefault()
+          requestLeave()
+        }}
+      />
       <FlowStepper step={step} onStepOneClick={onStepOneClick} />
       {step !== 'done' && (
         <Button
@@ -42,7 +57,7 @@ export function FlowChrome({
           // The exit reads as a quiet ghost until approached — a bordered danger
           // button in the chrome would shout on every screen of the flow.
           className="border-transparent"
-          onClick={() => (hasWorkToLose ? setConfirming(true) : onCancelConfirmed())}
+          onClick={requestLeave}
         >
           Cancel run
         </Button>

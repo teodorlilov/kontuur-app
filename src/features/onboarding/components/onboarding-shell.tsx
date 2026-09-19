@@ -17,8 +17,8 @@ interface OnboardingShellProps {
  * No step indicator: the flow is two steps — paste a site, check what it drafted — and a stepper
  * over two steps is chrome describing itself. This replaced `WizardShell`, whose progress line and
  * numbered dots were built for the five-step interview, and whose letter-spaced "KONTUUR" text
- * predated the real `Wordmark` component. Without `onCancel` the wordmark is static text: the
- * only place it could link to is the roster, which a workspace with no client is redirected from.
+ * predated the real `Wordmark` component. Without `onCancel` the wordmark is static text: a
+ * workspace with no client is redirected off the dashboard it would link to.
  */
 export function OnboardingShell({ wide = false, onCancel, children }: OnboardingShellProps) {
   return (
@@ -32,7 +32,7 @@ export function OnboardingShell({ wide = false, onCancel, children }: Onboarding
         )}
       >
         <div className="mb-4 flex h-10 items-center justify-between">
-          <Wordmark href={onCancel ? '/clients' : undefined} />
+          <Wordmark href={onCancel ? '/dashboard' : undefined} />
           {onCancel && (
             <button
               type="button"
