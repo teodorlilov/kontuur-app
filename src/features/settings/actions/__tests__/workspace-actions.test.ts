@@ -140,7 +140,7 @@ describe('deleteWorkspace', () => {
     expect(result).toEqual({
       ok: false,
       error:
-        'Cancel your plan first. You keep access until it ends, and can delete the workspace right after.',
+        'Cancel your plan first, under Plan & billing. You keep access until it ends, and can delete the workspace right after.',
     })
     expect(mocks.createAdminSupabaseClient).not.toHaveBeenCalled()
     expect(mocks.deleteAuthIdentity).not.toHaveBeenCalled()

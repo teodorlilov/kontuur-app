@@ -133,7 +133,7 @@ export function addBrandRefusal(entitlement: Entitlement, brandCount: number): s
 export function deleteWorkspaceRefusal(entitlement: Pick<Entitlement, 'canDelete'>): string | null {
   return entitlement.canDelete
     ? null
-    : 'Cancel your plan first. You keep access until it ends, and can delete the workspace right after.'
+    : 'Cancel your plan first, under Plan & billing. You keep access until it ends, and can delete the workspace right after.'
 }
 
 /**

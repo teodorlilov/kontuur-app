@@ -88,7 +88,7 @@ export function PlanSection({ entitlement, usage, brandCount }: PlanSectionProps
           <Meter
             used={brandCount}
             limit={entitlement.brandsUnlimited ? null : entitlement.brands}
-            noun={brandWord(entitlement.mode, 2)}
+            noun={brandWord(entitlement.mode, entitlement.brandsUnlimited ? brandCount : 2)}
           />
         </PlanRow>
 

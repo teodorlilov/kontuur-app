@@ -128,7 +128,6 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
             agencyName={agency.name}
             agencyMode={agencyMode}
             refusal={deleteWorkspaceRefusal(entitlement)}
-            cancelConsequence={cancelPlanConsequence(entitlement)}
             notice={deleteWorkspaceNotice(entitlement)}
           />
         ),

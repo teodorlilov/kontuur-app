@@ -20,7 +20,7 @@ interface PlanEndControlProps {
  * what happens then, or "Keep plan" when it is already ending — one click, nothing to confirm,
  * since keeping costs nothing. Both refresh the page afterwards: the row was written by the
  * action, so the shell banner, the plan panel and the danger zone all show the new state at once.
- * Rendered by the plan panel and by the danger zone's refusal, so cancelling is one control.
+ * Rendered by the plan panel alone: the danger zone's refusal names it rather than repeating it.
  */
 export function PlanEndControl({ ending, consequence, className }: PlanEndControlProps) {
   const router = useRouter()

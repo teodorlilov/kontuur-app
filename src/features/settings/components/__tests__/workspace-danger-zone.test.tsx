@@ -3,16 +3,11 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
 /**
- * The rail's two states: refused — the sentence and the plan's own Cancel plan, no delete
- * button — and deletable — the sentence and a button that opens the confirm dialog. The cancel
- * control itself is `PlanEndControl`'s test.
+ * The rail's two states: refused — the sentence and no button at all, the plan panel's own
+ * Cancel plan being the way through — and deletable — the sentence and a button that opens the
+ * confirm dialog.
  */
 vi.mock('@/features/settings/actions/workspace-actions', () => ({ deleteWorkspace: vi.fn() }))
-vi.mock('@/features/settings/components/plan-end-control', () => ({
-  PlanEndControl: ({ ending }: { ending: boolean }) => (
-    <button type="button">{ending ? 'Keep plan' : 'Cancel plan'}</button>
-  ),
-}))
 
 import { WorkspaceDangerZone } from '../workspace-danger-zone'
 
@@ -24,7 +19,6 @@ function setup(props: Partial<Parameters<typeof WorkspaceDangerZone>[0]> = {}) {
       memberCount={2}
       agencyMode="agency"
       refusal={null}
-      cancelConsequence="Your plan ends on 1 October and nothing more is charged."
       notice={null}
       {...props}
     />
@@ -35,11 +29,10 @@ function setup(props: Partial<Parameters<typeof WorkspaceDangerZone>[0]> = {}) {
 describe('WorkspaceDangerZone', () => {
   beforeEach(() => vi.clearAllMocks())
 
-  it('refuses with the sentence and offers the plan’s end, never the delete', () => {
+  it('refuses with the sentence and no button — cancelling lives in the plan panel', () => {
     setup({ refusal: 'Cancel your plan first.' })
     expect(screen.getByText('Cancel your plan first.')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Cancel plan' })).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Delete workspace' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button')).not.toBeInTheDocument()
   })
 
   it('opens the confirm dialog from the delete button', async () => {

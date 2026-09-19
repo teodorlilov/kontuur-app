@@ -161,7 +161,7 @@ describe('the refusal sentences', () => {
 describe('the delete-workspace sentences', () => {
   it('refuses while a subscription is open and points at the portal, and says nothing otherwise', () => {
     expect(deleteWorkspaceRefusal({ canDelete: false })).toBe(
-      'Cancel your plan first. You keep access until it ends, and can delete the workspace right after.'
+      'Cancel your plan first, under Plan & billing. You keep access until it ends, and can delete the workspace right after.'
     )
     expect(deleteWorkspaceRefusal({ canDelete: true })).toBeNull()
   })

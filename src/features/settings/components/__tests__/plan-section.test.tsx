@@ -104,6 +104,22 @@ describe('PlanSection', () => {
     expect(screen.queryByText('Renews on')).not.toBeInTheDocument()
   })
 
+  it('a paid solo workspace counts one business, not one businesses', () => {
+    render(
+      <PlanSection
+        entitlement={entitlement({
+          state: 'active',
+          plan: 'pro',
+          mode: 'solo',
+          brandsUnlimited: true,
+        })}
+        usage={USAGE}
+        brandCount={1}
+      />
+    )
+    expect(screen.getByText('1 business')).toBeInTheDocument()
+  })
+
   it('a house workspace shows plain counts with no ceiling', () => {
     render(
       <PlanSection
