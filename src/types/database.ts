@@ -1789,6 +1789,7 @@ export type Database = {
           kind: string
           pending: number
           period: string
+          reserved_at: string | null
         }
         Insert: {
           agency_id: string
@@ -1796,6 +1797,7 @@ export type Database = {
           kind: string
           pending?: number
           period: string
+          reserved_at?: string | null
         }
         Update: {
           agency_id?: string
@@ -1803,6 +1805,7 @@ export type Database = {
           kind?: string
           pending?: number
           period?: string
+          reserved_at?: string | null
         }
         Relationships: [
           {
