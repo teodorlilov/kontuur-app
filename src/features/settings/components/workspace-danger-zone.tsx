@@ -3,9 +3,8 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { RailText } from '@/components/ui/form'
-import { openBillingPortal } from '@/features/settings/actions/billing-actions'
 import { DeleteWorkspaceDialog } from './delete-workspace-dialog'
-import { useFollowUrl } from './use-follow-url'
+import { PlanEndControl } from './plan-end-control'
 
 interface WorkspaceDangerZoneProps {
   agencyName: string
@@ -14,6 +13,8 @@ interface WorkspaceDangerZoneProps {
   agencyMode: 'agency' | 'solo'
   /** Why deletion is refused right now (`deleteWorkspaceRefusal`), or null when it is allowed. */
   refusal: string | null
+  /** What cancelling the plan means (`cancelPlanConsequence`), for the refusal's Cancel plan. */
+  cancelConsequence: string
   /** The "your plan ends on …" line for the dialog (`deleteWorkspaceNotice`), or null. */
   notice: string | null
 }
@@ -21,8 +22,9 @@ interface WorkspaceDangerZoneProps {
 /**
  * The contents of the Account rail's danger box, in its two states: the sentence and an enabled
  * "Delete workspace" that opens the confirm dialog, or — while a subscription is open — the
- * refusal and a "Manage billing" that hands off to Stripe's portal, where the plan is ended. The
- * rail opens, the dialog decides: the same split as `ClientDangerRail` + `DeleteClientDialog`.
+ * refusal and the plan's own "Cancel plan" (`PlanEndControl`), after which the page refreshes
+ * into the first state. The rail opens, the dialog decides: the same split as `ClientDangerRail`
+ * + `DeleteClientDialog`.
  */
 export function WorkspaceDangerZone({
   agencyName,
@@ -30,24 +32,16 @@ export function WorkspaceDangerZone({
   memberCount,
   agencyMode,
   refusal,
+  cancelConsequence,
   notice,
 }: WorkspaceDangerZoneProps) {
   const [open, setOpen] = useState(false)
-  const { busy, follow } = useFollowUrl()
 
   if (refusal) {
     return (
       <>
         <RailText>{refusal}</RailText>
-        <Button
-          variant="secondary"
-          size="sm"
-          className="mt-3 w-full"
-          loading={busy}
-          onClick={() => void follow(openBillingPortal)}
-        >
-          Manage billing
-        </Button>
+        <PlanEndControl ending={false} consequence={cancelConsequence} className="mt-3 w-full" />
       </>
     )
   }

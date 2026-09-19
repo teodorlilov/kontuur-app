@@ -2,13 +2,24 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type Stripe from 'stripe'
 import type { createAdminSupabaseClient } from '@/lib/supabase/admin'
 
-const mocks = vi.hoisted(() => ({ revalidateTag: vi.fn(), customersCreate: vi.fn() }))
+const mocks = vi.hoisted(() => ({
+  revalidateTag: vi.fn(),
+  customersCreate: vi.fn(),
+  subscriptionsUpdate: vi.fn(),
+}))
 vi.mock('next/cache', () => ({ revalidateTag: mocks.revalidateTag }))
 vi.mock('../stripe', () => ({
-  stripeClient: () => ({ customers: { create: mocks.customersCreate } }),
+  stripeClient: () => ({
+    customers: { create: mocks.customersCreate },
+    subscriptions: { update: mocks.subscriptionsUpdate },
+  }),
 }))
 
-import { applySubscriptionSnapshot, ensureStripeCustomer } from '../subscription-store'
+import {
+  applySubscriptionSnapshot,
+  ensureStripeCustomer,
+  setPlanEnding,
+} from '../subscription-store'
 
 interface Row {
   stripe_subscription_id: string | null
@@ -211,5 +222,22 @@ describe('ensureStripeCustomer', () => {
     expect(updates).toEqual([
       { table: 'agencies', id: 'a1', values: { stripe_customer_id: 'cus_new' } },
     ])
+  })
+})
+
+describe('setPlanEnding', () => {
+  beforeEach(() => mocks.revalidateTag.mockReset())
+
+  it('sets the flag at Stripe and writes what Stripe answers onto the row through the snapshot', async () => {
+    const { admin, updates } = makeAdmin(FRESH)
+    mocks.subscriptionsUpdate.mockResolvedValue(subscription({ cancel_at_period_end: true }))
+    await setPlanEnding(admin, 'sub_1', true)
+    expect(mocks.subscriptionsUpdate).toHaveBeenCalledWith('sub_1', { cancel_at_period_end: true })
+    expect(updates).toHaveLength(1)
+    expect(updates[0]?.values).toMatchObject({
+      cancel_at_period_end: true,
+      stripe_subscription_id: 'sub_1',
+    })
+    expect(mocks.revalidateTag).toHaveBeenCalledWith('agencies', 'max')
   })
 })

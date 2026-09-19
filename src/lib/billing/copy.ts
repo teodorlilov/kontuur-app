@@ -127,14 +127,34 @@ export function addBrandRefusal(entitlement: Entitlement, brandCount: number): s
 /**
  * Why the workspace cannot be deleted right now, or null when it can. One rule for the danger
  * zone (button or refusal) and for the action, so the rail never offers what the action refuses.
- * The app never cancels at Stripe itself: a live plan is ended in the portal, and deletion is
- * allowed the moment it is set to end (`Entitlement.canDelete`).
+ * A live plan is ended from the same rail (`setPlanEnding`), and deletion is allowed the moment
+ * it is set to end (`Entitlement.canDelete`).
  */
 export function deleteWorkspaceRefusal(entitlement: Pick<Entitlement, 'canDelete'>): string | null {
   return entitlement.canDelete
     ? null
-    : 'Cancel your plan first — Manage billing → Cancel plan. You can delete the workspace right after.'
+    : 'Cancel your plan first. You keep access until it ends, and can delete the workspace right after.'
 }
+
+/**
+ * What cancelling the plan means, said before the person confirms it: the day it ends, that
+ * nothing more is charged, and that the workspace then pauses with everything kept. Composed
+ * from the same "ends on" fragment as the shell, so the confirm and the banner never disagree.
+ */
+export function cancelPlanConsequence(
+  entitlement: Pick<Entitlement, 'resetsOn' | 'timezone'>
+): string {
+  const ends = entitlement.resetsOn
+    ? `${planEndsOn(entitlement.resetsOn, entitlement.timezone)} and nothing more is charged.`
+    : 'Your plan ends with the current period and nothing more is charged.'
+  return `${ends} You keep full access until then; after that the workspace pauses with everything kept, and you can delete it any time.`
+}
+
+/** Cancelling asks for a plan that is running and not already set to end. */
+export const NO_PLAN_TO_CANCEL = 'There is no running plan to cancel.'
+
+/** Keeping asks for a plan that is set to end and has not ended yet. */
+export const NO_PLAN_TO_KEEP = 'Your plan is not set to end.'
 
 /**
  * The one extra line the delete confirmation carries while a cancelled plan is still running —

@@ -111,8 +111,9 @@ interface AccountRailProps {
   isAdmin: boolean
   agencyName: string
   agencyMode: 'agency' | 'solo'
-  /** From `deleteWorkspaceRefusal` / `deleteWorkspaceNotice` on the server page; the rail only shows them. */
+  /** From copy.ts on the server page (`deleteWorkspaceRefusal`, `cancelPlanConsequence`, `deleteWorkspaceNotice`); the rail only shows them. */
   refusal: string | null
+  cancelConsequence: string
   notice: string | null
 }
 
@@ -124,6 +125,7 @@ export function AccountRail({
   agencyName,
   agencyMode,
   refusal,
+  cancelConsequence,
   notice,
 }: AccountRailProps) {
   return (
@@ -143,6 +145,7 @@ export function AccountRail({
             memberCount={memberCount}
             agencyMode={agencyMode}
             refusal={refusal}
+            cancelConsequence={cancelConsequence}
             notice={notice}
           />
         </RailBox>

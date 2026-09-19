@@ -2,7 +2,7 @@
   "agencies": {
     "src/lib/auth/create-user-record.ts": "The agency is created with the account. Provisioning is idempotent and lives only here — the signup route and the auth callback both delegate, after a period where both provisioned and raced.",
     "src/app/api/settings/account/route.ts": "The agency name and timezone as edited in settings.",
-    "src/lib/billing/subscription-store.ts": "The billing columns, written by the Stripe webhook alone: ensureStripeCustomer sets stripe_customer_id once, applySubscriptionSnapshot writes what a re-fetched subscription says (plan, status, quantity, cancel flag, the period on a paid invoice, past_due_since). Nothing else may write these columns — entitlementFor is their only reader.",
+    "src/lib/billing/subscription-store.ts": "The billing columns, through applySubscriptionSnapshot alone: ensureStripeCustomer sets stripe_customer_id once; the Stripe webhook and setPlanEnding (the in-app cancel) both write what a re-fetched subscription says (plan, status, quantity, cancel flag, the period on a paid invoice, past_due_since). Nothing else may write these columns — entitlementFor is their only reader.",
     "src/features/settings/actions/workspace-actions.ts": "deleteWorkspace — the one delete; migration 20260856 cascades every table the workspace owns, so nothing else here deletes agency-scoped rows."
   },
   "billing_events": {

@@ -53,6 +53,7 @@ true.
 | Create the Stripe customer for a workspace, once | `ensureStripeCustomer` | [lib/billing/subscription-store.ts](../src/lib/billing/subscription-store.ts) |
 | Write what a Stripe subscription says onto the agency row | `applySubscriptionSnapshot` | [lib/billing/subscription-store.ts](../src/lib/billing/subscription-store.ts) |
 | Keep the paid quantity equal to the client count | `syncSubscriptionQuantity` | [lib/billing/quantity-sync.ts](../src/lib/billing/quantity-sync.ts) |
+| End the plan at its period end, or keep it — from inside the app | `setPlanEnding` | [lib/billing/subscription-store.ts](../src/lib/billing/subscription-store.ts) |
 | Record a Stripe event, then stamp it done or failed | `POST` | [app/api/billing/webhook/route.ts](../src/app/api/billing/webhook/route.ts) |
 
 ### Invoices

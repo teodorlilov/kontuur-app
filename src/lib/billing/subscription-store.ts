@@ -110,3 +110,23 @@ export async function applySubscriptionSnapshot(
   revalidateTag('agencies', 'max')
   return { agencyId, outcome: 'written' }
 }
+
+/**
+ * End the workspace's plan at the period it has paid for, or keep it after all — the one
+ * cancellation path, from inside the app: customers never see Stripe's portal. Sets
+ * `cancel_at_period_end` on the subscription and writes what Stripe answers straight onto the
+ * row through `applySubscriptionSnapshot`, so the shell, the danger zone and the entitlement see
+ * the plan ending before the webhook's own copy of the same truth arrives. Access runs until the
+ * period end (`entitlementFor`), nothing more is charged, and the workspace then pauses with
+ * everything kept — docs/plans/BILLING.md's "Cancel" behaviour, unchanged.
+ */
+export async function setPlanEnding(
+  admin: Admin,
+  subscriptionId: string,
+  ending: boolean
+): Promise<void> {
+  const subscription = await stripeClient().subscriptions.update(subscriptionId, {
+    cancel_at_period_end: ending,
+  })
+  await applySubscriptionSnapshot(admin, subscription, 'subscription')
+}

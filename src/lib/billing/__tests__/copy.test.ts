@@ -3,6 +3,7 @@ import {
   addBrandRefusal,
   allowanceUsedUp,
   allowanceWarning,
+  cancelPlanConsequence,
   deleteWorkspaceNotice,
   deleteWorkspaceRefusal,
   draftsLeft,
@@ -160,7 +161,7 @@ describe('the refusal sentences', () => {
 describe('the delete-workspace sentences', () => {
   it('refuses while a subscription is open and points at the portal, and says nothing otherwise', () => {
     expect(deleteWorkspaceRefusal({ canDelete: false })).toBe(
-      'Cancel your plan first — Manage billing → Cancel plan. You can delete the workspace right after.'
+      'Cancel your plan first. You keep access until it ends, and can delete the workspace right after.'
     )
     expect(deleteWorkspaceRefusal({ canDelete: true })).toBeNull()
   })
@@ -175,5 +176,17 @@ describe('the delete-workspace sentences', () => {
     )
     expect(shellNotice(ending, NOW)?.text).toMatch(/^Your plan ends on 1 October/)
     expect(deleteWorkspaceNotice({ endsOn: null, ...SOFIA })).toBeNull()
+  })
+})
+
+describe('cancelPlanConsequence', () => {
+  it('names the period end in the shell’s words, what is charged, and what happens after', () => {
+    const active = entitlementFor({ ...TRIAL_ROW, ...PRO, plan: 'pro' }, NOW)
+    expect(cancelPlanConsequence(active)).toBe(
+      'Your plan ends on 1 October and nothing more is charged. You keep full access until then; after that the workspace pauses with everything kept, and you can delete it any time.'
+    )
+    expect(cancelPlanConsequence({ resetsOn: null, ...SOFIA })).toMatch(
+      /^Your plan ends with the current period and nothing more is charged\./
+    )
   })
 })

@@ -5,7 +5,8 @@ import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { toast } from '@/components/ui/toast'
 import { openBillingPortal, startCheckout } from '@/features/settings/actions/billing-actions'
-import { useFollowUrl } from '@/features/settings/components/use-follow-url'
+import { PlanEndControl } from '@/features/settings/components/plan-end-control'
+import type { ActionResult } from '@/lib/actions/types'
 import type { EntitlementState } from '@/lib/billing/entitlement'
 import type { PlanId } from '@/lib/billing/plans'
 import { clearQueryParams } from '@/utils/url'
@@ -19,25 +20,37 @@ interface PlanActionsProps {
   summary: string
   /** The `billing` query param Checkout sent the admin back with, read once by the server page. */
   billingReturn: BillingReturn | null
+  /** Whether a paid plan is already set to end (`Entitlement.endsOn`) — picks Cancel plan or Keep plan. */
+  ending: boolean
+  /** What cancelling means, worded by copy.ts (`cancelPlanConsequence`). */
+  cancelConsequence: string
 }
 
 const POLL_EVERY_MS = 2_000
 const POLL_FOR_MS = 10_000
 
 /**
- * The plan panel's one action: "Choose plan" while the workspace does not pay (trial, grace, or
- * paused — a re-subscription is a fresh Checkout), "Manage billing" while it does; nothing on a
- * house workspace. Each button calls its server action and follows the URL Stripe hands back
- * (`useFollowUrl`, shared with the danger zone's portal button).
+ * The plan panel's actions: "Choose plan" while the workspace does not pay (trial, grace, or
+ * paused — a re-subscription is a fresh Checkout); "Manage billing" (card, address, tax ID in
+ * Stripe's portal) and the plan's own end (`PlanEndControl` — cancelling never leaves the app)
+ * while it does; nothing on a house workspace. The Stripe buttons call their server action and
+ * follow the URL it hands back.
  *
  * The return flag is captured once, because clearing it from the address bar makes
  * `useSearchParams` re-read at once and every `router.refresh()` re-renders the page without it.
  * After a successful Checkout the page is refreshed every two seconds for ten, until the
  * webhook's row shows the plan active — the settings page reads the row uncached.
  */
-export function PlanActions({ state, plan, summary, billingReturn }: PlanActionsProps) {
+export function PlanActions({
+  state,
+  plan,
+  summary,
+  billingReturn,
+  ending,
+  cancelConsequence,
+}: PlanActionsProps) {
   const router = useRouter()
-  const { busy, follow } = useFollowUrl()
+  const [busy, setBusy] = useState(false)
   const [returned] = useState(billingReturn)
   const paid = plan === 'pro' && (state === 'active' || state === 'past_due')
 
@@ -67,11 +80,23 @@ export function PlanActions({ state, plan, summary, billingReturn }: PlanActions
     }
   }, [returned, paid, router])
 
+  async function follow(action: () => Promise<ActionResult<{ url: string }>>) {
+    setBusy(true)
+    const result = await action()
+    if (!result.ok) {
+      toast.error(result.error)
+      setBusy(false)
+      return
+    }
+    window.location.assign(result.data.url)
+  }
+
   if (plan === 'house') return null
 
   if (paid) {
     return (
-      <div className="flex items-center justify-end pt-4">
+      <div className="flex items-center justify-end gap-2 pt-4">
+        <PlanEndControl ending={ending} consequence={cancelConsequence} />
         <Button
           variant="secondary"
           size="sm"

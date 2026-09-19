@@ -5,7 +5,9 @@ const mocks = vi.hoisted(() => ({
   getCachedAgency: vi.fn(),
   getCachedEntitlement: vi.fn(),
   countClientsByAgency: vi.fn(),
+  fetchAgencyById: vi.fn(),
   ensureStripeCustomer: vi.fn(),
+  setPlanEnding: vi.fn(),
   createCheckoutSession: vi.fn(),
   createPortalSession: vi.fn(),
 }))
@@ -15,16 +17,20 @@ vi.mock('@/lib/queries/cache', () => ({
   getCachedAgency: mocks.getCachedAgency,
   getCachedEntitlement: mocks.getCachedEntitlement,
 }))
-vi.mock('@/lib/queries/db', () => ({ countClientsByAgency: mocks.countClientsByAgency }))
+vi.mock('@/lib/queries/db', () => ({
+  countClientsByAgency: mocks.countClientsByAgency,
+  fetchAgencyById: mocks.fetchAgencyById,
+}))
 vi.mock('@/lib/billing/subscription-store', () => ({
   ensureStripeCustomer: mocks.ensureStripeCustomer,
+  setPlanEnding: mocks.setPlanEnding,
 }))
 vi.mock('@/lib/billing/checkout', () => ({
   createCheckoutSession: mocks.createCheckoutSession,
   createPortalSession: mocks.createPortalSession,
 }))
 
-import { openBillingPortal, startCheckout } from '../billing-actions'
+import { openBillingPortal, setPlanEndingAction, startCheckout } from '../billing-actions'
 
 const AGENCY = { id: 'a1', name: 'Acme', stripe_customer_id: null, stripe_subscription_id: null }
 
@@ -117,5 +123,91 @@ describe('the billing actions', () => {
       data: { url: 'https://billing.stripe.com/p/1' },
     })
     expect(mocks.createPortalSession).toHaveBeenCalledWith('cus_1')
+  })
+})
+
+describe('setPlanEndingAction', () => {
+  /** A paid row as the uncached settings read returns it; the override makes it ending. */
+  const paidRow = (overrides: Record<string, unknown> = {}) => ({
+    id: 'a1',
+    name: 'Acme',
+    plan: 'pro',
+    mode: 'agency',
+    timezone: 'Europe/Sofia',
+    stripe_customer_id: 'cus_1',
+    stripe_subscription_id: 'sub_1',
+    subscription_status: 'active',
+    subscription_quantity: 2,
+    trial_ends_at: null,
+    current_period_start: '2026-09-01T00:00:00Z',
+    current_period_end: '2026-10-01T00:00:00Z',
+    cancel_at_period_end: false,
+    past_due_since: null,
+    ...overrides,
+  })
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    mocks.resolveActionAuth.mockResolvedValue({
+      ok: true,
+      supabase: {},
+      agencyId: 'a1',
+      userId: 'u1',
+      role: 'admin',
+    })
+    mocks.fetchAgencyById.mockResolvedValue(paidRow())
+    mocks.setPlanEnding.mockResolvedValue(undefined)
+  })
+
+  it('ends a running plan through the store, on the admin client', async () => {
+    expect(await setPlanEndingAction(true)).toEqual({ ok: true, data: undefined })
+    expect(mocks.setPlanEnding).toHaveBeenCalledWith({}, 'sub_1', true)
+  })
+
+  it('keeps a plan that is set to end', async () => {
+    mocks.fetchAgencyById.mockResolvedValue(paidRow({ cancel_at_period_end: true }))
+    expect(await setPlanEndingAction(false)).toEqual({ ok: true, data: undefined })
+    expect(mocks.setPlanEnding).toHaveBeenCalledWith({}, 'sub_1', false)
+  })
+
+  it('refuses to cancel what is not running, and to keep what is not ending', async () => {
+    mocks.fetchAgencyById.mockResolvedValue(paidRow({ cancel_at_period_end: true }))
+    expect(await setPlanEndingAction(true)).toEqual({
+      ok: false,
+      error: 'There is no running plan to cancel.',
+    })
+    mocks.fetchAgencyById.mockResolvedValue(paidRow())
+    expect(await setPlanEndingAction(false)).toEqual({
+      ok: false,
+      error: 'Your plan is not set to end.',
+    })
+    mocks.fetchAgencyById.mockResolvedValue(
+      paidRow({ stripe_subscription_id: null, plan: 'trial' })
+    )
+    expect(await setPlanEndingAction(true)).toEqual({
+      ok: false,
+      error: 'There is no running plan to cancel.',
+    })
+    expect(mocks.setPlanEnding).not.toHaveBeenCalled()
+  })
+
+  it('refuses a member, and says one sentence when Stripe fails', async () => {
+    mocks.resolveActionAuth.mockResolvedValueOnce({
+      ok: true,
+      supabase: {},
+      agencyId: 'a1',
+      userId: 'u1',
+      role: 'member',
+    })
+    expect(await setPlanEndingAction(true)).toEqual({
+      ok: false,
+      error: 'Only admins can manage the plan.',
+    })
+    mocks.setPlanEnding.mockRejectedValue(new Error('stripe down'))
+    expect(await setPlanEndingAction(true)).toEqual({
+      ok: false,
+      error: 'Could not open Stripe just now. Please try again in a moment.',
+    })
   })
 })

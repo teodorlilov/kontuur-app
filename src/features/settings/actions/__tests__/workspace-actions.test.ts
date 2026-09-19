@@ -134,13 +134,13 @@ describe('deleteWorkspace', () => {
     expect(mocks.createAdminSupabaseClient).not.toHaveBeenCalled()
   })
 
-  it('refuses while a subscription is open, with the portal sentence, and touches nothing', async () => {
+  it('refuses while a subscription is open, with the cancel-first sentence, and touches nothing', async () => {
     mocks.fetchAgencyById.mockResolvedValue(agency(PAID))
     const result = await deleteWorkspace('About Social Media')
     expect(result).toEqual({
       ok: false,
       error:
-        'Cancel your plan first — Manage billing → Cancel plan. You can delete the workspace right after.',
+        'Cancel your plan first. You keep access until it ends, and can delete the workspace right after.',
     })
     expect(mocks.createAdminSupabaseClient).not.toHaveBeenCalled()
     expect(mocks.deleteAuthIdentity).not.toHaveBeenCalled()

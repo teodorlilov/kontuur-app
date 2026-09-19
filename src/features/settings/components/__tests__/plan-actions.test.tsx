@@ -16,10 +16,20 @@ vi.mock('@/features/settings/actions/billing-actions', () => ({
 vi.mock('next/navigation', () => ({ useRouter: () => ({ refresh: mocks.refresh }) }))
 vi.mock('@/components/ui/toast', () => ({ toast: mocks.toast }))
 vi.mock('@/utils/url', () => ({ clearQueryParams: mocks.clearQueryParams }))
+vi.mock('@/features/settings/components/plan-end-control', () => ({
+  PlanEndControl: ({ ending }: { ending: boolean }) => (
+    <button type="button">{ending ? 'Keep plan' : 'Cancel plan'}</button>
+  ),
+}))
 
 import { PlanActions } from '../plan-actions'
 
 const SUMMARY = '€19.00 a month per client · 3 clients today'
+/** The plan's end is `PlanEndControl`'s own test; here it only has to appear beside the portal. */
+const END = {
+  ending: false,
+  cancelConsequence: 'Your plan ends on 1 October and nothing more is charged.',
+}
 
 describe('PlanActions', () => {
   beforeEach(() => {
@@ -33,22 +43,25 @@ describe('PlanActions', () => {
       ok: true,
       data: { url: 'https://checkout.stripe.com/c/1' },
     })
-    render(<PlanActions state="trial" plan="trial" summary={SUMMARY} billingReturn={null} />)
+    render(
+      <PlanActions state="trial" plan="trial" summary={SUMMARY} billingReturn={null} {...END} />
+    )
     expect(screen.getByText(SUMMARY)).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Choose plan' }))
     await act(async () => {})
     expect(mocks.assign).toHaveBeenCalledWith('https://checkout.stripe.com/c/1')
   })
 
-  it('offers the portal to a paying workspace, and nothing to a house one', () => {
+  it('offers the plan’s end and the portal to a paying workspace, and nothing to a house one', () => {
     const { unmount } = render(
-      <PlanActions state="active" plan="pro" summary={SUMMARY} billingReturn={null} />
+      <PlanActions state="active" plan="pro" summary={SUMMARY} billingReturn={null} {...END} />
     )
+    expect(screen.getByRole('button', { name: 'Cancel plan' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Manage billing' })).toBeInTheDocument()
     expect(screen.queryByText(SUMMARY)).not.toBeInTheDocument()
     unmount()
     const { container } = render(
-      <PlanActions state="active" plan="house" summary={SUMMARY} billingReturn={null} />
+      <PlanActions state="active" plan="house" summary={SUMMARY} billingReturn={null} {...END} />
     )
     expect(container).toBeEmptyDOMElement()
   })
@@ -58,7 +71,9 @@ describe('PlanActions', () => {
       ok: false,
       error: 'Only admins can manage the plan.',
     })
-    render(<PlanActions state="past_due" plan="pro" summary={SUMMARY} billingReturn={null} />)
+    render(
+      <PlanActions state="past_due" plan="pro" summary={SUMMARY} billingReturn={null} {...END} />
+    )
     fireEvent.click(screen.getByRole('button', { name: 'Manage billing' }))
     await act(async () => {})
     expect(mocks.toast.error).toHaveBeenCalledWith('Only admins can manage the plan.')
@@ -68,7 +83,7 @@ describe('PlanActions', () => {
   it('after a successful Checkout, clears the flag, says so, and refreshes until the plan shows', async () => {
     vi.useFakeTimers()
     const { rerender } = render(
-      <PlanActions state="trial" plan="trial" summary={SUMMARY} billingReturn="success" />
+      <PlanActions state="trial" plan="trial" summary={SUMMARY} billingReturn="success" {...END} />
     )
     expect(mocks.clearQueryParams).toHaveBeenCalledWith(['billing'])
     expect(mocks.toast.success).toHaveBeenCalledTimes(1)
@@ -76,7 +91,9 @@ describe('PlanActions', () => {
       vi.advanceTimersByTime(4_100)
     })
     expect(mocks.refresh).toHaveBeenCalledTimes(2)
-    rerender(<PlanActions state="active" plan="pro" summary={SUMMARY} billingReturn={null} />)
+    rerender(
+      <PlanActions state="active" plan="pro" summary={SUMMARY} billingReturn={null} {...END} />
+    )
     await act(async () => {
       vi.advanceTimersByTime(10_000)
     })
@@ -85,7 +102,15 @@ describe('PlanActions', () => {
 
   it('a cancelled Checkout is said once and polls nothing', async () => {
     vi.useFakeTimers()
-    render(<PlanActions state="trial" plan="trial" summary={SUMMARY} billingReturn="cancelled" />)
+    render(
+      <PlanActions
+        state="trial"
+        plan="trial"
+        summary={SUMMARY}
+        billingReturn="cancelled"
+        {...END}
+      />
+    )
     expect(mocks.toast).toHaveBeenCalledWith('Checkout was cancelled — nothing was charged.')
     await act(async () => {
       vi.advanceTimersByTime(10_000)

@@ -30,3 +30,6 @@ export const accountSettingsSchema = z.object({
   name: z.string().trim().min(1, 'Agency name cannot be empty').optional(),
   timezone: z.string().refine(isSupportedTimezone, 'Unsupported timezone').optional(),
 })
+
+/** Server-action arg: whether the plan is to end at its period end (true) or be kept (false). */
+export const setPlanEndingSchema = z.boolean()

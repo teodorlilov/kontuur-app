@@ -1,21 +1,18 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
 /**
- * The rail's two states: refused — the sentence and a portal hand-off, no delete button — and
- * deletable — the sentence and a button that opens the confirm dialog.
+ * The rail's two states: refused — the sentence and the plan's own Cancel plan, no delete
+ * button — and deletable — the sentence and a button that opens the confirm dialog. The cancel
+ * control itself is `PlanEndControl`'s test.
  */
-const mocks = vi.hoisted(() => ({
-  openBillingPortal: vi.fn(),
-  toast: Object.assign(vi.fn(), { success: vi.fn(), error: vi.fn() }),
-  assign: vi.fn(),
-}))
-vi.mock('@/features/settings/actions/billing-actions', () => ({
-  openBillingPortal: mocks.openBillingPortal,
-}))
 vi.mock('@/features/settings/actions/workspace-actions', () => ({ deleteWorkspace: vi.fn() }))
-vi.mock('@/components/ui/toast', () => ({ toast: mocks.toast }))
+vi.mock('@/features/settings/components/plan-end-control', () => ({
+  PlanEndControl: ({ ending }: { ending: boolean }) => (
+    <button type="button">{ending ? 'Keep plan' : 'Cancel plan'}</button>
+  ),
+}))
 
 import { WorkspaceDangerZone } from '../workspace-danger-zone'
 
@@ -27,6 +24,7 @@ function setup(props: Partial<Parameters<typeof WorkspaceDangerZone>[0]> = {}) {
       memberCount={2}
       agencyMode="agency"
       refusal={null}
+      cancelConsequence="Your plan ends on 1 October and nothing more is charged."
       notice={null}
       {...props}
     />
@@ -35,21 +33,13 @@ function setup(props: Partial<Parameters<typeof WorkspaceDangerZone>[0]> = {}) {
 }
 
 describe('WorkspaceDangerZone', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    Object.defineProperty(window, 'location', { value: { assign: mocks.assign }, writable: true })
-  })
+  beforeEach(() => vi.clearAllMocks())
 
-  it('refuses with the sentence and hands off to the portal, offering no delete', async () => {
-    mocks.openBillingPortal.mockResolvedValue({
-      ok: true,
-      data: { url: 'https://billing.stripe.com/p/1' },
-    })
-    const user = setup({ refusal: 'Cancel your plan first — Manage billing → Cancel plan.' })
-    expect(screen.getByText(/Cancel your plan first/)).toBeInTheDocument()
+  it('refuses with the sentence and offers the plan’s end, never the delete', () => {
+    setup({ refusal: 'Cancel your plan first.' })
+    expect(screen.getByText('Cancel your plan first.')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Cancel plan' })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Delete workspace' })).not.toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: 'Manage billing' }))
-    await waitFor(() => expect(mocks.assign).toHaveBeenCalledWith('https://billing.stripe.com/p/1'))
   })
 
   it('opens the confirm dialog from the delete button', async () => {
