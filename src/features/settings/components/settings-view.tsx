@@ -53,6 +53,8 @@ interface SettingsViewProps {
    */
   panels: Record<SettingsTab, ReactNode>
   rails: Record<SettingsTab, ReactNode>
+  /** Rendered above the panel, in view before any scrolling — the checkout return card. */
+  notice?: ReactNode
 }
 
 /** Settings page orchestrator. Owns the header: the tab rail is its state. */
@@ -63,6 +65,7 @@ export function SettingsView({
   agencyMode,
   panels,
   rails,
+  notice,
 }: SettingsViewProps) {
   const searchParams = useSearchParams()
 
@@ -117,6 +120,7 @@ export function SettingsView({
       />
 
       <div className={cn(PAGE_SHELL, 'pb-12 pt-5')}>
+        {notice}
         <FormPanel title={panel.title} description={panel.description} rail={rails[activeTab]}>
           {panels[activeTab]}
         </FormPanel>

@@ -4,6 +4,7 @@ import {
   allowanceUsedUp,
   allowanceWarning,
   cancelPlanConsequence,
+  checkoutActivated,
   deleteWorkspaceNotice,
   deleteWorkspaceRefusal,
   draftsLeft,
@@ -188,5 +189,30 @@ describe('cancelPlanConsequence', () => {
     expect(cancelPlanConsequence({ resetsOn: null, ...SOFIA })).toMatch(
       /^Your plan ends with the current period and nothing more is charged\./
     )
+  })
+})
+
+describe('checkoutActivated — the card once the plan is live', () => {
+  const paid = entitlementFor({ ...TRIAL_ROW, plan: 'pro', ...PRO, subscription_quantity: 3 }, NOW)
+
+  it('names the plan, the clients, the month and the renewal, and where the invoice went', () => {
+    const card = checkoutActivated(paid, { number: 1_000_000_002, email: 'owner@acme.bg' })
+    expect(card.title).toBe('You’re on Pro')
+    expect(card.facts).toEqual([
+      { label: 'Clients', value: '3' },
+      { label: 'A month', value: '€57.00' },
+      { label: 'Renews', value: '1 October 2026' },
+    ])
+    expect(card.text).toBe(
+      'Invoice No. 1000000002 is on its way to owner@acme.bg and is listed under Invoices below.'
+    )
+  })
+
+  it('promises the invoice without a number before the document exists, and counts a business for solo', () => {
+    expect(checkoutActivated(paid, null).text).toBe(
+      'Your invoice is on its way by email and will be listed under Invoices below.'
+    )
+    const solo = entitlementFor({ ...TRIAL_ROW, mode: 'solo', plan: 'pro', ...PRO }, NOW)
+    expect(checkoutActivated(solo, null).facts[0]).toEqual({ label: 'Business', value: '1' })
   })
 })

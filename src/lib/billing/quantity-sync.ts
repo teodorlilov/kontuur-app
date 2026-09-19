@@ -2,7 +2,7 @@ import 'server-only'
 
 import { randomUUID } from 'crypto'
 import Stripe from 'stripe'
-import type { Entitlement } from './entitlement'
+import { isPaying, type Entitlement } from './entitlement'
 import { stripeClient } from './stripe'
 
 /**
@@ -38,10 +38,7 @@ export function billedSubscriptionId(
   entitlement: Pick<Entitlement, 'plan' | 'state'>,
   agency: { stripe_subscription_id: string | null } | null
 ): string | null {
-  const live =
-    entitlement.plan === 'pro' &&
-    (entitlement.state === 'active' || entitlement.state === 'past_due')
-  return live ? (agency?.stripe_subscription_id ?? null) : null
+  return isPaying(entitlement) ? (agency?.stripe_subscription_id ?? null) : null
 }
 
 /**

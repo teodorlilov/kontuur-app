@@ -80,6 +80,18 @@ export interface Entitlement {
   canDelete: boolean
 }
 
+/**
+ * Whether the workspace is on the paid plan and Stripe is billing it — active, or inside the
+ * grace after a failed renewal. The one reading of "paying": the plan panel's buttons, the
+ * checkout return and the quantity sync all ask it.
+ */
+export function isPaying(entitlement: Pick<Entitlement, 'plan' | 'state'>): boolean {
+  return (
+    entitlement.plan === 'pro' &&
+    (entitlement.state === 'active' || entitlement.state === 'past_due')
+  )
+}
+
 /** Whether the entitlement allows what a site is about to do. */
 export function allows(entitlement: Entitlement, need: EntitlementNeed): boolean {
   return need === 'spend'

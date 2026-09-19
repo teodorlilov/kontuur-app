@@ -1,5 +1,5 @@
 import { MS_PER_DAY } from '@/utils/constants'
-import { formatMoney } from '@/utils/format'
+import { formatDocumentNumber, formatLongDate, formatMoney } from '@/utils/format'
 import type { BillingReminderType, NotificationType } from '@/types/api'
 import type { Entitlement } from './entitlement'
 import { PLAN_LABELS, PRO_PLAN, type AllowanceKind } from './plans'
@@ -208,6 +208,55 @@ export const DELETE_ADMINS_ONLY = 'Only admins can delete the workspace.'
  */
 export const CHECKOUT_CONSENT =
   'I ask for the service to start now and understand that if I withdraw within 14 days I pay for the days used.'
+
+/** A fact on the checkout return card: what it names, and its value in tabular figures. */
+export interface PlanFact {
+  label: string
+  value: string
+}
+
+/**
+ * The card the admin lands on when Checkout sends them back, in its two pending moments: the
+ * webhook is still writing the row, or it is later than a minute and the person may refresh.
+ */
+export const CHECKOUT_ARRIVAL = {
+  activating: {
+    title: 'Payment received',
+    pill: 'Activating',
+    text: 'Stripe confirmed your payment. Your plan appears here in a few seconds.',
+  },
+  waiting: {
+    title: 'Payment received',
+    pill: 'Pending',
+    text: 'Your plan will show here within a minute. Nothing more to do — refresh if it does not.',
+  },
+} as const
+
+/**
+ * The same card once the row says the plan is live: the plan by name, the facts a person wants
+ * to see confirmed — how many clients, what a month costs, when it renews — and where the
+ * invoice went. Before the document exists the sentence promises it without a number.
+ */
+export function checkoutActivated(
+  entitlement: Pick<Entitlement, 'plan' | 'mode' | 'brands' | 'resetsOn' | 'timezone'>,
+  invoice: { number: number; email: string | null } | null
+): { title: string; facts: PlanFact[]; text: string } {
+  const facts: PlanFact[] = [
+    { label: brandsLabel(entitlement.mode), value: String(entitlement.brands) },
+    { label: 'A month', value: formatMoney(PRO_PLAN.priceCents * entitlement.brands) },
+  ]
+  if (entitlement.resetsOn) {
+    facts.push({
+      label: 'Renews',
+      value: formatLongDate(entitlement.resetsOn, entitlement.timezone),
+    })
+  }
+  const where = invoice?.email ? ` to ${invoice.email}` : ' by email'
+  const text = invoice
+    ? `Invoice No. ${formatDocumentNumber(invoice.number)} is on its way${where} and is listed under Invoices below.`
+    : 'Your invoice is on its way by email and will be listed under Invoices below.'
+  return { title: `You’re on ${PLAN_LABELS[entitlement.plan]}`, facts, text }
+}
 
 /** Days before the trial ends at which the shell starts saying so. */
 const TRIAL_NOTICE_DAYS = 3

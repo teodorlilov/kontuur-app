@@ -8,13 +8,15 @@ import {
   fetchSaleDocumentsByAgency,
   fetchTeamMembersByAgency,
 } from '@/lib/queries/db'
-import { entitlementFor } from '@/lib/billing/entitlement'
+import { entitlementFor, isPaying } from '@/lib/billing/entitlement'
 import {
   cancelPlanConsequence,
+  checkoutActivated,
   checkoutSummary,
   deleteWorkspaceNotice,
   deleteWorkspaceRefusal,
 } from '@/lib/billing/copy'
+import { parseDocumentCustomer } from '@/lib/billing/document-schemas'
 import { PLAN_LABELS } from '@/lib/billing/plans'
 import { readUsage } from '@/lib/billing/usage'
 import { listDocumentDownloads } from '@/lib/billing/documents'
@@ -23,7 +25,8 @@ import { SettingsView } from '@/features/settings/components/settings-view'
 import { AccountRail, AccountTab } from '@/features/settings/components/account-tab'
 import { IntegrationsRail, IntegrationsTab } from '@/features/settings/components/integrations-tab'
 import { PlanSection } from '@/features/settings/components/plan-section'
-import { PlanActions, type BillingReturn } from '@/features/settings/components/plan-actions'
+import { PlanActions } from '@/features/settings/components/plan-actions'
+import { CheckoutReturn, type BillingReturn } from '@/features/settings/components/checkout-return'
 import { BillingDocuments } from '@/features/settings/components/billing-documents'
 import { ProfileRail, ProfileTab } from '@/features/settings/components/profile-tab'
 import { TeamRail, TeamTab } from '@/features/settings/components/team-tab'
@@ -34,7 +37,7 @@ import { SIGN_IN_PATH } from '@/utils/constants'
  * must never show a stale row — and the entitlement is derived from that same read, the one
  * place a page derives it itself rather than through `getCachedEntitlement`. The client
  * components below receive only the fields they edit or show; the billing columns stay here.
- * The `billing` param is Checkout's return flag, read here once and handed to `PlanActions`.
+ * The `billing` param is Checkout's return flag, read here once and handed to `CheckoutReturn`.
  */
 interface SettingsPageProps {
   searchParams: Promise<Record<string, string | string[] | undefined>>
@@ -75,6 +78,8 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
         await fetchSaleDocumentsByAgency(agencyId)
       )
     : []
+  const latestInvoice = documents.find((document) => document.kind === 'invoice')
+  const billingReturn = billingReturnOf(params.billing)
 
   /**
    * Panels are rendered here and handed to the view as elements.
@@ -107,7 +112,6 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
                 state={entitlement.state}
                 plan={entitlement.plan}
                 summary={checkoutSummary(entitlement.mode, clientCount)}
-                billingReturn={billingReturnOf(params.billing)}
                 ending={entitlement.endsOn !== null}
                 cancelConsequence={cancelPlanConsequence(entitlement)}
               />
@@ -118,6 +122,23 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
         integrations: <IntegrationsTab currentUserId={userId} members={canvaTeam} />,
         profile: <ProfileTab />,
       }}
+      notice={
+        isAdmin && billingReturn ? (
+          <CheckoutReturn
+            billingReturn={billingReturn}
+            paid={isPaying(entitlement)}
+            activated={checkoutActivated(
+              entitlement,
+              latestInvoice
+                ? {
+                    number: latestInvoice.number,
+                    email: parseDocumentCustomer(latestInvoice.customer).email,
+                  }
+                : null
+            )}
+          />
+        ) : null
+      }
       rails={{
         team: <TeamRail />,
         account: (
