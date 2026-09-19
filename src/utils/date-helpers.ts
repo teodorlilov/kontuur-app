@@ -358,7 +358,7 @@ export function formatPublishSlot(
 }
 
 /** "10:00" — the 24-hour clock reading of an instant in `timeZone`, as every slot label shows it. */
-function formatClockTime(date: Date, timeZone: string): string {
+export function formatClockTime(date: Date, timeZone: string): string {
   return new Intl.DateTimeFormat('en-GB', {
     timeZone,
     hour: '2-digit',

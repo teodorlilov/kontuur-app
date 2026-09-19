@@ -72,7 +72,6 @@ export const UNTESTED_COMPONENTS: string[] = [
   'components/posts/image-slot.tsx',
   'features/review/components/review-queue.tsx',
   'features/review/components/send-to-client-dialog.tsx',
-  'features/settings/components/account-tab.tsx',
   'features/settings/components/integrations-tab.tsx',
   'features/settings/components/settings-view.tsx',
   'features/settings/components/team-tab.tsx',

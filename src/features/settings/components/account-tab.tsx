@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useSyncExternalStore } from 'react'
 import { useRouter } from 'next/navigation'
 import { Avatar } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
@@ -10,13 +10,49 @@ import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
 import { toast } from '@/components/ui/toast'
 import { getGroupedTimezones } from '@/lib/timezones'
+import { formatClockTime } from '@/utils/date-helpers'
 import { WorkspaceDangerZone } from './workspace-danger-zone'
 import type { AgencyInfo } from '@/types/api'
+
+const MINUTE_MS = 60_000
+const CLOCK_TICK_MS = 10_000
+
+function subscribeToClock(onChange: () => void) {
+  const timer = setInterval(onChange, CLOCK_TICK_MS)
+  return () => clearInterval(timer)
+}
+
+/**
+ * The current minute, or null on the server and until hydration.
+ *
+ * A server-rendered clock is the hydration mismatch `lib/timezones.ts` already paid for once:
+ * the browser's minute never matches the one the HTML carried. So the server snapshot is null and
+ * the hint gains its clock only once React is running here. The snapshot is the minute as a
+ * number, so the 10s tick re-renders nothing until the minute actually turns.
+ */
+function useCurrentMinute(): number | null {
+  return useSyncExternalStore(
+    subscribeToClock,
+    () => Math.floor(Date.now() / MINUTE_MS),
+    () => null
+  )
+}
 
 interface AccountTabProps {
   /** The two columns this form edits — the billing columns never reach the browser. */
   agency: Pick<AgencyInfo, 'name' | 'timezone'>
   currentUserRole: string
+}
+
+/**
+ * The timezone field's hint: what the setting decides, led by the time it is there right now so a
+ * wrong zone is caught by its clock rather than by a missed generation day. Clockless until the
+ * browser knows the minute — see `useCurrentMinute`.
+ */
+function timezoneHint(timezone: string, minute: number | null): string {
+  const purpose = 'Decides the correct day for scheduled generation.'
+  if (minute === null) return purpose
+  return `It's ${formatClockTime(new Date(minute * MINUTE_MS), timezone)} there right now. ${purpose}`
 }
 
 /**
@@ -31,6 +67,7 @@ export function AccountTab({ agency, currentUserRole }: AccountTabProps) {
   const [name, setName] = useState(agency.name)
   const [timezone, setTimezone] = useState(agency.timezone)
   const [saving, setSaving] = useState(false)
+  const minute = useCurrentMinute()
 
   const dirty = name.trim() !== agency.name || timezone !== agency.timezone
 
@@ -82,7 +119,7 @@ export function AccountTab({ agency, currentUserRole }: AccountTabProps) {
       </FormSection>
 
       <FormSection legend="Defaults" description="Applied to every client in this workspace.">
-        <Field label="Timezone" span={6} hint="Decides the correct day for scheduled generation.">
+        <Field label="Timezone" span={6} hint={timezoneHint(timezone, minute)}>
           <Select
             value={timezone}
             onChange={(value) => setTimezone(value)}
