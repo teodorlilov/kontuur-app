@@ -212,7 +212,7 @@ export async function issueCreditNote(
   }
   const refund = note.refunds[0]?.refund
   const line: DocumentLine = {
-    description: `Кредитно известие към фактура / Credit note to invoice № ${formatDocumentNumber(invoiceDocument.number)}`,
+    description: `Credit note to invoice No. ${formatDocumentNumber(invoiceDocument.number)}`,
     quantity: 1,
     unitCents: note.subtotal,
     netCents: note.subtotal,

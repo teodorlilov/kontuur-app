@@ -202,13 +202,12 @@ export const BILLING_ADMINS_ONLY = 'Only admins can manage the plan.'
 export const DELETE_ADMINS_ONLY = 'Only admins can delete the workspace.'
 
 /**
- * The consent tick at Checkout, English then Bulgarian: the customer asks for the service to
- * start now and accepts that a withdrawal inside the 14 days is charged pro rata (ЗЗП чл. 49
- * ал. 9, чл. 55). The lawyer's final words replace these; the plumbing stays.
+ * The consent tick at Checkout: the customer asks for the service to start now and accepts that
+ * a withdrawal inside the 14 days is charged pro rata (ЗЗП чл. 49 ал. 9, чл. 55). English only,
+ * as every billing surface is. The lawyer's final words replace these; the plumbing stays.
  */
 export const CHECKOUT_CONSENT =
-  'I ask for the service to start now and understand that if I withdraw within 14 days I pay for the days used. ' +
-  'Искам услугата да започне веднага и разбирам, че при отказ в 14-дневния срок дължа сумата за използваните дни.'
+  'I ask for the service to start now and understand that if I withdraw within 14 days I pay for the days used.'
 
 /** Days before the trial ends at which the shell starts saying so. */
 const TRIAL_NOTICE_DAYS = 3

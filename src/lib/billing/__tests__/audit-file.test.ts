@@ -78,7 +78,7 @@ const CREDIT_NOTE = document({
   issued_at: '2026-10-20T15:00:00.000Z',
   lines: [
     {
-      description: 'Кредитно известие към фактура / Credit note to invoice № 1000000001',
+      description: 'Credit note to invoice No. 1000000001',
       quantity: 1,
       unitCents: 1900,
       netCents: 1900,

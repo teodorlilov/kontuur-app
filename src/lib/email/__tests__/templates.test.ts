@@ -115,7 +115,7 @@ describe('documentEmail', () => {
     const content = documentEmail(invoice, planUrl)
     expect(content.subject).toBe('Your invoice from Kontuur')
     expect(content.preview).toBe('Invoice 1000000001 for €68.40 is attached.')
-    expect(content.paragraphs[0]).toContain('Invoice № 1000000001')
+    expect(content.paragraphs[0]).toContain('Invoice No. 1000000001')
     expect(content.paragraphs[0]).toContain('dated 1 October 2025')
     expect(content.cta).toEqual({ label: 'Open Plan & billing', url: planUrl })
     expect(documentEmail({ ...invoice, kind: 'credit_note' }, planUrl).subject).toBe(

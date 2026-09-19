@@ -27,14 +27,12 @@ export const TAX_GROUPS: Record<VatBasis, 'А' | 'Б'> = {
   outside_eu: 'А',
 }
 
-/** The VAT line's legal basis, Bulgarian first, as the invoice must state it. */
+/** The VAT line's legal basis, as the invoice must state it. */
 const VAT_BASIS_TEXT: Record<VatBasis, string> = {
-  domestic: 'ДДС 20 % / VAT 20 %',
-  oss: 'ДДС по ставката на държавата на клиента (OSS) / VAT at the customer’s national rate (OSS)',
-  reverse_charge:
-    'Обратно начисляване — чл. 21, ал. 2 ЗДДС / Reverse charge, Art. 21(2) Bulgarian VAT Act',
-  outside_eu:
-    'Извън обхвата — чл. 21 ЗДДС / Outside the scope of EU VAT, Art. 21 Bulgarian VAT Act',
+  domestic: 'VAT 20 %',
+  oss: 'VAT at the customer’s national rate (OSS)',
+  reverse_charge: 'Reverse charge, Art. 21(2) Bulgarian VAT Act',
+  outside_eu: 'Outside the scope of EU VAT, Art. 21 Bulgarian VAT Act',
 }
 
 /** The two identifiers a document cannot be issued without. Refused when unset: a QR without the shop number is a wrong document. */
@@ -102,9 +100,7 @@ function customerLines(customer: DocumentCustomer): string[] {
     [town, address?.state, address?.country].filter(Boolean).join(', '),
   ]
   for (const taxId of customer.taxIds) {
-    lines.push(
-      taxId.type === 'eu_vat' ? `ДДС № / VAT: ${taxId.value}` : `ЕИК / Reg. no.: ${taxId.value}`
-    )
+    lines.push(taxId.type === 'eu_vat' ? `VAT: ${taxId.value}` : `Reg. no.: ${taxId.value}`)
   }
   if (customer.email) lines.push(customer.email)
   return lines.filter((line): line is string => Boolean(line))
@@ -124,9 +120,10 @@ function block(label: string, lines: string[]): string {
 
 /**
  * The invoice or credit note as printable HTML — tables and inline styles, the same discipline
- * as the email shell, because Chromium prints it. Bilingual labels, Bulgarian first: the seller,
- * the customer with its VAT number or ЕИК, the order number and transaction reference, the lines
- * with their tax group, the VAT line with its legal basis, the totals in euro, and the QR code.
+ * as the email shell, because Chromium prints it. English throughout, the company under its
+ * registered Latin name: the seller, the customer with its VAT or registration number, the order
+ * number and transaction reference, the lines with their tax group (the regulation's own letter
+ * codes), the VAT line with its legal basis, the totals in euro, and the QR code.
  * Every item чл. 52о ал. 1 asks for is on the page, so the invoice is the sale document (ал. 3).
  * Async only because the QR encoder is; it does no I/O.
  */
@@ -147,7 +144,7 @@ export async function renderSaleDocumentHtml(
     width: 120,
   })
 
-  const title = invoice ? 'Фактура / Invoice' : 'Кредитно известие / Credit note'
+  const title = invoice ? 'Invoice' : 'Credit note'
   const rows = lines
     .map(
       (line) =>
@@ -162,38 +159,38 @@ export async function renderSaleDocumentHtml(
     .join('')
 
   return `<!doctype html>
-<html lang="bg">
+<html lang="en">
 <head><meta charset="utf-8"><title>${escapeHtml(`${title} ${number}`)}</title></head>
 <body style="margin:0;${PAGE_STYLE}">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:24px"><tr>
 <td><span style="font-family:Georgia,serif;font-style:italic;font-size:22px">kontuur<span style="color:#164430">.</span></span></td>
-<td style="text-align:right"><div style="font-size:18px;font-weight:600">${escapeHtml(title)}</div><div style="font-size:14px;font-variant-numeric:tabular-nums">№ ${number}</div><div>${escapeHtml(formatLongDate(issued, DOCUMENT_TIMEZONE))}</div></td>
+<td style="text-align:right"><div style="font-size:18px;font-weight:600">${escapeHtml(title)}</div><div style="font-size:14px;font-variant-numeric:tabular-nums">No. ${number}</div><div>${escapeHtml(formatLongDate(issued, DOCUMENT_TIMEZONE))}</div></td>
 </tr></table>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:24px"><tr>
-<td width="50%" style="vertical-align:top">${block('Доставчик / Seller', [
-    `${COMPANY.legalName} / ${COMPANY.legalNameLatin}`,
+<td width="50%" style="vertical-align:top">${block('Seller', [
+    COMPANY.legalName,
     COMPANY.address,
-    `ЕИК / UIC: ${COMPANY.uic}`,
-    `ДДС № / VAT: ${COMPANY.vatNumber}`,
-    `Е-магазин / E-shop: ${COMPANY.domain} — НАП № ${ids.eShopNumber}`,
+    `Reg. no. (UIC): ${COMPANY.uic}`,
+    `VAT: ${COMPANY.vatNumber}`,
+    `E-shop: ${COMPANY.domain} — NRA no. ${ids.eShopNumber}`,
   ])}</td>
-<td width="50%" style="vertical-align:top">${block('Получател / Customer', customerLines(customer))}</td>
+<td width="50%" style="vertical-align:top">${block('Customer', customerLines(customer))}</td>
 </tr></table>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:24px"><tr>
-<td width="50%" style="vertical-align:top">${block('Поръчка / Order', [order])}</td>
-<td width="50%" style="vertical-align:top">${block('Транзакция / Transaction', [
+<td width="50%" style="vertical-align:top">${block('Order', [order])}</td>
+<td width="50%" style="vertical-align:top">${block('Transaction', [
     transaction,
-    `Неприсъствено плащане с карта, Stripe / Card payment, Stripe`,
-    `Виртуален ПОС / Virtual POS: ${ids.stripeAccountId}`,
+    'Card payment, Stripe',
+    `Virtual POS: ${ids.stripeAccountId}`,
   ])}</td>
 </tr></table>
 <table width="100%" cellpadding="0" cellspacing="0" style="border-top:2px solid #0f1512;margin-bottom:16px">
 <thead><tr>
-<th style="${CELL}text-align:left;${LABEL_STYLE}">Описание / Description</th>
-<th style="${NUMBER_CELL}${LABEL_STYLE}">Група / Tax group</th>
-<th style="${NUMBER_CELL}${LABEL_STYLE}">Кол. / Qty</th>
-<th style="${NUMBER_CELL}${LABEL_STYLE}">Ед. цена / Unit</th>
-<th style="${NUMBER_CELL}${LABEL_STYLE}">Стойност / Net</th>
+<th style="${CELL}text-align:left;${LABEL_STYLE}">Description</th>
+<th style="${NUMBER_CELL}${LABEL_STYLE}">Tax group</th>
+<th style="${NUMBER_CELL}${LABEL_STYLE}">Qty</th>
+<th style="${NUMBER_CELL}${LABEL_STYLE}">Unit</th>
+<th style="${NUMBER_CELL}${LABEL_STYLE}">Net</th>
 </tr></thead>
 <tbody>${rows}</tbody>
 </table>
@@ -201,13 +198,13 @@ export async function renderSaleDocumentHtml(
 <td style="vertical-align:top">${qr}<div style="font-size:9px;color:#667068;margin-top:4px">${escapeHtml(qrPayload(document, ids.eShopNumber))}</div></td>
 <td style="vertical-align:top;text-align:right">
 <table role="presentation" cellpadding="0" cellspacing="0" style="margin-left:auto">
-<tr><td style="${CELL}text-align:right">Данъчна основа / Net</td><td style="${NUMBER_CELL}">${escapeHtml(formatMoney(document.net_cents))}</td></tr>
+<tr><td style="${CELL}text-align:right">Net</td><td style="${NUMBER_CELL}">${escapeHtml(formatMoney(document.net_cents))}</td></tr>
 <tr><td style="${CELL}text-align:right">${escapeHtml(VAT_BASIS_TEXT[basis])}${document.vat_rate > 0 && basis !== 'domestic' ? ` (${document.vat_rate} %)` : ''}</td><td style="${NUMBER_CELL}">${escapeHtml(formatMoney(document.vat_cents))}</td></tr>
-<tr><td style="${CELL}text-align:right;font-weight:600;border-bottom:none">Общо за плащане / Total</td><td style="${NUMBER_CELL}font-weight:600;border-bottom:none">${escapeHtml(formatMoney(document.gross_cents))}</td></tr>
+<tr><td style="${CELL}text-align:right;font-weight:600;border-bottom:none">Total</td><td style="${NUMBER_CELL}font-weight:600;border-bottom:none">${escapeHtml(formatMoney(document.gross_cents))}</td></tr>
 </table>
 </td>
 </tr></table>
-<p style="font-size:10px;color:#667068;margin:0">Документ по чл. 52о от Наредба № Н-18, издаден и предоставен по електронен път. / Document under Art. 52o of Regulation N-18, issued and delivered electronically. Всички суми в евро. / All amounts in euro.</p>
+<p style="font-size:10px;color:#667068;margin:0">Document under Art. 52o of Regulation N-18, issued and delivered electronically. All amounts in euro.</p>
 </body>
 </html>`
 }

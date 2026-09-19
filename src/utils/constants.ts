@@ -53,16 +53,15 @@ export const CLIENT_FILES_BUCKET = 'client-files'
 export const BILLING_DOCUMENTS_BUCKET = 'billing-documents'
 
 /**
- * The company behind Kontuur, as every invoice and filing must name it (ЗДДС чл. 114). The two
- * legal pages still spell it by hand; they move onto this with the Phase 3 rewrite.
+ * The company behind Kontuur, as every invoice and filing must name it (ЗДДС чл. 114) — under
+ * its registered Latin name, since every document is in English. The two legal pages still
+ * spell it by hand; they move onto this with the Phase 3 rewrite.
  */
 export const COMPANY = {
-  legalName: 'ЧЕЛЛИНГ ООД',
-  legalNameLatin: 'Chelling Ltd',
+  legalName: 'Chelling Ltd',
   uic: '206770508',
   vatNumber: 'BG206770508',
-  address: 'ул. Габър 27, 1320 Банкя, България',
-  addressLatin: '27 Gabar St, 1320 Bankya, Bulgaria',
+  address: '27 Gabar St, 1320 Bankya, Bulgaria',
   domain: 'kontuur.app',
 } as const
 

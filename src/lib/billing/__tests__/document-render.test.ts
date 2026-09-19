@@ -74,7 +74,7 @@ const CREDIT_NOTE: SaleDocumentColumns = {
   },
   lines: [
     {
-      description: 'Кредитно известие към фактура / Credit note to invoice № 1000000001',
+      description: 'Credit note to invoice No. 1000000001',
       quantity: 1,
       unitCents: 1900,
       netCents: 1900,
@@ -119,33 +119,40 @@ describe('documentIds', () => {
 describe('renderSaleDocumentHtml', () => {
   beforeEach(() => vi.unstubAllEnvs())
 
-  it('carries every item чл. 52о asks for, and prints the amounts in euro', async () => {
+  it('carries every item чл. 52о asks for, in English, and prints the amounts in euro', async () => {
     const html = await renderSaleDocumentHtml(INVOICE, IDS)
     for (const text of [
-      'Фактура / Invoice',
-      '№ 1000000001',
-      'ЧЕЛЛИНГ ООД',
-      'ЕИК / UIC: 206770508',
-      'ДДС № / VAT: BG206770508',
-      'НАП № RF0000123',
+      '>Invoice<',
+      'No. 1000000001',
+      'Chelling Ltd',
+      '27 Gabar St, 1320 Bankya, Bulgaria',
+      'Reg. no. (UIC): 206770508',
+      'VAT: BG206770508',
+      'NRA no. RF0000123',
       'Acme OOD',
-      'ДДС № / VAT: BG123456789',
+      'VAT: BG123456789',
       'in_1ABC',
       'ch_1XYZ',
-      'Виртуален ПОС / Virtual POS: acct_1Kontuur',
-      'Неприсъствено плащане с карта',
+      'Virtual POS: acct_1Kontuur',
+      'Card payment, Stripe',
       '3 × Kontuur (at €19.00 / month)',
       '€57.00',
-      'ДДС 20 % / VAT 20 %',
+      'VAT 20 %',
       '€11.40',
       '€68.40',
       'RF0000123*in_1ABC*ch_1XYZ*2025-10-01*21:30:05*68.40',
       '<svg',
-      'чл. 52о',
+      'Art. 52o of Regulation N-18',
     ]) {
       expect(html, text).toContain(text)
     }
     expect(html).toContain(`>${TAX_GROUPS.domestic}<`)
+  })
+
+  it('carries no Bulgarian text — only the regulation’s own tax-group letters', async () => {
+    const html = await renderSaleDocumentHtml(INVOICE, IDS)
+    const cyrillic = html.match(/[\u0400-\u04ff]+/g) ?? []
+    expect(new Set(cyrillic)).toEqual(new Set([TAX_GROUPS.domestic]))
   })
 
   it('renders the invoice and the credit note to their snapshots', async () => {

@@ -92,7 +92,7 @@ export function documentEmail(
     label: invoice ? 'Invoice' : 'Credit note',
     headline: { lead: `Your ${noun} is`, accent: 'attached' },
     paragraphs: [
-      `${strong(`${invoice ? 'Invoice' : 'Credit note'} № ${number}`)} for ${strong(amount)}, dated ${date}, is attached as a PDF.`,
+      `${strong(`${invoice ? 'Invoice' : 'Credit note'} No. ${number}`)} for ${strong(amount)}, dated ${date}, is attached as a PDF.`,
       'It is also listed under Plan & billing, where every document stays available to download.',
     ],
     cta: { label: 'Open Plan & billing', url: planUrl },
