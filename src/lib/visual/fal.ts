@@ -1,10 +1,9 @@
 import 'server-only'
 
 import { fal, ApiError } from '@fal-ai/client'
-import { getCachedEntitlement } from '@/lib/queries/cache'
 import { currentSpender } from '@/lib/billing/spend-context'
 import { recordAiUsage } from '@/lib/billing/telemetry'
-import { AllowanceError, consumeUsage, refundUsage } from '@/lib/billing/usage'
+import { reserveUsage } from '@/lib/billing/usage'
 import type { Rgb } from './extract/color'
 
 const FAL_MODEL = 'fal-ai/gpt-image-2'
@@ -33,11 +32,12 @@ const PAID_MODELS = new Set([FAL_MODEL, EDIT_MODEL, VECTOR_MODEL])
 /**
  * All model invocations go through here — which makes it the one place images are metered.
  *
- * Fail closed: the spender comes from `runAsSpender` at the boundary (src/lib/billing/spend-context.ts),
- * and a call with none in scope is refused rather than billed to nobody. A paid model reserves one
- * image credit against the workspace's allowance BEFORE the call and refunds it if fal throws, so
- * a failed generation is never counted; the cutout model records telemetry only. `AllowanceError`
- * is the refusal the routes turn into a 402 and the visuals cron into a skip.
+ * Fail closed: the spender comes from the boundary (src/lib/billing/spend-context.ts), and a call
+ * with none in scope is refused rather than billed to nobody. A paid model RESERVES one image
+ * through `reserveUsage` before the call — which also refuses a boundary that is not `runMetered`
+ * — and it is that boundary that counts the image once the picture has landed, or gives it back
+ * when anything after this call fails. The cutout model records telemetry only. The refusal is
+ * an `AllowanceError`, which the routes turn into a 402 and the visuals cron into a skip.
  *
  * fal's ApiError message is only the HTTP status text ("Forbidden"), while the actual reason —
  * exhausted balance, a locked key, a flagged prompt — rides in the response body's `detail` and
@@ -49,24 +49,7 @@ async function subscribeFal(model: string, input: Record<string, unknown>) {
   if (!spender?.agencyId)
     throw new Error(`${model}: no spender in scope — wrap the boundary in runAsSpender`)
 
-  if (PAID_MODELS.has(model)) {
-    const entitlement = await getCachedEntitlement(spender.agencyId)
-    const reserved = await consumeUsage(entitlement, spender.agencyId, 'image', 1)
-    if (!reserved.allowed) {
-      throw new AllowanceError('image', reserved.used, reserved.quota, 1, entitlement)
-    }
-    try {
-      const result = await callFal(model, input)
-      spender.charged = (spender.charged ?? 0) + 1
-      return result
-    } catch (err) {
-      await refundUsage(entitlement, spender.agencyId, 'image', 1)
-      throw err
-    } finally {
-      void recordAiUsage({ provider: 'fal', model })
-    }
-  }
-
+  if (PAID_MODELS.has(model)) await reserveUsage(spender, 'image', 1)
   try {
     return await callFal(model, input)
   } finally {

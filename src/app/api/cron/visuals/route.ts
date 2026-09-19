@@ -4,8 +4,8 @@ import { createSemaphore } from '@/lib/concurrency'
 import { fetchImagesByPost } from '@/lib/posts/fetch-post-images'
 import { generatePostVisual } from '@/lib/visual/generate-post-visual'
 import { fetchEntitledClients } from '@/lib/billing/entitled-clients'
-import { runAsSpender, type Spender } from '@/lib/billing/spend-context'
-import { AllowanceError, readUsage, releaseCharged } from '@/lib/billing/usage'
+import type { Spender } from '@/lib/billing/spend-context'
+import { AllowanceError, readUsage, runMetered } from '@/lib/billing/usage'
 import { missingPositions, pickVisualBacklog, type BacklogPost } from '@/lib/visual/visual-backlog'
 import { VISUAL_BACKLOG_POST_COLUMNS } from '@/lib/queries/select-columns'
 import { MS_PER_HOUR, QUALITY_FLOOR } from '@/utils/constants'
@@ -49,8 +49,8 @@ const BACKLOG_FETCH_LIMIT = 100
  * then painted whole or not at all — it needs as many image credits as it has slots still
  * missing, out of its agency's pool this tick — and one usage read per agency with posts loaded
  * keeps those refusals off the attempt count; the atomic counter in `subscribeFal` is the
- * backstop for a race with a wizard user in the same minute. A picture that never reached storage
- * is not charged, though the attempt still counts.
+ * backstop for a race with a wizard user in the same minute. A picture is counted only once it is
+ * on its row (`runMetered`); a failed one still costs the post an attempt.
  */
 export async function GET(request: NextRequest) {
   const unauthorized = unauthorizedCron(request)
@@ -109,8 +109,8 @@ export async function GET(request: NextRequest) {
   for (const post of loaded) {
     const owner = entitled.get(post.client_id)
     if (!owner || remaining.has(owner.agencyId)) continue
-    const used = await readUsage(owner.agencyId, owner.entitlement.periodKey)
-    remaining.set(owner.agencyId, owner.entitlement.limits.image - used.image)
+    const usage = await readUsage(owner.agencyId, owner.entitlement.periodKey)
+    remaining.set(owner.agencyId, owner.entitlement.limits.image - usage.committed.image)
   }
   let skippedAllowance = 0
   const posts = loaded.filter((post) => {
@@ -201,16 +201,11 @@ export async function GET(request: NextRequest) {
             clientId: job.clientId,
             flow: 'generation',
           }
-          try {
-            const result = await runAsSpender(spender, () =>
-              generatePostVisual({ postId: job.postId, clientId: job.clientId, position })
-            )
-            if (result.ok) generated++
-            else skippedNoCopy++
-          } catch (err) {
-            if (!(err instanceof AllowanceError)) await releaseCharged(spender)
-            throw err
-          }
+          const result = await runMetered(spender, () =>
+            generatePostVisual({ postId: job.postId, clientId: job.clientId, position })
+          )
+          if (result.ok) generated++
+          else skippedNoCopy++
         } catch (err) {
           if (err instanceof AllowanceError) {
             skippedAllowance++

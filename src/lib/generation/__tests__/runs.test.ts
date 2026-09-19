@@ -1,23 +1,13 @@
 import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest'
-import { startGenerationRun } from '../runs'
+import { finishGenerationRun, startGenerationRun } from '../runs'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Entitlement } from '@/lib/billing/entitlement'
 
 const consumeUsage = vi.fn()
-const refundUsage = vi.fn()
+const settleUsage = vi.fn()
 vi.mock('@/lib/billing/usage', () => ({
   consumeUsage: (...args: unknown[]) => consumeUsage(...args),
-  refundUsage: (...args: unknown[]) => refundUsage(...args),
-  AllowanceError: class AllowanceError extends Error {
-    constructor(
-      readonly kind: string,
-      readonly used: number,
-      readonly quota: number,
-      readonly resetsOn: Date | null
-    ) {
-      super('allowance')
-    }
-  },
+  settleUsage: (...args: unknown[]) => settleUsage(...args),
 }))
 
 type InsertResult = {
@@ -58,7 +48,7 @@ const INPUT = {
 
 beforeEach(() => {
   consumeUsage.mockReset().mockResolvedValue({ allowed: true, used: 3, quota: 40 })
-  refundUsage.mockReset().mockResolvedValue(undefined)
+  settleUsage.mockReset().mockResolvedValue(undefined)
 })
 
 afterEach(() => {
@@ -102,20 +92,21 @@ describe('startGenerationRun', () => {
       slotTaken: true,
     })
     expect(error).not.toHaveBeenCalled()
-    // The winner holds the reservation; the loser's must not stay charged.
-    expect(refundUsage).toHaveBeenCalledWith(ENTITLEMENT, 'a1', 'draft', 3)
+    // The winner holds the reservation; the loser's is settled with nothing landed.
+    expect(settleUsage).toHaveBeenCalledWith(ENTITLEMENT, 'a1', 'draft', 3, 0)
   })
 
   it('reserves the whole batch before the insert and refuses without inserting', async () => {
-    consumeUsage.mockResolvedValue({ allowed: false, used: 39, quota: 40 })
+    const refused = Object.assign(new Error('used up'), { name: 'AllowanceError', used: 39 })
+    consumeUsage.mockResolvedValue({ allowed: false, refused })
     const { supabase, inserted } = makeSupabase({ data: { id: 'run-9' }, error: null })
 
     const claim = await startGenerationRun(supabase, INPUT)
     expect(consumeUsage).toHaveBeenCalledWith(ENTITLEMENT, 'a1', 'draft', 3)
     expect(claim.runId).toBeNull()
-    expect('refused' in claim && claim.refused.used).toBe(39)
+    expect('refused' in claim && claim.refused).toBe(refused)
     expect(inserted).toHaveLength(0)
-    expect(refundUsage).not.toHaveBeenCalled()
+    expect(settleUsage).not.toHaveBeenCalled()
   })
 
   it('a real insert failure is logged and is not a lost race', async () => {
@@ -129,6 +120,44 @@ describe('startGenerationRun', () => {
     // The cron defers the client on this branch, so losing the reason would make a
     // stalled schedule undiagnosable — and the drafts it reserved go back.
     expect(error).toHaveBeenCalled()
-    expect(refundUsage).toHaveBeenCalledWith(ENTITLEMENT, 'a1', 'draft', 3)
+    expect(settleUsage).toHaveBeenCalledWith(ENTITLEMENT, 'a1', 'draft', 3, 0)
+  })
+})
+
+describe('finishGenerationRun', () => {
+  function closing() {
+    const updates: Array<Record<string, unknown>> = []
+    const supabase = {
+      from: () => ({
+        update: (row: Record<string, unknown>) => {
+          updates.push(row)
+          return { eq: () => Promise.resolve({ error: null }) }
+        },
+      }),
+    } as unknown as SupabaseClient
+    return { supabase, updates }
+  }
+
+  it('counts the drafts that landed and gives the rest of the reservation back', async () => {
+    const { supabase, updates } = closing()
+    await finishGenerationRun(supabase, 'run-1', 'complete', {
+      agencyId: 'a1',
+      entitlement: ENTITLEMENT,
+      reserved: 3,
+      landed: 2,
+    })
+    expect(settleUsage).toHaveBeenCalledWith(ENTITLEMENT, 'a1', 'draft', 3, 2)
+    expect(updates[0]).toMatchObject({ status: 'complete' })
+  })
+
+  it('a failed run lands nothing, so nothing of it is on the meter', async () => {
+    const { supabase } = closing()
+    await finishGenerationRun(supabase, 'run-1', 'failed', {
+      agencyId: 'a1',
+      entitlement: ENTITLEMENT,
+      reserved: 3,
+      landed: 0,
+    })
+    expect(settleUsage).toHaveBeenCalledWith(ENTITLEMENT, 'a1', 'draft', 3, 0)
   })
 })

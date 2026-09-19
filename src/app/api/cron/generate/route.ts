@@ -182,11 +182,7 @@ export async function GET(request: NextRequest) {
       })
       continue
     }
-    const reservation = (produced: number) => ({
-      agencyId,
-      entitlement,
-      unused: Math.max(0, total - produced),
-    })
+    const reservation = (landed: number) => ({ agencyId, entitlement, reserved: total, landed })
     const spender = { agencyId, clientId, flow: 'generation' as const }
     try {
       if (Date.now() - startedAt > TIME_BUDGET_MS) {

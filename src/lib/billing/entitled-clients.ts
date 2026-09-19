@@ -1,10 +1,8 @@
 import 'server-only'
 
-import type { createAdminSupabaseClient } from '@/lib/supabase/admin'
+import type { AdminClient } from '@/lib/supabase/admin'
 import { AGENCY_ENTITLEMENT_COLUMNS, CLIENT_OWNER_COLUMNS } from '@/lib/queries/select-columns'
 import { allows, entitlementFor, type Entitlement, type EntitlementNeed } from './entitlement'
-
-type AdminClient = ReturnType<typeof createAdminSupabaseClient>
 
 interface EntitledClient {
   agencyId: string

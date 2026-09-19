@@ -66,7 +66,7 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
   if (!agency) redirect(SIGN_IN_PATH)
 
   const entitlement = entitlementFor(agency, new Date())
-  const usage = await readUsage(agencyId, entitlement.periodKey)
+  const { landed: usage } = await readUsage(agencyId, entitlement.periodKey)
   const agencyMode = entitlement.mode
   const account = { name: agency.name, timezone: agency.timezone }
 

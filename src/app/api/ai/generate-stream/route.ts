@@ -221,7 +221,8 @@ export async function POST(request: Request) {
           await finishGenerationRun(supabase, runId, runFailed ? 'failed' : 'complete', {
             agencyId,
             entitlement,
-            unused: Math.max(0, targetCount - produced),
+            reserved: targetCount,
+            landed: produced,
           })
         controller.close()
       }

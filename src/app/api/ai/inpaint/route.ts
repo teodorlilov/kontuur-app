@@ -2,8 +2,8 @@ import { NextResponse } from 'next/server'
 import { resolveAuth } from '@/lib/auth/resolve-auth'
 import { visualsRateLimitResponse } from '@/lib/auth/rate-limit'
 import { requireEntitledRoute } from '@/lib/billing/require-entitled'
-import { runAsSpender, type Spender } from '@/lib/billing/spend-context'
-import { allowanceResponse, releaseCharged } from '@/lib/billing/usage'
+import type { Spender } from '@/lib/billing/spend-context'
+import { runMetered, spendFailureResponse } from '@/lib/billing/usage'
 import { downloadFalFile, editImageWithMask, uploadFalTempFile } from '@/lib/visual/fal'
 import {
   assetTargetFromForm,
@@ -49,7 +49,11 @@ function parseInpaintFields(formData: FormData): InpaintFields | string {
   return { mask, prompt: prompt.trim(), storagePath, width, height }
 }
 
-/** Inpaint the masked region of a clean background; stores and returns the new clean image. */
+/**
+ * Inpaint the masked region of a clean background; stores and returns the new clean image. The
+ * edit is counted only once the result is in storage: the download and upload run inside
+ * `runMetered` with the model call, so a failure at any of the three gives the image back.
+ */
 export async function POST(request: Request) {
   const auth = await resolveAuth()
   if (!auth.ok) return auth.response
@@ -80,28 +84,19 @@ export async function POST(request: Request) {
   }
   try {
     const maskUrl = await uploadFalTempFile(fields.mask)
-    const editedUrl = await runAsSpender(spender, () =>
-      editImageWithMask({
+    const stored = await runMetered(spender, async () => {
+      const editedUrl = await editImageWithMask({
         imageUrl: publicPostImageUrl(fields.storagePath),
         maskUrl,
         prompt: fields.prompt,
         width: roundTo16(fields.width),
         height: roundTo16(fields.height),
       })
-    )
-    const buffer = await downloadFalFile(editedUrl)
-    const { publicUrl, storagePath } = await destination.upload(
-      buffer,
-      'image/jpeg',
-      'inpainted.jpg'
-    )
-    return NextResponse.json({ publicUrl, storagePath })
+      const buffer = await downloadFalFile(editedUrl)
+      return destination.upload(buffer, 'image/jpeg', 'inpainted.jpg')
+    })
+    return NextResponse.json({ publicUrl: stored.publicUrl, storagePath: stored.storagePath })
   } catch (err) {
-    const refusal = allowanceResponse(err)
-    if (refusal) return refusal
-    await releaseCharged(spender)
-    console.error('[inpaint] failed:', err)
-    const message = err instanceof Error ? err.message : 'Inpainting failed'
-    return NextResponse.json({ error: message }, { status: 500 })
+    return spendFailureResponse(err, 'inpaint', 'Inpainting failed', 500)
   }
 }

@@ -23,3 +23,6 @@ export function createAdminSupabaseClient() {
     auth: { autoRefreshToken: false, persistSession: false },
   })
 }
+
+/** The service-role client's type, for a function that takes one rather than making its own. */
+export type AdminClient = ReturnType<typeof createAdminSupabaseClient>

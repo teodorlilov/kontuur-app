@@ -8,7 +8,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { formatClientName } from '@/utils/format'
 import type { ActiveRun } from '@/types/api'
 import type { Entitlement } from '@/lib/billing/entitlement'
-import { AllowanceError, consumeUsage, refundUsage } from '@/lib/billing/usage'
+import { type AllowanceError, consumeUsage, settleUsage } from '@/lib/billing/usage'
 
 /** A run is only shown as active this long — a crashed invocation cannot mark itself done. */
 const ACTIVE_RUN_WINDOW_MS = 6 * 60_000
@@ -71,19 +71,9 @@ export async function startGenerationRun(
   }
 ): Promise<GenerationRunClaim> {
   const reserved = await consumeUsage(input.entitlement, input.agencyId, 'draft', input.targetCount)
-  if (!reserved.allowed) {
-    return {
-      runId: null,
-      refused: new AllowanceError(
-        'draft',
-        reserved.used,
-        reserved.quota,
-        input.targetCount,
-        input.entitlement
-      ),
-    }
-  }
-  const giveBack = () => refundUsage(input.entitlement, input.agencyId, 'draft', input.targetCount)
+  if (!reserved.allowed) return { runId: null, refused: reserved.refused }
+  const giveBack = () =>
+    settleUsage(input.entitlement, input.agencyId, 'draft', input.targetCount, 0)
 
   const { data, error } = await supabase
     .from('generation_runs')
@@ -117,17 +107,24 @@ export async function startGenerationRun(
 }
 
 /**
- * Marks a run terminal so the shell stops reporting it as in flight, and gives back the drafts
- * the reservation did not turn into posts — research that found fewer topics than asked, or a
- * run that failed before writing — so a customer is charged for what was written, not requested.
+ * Marks a run terminal so the shell stops reporting it as in flight, and settles the drafts it
+ * reserved: what landed is counted — the posts written, or the drafts streamed — and the rest of
+ * the reservation is given back, whether research found fewer topics than asked or the run failed
+ * before writing. A customer is charged for what exists, never for what was requested.
  */
 export async function finishGenerationRun(
   supabase: SupabaseClient,
   runId: string,
   status: 'complete' | 'failed',
-  reservation: { agencyId: string; entitlement: Entitlement; unused: number }
+  reservation: { agencyId: string; entitlement: Entitlement; reserved: number; landed: number }
 ): Promise<void> {
-  await refundUsage(reservation.entitlement, reservation.agencyId, 'draft', reservation.unused)
+  await settleUsage(
+    reservation.entitlement,
+    reservation.agencyId,
+    'draft',
+    reservation.reserved,
+    reservation.landed
+  )
   const { error } = await supabase
     .from('generation_runs')
     .update({ status, completed_at: new Date().toISOString() })

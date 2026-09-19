@@ -51,7 +51,7 @@ export default async function GeneratePage({ searchParams }: PageProps) {
   ])
   const usage = await readUsage(agencyId, entitlement.periodKey)
   const draftLimit = meteredLimit(entitlement.limits.draft)
-  const draftsLeft = draftLimit === null ? null : Math.max(0, draftLimit - usage.draft)
+  const draftsLeft = draftLimit === null ? null : Math.max(0, draftLimit - usage.committed.draft)
 
   requireBusinessSetup(agency?.mode, clients.length, entitlement.canCreate)
 

@@ -2,8 +2,8 @@ import { NextResponse } from 'next/server'
 import { resolveAuth } from '@/lib/auth/resolve-auth'
 import { visualsRateLimitResponse } from '@/lib/auth/rate-limit'
 import { requireEntitledRoute } from '@/lib/billing/require-entitled'
-import { runAsSpender, type Spender } from '@/lib/billing/spend-context'
-import { allowanceResponse, releaseCharged } from '@/lib/billing/usage'
+import type { Spender } from '@/lib/billing/spend-context'
+import { runMetered, spendFailureResponse } from '@/lib/billing/usage'
 import { fetchClientById } from '@/lib/queries/db'
 import {
   uploadDraftVisual,
@@ -21,8 +21,8 @@ export const maxDuration = 120
 
 /**
  * Generate an AI visual for an in-memory wizard draft; the image is stored, the DB row waits for
- * approve. A picture that never reached storage is not charged: the failure path releases what
- * the fal call reserved.
+ * approve. The image is counted only once it is in storage — `runMetered` settles what the fal
+ * call reserved when the callback lands, and gives it back when anything in it throws.
  */
 export async function POST(request: Request) {
   const auth = await resolveAuth()
@@ -57,7 +57,7 @@ export async function POST(request: Request) {
 
   const spender: Spender = { agencyId: auth.agencyId, clientId: body.clientId, flow: 'editor' }
   try {
-    return await runAsSpender(spender, async () => {
+    return await runMetered(spender, async () => {
       // ONE read of the client's kit for the whole generation — the scheme and the prompt both need it.
       const identity = await fetchIdentityForGeneration(body.clientId)
 
@@ -103,12 +103,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ publicUrl, storagePath, scheme })
     })
   } catch (err) {
-    const refusal = allowanceResponse(err)
-    if (refusal) return refusal
-    await releaseCharged(spender)
-    console.error('[generate-visual] draft generation failed:', err)
-    const message = err instanceof Error ? err.message : 'Visual generation failed'
-    return NextResponse.json({ error: message }, { status: 502 })
+    return spendFailureResponse(err, 'generate-visual', 'Visual generation failed', 502)
   }
 }
 

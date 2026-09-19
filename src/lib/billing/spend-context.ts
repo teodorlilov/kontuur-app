@@ -1,6 +1,7 @@
 import 'server-only'
 
 import { AsyncLocalStorage } from 'node:async_hooks'
+import type { AllowanceKind } from './plans'
 
 /**
  * Who is spending, declared once at the boundary and read wherever money is actually spent.
@@ -37,8 +38,13 @@ export interface Spender {
   agencyId: string | null
   clientId?: string
   flow: SpendFlow
-  /** Paid images `subscribeFal` completed under this spender — what `releaseCharged` gives back. */
-  charged?: number
+  /**
+   * Allowance units `reserveUsage` holds under this spender, by kind, that nobody has settled
+   * yet. Defined — empty — only by `runMetered` (src/lib/billing/usage.ts), which settles it when
+   * the boundary lands or throws; a paid call finds it undefined under a plain `runAsSpender`
+   * and refuses.
+   */
+  reserved?: Partial<Record<AllowanceKind, number>>
 }
 
 const storage = new AsyncLocalStorage<Spender>()

@@ -129,8 +129,9 @@ Meta's data-deletion callback that erases third parties.
 | Log a discarded draft | `recordDiscardedDraft` | [lib/queries/discarded-drafts.ts](../src/lib/queries/discarded-drafts.ts) |
 | Open a generation run (and reserve its drafts from the allowance) | `startGenerationRun` | [lib/generation/runs.ts](../src/lib/generation/runs.ts) |
 | Record a theme a run produced | `trackGenerationTheme` | [lib/generation/runs.ts](../src/lib/generation/runs.ts) |
-| Reserve allowance units — drafts, images, rewrites — against a period's counter | `consumeUsage` | [lib/billing/usage.ts](../src/lib/billing/usage.ts) |
-| Give back allowance units a reservation did not use | `refundUsage` | [lib/billing/usage.ts](../src/lib/billing/usage.ts) |
+| Reserve allowance units — drafts, images, rewrites — against a period's cap (in flight, not yet counted) | `consumeUsage` | [lib/billing/usage.ts](../src/lib/billing/usage.ts) |
+| Settle a reservation — count what landed, give back the rest | `settleUsage` | [lib/billing/usage.ts](../src/lib/billing/usage.ts) |
+| Release the reservations a killed invocation never settled (daily cron) | `clearStaleReservations` | [lib/billing/usage.ts](../src/lib/billing/usage.ts) |
 | Add a provider call's tokens and cost to the day's telemetry row | `recordAiUsage` | [lib/billing/telemetry.ts](../src/lib/billing/telemetry.ts) |
 | Record topics a post covered | `recordPostTopics` | [lib/queries/post-history.ts](../src/lib/queries/post-history.ts) |
 | Write the week's global platform brief (one row per UTC Monday) | `writeWeeklyBriefing` | [features/dashboard/lib/write-briefing.ts](../src/features/dashboard/lib/write-briefing.ts) |

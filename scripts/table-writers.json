@@ -115,7 +115,7 @@
     "src/features/analytics/lib/shared/sync-shared.ts": "recordSyncHealth stamps last_sync_at / last_sync_error — the only writer of a sync VERDICT (storeConnection clears last_sync_error on a fresh connect, which is the other operation on that column; see OPERATIONS.md). It never touches a token. It updates by (client_id, platform), which is exactly one row: social_connections_client_id_platform_key makes that pair UNIQUE — the same index the meta callback's onConflict relies on."
   },
   "usage_counters": {
-    "src/lib/billing/usage.ts": "[hand-listed] consumeUsage / refundUsage write through the consume_usage and refund_usage RPCs (migration 20260852), which the scan cannot see. The ONE allowance ledger: drafts, images and rewrites are all reserved here, from startGenerationRun, subscribeFal and the rewrite route."
+    "src/lib/billing/usage.ts": "[hand-listed] consumeUsage / settleUsage write through the consume_usage and settle_usage RPCs (migrations 20260852, 20260857, 20260858), which the scan cannot see; clearStaleReservations is the one plain update, the daily reset of `pending`. The ONE allowance ledger: drafts, images and rewrites are all reserved here — from startGenerationRun, subscribeFal and the rewrite route — and counted only when they land."
   },
   "users": {
     "src/lib/auth/create-user-record.ts": "The user row is created with the account, with the email guard — that column is a lookup key and a blank one is an account nobody can recover.",

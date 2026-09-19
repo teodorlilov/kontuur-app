@@ -1787,18 +1787,21 @@ export type Database = {
           agency_id: string
           count: number
           kind: string
+          pending: number
           period: string
         }
         Insert: {
           agency_id: string
           count?: number
           kind: string
+          pending?: number
           period: string
         }
         Update: {
           agency_id?: string
           count?: number
           kind?: string
+          pending?: number
           period?: string
         }
         Relationships: [
@@ -1919,14 +1922,15 @@ export type Database = {
           isSetofReturn: false
         }
       }
-      refund_usage: {
+      settle_usage: {
         Args: {
           p_agency_id: string
-          p_cost: number
           p_kind: string
+          p_landed: number
           p_period: string
+          p_reserved: number
         }
-        Returns: undefined
+        Returns: number
       }
     }
     Enums: {

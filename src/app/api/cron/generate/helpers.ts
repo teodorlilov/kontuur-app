@@ -1,4 +1,4 @@
-import { createAdminSupabaseClient } from '@/lib/supabase/admin'
+import type { AdminClient } from '@/lib/supabase/admin'
 import { getZonedParts } from '@/utils/date-helpers'
 import type { BrandProfileRow, ClientRow, PostingScheduleRow } from '@/types'
 import { AGENCY_ENTITLEMENT_COLUMNS } from '@/lib/queries/select-columns'
@@ -6,8 +6,6 @@ import { entitlementFor, type Entitlement } from '@/lib/billing/entitlement'
 import { readUsage } from '@/lib/billing/usage'
 import { allowanceUsedUp } from '@/lib/billing/copy'
 import { notify } from '@/lib/notifications/notify'
-
-type AdminClient = ReturnType<typeof createAdminSupabaseClient>
 
 type ScheduleRow = Pick<
   PostingScheduleRow,
@@ -96,9 +94,9 @@ export async function fetchScheduleContext(
   const draftBudgets = new Map<string, DraftBudget>()
   await Promise.all(
     [...entitlements].map(async ([agencyId, entitlement]) => {
-      const used = await readUsage(agencyId, entitlement.periodKey)
+      const usage = await readUsage(agencyId, entitlement.periodKey)
       const quota = entitlement.limits.draft
-      draftBudgets.set(agencyId, { used: used.draft, quota })
+      draftBudgets.set(agencyId, { used: usage.committed.draft, quota })
     })
   )
 

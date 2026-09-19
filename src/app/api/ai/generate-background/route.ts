@@ -2,8 +2,8 @@ import { NextResponse } from 'next/server'
 import { resolveAuth } from '@/lib/auth/resolve-auth'
 import { visualsRateLimitResponse } from '@/lib/auth/rate-limit'
 import { requireEntitledRoute } from '@/lib/billing/require-entitled'
-import { runAsSpender, type Spender } from '@/lib/billing/spend-context'
-import { allowanceResponse, releaseCharged } from '@/lib/billing/usage'
+import type { Spender } from '@/lib/billing/spend-context'
+import { runMetered, spendFailureResponse } from '@/lib/billing/usage'
 import { fetchIdentityForGeneration, generateVisual } from '@/lib/visual/generate-visual'
 import { resolveScheme } from '@/lib/visual/post-color'
 import { carouselSlideText, sanitizePromptText, singlePostText } from '@/lib/visual/prompt'
@@ -79,7 +79,7 @@ export async function POST(request: Request) {
     flow: 'editor',
   }
   try {
-    return await runAsSpender(spender, async () => {
+    return await runMetered(spender, async () => {
       const { position, total } = slidePlace(body)
       // The same colour pair the slide's siblings wear. Without it this route was the one generation
       // path that produced art with no ground and no accent instruction — a picture that could not
@@ -130,11 +130,6 @@ export async function POST(request: Request) {
       return NextResponse.json({ publicUrl, storagePath })
     })
   } catch (err) {
-    const refusal = allowanceResponse(err)
-    if (refusal) return refusal
-    await releaseCharged(spender)
-    console.error('[generate-background] failed:', err)
-    const message = err instanceof Error ? err.message : 'Background generation failed'
-    return NextResponse.json({ error: message }, { status: 502 })
+    return spendFailureResponse(err, 'generate-background', 'Background generation failed', 502)
   }
 }

@@ -24,7 +24,8 @@ type GeneratePostVisualResult =
  * generation and storage failures throw for the caller's boundary to log, and
  * so does an exhausted image allowance (`AllowanceError`, src/lib/billing/usage.ts),
  * which the route answers with a 402 and the cron counts as a skip. The caller
- * declares who is spending with `runAsSpender` before calling.
+ * declares who is spending with `runMetered` (src/lib/billing/usage.ts) before calling — the
+ * plain `runAsSpender` is refused by the paid model, since nobody would settle its reservation.
  */
 export async function generatePostVisual(input: {
   postId: string

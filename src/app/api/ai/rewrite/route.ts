@@ -3,10 +3,8 @@ import { z } from 'zod'
 import { resolveAuth } from '@/lib/auth/resolve-auth'
 import { fetchClientData } from '@/lib/clients/fetch-client-data'
 import { aiRateLimitResponse } from '@/lib/auth/rate-limit'
-import { getCachedEntitlement } from '@/lib/queries/cache'
 import { requireEntitledRoute } from '@/lib/billing/require-entitled'
-import { runAsSpender } from '@/lib/billing/spend-context'
-import { AllowanceError, allowanceResponse, consumeUsage, refundUsage } from '@/lib/billing/usage'
+import { allowanceResponse, reserveUsage, runMetered } from '@/lib/billing/usage'
 import { performRewrite } from '@/ai/rewrite/rewrite-post'
 import { MAX_CAROUSEL_SLIDES } from '@/utils/constants'
 
@@ -49,8 +47,9 @@ const rewriteSchema = z.object({
 
 /**
  * Rewrite one post's copy against its validation evidence and return the fresh draft. One rewrite
- * is reserved from the allowance before the model runs and given back if the model call throws —
- * only a rewrite that exists is charged.
+ * is reserved from the allowance before the model runs and counted only once the model has
+ * answered — `runMetered` gives it back if the call throws, so only a rewrite that exists is on
+ * the meter.
  */
 export async function POST(request: Request) {
   try {
@@ -73,33 +72,26 @@ export async function POST(request: Request) {
     if ('error' in clientResult)
       return NextResponse.json({ error: clientResult.error }, { status: 404 })
 
-    const entitlement = await getCachedEntitlement(agencyId)
-    const reserved = await consumeUsage(entitlement, agencyId, 'rewrite', 1)
-    if (!reserved.allowed) {
-      return allowanceResponse(
-        new AllowanceError('rewrite', reserved.used, reserved.quota, 1, entitlement)
-      )
-    }
-
+    const spender = { agencyId, clientId: body.clientId, flow: 'rewrite' as const }
     try {
-      const result = await runAsSpender(
-        { agencyId, clientId: body.clientId, flow: 'rewrite' },
-        () =>
-          performRewrite({
-            caption: body.caption,
-            postType: body.postType,
-            slidesJson: body.slidesJson,
-            aiTells: body.aiTells ?? [],
-            qualityIssues: body.qualityIssues,
-            sourceExcerpt: body.sourceExcerpt,
-            sourceUrl: body.sourceUrl,
-            rewriteReason: body.rewriteReason ?? 'manual',
-            client: clientResult.data,
-          })
-      )
+      const result = await runMetered(spender, async () => {
+        await reserveUsage(spender, 'rewrite', 1)
+        return performRewrite({
+          caption: body.caption,
+          postType: body.postType,
+          slidesJson: body.slidesJson,
+          aiTells: body.aiTells ?? [],
+          qualityIssues: body.qualityIssues,
+          sourceExcerpt: body.sourceExcerpt,
+          sourceUrl: body.sourceUrl,
+          rewriteReason: body.rewriteReason ?? 'manual',
+          client: clientResult.data,
+        })
+      })
       return NextResponse.json(result)
     } catch (err) {
-      await refundUsage(entitlement, agencyId, 'rewrite', 1)
+      const refusal = allowanceResponse(err)
+      if (refusal) return refusal
       throw err
     }
   } catch (error) {

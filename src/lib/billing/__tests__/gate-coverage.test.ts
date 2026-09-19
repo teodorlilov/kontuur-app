@@ -11,9 +11,9 @@ const SRC = path.resolve(__dirname, '../../..')
  * that choice is only safe while this list is what "each site must remember" is checked against.
  *
  * Adding a route or action that reaches a provider means adding it here. The second test makes
- * it automatic: any file under app/ or features/ that declares who is spending (`runAsSpender`)
- * is about to pay a provider and must appear in this list — or in EXEMPT, with the reason its
- * gate lives somewhere else.
+ * it automatic: any file under app/ or features/ that declares who is spending (`runAsSpender`,
+ * or `runMetered` where images are settled) is about to pay a provider and must appear in this
+ * list — or in EXEMPT, with the reason its gate lives somewhere else.
  */
 const GATED: Record<string, 'spend' | 'publish' | 'create'> = {
   'app/api/ai/analyze-url/route.ts': 'spend',
@@ -74,7 +74,7 @@ describe('every human spend, publish and create site carries its gate', () => {
   it('every file that declares a spender is in the list, or exempt with a reason', () => {
     const spenders = sourceFiles(path.join(SRC, 'app'))
       .concat(sourceFiles(path.join(SRC, 'features')))
-      .filter((file) => /\brunAsSpender\(/.test(readFileSync(file, 'utf8')))
+      .filter((file) => /\brun(AsSpender|Metered)\(/.test(readFileSync(file, 'utf8')))
       .map((file) => path.relative(SRC, file))
       .sort()
 

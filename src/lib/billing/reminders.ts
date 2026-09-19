@@ -1,6 +1,6 @@
 import 'server-only'
 
-import type { createAdminSupabaseClient } from '@/lib/supabase/admin'
+import type { AdminClient } from '@/lib/supabase/admin'
 import { AGENCY_ENTITLEMENT_COLUMNS, USER_CONTACT_COLUMNS } from '@/lib/queries/select-columns'
 import { fetchAgencyById, fetchTeamMembersByAgency } from '@/lib/queries/db'
 import { notify } from '@/lib/notifications/notify'
@@ -11,8 +11,6 @@ import { MS_PER_DAY, PLAN_AND_BILLING_PATH } from '@/utils/constants'
 import type { BillingReminderType } from '@/types/api'
 import { entitlementFor, type Entitlement } from './entitlement'
 import { shellNotice, workspacePaused } from './copy'
-
-type AdminClient = ReturnType<typeof createAdminSupabaseClient>
 
 /**
  * How long after its grace ran out a paused workspace is still told so. A cron outage of a few
