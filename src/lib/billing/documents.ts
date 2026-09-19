@@ -117,11 +117,13 @@ async function issue(admin: Admin, input: IssueInput): Promise<SaleDocumentColum
  * invoice once more with its payment expanded, the tax rate it names, and writes the snapshot the
  * document is rendered from: the customer as Stripe knew them at payment, the lines, the totals,
  * the VAT basis and rate, the charge that paid it. A €0 invoice yields nothing — no payment, no
- * document. Idempotent by Stripe invoice id, in the RPC.
+ * document. Idempotent by Stripe invoice id, in the RPC. `agencyId` is null for a payment that
+ * arrives after its workspace was deleted: the document is owed all the same, and everything it
+ * renders and mails comes from the snapshot, never from the workspace.
  */
 export async function issueSaleDocument(
   admin: Admin,
-  input: { invoiceId: string; agencyId: string }
+  input: { invoiceId: string; agencyId: string | null }
 ): Promise<SaleDocumentColumns | null> {
   const stripe = stripeClient()
   const invoice = await stripe.invoices.retrieve(input.invoiceId, {

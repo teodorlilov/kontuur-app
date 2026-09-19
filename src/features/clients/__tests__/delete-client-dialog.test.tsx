@@ -6,11 +6,11 @@ import { DeleteClientDialog } from '../components/settings/delete-client-dialog'
 /**
  * The most destructive action in the product: ~18 tables and two storage buckets, no undo.
  *
- * Everything asserted here is a way that action could fire when it should not, or report
- * success when it did not. The typed-name gate is the whole safety mechanism — if it stops
- * being wired to the confirm button, nothing visible changes and the dialog quietly becomes a
- * one-click delete. A failed action that still navigates away is the other direction: the
- * client is still there and the user has been told it is gone.
+ * Everything asserted here is a way that action could report success when it did not, or fire
+ * twice. A failed action that still navigates away is the worst of them: the client is still
+ * there and the user has been told it is gone. The typed-name gate itself — disabled until the
+ * name is typed, a prefix is not the name, case and spacing ignored — is `TypedConfirmDialog`'s
+ * and is pinned on its own test; here it is only crossed.
  */
 const push = vi.fn()
 const refresh = vi.fn()
@@ -60,9 +60,9 @@ function setup(props: Partial<Parameters<typeof DeleteClientDialog>[0]> = {}) {
   return { onClose, user: userEvent.setup() }
 }
 
-/** Types the exact stored name into the confirm field. */
-async function typeName(user: ReturnType<typeof userEvent.setup>, name = 'Acme Dental') {
-  await user.type(screen.getByRole('textbox'), name)
+/** Crosses the typed-name gate — the gate itself is TypedConfirmDialog's test. */
+async function typeName(user: ReturnType<typeof userEvent.setup>) {
+  await user.type(screen.getByRole('textbox'), 'Acme Dental')
 }
 
 describe('DeleteClientDialog', () => {
@@ -74,26 +74,6 @@ describe('DeleteClientDialog', () => {
     // scheduledCount and ideaCount are 0 — listing them would pad the list with non-losses.
     expect(screen.queryByText(/scheduled post/)).not.toBeInTheDocument()
     expect(screen.queryByText(/client idea/)).not.toBeInTheDocument()
-  })
-
-  it('will not delete until the name is typed', async () => {
-    const { user } = setup()
-
-    await user.click(screen.getByRole('button', { name: 'Delete permanently' }))
-    expect(deleteClient).not.toHaveBeenCalled()
-
-    await user.type(screen.getByRole('textbox'), 'Acme')
-    await user.click(screen.getByRole('button', { name: 'Delete permanently' }))
-    // A prefix is not the name. This is the assertion that keeps the gate a gate.
-    expect(deleteClient).not.toHaveBeenCalled()
-  })
-
-  it('accepts the name regardless of case or surrounding space', async () => {
-    const { user } = setup()
-    // The gate exists to make the reader look at which client this is, not to test typing.
-    await typeName(user, '  acme dental ')
-    await user.click(screen.getByRole('button', { name: 'Delete permanently' }))
-    await waitFor(() => expect(deleteClient).toHaveBeenCalledWith('client-1'))
   })
 
   it('deletes, reports it, and leaves for the roster', async () => {

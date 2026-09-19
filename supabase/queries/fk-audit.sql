@@ -15,7 +15,7 @@
 -- catalog is queryable from the browser. Same posture as rls-audit.sql next door.
 --
 -- Read-only. Selects from pg_constraint / pg_class / pg_attribute and writes nothing.
--- Query 3 is the exception in spirit only — it counts rows in three tables, still read-only.
+-- Query 3 is the exception in spirit only — it counts rows in one table, still read-only.
 
 -- ── 1. Every FK into the client tree, with its real delete rule ────────────────
 --
@@ -50,7 +50,7 @@ join pg_class tgt on tgt.oid = c.confrelid
 join pg_namespace n on n.oid = src.relnamespace
 where c.contype = 'f'
   and n.nspname = 'public'
-  and tgt.relname in ('clients', 'posts', 'generation_runs', 'idea_form_tokens')
+  and tgt.relname in ('agencies', 'users', 'clients', 'posts', 'generation_runs', 'idea_form_tokens')
 order by
   case c.confdeltype when 'a' then 0 when 'r' then 0 else 1 end,   -- blockers first
   tgt.relname,
@@ -98,7 +98,12 @@ begin
       ('social_connections',   'client_id', 'clients'),
       ('notifications',        'post_id',   'posts'),
       ('post_approval_tokens', 'post_id',   'posts'),
-      ('generation_themes',    'run_id',    'generation_runs')
+      ('generation_themes',    'run_id',    'generation_runs'),
+      -- The agency edges 20260856 rewrites; its pre-flight, same as above.
+      ('clients',              'agency_id', 'agencies'),
+      ('users',                'agency_id', 'agencies'),
+      ('notifications',        'agency_id', 'agencies'),
+      ('social_connections',   'user_id',   'users')
     ) as t(child, col, parent)
   loop
     if to_regclass('public.' || spec.child) is null then
@@ -122,18 +127,14 @@ begin
 end $$;
 
 
--- ── 3. The three tables no application code reads ─────────────────────────────
+-- ── 3. The one table no application code reads ────────────────────────────────
 --
--- client_assets, brand_image_bank and brand_vector_bank carry client_id foreign keys and are
--- referenced by zero lines of src/. 20260820 cascades them rather than dropping them, because
--- dropping a table is a separate decision and a client delete must not fail on them meanwhile.
+-- client_assets carries a client_id foreign key and is referenced by zero lines of src/.
+-- 20260820 cascades it rather than dropping it, because dropping a table is a separate decision
+-- and a client delete must not fail on it meanwhile. Its two siblings, brand_image_bank and
+-- brand_vector_bank, were dropped by 20260836 and are no longer counted here.
 --
--- If all three come back 0, the follow-up is 20260821_drop_unused_asset_tables.sql.
--- If any is non-zero, note it: client_assets.storage_path and brand_image_bank.storage_path
--- point into a bucket this codebase never names, so deleteClient's prefix sweep — which only
--- knows `post-images` and `client-files` — will not reach their objects.
-select 'client_assets'     as table_name, count(*) as rows from client_assets
-union all
-select 'brand_image_bank',  count(*) from brand_image_bank
-union all
-select 'brand_vector_bank', count(*) from brand_vector_bank;
+-- If this comes back non-zero, note it: client_assets.storage_path points into a bucket this
+-- codebase never names, so the prefix sweep — which only knows `post-images` and
+-- `client-files` — will not reach its objects.
+select 'client_assets' as table_name, count(*) as rows from client_assets;

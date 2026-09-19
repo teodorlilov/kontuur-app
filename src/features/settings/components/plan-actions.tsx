@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { toast } from '@/components/ui/toast'
 import { openBillingPortal, startCheckout } from '@/features/settings/actions/billing-actions'
-import type { ActionResult } from '@/lib/actions/types'
+import { useFollowUrl } from '@/features/settings/components/use-follow-url'
 import type { EntitlementState } from '@/lib/billing/entitlement'
 import type { PlanId } from '@/lib/billing/plans'
 import { clearQueryParams } from '@/utils/url'
@@ -27,7 +27,8 @@ const POLL_FOR_MS = 10_000
 /**
  * The plan panel's one action: "Choose plan" while the workspace does not pay (trial, grace, or
  * paused — a re-subscription is a fresh Checkout), "Manage billing" while it does; nothing on a
- * house workspace. Each button calls its server action and follows the URL Stripe hands back.
+ * house workspace. Each button calls its server action and follows the URL Stripe hands back
+ * (`useFollowUrl`, shared with the danger zone's portal button).
  *
  * The return flag is captured once, because clearing it from the address bar makes
  * `useSearchParams` re-read at once and every `router.refresh()` re-renders the page without it.
@@ -36,7 +37,7 @@ const POLL_FOR_MS = 10_000
  */
 export function PlanActions({ state, plan, summary, billingReturn }: PlanActionsProps) {
   const router = useRouter()
-  const [busy, setBusy] = useState(false)
+  const { busy, follow } = useFollowUrl()
   const [returned] = useState(billingReturn)
   const paid = plan === 'pro' && (state === 'active' || state === 'past_due')
 
@@ -65,17 +66,6 @@ export function PlanActions({ state, plan, summary, billingReturn }: PlanActions
       clearTimeout(timer)
     }
   }, [returned, paid, router])
-
-  async function follow(action: () => Promise<ActionResult<{ url: string }>>) {
-    setBusy(true)
-    const result = await action()
-    if (!result.ok) {
-      toast.error(result.error)
-      setBusy(false)
-      return
-    }
-    window.location.assign(result.data.url)
-  }
 
   if (plan === 'house') return null
 

@@ -11,6 +11,12 @@ import { isSupportedTimezone } from '@/lib/timezones'
 export const removeTeamMemberSchema = z.uuid()
 
 /**
+ * Server-action arg: the workspace name typed back to confirm its deletion. Shape only — whether
+ * it matches the stored name is `deleteWorkspace`'s own rule, through `normalizeForCompare`.
+ */
+export const deleteWorkspaceSchema = z.string().trim().min(1)
+
+/**
  * Route-handler body for PUT /api/settings/account.
  *
  * `timezone` is checked against the picker's list rather than accepted as any

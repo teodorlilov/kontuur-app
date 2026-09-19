@@ -26,6 +26,11 @@ function formatDay(date: Date, timeZone: string): string {
   return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', timeZone })
 }
 
+/** "Your plan ends on 14 October" — the one wording of a cancelled plan's last day, in the agency's zone. */
+function planEndsOn(endsOn: Date, timeZone: string): string {
+  return `Your plan ends on ${formatDay(endsOn, timeZone)}`
+}
+
 function allUsed(kind: AllowanceKind, quota: number | null): string {
   return `You've used all ${quota ?? 'your'} ${ALLOWANCE_NOUNS[kind]} for this period.`
 }
@@ -120,6 +125,30 @@ export function addBrandRefusal(entitlement: Entitlement, brandCount: number): s
 }
 
 /**
+ * Why the workspace cannot be deleted right now, or null when it can. One rule for the danger
+ * zone (button or refusal) and for the action, so the rail never offers what the action refuses.
+ * The app never cancels at Stripe itself: a live plan is ended in the portal, and deletion is
+ * allowed the moment it is set to end (`Entitlement.canDelete`).
+ */
+export function deleteWorkspaceRefusal(entitlement: Pick<Entitlement, 'canDelete'>): string | null {
+  return entitlement.canDelete
+    ? null
+    : 'Cancel your plan first — Manage billing → Cancel plan. You can delete the workspace right after.'
+}
+
+/**
+ * The one extra line the delete confirmation carries while a cancelled plan is still running —
+ * the customer has paid for days that deletion gives up — or null when there is no such plan.
+ */
+export function deleteWorkspaceNotice(
+  entitlement: Pick<Entitlement, 'endsOn' | 'timezone'>
+): string | null {
+  return entitlement.endsOn
+    ? `${planEndsOn(entitlement.endsOn, entitlement.timezone)}; nothing more will be charged.`
+    : null
+}
+
+/**
  * What choosing the plan will bill, beside the Choose plan button: the price per client and how
  * many clients the workspace has today — Checkout's quantity, never below one.
  */
@@ -148,6 +177,9 @@ export const STRIPE_UNAVAILABLE = 'Could not open Stripe just now. Please try ag
 
 /** The billing actions are for admins; a member sees this sentence, not a Stripe page. */
 export const BILLING_ADMINS_ONLY = 'Only admins can manage the plan.'
+
+/** Deleting the workspace is for admins too — the fresh role read, not the cached one, decides. */
+export const DELETE_ADMINS_ONLY = 'Only admins can delete the workspace.'
 
 /**
  * The consent tick at Checkout, English then Bulgarian: the customer asks for the service to
@@ -194,7 +226,7 @@ export function shellNotice(
   if (state === 'active' && endsOn) {
     return {
       tone: 'warn',
-      text: `Your plan ends on ${formatDay(endsOn, timezone)} — renew in Plan & billing to keep generating.`,
+      text: `${planEndsOn(endsOn, timezone)} — renew in Plan & billing to keep generating.`,
     }
   }
   return null

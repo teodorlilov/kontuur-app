@@ -3,6 +3,8 @@ import {
   addBrandRefusal,
   allowanceUsedUp,
   allowanceWarning,
+  deleteWorkspaceNotice,
+  deleteWorkspaceRefusal,
   draftsLeft,
   shellNotice,
 } from '../copy'
@@ -152,5 +154,26 @@ describe('the refusal sentences', () => {
     expect(addBrandRefusal(entitlementFor({ ...TRIAL_ROW, mode: 'solo' }, NOW), 1)).toBe(
       'Trial includes one business. Choose a plan to add more.'
     )
+  })
+})
+
+describe('the delete-workspace sentences', () => {
+  it('refuses while a subscription is open and points at the portal, and says nothing otherwise', () => {
+    expect(deleteWorkspaceRefusal({ canDelete: false })).toBe(
+      'Cancel your plan first — Manage billing → Cancel plan. You can delete the workspace right after.'
+    )
+    expect(deleteWorkspaceRefusal({ canDelete: true })).toBeNull()
+  })
+
+  it('names the day a cancelled plan ends, in the same words the shell uses, and nothing for no plan', () => {
+    const ending = entitlementFor(
+      { ...TRIAL_ROW, ...PRO, plan: 'pro', cancel_at_period_end: true },
+      NOW
+    )
+    expect(deleteWorkspaceNotice(ending)).toBe(
+      'Your plan ends on 1 October; nothing more will be charged.'
+    )
+    expect(shellNotice(ending, NOW)?.text).toMatch(/^Your plan ends on 1 October/)
+    expect(deleteWorkspaceNotice({ endsOn: null, ...SOFIA })).toBeNull()
   })
 })

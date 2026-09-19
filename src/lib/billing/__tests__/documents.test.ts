@@ -226,6 +226,13 @@ describe('issueSaleDocument', () => {
     })
   })
 
+  it('a payment with no workspace left to own it still becomes a document, from the snapshot alone', async () => {
+    const { admin, rpc } = makeAdmin()
+    const document = await issueSaleDocument(admin, { invoiceId: 'in_1', agencyId: null })
+    expect(document?.number).toBe(1_000_000_001)
+    expect(rpc[0]).toMatchObject({ kind: 'invoice', agency_id: null, stripe_invoice_id: 'in_1' })
+  })
+
   it('a German company on reverse charge, a German consumer under OSS, a Skopje company outside the EU', async () => {
     const { admin, rpc } = makeAdmin()
     mocks.invoicesRetrieve.mockResolvedValue(

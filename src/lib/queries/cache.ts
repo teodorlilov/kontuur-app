@@ -1,7 +1,7 @@
 import 'server-only'
 
 import { cache } from 'react'
-import { unstable_cache } from 'next/cache'
+import { revalidateTag, unstable_cache } from 'next/cache'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import { entitlementFor, noEntitlement, type Entitlement } from '@/lib/billing/entitlement'
 import {
@@ -21,6 +21,7 @@ import type { PendingApprovalRow, RosterClientRow } from '@/features/clients/lib
 // Same reason: the inbox owns what "waiting on a decision" means, and the badge
 // has to count that population rather than a second guess at it.
 import { AWAITING_DECISION } from '@/features/ideas/lib/idea-filters'
+import { IG_METRICS_TAG } from '@/features/analytics/lib/instagram/report-data'
 import type { PostSummary } from '@/types/post'
 import {
   foldWeekCoverage,
@@ -175,6 +176,23 @@ const _fetchNewIdeasCount = unstable_cache(
 )
 
 export const getCachedNewIdeasCount = cache(_fetchNewIdeasCount)
+
+/**
+ * Every cached view that a client's rows feed, busted together after a client — or a whole
+ * workspace of them — is deleted: the roster and its connections ('agency-clients'), the
+ * post-derived counts, coverage and approvals ('client-post-stats'), the sidebar's ideas badge
+ * ('client-ideas'), and the Instagram report and its narrative (`IG_METRICS_TAG`, cached for an
+ * hour and a day and otherwise rebuilt from rows that no longer exist, naming a client that no
+ * longer exists). One list, so `deleteClient` and `deleteWorkspace` cannot drift apart on it.
+ * The `'max'` profile throughout: stale-while-revalidate is enough for a caller that is leaving
+ * the page, and a workspace delete must never use `{ expire: 0 }` (workspace-actions.ts).
+ */
+export function revalidateClientData(): void {
+  revalidateTag('agency-clients', 'max')
+  revalidateTag('client-post-stats', 'max')
+  revalidateTag('client-ideas', 'max')
+  revalidateTag(IG_METRICS_TAG, 'max')
+}
 
 /**
  * Statuses that mean a slot is filled but has not gone out yet. Exported so the

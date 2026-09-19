@@ -2,8 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { ConfirmDialog } from '@/components/ui/confirm-dialog'
-import { Input } from '@/components/ui/input'
+import { TypedConfirmDialog } from '@/components/ui/typed-confirm-dialog'
 import { toast } from '@/components/ui/toast'
 import { deleteClient } from '@/features/clients/actions/client-actions'
 import {
@@ -15,20 +14,26 @@ interface DeleteClientDialogProps {
   open: boolean
   onClose: () => void
   clientId: string
-  /** The *stored* name, never the unsaved draft — see the typed-name check below. */
+  /** The *stored* name, never the unsaved draft — it is what the person types back. */
   clientName: string
   counts: ClientDeletionCounts
 }
 
 /**
- * The confirm step for deleting a client, gated on typing the client's name.
+ * The confirm step for deleting a client: what goes, then the typed-name gate
+ * (`TypedConfirmDialog`, shared with the workspace delete), then the action and the way out.
  *
- * Typed confirmation rather than a plain button because this is the most destructive action in
- * the product — ~18 tables and two storage buckets — and it sits one tab away from the page
- * people open to edit a niche.
+ * Typed confirmation rather than a plain button because this is one of the two actions in the
+ * product that take everything with them — ~18 tables and two storage buckets — and it sits one
+ * tab away from the page people open to edit a niche.
  *
- * If a third confirm-act-toast-navigate flow appears, extract a `useConfirmedAction` hook; at
- * two (this and team-tab) the abstraction would have one shape and no evidence.
+ * What is this dialog's own, and stays here: the copy, the call, and the exit. The three
+ * deletion flows (a teammate, a client, a workspace) end in different places — a refresh, the
+ * roster, leaving the app — so the act-then-go step is written where each is read, not hidden in
+ * a hook that would make the differences look accidental. On success `isDeleting` stays true
+ * through the navigation, so the button keeps its loading state on a page that is going away and
+ * cannot be pressed twice; a server action that rejects outright is caught, or the spinner would
+ * never clear and the dialog would look permanently busy.
  */
 export function DeleteClientDialog({
   open,
@@ -39,11 +44,6 @@ export function DeleteClientDialog({
 }: DeleteClientDialogProps) {
   const router = useRouter()
   const [isDeleting, setIsDeleting] = useState(false)
-  const [typedName, setTypedName] = useState('')
-
-  // Case- and whitespace-insensitive: the gate is there to make the reader stop and look at
-  // which client this is, not to test their typing.
-  const nameMatches = typedName.trim().toLowerCase() === clientName.trim().toLowerCase()
 
   async function handleConfirm() {
     setIsDeleting(true)
@@ -55,36 +55,26 @@ export function DeleteClientDialog({
         return
       }
       toast.success(`${clientName} deleted`)
-      // isDeleting deliberately stays true through the navigation: the button keeps its
-      // loading state instead of flicking back to enabled on a page that is going away,
-      // and it cannot be pressed a second time in between.
       router.push('/clients')
       router.refresh()
     } catch (err) {
-      // A server action can reject outright — without this the spinner never clears and the
-      // dialog looks permanently busy.
       console.error(`[clients:delete] action threw for ${clientId}:`, err)
       toast.error('Could not delete the client. Please try again.')
       setIsDeleting(false)
     }
   }
 
-  function handleClose() {
-    setTypedName('')
-    onClose()
-  }
-
   const summary = buildDeletionSummary(counts)
 
   return (
-    <ConfirmDialog
+    <TypedConfirmDialog
       open={open}
       title="Delete this client"
       confirmLabel="Delete permanently"
+      name={clientName}
       loading={isDeleting}
-      disabled={!nameMatches}
       onConfirm={handleConfirm}
-      onClose={handleClose}
+      onClose={onClose}
     >
       <p>
         <strong className="font-semibold text-ink">{clientName}</strong> and everything belonging to
@@ -105,18 +95,6 @@ export function DeleteClientDialog({
         with the Instagram history synced for this client and any saved reports. Instagram cannot
         return past days once an account is disconnected. This cannot be undone.
       </p>
-
-      <label className="mt-5 block">
-        <span className="mb-1.5 block text-caption text-text3">
-          Type <strong className="font-semibold text-ink">{clientName}</strong> to confirm
-        </span>
-        <Input
-          value={typedName}
-          onChange={(e) => setTypedName(e.target.value)}
-          autoComplete="off"
-          disabled={isDeleting}
-        />
-      </label>
-    </ConfirmDialog>
+    </TypedConfirmDialog>
   )
 }

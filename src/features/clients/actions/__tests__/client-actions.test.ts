@@ -16,9 +16,10 @@ import { describe, expect, it, vi, beforeEach } from 'vitest'
  * the 23503 branch exists because a database missing migration 20260820 is
  * indistinguishable from a transient fault without it; the storage sweep runs
  * AFTER the rows because sweeping first would strip a live client's images if
- * the delete then failed; and the revalidation set has to include the analytics
- * tag, since deleteClient is a writer of those tables (via the cascade) and was
- * the only such writer that never busted it.
+ * the delete then failed; and the cache busts go through the shared
+ * `revalidateClientData`, whose tag list (the analytics tag included — deleteClient
+ * is a writer of those tables via the cascade, and was the one writer that never
+ * busted it) is pinned on the helper's own test.
  */
 
 const CLIENT_ID = '3f2504e0-4f89-11d3-9a0c-0305e82c3301'
@@ -30,7 +31,7 @@ const { mocks } = vi.hoisted(() => ({
     fetchClientWithOwnership: vi.fn(),
     verifyClientOwnership: vi.fn(),
     createAdminSupabaseClient: vi.fn(),
-    removeStoragePrefix: vi.fn(),
+    sweepClientStorage: vi.fn(),
     revalidateTag: vi.fn(),
     revalidatePath: vi.fn(),
     provisionClient: vi.fn(),
@@ -45,8 +46,8 @@ vi.mock('@/lib/auth/helpers', () => ({
 vi.mock('@/lib/supabase/admin', () => ({
   createAdminSupabaseClient: mocks.createAdminSupabaseClient,
 }))
-vi.mock('@/features/assets/lib/storage', () => ({
-  removeStoragePrefix: mocks.removeStoragePrefix,
+vi.mock('@/lib/clients/sweep-client-storage', () => ({
+  sweepClientStorage: mocks.sweepClientStorage,
 }))
 vi.mock('@/features/clients/lib/provision-client', () => ({
   provisionClient: mocks.provisionClient,
@@ -59,9 +60,11 @@ const syncSubscriptionQuantity = vi.fn(async () => undefined)
 vi.mock('@/lib/billing/require-entitled', () => ({
   requireEntitledAction: (...args: unknown[]) => requireEntitledAction(...(args as [])),
 }))
+const revalidateClientData = vi.fn()
 vi.mock('@/lib/queries/cache', () => ({
   getCachedEntitlement: (...args: unknown[]) => getCachedEntitlement(...(args as [])),
   getCachedAgency: (...args: unknown[]) => getCachedAgency(...(args as [])),
+  revalidateClientData: () => revalidateClientData(),
 }))
 vi.mock('@/lib/billing/quantity-sync', () => ({
   // The real rule, so the tests exercise "paid and live" rather than a stub of it.
@@ -115,9 +118,7 @@ describe('deleteClient', () => {
       userId: 'user-1',
     })
     mocks.fetchClientWithOwnership.mockResolvedValue({ id: CLIENT_ID, name: 'Dr Kamberova' })
-    mocks.removeStoragePrefix.mockImplementation(async () => {
-      return 0
-    })
+    mocks.sweepClientStorage.mockResolvedValue({ images: 0, files: 0 })
     // A trial workspace: the delete tells Stripe nothing.
     getCachedEntitlement.mockResolvedValue({ plan: 'trial', state: 'trial' })
     getCachedAgency.mockResolvedValue({ stripe_subscription_id: null })
@@ -171,21 +172,19 @@ describe('deleteClient', () => {
 
     expect(result.ok).toBe(false)
     // Sweeping before the rows are gone would strip a live client's images.
-    expect(mocks.removeStoragePrefix).not.toHaveBeenCalled()
+    expect(mocks.sweepClientStorage).not.toHaveBeenCalled()
   })
 
-  it('busts the analytics cache alongside the roster caches', async () => {
+  it('sweeps the storage and busts every client-fed cache after the rows are gone', async () => {
     mocks.createAdminSupabaseClient.mockReturnValue(recordingAdmin().client)
 
     const { deleteClient } = await import('../client-actions')
     await deleteClient(CLIENT_ID)
 
-    const tags = mocks.revalidateTag.mock.calls.map(([tag]) => tag)
-    // ig-metrics is the one this action skipped: the cascade removes the rows
-    // the analytics report and its narrative were built from.
-    expect(tags).toContain('ig-metrics')
-    expect(tags).toContain('agency-clients')
-    expect(tags).toContain('client-post-stats')
+    expect(mocks.sweepClientStorage).toHaveBeenCalledWith(CLIENT_ID)
+    // Which tags that is — the roster, the post stats, the ideas badge, the analytics report —
+    // is pinned once, on the helper (src/lib/queries/__tests__/revalidate-client-data.test.ts).
+    expect(revalidateClientData).toHaveBeenCalledTimes(1)
   })
 })
 
@@ -330,7 +329,7 @@ describe('deleteClient on a paid workspace', () => {
       userId: 'user-1',
     })
     mocks.fetchClientWithOwnership.mockResolvedValue({ id: CLIENT_ID, name: 'Dr Kamberova' })
-    mocks.removeStoragePrefix.mockResolvedValue(0)
+    mocks.sweepClientStorage.mockResolvedValue({ images: 0, files: 0 })
     mocks.createAdminSupabaseClient.mockReturnValue(recordingAdmin().client)
     getCachedEntitlement.mockResolvedValue({ plan: 'pro', state: 'active' })
     getCachedAgency.mockResolvedValue({ stripe_subscription_id: 'sub_1' })

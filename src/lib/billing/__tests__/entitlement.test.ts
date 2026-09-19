@@ -168,3 +168,32 @@ describe('entitlementFor — paid', () => {
     expect(e.resetsOn).toBeNull()
   })
 })
+
+describe('entitlementFor — canDelete', () => {
+  it('a workspace with no subscription may be deleted, on the trial and after it', () => {
+    expect(entitlementFor(row(), NOW).canDelete).toBe(true)
+    expect(entitlementFor(row({ trial_ends_at: daysFromNow(-30) }), NOW).canDelete).toBe(true)
+    expect(noEntitlement().canDelete).toBe(false)
+  })
+
+  it('a house workspace may be deleted like any other', () => {
+    expect(entitlementFor(row({ plan: 'house' }), NOW).canDelete).toBe(true)
+  })
+
+  it('an open subscription blocks deletion until it is set to end — including one still trialing', () => {
+    expect(entitlementFor(paid(), NOW).canDelete).toBe(false)
+    expect(entitlementFor(paid({ subscription_status: 'past_due' }), NOW).canDelete).toBe(false)
+    expect(entitlementFor(paid({ subscription_status: 'unpaid' }), NOW).canDelete).toBe(false)
+    const trialing = paid({ subscription_status: 'trialing', trial_ends_at: daysFromNow(7) })
+    expect(entitlementFor(trialing, NOW).state).toBe('trial')
+    expect(entitlementFor(trialing, NOW).canDelete).toBe(false)
+  })
+
+  it('a subscription set to end, or already ended, no longer blocks it', () => {
+    expect(entitlementFor(paid({ cancel_at_period_end: true }), NOW).canDelete).toBe(true)
+    expect(entitlementFor(paid({ subscription_status: 'canceled' }), NOW).canDelete).toBe(true)
+    expect(entitlementFor(paid({ subscription_status: 'incomplete_expired' }), NOW).canDelete).toBe(
+      true
+    )
+  })
+})

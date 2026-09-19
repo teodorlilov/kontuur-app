@@ -1,7 +1,7 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 import { AUTH_USER_ID_HEADER, AUTH_USER_NAME_HEADER } from '@/lib/auth/headers'
-import { SIGN_IN_PATH } from '@/utils/constants'
+import { GOODBYE_PATH, SIGN_IN_PATH } from '@/utils/constants'
 import type { Database } from '@/types/database'
 
 /**
@@ -67,6 +67,7 @@ export async function updateSession(request: NextRequest) {
     pathname.startsWith('/privacy') ||
     pathname.startsWith('/terms') ||
     pathname.startsWith('/data-deletion') ||
+    pathname.startsWith(GOODBYE_PATH) ||
     pathname === '/sitemap.xml' ||
     pathname === '/robots.txt' ||
     pathname.startsWith('/_next') ||

@@ -49,6 +49,7 @@ true.
 | Edit workspace name and timezone | `PUT` | [app/api/settings/account/route.ts](../src/app/api/settings/account/route.ts) |
 | Provision an account on sign-up | `createUserRecord` | [lib/auth/create-user-record.ts](../src/lib/auth/create-user-record.ts) |
 | Remove a teammate | `removeTeamMember` | [features/settings/actions/team-actions.ts](../src/features/settings/actions/team-actions.ts) |
+| Delete a workspace and everything it owns | `deleteWorkspace` | [features/settings/actions/workspace-actions.ts](../src/features/settings/actions/workspace-actions.ts) |
 | Create the Stripe customer for a workspace, once | `ensureStripeCustomer` | [lib/billing/subscription-store.ts](../src/lib/billing/subscription-store.ts) |
 | Write what a Stripe subscription says onto the agency row | `applySubscriptionSnapshot` | [lib/billing/subscription-store.ts](../src/lib/billing/subscription-store.ts) |
 | Keep the paid quantity equal to the client count | `syncSubscriptionQuantity` | [lib/billing/quantity-sync.ts](../src/lib/billing/quantity-sync.ts) |
@@ -244,7 +245,10 @@ nobody "fixes" them:
   `removeDeletedPillarIds` is a cascade of a pillar deletion.
 - **Deleting a client vs. Meta-mandated erasure** — `deleteClient` leans on the database cascade
   (24 of 31 tables); `purgeAccountAnalytics` deliberately reimplements it, because no client row is
-  being deleted in either of its two cases.
+  being deleted in either of its two cases. `deleteWorkspace` is the same shape one level up: one
+  `agencies` delete, and migration 20260856 cascades the members, the clients and their trees; only
+  the auth identities and the storage sweep are code, shared with `removeTeamMember` and
+  `deleteClient` (`deleteAuthIdentity`, `sweepClientStorage`).
 
 ## Keeping it true
 

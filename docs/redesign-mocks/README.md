@@ -15,6 +15,7 @@ paper), all of which the shipped page deliberately does not use.
 | `direction-01.html`                             | The original token/direction study              |
 | `auth.html`                                     | The split-page auth pass, superseded by dialogs |
 | `kontuur-*.html`                                | Per-surface app mocks                           |
+| `kontuur-goodbye.html`                          | `/goodbye`, the page after a workspace delete   |
 | `img-*-c.jpg`                                   | The fal.ai photography the mocks embed          |
 
 The calendar has two files doing different jobs: `kontuur-calendar.html` is the

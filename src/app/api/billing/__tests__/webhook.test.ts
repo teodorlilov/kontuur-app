@@ -145,6 +145,43 @@ describe('POST /api/billing/webhook', () => {
     expect(mocks.deliverSaleDocument).toHaveBeenCalledWith(admin, 'doc_1')
   })
 
+  it('still issues the document for a payment that arrives after its workspace was deleted, with no owner', async () => {
+    mocks.applySubscriptionSnapshot.mockResolvedValue({ agencyId: null, outcome: 'no_workspace' })
+    mocks.issueSaleDocument.mockResolvedValue({ id: 'doc_9', agency_id: null })
+    mocks.constructEvent.mockReturnValue(
+      event('invoice.paid', {
+        id: 'in_9',
+        amount_paid: 1900,
+        parent: { subscription_details: { subscription: 'sub_1' } },
+      })
+    )
+    const res = await deliver()
+    expect(res.status).toBe(200)
+    expect(mocks.issueSaleDocument).toHaveBeenCalledWith(admin, {
+      invoiceId: 'in_9',
+      agencyId: null,
+    })
+    expect(mocks.deliverSaleDocument).toHaveBeenCalledWith(admin, 'doc_9')
+    expect(rows.get('evt_1')).toMatchObject({ agency_id: null, error: null })
+    expect(rows.get('evt_1')?.processed_at).not.toBeNull()
+  })
+
+  it('issues the document for a paid invoice of a subscription the row no longer owns', async () => {
+    mocks.applySubscriptionSnapshot.mockResolvedValue({ agencyId: 'a1', outcome: 'ignored' })
+    mocks.constructEvent.mockReturnValue(
+      event('invoice.paid', {
+        id: 'in_8',
+        amount_paid: 1900,
+        parent: { subscription_details: { subscription: 'sub_old' } },
+      })
+    )
+    await deliver()
+    expect(mocks.issueSaleDocument).toHaveBeenCalledWith(admin, {
+      invoiceId: 'in_8',
+      agencyId: 'a1',
+    })
+  })
+
   it('issues no document for a €0 invoice or a failed one', async () => {
     const parent = { subscription_details: { subscription: 'sub_1' } }
     mocks.constructEvent.mockReturnValue(

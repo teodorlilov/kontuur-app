@@ -1,0 +1,379 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Kontuur — /goodbye</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      /* Tokens as globals.css has them today (direction-01 → Contour). The type sizes are the
+         closed ramp's: prompt 36, headline 22, title 15, body 13, caption 12. */
+      :root {
+        --paper: #fbfcfa;
+        --ink: #0f1512;
+        --text2: #57625a;
+        --text3: #667068;
+        --line: #e7ece7;
+        --forest: #164430;
+        --forest-deep: #0c2e20;
+        --line2: #d5ddd6;
+        --wash: #eef4ef;
+        --spring-text: #278658;
+        --accent: #cfea45;
+        --serif: 'Instrument Serif', Georgia, serif;
+        --sans: 'Geist', 'Inter', -apple-system, sans-serif;
+      }
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      body {
+        font-family: var(--sans);
+        font-size: 13px;
+        line-height: 1.6;
+        color: var(--ink);
+        background: var(--paper);
+        -webkit-font-smoothing: antialiased;
+      }
+      a {
+        color: inherit;
+      }
+
+      /* ── the page: legal-prose.ts, class for class ─────────────────── */
+      /* The ground: components/layout/contour-field.tsx, mounted the way the landing hero mounts it
+         (relative + overflow hidden, the canvas absolute behind, content above). */
+      main {
+        position: relative;
+        min-height: 100vh;
+        overflow: hidden;
+      }
+      main canvas {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+        z-index: 0;
+      }
+      .container {
+        position: relative;
+        z-index: 1;
+        max-width: 720px;
+        margin: 0 auto;
+        padding: 80px 24px 100px;
+      }
+      .eyebrow {
+        margin-bottom: 16px;
+        font-size: 13px;
+        line-height: 1.6;
+        color: var(--text3);
+      }
+      h1 {
+        margin-bottom: 8px;
+        font-family: var(--serif);
+        font-size: 36px;
+        font-weight: 600;
+        line-height: 1.2;
+        letter-spacing: normal;
+        color: var(--ink);
+      }
+      .lead,
+      p.prose {
+        margin-bottom: 16px;
+        font-size: 15px;
+        line-height: 1.75;
+        letter-spacing: normal;
+        color: var(--text2);
+      }
+      .lead {
+        margin-top: 16px;
+      }
+      .divider {
+        margin: 48px 0;
+        border-top: 1px solid var(--line);
+      }
+      /* components/ui/button.tsx — primary and secondary at size md (px-5 py-3, text-body, rounded-sm) */
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-top: 8px;
+      }
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        padding: 12px 20px;
+        border-radius: 8px;
+        border: 1px solid transparent;
+        font-size: 13px;
+        font-weight: 500;
+        line-height: 1;
+        white-space: nowrap;
+        text-decoration: none;
+        transition:
+          background-color 0.15s,
+          border-color 0.15s,
+          color 0.15s,
+          transform 0.15s,
+          box-shadow 0.15s;
+      }
+      .btn-primary {
+        background: var(--forest);
+        color: #fff;
+      }
+      .btn-primary:hover {
+        background: var(--forest-deep);
+        transform: translateY(-1px);
+        box-shadow: 0 12px 32px rgba(15, 21, 18, 0.1);
+      }
+      .btn-secondary {
+        border-color: var(--line2);
+        color: var(--ink);
+      }
+      .btn-secondary:hover {
+        border-color: var(--forest);
+        background: var(--wash);
+        color: var(--forest);
+      }
+
+      /* ── footer: features/marketing/components/footer.tsx ─────────── */
+      footer {
+        border-top: 1px solid var(--line);
+      }
+      .frow {
+        max-width: 1140px;
+        margin: 0 auto;
+        padding: 36px 40px;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 20px;
+      }
+      .frow + .frow {
+        border-top: 1px solid var(--line);
+        padding: 20px 40px;
+        gap: 8px;
+      }
+      .wordmark {
+        font-family: var(--serif);
+        font-style: italic;
+        font-size: 22px;
+        line-height: 1;
+        color: var(--ink);
+        text-decoration: none;
+        position: relative;
+        display: inline-block;
+      }
+      .wordmark i {
+        position: absolute;
+        left: -7%;
+        right: -7%;
+        bottom: 6%;
+        height: 54%;
+        background: var(--accent);
+        transform: rotate(-1.2deg);
+        border-radius: 2px;
+      }
+      .wordmark span {
+        position: relative;
+      }
+      .wordmark span b {
+        font-weight: 400;
+        color: var(--forest);
+      }
+      .fnav {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 24px;
+      }
+      .fnav a,
+      .fine {
+        font-size: 12px;
+        line-height: 1.4;
+        color: var(--text3);
+        text-decoration: none;
+      }
+      .fnav a:hover {
+        color: var(--ink);
+      }
+      @media (max-width: 768px) {
+        .frow {
+          padding-left: 20px;
+          padding-right: 20px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <canvas id="contour" aria-hidden="true"></canvas>
+      <div class="container">
+        <p class="eyebrow">Workspace deleted</p>
+
+        <h1>Your workspace is gone</h1>
+        <p class="lead">
+          Every client, post, image, connected account and member account has been permanently
+          deleted, together with the Instagram and Facebook history that was synced for them.
+          Nothing of it remains on Kontuur’s servers.
+        </p>
+
+        <div class="divider"></div>
+
+        <p class="prose">
+          Invoices already issued are kept for ten years, as Bulgarian law requires. Each one was
+          emailed to you with its PDF attached at the time it was paid. Nothing else about the
+          workspace is retained.
+        </p>
+        <p class="prose">Want to start again? A new workspace begins with a fresh trial.</p>
+        <div class="actions">
+          <a class="btn btn-primary" href="#">Create a new workspace</a>
+          <a class="btn btn-secondary" href="#">Back to kontuur.app</a>
+        </div>
+      </div>
+    </main>
+
+    <footer>
+      <div class="frow">
+        <a class="wordmark" href="#"
+          ><i></i><span>kontuur<b>.</b></span></a
+        >
+        <nav class="fnav">
+          <a href="#">Privacy</a><a href="#">Terms</a><a href="#">Data deletion</a
+          ><a href="#">hello@kontuur.app</a>
+        </nav>
+      </div>
+      <div class="frow">
+        <p class="fine">
+          © 2026 Kontuur. Operated by Chelling Ltd, UIC 206770508, Sofia, Bulgaria.
+        </p>
+        <p class="fine">Built by About Social Media · Icons by 480 Design (Solar, CC BY 4.0)</p>
+      </div>
+    </footer>
+    <script>
+      /* contour-field.tsx, layer 1 — the same peaks, grid, levels and strokes. */
+      var PEAKS = [
+        { x: 0.88, y: 0.06, a: 1.0, s: 0.26 },
+        { x: 0.06, y: 0.44, a: 0.78, s: 0.2 },
+        { x: 0.72, y: 0.92, a: 0.92, s: 0.3 },
+        { x: 0.34, y: 1.06, a: 0.6, s: 0.18 },
+        { x: 1.04, y: 0.56, a: 0.7, s: 0.22 },
+      ]
+      var CASES = [
+        [],
+        [[3, 2]],
+        [[2, 1]],
+        [[3, 1]],
+        [[0, 1]],
+        [
+          [3, 0],
+          [2, 1],
+        ],
+        [[0, 2]],
+        [[3, 0]],
+        [[3, 0]],
+        [[0, 2]],
+        [
+          [3, 2],
+          [0, 1],
+        ],
+        [[0, 1]],
+        [[3, 1]],
+        [[2, 1]],
+        [[3, 2]],
+        [],
+      ]
+      var GRID_STEP = 9,
+        LEVELS = 15
+      function fieldAt(nx, ny) {
+        var v = 0
+        for (var i = 0; i < PEAKS.length; i++) {
+          var p = PEAKS[i],
+            dx = nx - p.x,
+            dy = ny - p.y
+          v += p.a * Math.exp(-(dx * dx + dy * dy) / (2 * p.s * p.s))
+        }
+        return v
+      }
+      function lerp(a, b, pa, pb, level) {
+        var t = (level - a) / (b - a)
+        return [pa[0] + (pb[0] - pa[0]) * t, pa[1] + (pb[1] - pa[1]) * t]
+      }
+      function drawField() {
+        var canvas = document.getElementById('contour'),
+          ctx = canvas.getContext('2d')
+        var w = canvas.clientWidth,
+          h = canvas.clientHeight
+        if (!w || !h) return
+        var dpr = Math.min(window.devicePixelRatio || 1, 2)
+        canvas.width = Math.round(w * dpr)
+        canvas.height = Math.round(h * dpr)
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+        ctx.clearRect(0, 0, w, h)
+        var cols = Math.ceil(w / GRID_STEP),
+          rows = Math.ceil(h / GRID_STEP)
+        var grid = new Float32Array((cols + 1) * (rows + 1))
+        for (var gy = 0; gy <= rows; gy++)
+          for (var gx = 0; gx <= cols; gx++)
+            grid[gy * (cols + 1) + gx] = fieldAt((gx * GRID_STEP) / w, (gy * GRID_STEP) / h)
+        ctx.lineCap = 'round'
+        ctx.lineJoin = 'round'
+        for (var li = 1; li <= LEVELS; li++) {
+          var level = li * 0.075
+          ctx.strokeStyle = 'rgba(22, 68, 48, ' + (0.05 + li * 0.006).toFixed(3) + ')'
+          ctx.lineWidth = li % 5 === 0 ? 1.1 : 0.7
+          ctx.beginPath()
+          for (var y = 0; y < rows; y++) {
+            for (var x = 0; x < cols; x++) {
+              var i0 = y * (cols + 1) + x
+              var tl = grid[i0],
+                tr = grid[i0 + 1],
+                bl = grid[i0 + cols + 1],
+                br = grid[i0 + cols + 2]
+              var idx =
+                (tl >= level ? 8 : 0) |
+                (tr >= level ? 4 : 0) |
+                (br >= level ? 2 : 0) |
+                (bl >= level ? 1 : 0)
+              var segs = CASES[idx]
+              if (!segs.length) continue
+              var px = x * GRID_STEP,
+                py = y * GRID_STEP
+              var pTL = [px, py],
+                pTR = [px + GRID_STEP, py],
+                pBR = [px + GRID_STEP, py + GRID_STEP],
+                pBL = [px, py + GRID_STEP]
+              var edges = [
+                lerp(tl, tr, pTL, pTR, level),
+                lerp(tr, br, pTR, pBR, level),
+                lerp(bl, br, pBL, pBR, level),
+                lerp(tl, bl, pTL, pBL, level),
+              ]
+              for (var k = 0; k < segs.length; k++) {
+                var a = edges[segs[k][0]],
+                  b = edges[segs[k][1]]
+                ctx.moveTo(a[0], a[1])
+                ctx.lineTo(b[0], b[1])
+              }
+            }
+          }
+          ctx.stroke()
+        }
+      }
+      drawField()
+      var resizeTimer
+      window.addEventListener('resize', function () {
+        clearTimeout(resizeTimer)
+        resizeTimer = setTimeout(drawField, 120)
+      })
+    </script>
+  </body>
+</html>

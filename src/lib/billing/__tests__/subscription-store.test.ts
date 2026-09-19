@@ -96,6 +96,14 @@ describe('applySubscriptionSnapshot', () => {
     expect(updates).toEqual([])
   })
 
+  it('reports a deleted workspace as no_workspace with no agency id, and writes nothing', async () => {
+    const { admin, updates } = makeAdmin(null)
+    const result = await applySubscriptionSnapshot(admin, subscription(), 'subscription')
+    expect(result).toEqual({ agencyId: null, outcome: 'no_workspace' })
+    expect(updates).toEqual([])
+    expect(mocks.revalidateTag).not.toHaveBeenCalled()
+  })
+
   it('writes the plan, status, id, quantity and cancel flag, and fills a period the row has none of', async () => {
     const { admin, updates } = makeAdmin(FRESH)
     const result = await applySubscriptionSnapshot(admin, subscription(), 'subscription')

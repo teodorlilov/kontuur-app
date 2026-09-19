@@ -126,7 +126,7 @@ route handler or a server action (`src/features/*/actions/`).
 
 | Group          | Access      | Purpose                                                          |
 | -------------- | ----------- | ---------------------------------------------------------------- |
-| `(marketing)`  | public      | Landing page, pricing, privacy, terms, data-deletion             |
+| `(marketing)`  | public      | Landing page, pricing, privacy, terms, data-deletion, goodbye    |
 | `(auth)`       | public      | Login, signup, forgot / setup password                           |
 | `(onboarding)` | authed      | New-client site read into an editable draft sheet                |
 | `(dashboard)`  | authed      | Dashboard, clients, review, calendar, ideas, analytics, settings |
@@ -465,10 +465,11 @@ Followers tile (the account's last-7-days ledger from the analytics report) in p
 roster and the connected-count tile.
 
 **Notifications & settings** — Notification bell with unread badge; settings for account, profile,
-team (invite/members), integrations (Canva/Meta), plan, and a danger zone.
+team (invite/members), integrations (Canva/Meta), plan, and a danger zone that deletes the whole
+workspace (typed-name confirm; refused while a subscription is open; lands on `/goodbye`).
 
 **Marketing site** — Public landing page (hero, features, how-it-works, pricing, social proof, CTA,
-footer), plus privacy, terms, and data-deletion pages, `sitemap.ts`, and `robots.ts`.
+footer), plus privacy, terms, data-deletion and goodbye pages, `sitemap.ts`, and `robots.ts`.
 
 ---
 

@@ -40,6 +40,11 @@ import {
  *
  * Every date on the entitlement is read in `timezone`, the agency's own — the row carries it so
  * a sentence built anywhere (a 402, a bell, the shell) names the day the customer will see.
+ *
+ * `canDelete` is false while a Stripe subscription is open and not set to end — any status but
+ * `canceled` / `incomplete_expired` with `cancel_at_period_end` false — so a workspace whose data
+ * is gone can never renew. Computed from the row, not the state: a `'trialing'` subscription
+ * takes the trial branch below and still bills at its trial's end.
  */
 export type EntitlementState = 'trial' | 'trial_grace' | 'active' | 'past_due' | 'locked'
 
@@ -71,6 +76,8 @@ export interface Entitlement {
   graceEndsAt: Date | null
   /** The day a cancelled subscription ends — the period end while `cancel_at_period_end`; null otherwise. */
   endsOn: Date | null
+  /** Whether the workspace may be deleted now — false while a subscription is open and not set to end. */
+  canDelete: boolean
 }
 
 /** Whether the entitlement allows what a site is about to do. */
@@ -127,6 +134,7 @@ export function noEntitlement(): Entitlement {
     resetsOn: null,
     graceEndsAt: null,
     endsOn: null,
+    canDelete: false,
   }
 }
 
@@ -136,6 +144,12 @@ export function entitlementFor(row: AgencyBillingColumns, now: Date): Entitlemen
   const plan: PlanId = isPlanId(row.plan) ? row.plan : 'trial'
   const timezone = row.timezone
   const trialEndsAt = dateOf(row.trial_ends_at)
+  const status = row.subscription_status
+  const canDelete =
+    !row.stripe_subscription_id ||
+    status === 'canceled' ||
+    status === 'incomplete_expired' ||
+    row.cancel_at_period_end
 
   const locked = (state: EntitlementState, graceEndsAt: Date | null): Entitlement => ({
     state,
@@ -153,6 +167,7 @@ export function entitlementFor(row: AgencyBillingColumns, now: Date): Entitlemen
     resetsOn: null,
     graceEndsAt,
     endsOn: null,
+    canDelete,
   })
 
   const onTrial = (): Entitlement => {
@@ -173,6 +188,7 @@ export function entitlementFor(row: AgencyBillingColumns, now: Date): Entitlemen
       resetsOn: null,
       graceEndsAt: null,
       endsOn: null,
+      canDelete,
     }
   }
 
@@ -193,10 +209,10 @@ export function entitlementFor(row: AgencyBillingColumns, now: Date): Entitlemen
       resetsOn: null,
       graceEndsAt: null,
       endsOn: null,
+      canDelete: true,
     }
   }
 
-  const status = row.subscription_status
   if (!row.stripe_subscription_id || status === 'trialing') {
     if (trialEndsAt && now < trialEndsAt) return onTrial()
     if (trialEndsAt && now < plusGrace(trialEndsAt))
@@ -234,5 +250,6 @@ export function entitlementFor(row: AgencyBillingColumns, now: Date): Entitlemen
     resetsOn: periodEnd,
     graceEndsAt: state === 'past_due' && pastDueSince ? plusGrace(pastDueSince) : null,
     endsOn: row.cancel_at_period_end ? periodEnd : null,
+    canDelete,
   }
 }

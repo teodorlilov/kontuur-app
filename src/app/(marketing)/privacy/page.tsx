@@ -148,8 +148,9 @@ export default function PrivacyPage() {
             after cancellation.
           </p>
           <p className={proseP}>
-            You may request deletion of your account and all associated data at any time by
-            contacting us at the address below. We will process deletion requests within 30 days.
+            You can delete your workspace yourself from Settings, which removes everything at once,
+            or request deletion by contacting us at the address below; we process requests within 30
+            days.
           </p>
 
           {/* 6. Data security */}

@@ -60,13 +60,16 @@ export async function ensureStripeCustomer(
  * paid invoice, never on any other event: a failed renewal advances Stripe's period but must not
  * hand the grace days a fresh allowance (`entitlementFor`). `past_due_since` starts on a failed
  * invoice and clears on a paid one — both unconditional, both idempotent by invoice. A
- * subscription that carries no `agency_id` was not made by this app and is ignored.
+ * subscription that carries no `agency_id` was not made by this app and is ignored. One whose
+ * workspace has been deleted (the row is gone — `deleteWorkspace`, and the subscription ends on
+ * its own afterwards) is `no_workspace` with no agency id, so the caller records the event with
+ * no owner rather than stamping an id the foreign key would refuse.
  */
 export async function applySubscriptionSnapshot(
   admin: Admin,
   subscription: Stripe.Subscription,
   trigger: SnapshotTrigger
-): Promise<{ agencyId: string | null; outcome: 'written' | 'ignored' }> {
+): Promise<{ agencyId: string | null; outcome: 'written' | 'ignored' | 'no_workspace' }> {
   const agencyId = subscription.metadata.agency_id
   if (!agencyId) return { agencyId: null, outcome: 'ignored' }
 
@@ -76,7 +79,7 @@ export async function applySubscriptionSnapshot(
     .eq('id', agencyId)
     .maybeSingle()
   if (error) throw new Error(`agency read failed for ${agencyId}: ${error.message}`)
-  if (!row) return { agencyId, outcome: 'ignored' }
+  if (!row) return { agencyId: null, outcome: 'no_workspace' }
 
   const owned =
     row.stripe_subscription_id === null ||

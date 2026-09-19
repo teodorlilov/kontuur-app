@@ -81,8 +81,10 @@ async function finishBillingEvent(
  * One event → the current truth about its subscription, written once. Every subscription and
  * invoice event re-fetches the subscription rather than trusting the event's copy, so ordering
  * never matters. A paid invoice with money on it also becomes its document, delivered after the
- * response; a failed one tells the workspace's admins; a credit note that refunded money becomes
- * its credit note the same way. Unknown types are recorded and ignored.
+ * response — including one paid after its workspace was deleted (`no_workspace`), which is still
+ * a sale and gets its document with no owner; a failed one tells the workspace's admins; a
+ * credit note that refunded money becomes its credit note the same way. Unknown types are
+ * recorded and ignored.
  */
 async function handleEvent(admin: Admin, event: Stripe.Event): Promise<Handled> {
   const stripe = stripeClient()
@@ -109,7 +111,11 @@ async function handleEvent(admin: Admin, event: Stripe.Event): Promise<Handled> 
         subscription,
         paid ? 'invoice_paid' : 'invoice_failed'
       )
-      if (paid && snapshot.agencyId && invoice.amount_paid > 0) {
+      const sale =
+        paid &&
+        invoice.amount_paid > 0 &&
+        (snapshot.agencyId !== null || snapshot.outcome === 'no_workspace')
+      if (sale) {
         const document = await issueSaleDocument(admin, {
           invoiceId: invoice.id,
           agencyId: snapshot.agencyId,

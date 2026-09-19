@@ -4,6 +4,7 @@ import 'server-only'
 import { revalidatePath, revalidateTag } from 'next/cache'
 import { resolveActionAuth, verifyAdminRole } from '@/lib/auth/helpers'
 import { USER_RECORD_TAG } from '@/lib/auth/session'
+import { deleteAuthIdentity } from '@/lib/auth/delete-auth-identity'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import { removeTeamMemberSchema } from '@/features/settings/schemas'
 import type { ActionResult } from '@/lib/actions/types'
@@ -11,8 +12,10 @@ import type { ActionResult } from '@/lib/actions/types'
 /**
  * Removes a member from the workspace and deletes their account.
  *
- * A hard delete: the `users` row goes, then the Supabase auth identity. Safe because `users`
- * carries a single `agency_id`, so nobody belongs to a second workspace this would break.
+ * A hard delete: the `users` row goes, then the Supabase auth identity through the shared
+ * `deleteAuthIdentity`, which logs rather than fails when the identity survives — access is
+ * already gone by then. Safe because `users` carries a single `agency_id`, so nobody belongs to
+ * a second workspace this would break.
  *
  * Guarded four ways — caller must be an admin, the target must be in the caller's own agency,
  * an admin cannot remove themselves, and the last remaining admin cannot be removed (which would
@@ -66,9 +69,11 @@ export async function removeTeamMember(userId: string): Promise<ActionResult> {
   /**
    * Their personal integrations go with them, and this must happen BEFORE the user row.
    *
-   * `social_connections.user_id` is NO ACTION, so a member holding a Canva connection made the
-   * delete below raise 23503 — surfacing as "Could not remove the member", which the admin cannot
-   * act on: a Canva connection is per-user, and only that person can disconnect their own.
+   * `social_connections.user_id` was NO ACTION until migration 20260856 made it cascade, so a
+   * member holding a Canva connection made the delete below raise 23503 — surfacing as "Could not
+   * remove the member", which the admin cannot act on: a Canva connection is per-user, and only
+   * that person can disconnect their own. The explicit delete stays so the row goes wherever that
+   * migration has not landed.
    *
    * Scoped by `user_id`, which is set only on per-user rows. A client's Instagram connection keys
    * on `client_id` and belongs to the workspace, not to whoever happened to link it.
@@ -91,15 +96,7 @@ export async function removeTeamMember(userId: string): Promise<ActionResult> {
     return { ok: false, error: 'Could not remove the member' }
   }
 
-  // Access is already gone at this point; a failure here leaves an orphaned auth identity that
-  // belongs to no workspace, which is worth logging but not worth failing the action over.
-  const { error: authError } = await admin.auth.admin.deleteUser(userId)
-  if (authError) {
-    console.error(
-      `[team:remove] user row deleted but auth account remains for ${userId}:`,
-      authError.message
-    )
-  }
+  await deleteAuthIdentity(admin, userId, 'team:remove')
 
   // The removed member's agency and role are cached for five minutes; without this their session
   // would keep resolving to a workspace they no longer belong to until the entry expired.

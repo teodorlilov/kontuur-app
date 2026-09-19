@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
 import { toast } from '@/components/ui/toast'
 import { getGroupedTimezones } from '@/lib/timezones'
+import { WorkspaceDangerZone } from './workspace-danger-zone'
 import type { AgencyInfo } from '@/types/api'
 
 interface AccountTabProps {
@@ -104,8 +105,27 @@ export function AccountTab({ agency, currentUserRole }: AccountTabProps) {
   )
 }
 
-/** Context rail for the Account panel. */
-export function AccountRail({ clientCount, isAdmin }: { clientCount: number; isAdmin: boolean }) {
+interface AccountRailProps {
+  clientCount: number
+  memberCount: number
+  isAdmin: boolean
+  agencyName: string
+  agencyMode: 'agency' | 'solo'
+  /** From `deleteWorkspaceRefusal` / `deleteWorkspaceNotice` on the server page; the rail only shows them. */
+  refusal: string | null
+  notice: string | null
+}
+
+/** Context rail for the Account panel. The danger box is admins' only; its state lives in the leaf. */
+export function AccountRail({
+  clientCount,
+  memberCount,
+  isAdmin,
+  agencyName,
+  agencyMode,
+  refusal,
+  notice,
+}: AccountRailProps) {
   return (
     <>
       <RailBox title="Applies to">
@@ -117,12 +137,14 @@ export function AccountRail({ clientCount, isAdmin }: { clientCount: number; isA
 
       {isAdmin && (
         <RailBox title="Danger zone">
-          <RailText>Deleting the workspace removes every client, post and connection.</RailText>
-          {/* Visibly disabled rather than a full confirm flow wired to an error toast. */}
-          <Button variant="danger" size="sm" className="mt-3 w-full" disabled>
-            Delete workspace
-          </Button>
-          <p className="mt-2 text-center text-caption text-text3">Coming soon</p>
+          <WorkspaceDangerZone
+            agencyName={agencyName}
+            clientCount={clientCount}
+            memberCount={memberCount}
+            agencyMode={agencyMode}
+            refusal={refusal}
+            notice={notice}
+          />
         </RailBox>
       )}
     </>

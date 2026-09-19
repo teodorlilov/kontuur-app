@@ -9,7 +9,7 @@ import {
   fetchTeamMembersByAgency,
 } from '@/lib/queries/db'
 import { entitlementFor } from '@/lib/billing/entitlement'
-import { checkoutSummary } from '@/lib/billing/copy'
+import { checkoutSummary, deleteWorkspaceNotice, deleteWorkspaceRefusal } from '@/lib/billing/copy'
 import { PLAN_LABELS } from '@/lib/billing/plans'
 import { readUsage } from '@/lib/billing/usage'
 import { listDocumentDownloads } from '@/lib/billing/documents'
@@ -113,7 +113,17 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
       }}
       rails={{
         team: <TeamRail />,
-        account: <AccountRail clientCount={clientCount} isAdmin={isAdmin} />,
+        account: (
+          <AccountRail
+            clientCount={clientCount}
+            memberCount={members.length}
+            isAdmin={isAdmin}
+            agencyName={agency.name}
+            agencyMode={agencyMode}
+            refusal={deleteWorkspaceRefusal(entitlement)}
+            notice={deleteWorkspaceNotice(entitlement)}
+          />
+        ),
         integrations: <IntegrationsRail />,
         profile: <ProfileRail />,
       }}

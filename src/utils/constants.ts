@@ -74,6 +74,8 @@ export const COMPANY = {
  * and `/forgot-password` exist only for links that live outside the app and redirect here too.
  */
 export const SIGN_IN_PATH = '/?auth=signin'
+/** Where a person lands after deleting their workspace — public, and where their session ends. */
+export const GOODBYE_PATH = '/goodbye'
 
 /** Where every billing sentence sends a person: the plan, its meters, and (Phase 2) the way to pay. */
 export const PLAN_AND_BILLING_PATH = '/settings?tab=account'

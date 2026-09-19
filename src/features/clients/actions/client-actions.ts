@@ -10,8 +10,7 @@ import {
 } from '@/lib/auth/helpers'
 import { parseActionId } from '@/lib/actions/parse-input'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
-import { removeStoragePrefix } from '@/lib/storage/remove-prefix'
-import { IG_METRICS_TAG } from '@/features/analytics/lib/instagram/report-data'
+import { sweepClientStorage } from '@/lib/clients/sweep-client-storage'
 import { parsePillars } from '@/lib/clients/content-pillars'
 import { removeDeletedPillarIds } from '@/lib/clients/sync-source-pillars'
 import { upsertVisualIdentity } from '@/lib/visual/queries'
@@ -26,11 +25,10 @@ import {
 } from '@/features/clients/schemas'
 import { provisionClient } from '@/features/clients/lib/provision-client'
 import { countClientsByAgency } from '@/lib/queries/db'
-import { getCachedAgency, getCachedEntitlement } from '@/lib/queries/cache'
+import { getCachedAgency, getCachedEntitlement, revalidateClientData } from '@/lib/queries/cache'
 import { requireEntitledAction } from '@/lib/billing/require-entitled'
 import { addBrandRefusal } from '@/lib/billing/copy'
 import { billedSubscriptionId, syncSubscriptionQuantity } from '@/lib/billing/quantity-sync'
-import { CLIENT_FILES_BUCKET, POST_IMAGES_BUCKET } from '@/utils/constants'
 import type { ActionResult } from '@/lib/actions/types'
 
 /**
@@ -162,7 +160,9 @@ export async function updateClient(
  * Permanently delete a client, every row that belongs to it, and its stored files.
  *
  * Rows go by database cascade (20260820) rather than by a delete-per-table here: the FK graph
- * reaches ~18 tables and any list maintained in TypeScript would drift from it silently.
+ * reaches ~18 tables and any list maintained in TypeScript would drift from it silently. The
+ * storage sweep and the cache busts are the shared `sweepClientStorage` and
+ * `revalidateClientData`, which `deleteWorkspace` (features/settings) runs per client too.
  *
  * KNOWN LIMITATION, deliberate: a post already in `publishing` holds an open Instagram Graph
  * call and still reaches the account after this returns. The publish run's follow-up write then
@@ -208,18 +208,13 @@ export async function deleteClient(clientId: string): Promise<ActionResult> {
     return { ok: false, error: 'Could not delete the client. Please try again.' }
   }
 
-  // After the rows, never before: sweeping first would strip a live client's images if the
-  // delete then failed. Best-effort by contract — the client is already gone either way.
-  const [imageCount, fileCount] = await Promise.all([
-    removeStoragePrefix(POST_IMAGES_BUCKET, parsed.id),
-    removeStoragePrefix(CLIENT_FILES_BUCKET, parsed.id),
-  ])
+  const swept = await sweepClientStorage(parsed.id)
 
   // warn, not error: nothing failed. An irreversible action needs a trace, and this codebase
   // has no info level.
   console.warn(
     `[clients:delete] removed "${client.name}" (${parsed.id}) — ` +
-      `${imageCount} images, ${fileCount} files`
+      `${swept.images} images, ${swept.files} files`
   )
 
   const [entitlement, agency] = await Promise.all([
@@ -234,13 +229,7 @@ export async function deleteClient(clientId: string): Promise<ActionResult> {
     )
   }
 
-  revalidateTag('agency-clients', 'max')
-  revalidateTag('client-post-stats', 'max')
-  // The cascade took the analytics rows with the client, but the report and its
-  // narrative are cached for an hour and a day respectively — built from rows
-  // that no longer exist, and naming a client that no longer exists. Every other
-  // writer of those tables busts this tag; this was the one that did not.
-  revalidateTag(IG_METRICS_TAG, 'max')
+  revalidateClientData()
   revalidatePath('/generate')
   revalidatePath('/clients')
   return { ok: true, data: undefined }
