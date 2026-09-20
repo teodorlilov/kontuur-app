@@ -265,4 +265,15 @@ describe('moderation', () => {
 
     expect(sentBody()).toEqual({ is_hidden: true })
   })
+
+  it('refuses a hide the network answered but did not acknowledge', async () => {
+    // Meta types the answer as `{ success: bool }`. The action records the outcome as
+    // done the moment this resolves, so a `false` has to throw here or the queue shows
+    // a comment as hidden that everyone can still see.
+    graph([[THEIRS, { success: false }]])
+
+    await expect(
+      facebookComments.setHidden({ account: ACCOUNT, commentId: THEIRS, hidden: true })
+    ).rejects.toThrow(/unrecognised Graph response shape/)
+  })
 })

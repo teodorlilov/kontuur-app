@@ -222,8 +222,14 @@ export const igCommentsResponseSchema = z.looseObject({
  *
  * Shared by both networks: Instagram's hide and delete, Facebook's publish, hide and delete all
  * return exactly this. It was spelled twice, once per network, for one shape neither owns.
+ *
+ * `true` is the only accepted value. Meta types the answer as `{ success: bool }`
+ * (https://developers.facebook.com/docs/graph-api/reference/comment/#updating), and every
+ * caller writes the outcome to the database as done the moment the call returns — so a `false`,
+ * or no `success` at all, must fail the parse and throw rather than record a hide the network
+ * never acknowledged.
  */
-export const graphAckSchema = z.looseObject({ success: z.boolean().optional() })
+export const graphAckSchema = z.looseObject({ success: z.literal(true) })
 
 // ---- Facebook Login and Pages ----
 // Shapes recorded in docs/META-FB-PROBE.md against a real Page, not taken from the docs.

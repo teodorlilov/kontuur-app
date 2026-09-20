@@ -145,8 +145,15 @@ export function CommentsView({
    * the page cannot show you — the reply is live under someone else's comment, the
    * hidden comment is gone from public view. Without a word back, the only evidence
    * of success is a row quietly moving tabs, which reads as the click having failed.
+   *
+   * On failure the queue goes back to what it showed before the click. `groups` is
+   * seeded once from props, so a `router.refresh()` cannot do that — the refreshed
+   * server copy never reaches the screen, and a refused hide sits in the Hidden tab
+   * looking done. Nothing newer exists on the server either: every action in
+   * `../actions/comment-actions.ts` returns its failure before it writes a row.
    */
   function run(action: () => Promise<{ ok: boolean; error?: string }>, done: string) {
+    const before = groups
     setError(null)
     startTransition(async () => {
       const result = await action()
@@ -155,8 +162,7 @@ export function CommentsView({
         return
       }
       setError(result.error ?? 'Something went wrong')
-      // Our optimistic copy is now a lie. The server holds the truth.
-      router.refresh()
+      setGroups(before)
     })
   }
 
@@ -388,7 +394,7 @@ export function CommentsView({
                     }))
                     run(
                       () => setCommentHiddenAction({ commentId: active.comment.id, hidden }),
-                      hidden ? 'Hidden from public view — its author is not told' : 'Visible again'
+                      hidden ? describeHidden(active.group.platform) : 'Visible again'
                     )
                   }}
                   onDelete={() => {
@@ -418,6 +424,18 @@ function countInTab(groups: readonly CommentGroup[], status: CommentStatus): num
     (total, group) => total + group.comments.filter((comment) => comment.status === status).length,
     0
   )
+}
+
+/**
+ * What "hidden" leaves visible, said at the moment it happens: the author still sees
+ * the comment on both networks, and on Facebook so do their friends
+ * (facebook.com/help/297845860255949). Checked from the author's own account, a hide
+ * that worked looks like nothing happened.
+ */
+function describeHidden(platform: string): string {
+  return platform === 'facebook'
+    ? 'Hidden from everyone except its author and their friends — they are not told'
+    : 'Hidden from everyone except its author — they are not told'
 }
 
 function emptyTitle(tab: CommentStatus): string {

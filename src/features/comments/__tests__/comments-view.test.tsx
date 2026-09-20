@@ -291,7 +291,7 @@ describe('CommentsView', () => {
     expect(screen.getByRole('button', { name: 'Reply' })).toBeDisabled()
   })
 
-  it('surfaces a failed action and re-reads the server rather than lying', async () => {
+  it('surfaces a failed reply and takes the optimistic reply back off the screen', async () => {
     replyToComment.mockResolvedValue({
       ok: false,
       error: 'This connection predates comment moderation — reconnect the account to enable it',
@@ -304,8 +304,41 @@ describe('CommentsView', () => {
     await user.click(screen.getByRole('button', { name: 'Reply' }))
 
     expect(await screen.findByRole('alert')).toHaveTextContent(/predates comment moderation/)
-    // Our optimistic copy is now wrong; the server holds the truth.
-    await waitFor(() => expect(refresh).toHaveBeenCalled())
+    // The reply never left, so the pane must not thread it, and the comment is
+    // still owed a reply.
+    await waitFor(() => expect(pane().queryByText('Yes')).not.toBeInTheDocument())
+    expect(queueRow(/Does this apply/)).toBeInTheDocument()
+    expect(refresh).not.toHaveBeenCalled()
+  })
+
+  it('puts a refused hide back where it was, not in the Hidden tab', async () => {
+    // What shipped: the comment moved to Hidden before the server answered, and a
+    // refusal only re-read the server — which never reaches `groups`, seeded once
+    // from props. So a hide that failed sat in the Hidden tab looking done.
+    setCommentHidden.mockResolvedValue({ ok: false, error: 'Could not hide it' })
+    const user = userEvent.setup()
+    renderView([group()])
+
+    await user.click(screen.getByRole('button', { name: 'Hide' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Could not hide it')
+    await waitFor(() => expect(pane().getByRole('button', { name: 'Hide' })).toBeInTheDocument())
+    expect(queueRow(/Does this apply/)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Hidden/ })).toHaveTextContent('0')
+  })
+
+  it('says who still sees a hidden comment, because the author always does', async () => {
+    setCommentHidden.mockResolvedValue({ ok: true, data: undefined })
+    const user = userEvent.setup()
+    renderView([group({ platform: 'facebook', comments: [comment({ id: 'fb-1' })] })])
+
+    await user.click(screen.getByRole('button', { name: 'Hide' }))
+
+    await waitFor(() =>
+      expect(toastSuccess).toHaveBeenCalledWith(
+        'Hidden from everyone except its author and their friends — they are not told'
+      )
+    )
   })
 
   it('asks twice before deleting, because Instagram gives nothing back', async () => {
