@@ -108,6 +108,64 @@ Reviewers log into the product and follow the steps; prepare:
   this in-product (the withheld banner). The screencasts therefore carry the demonstration,
   recorded with a role-holding account where everything is visible.
 
+### The "instructions for accessing the app" field (`instructions-web-2`)
+
+The form also asks for confirmation of any Facebook Login use. The old text (last review) said
+"not Facebook Login" — true then, wrong now: the Page connection IS Facebook Login for Business
+and reads `GET /me?fields=id,name` (`facebook/auth.ts`). Every label below is the app's own
+(nav, tabs, buttons); if the UI copy changes, this changes with it. Paste whole:
+
+```text
+App URL: https://kontuur.app
+Sign in (top right → "Sign in", or https://kontuur.app/login):
+  Email: lepad15489@dreameg.com
+  Password: Test123456!
+
+OVERVIEW
+Kontuur is a social media management tool for marketing agencies and the small businesses they serve. An agency connects each client's Instagram professional account and/or Facebook Page, then drafts, approves, schedules and publishes posts, answers comments, and reports results — for all clients from one place.
+
+CONFIRMATION OF FACEBOOK LOGIN USE
+- Instagram accounts are connected with the Instagram API with Instagram Login (instagram_business_* permissions). No Facebook Login is involved in that flow.
+- Facebook Pages are connected with Facebook Login for Business (the standard Facebook OAuth dialog, auth_type=rerequest). The only permissions requested are pages_show_list, pages_read_engagement, pages_read_user_content, pages_manage_posts and pages_manage_engagement. After consent the app reads GET /me?fields=id,name once (default public_profile fields) to label whose Pages are being listed, GET /me/accounts and GET /debug_token to learn which Pages were granted, and stores the chosen Page's access token. We do not request email, user_friends, user_birthday, user_gender or any other user_* permission, and Facebook Login is not used to sign in to Kontuur itself (Kontuur has its own email/password accounts).
+
+WHAT THIS REVIEW COVERS
+Already granted (Advanced Access): instagram_business_basic, instagram_business_manage_insights, instagram_business_content_publish.
+Requested now: instagram_business_manage_comments, pages_show_list, pages_read_engagement, pages_read_user_content, pages_manage_posts, pages_manage_engagement.
+
+TEST ASSETS
+The test agency has one client, "Kontuur", with NO connected accounts, so you perform the consent flows yourself. Please connect your own Instagram professional account and a Facebook Page you administer (a test Page is fine). Approved posts with images are already waiting in the Calendar for publishing. If you would rather use assets we provide, reply to this submission and we will add credentials.
+
+PART A — CONNECT (pages_show_list; instagram_business_basic already granted)
+1. Sign in. In the left sidebar click "Clients", then click the client "Kontuur". The client's settings open.
+2. Click the "Connected accounts" tab.
+3. On the "Facebook" row click "Connect". The Facebook dialog opens — tick the Page(s) to grant and continue.
+4. Back in Kontuur a "Choose a Facebook Page" dialog lists exactly the Pages you granted (pages_show_list). Click the one to connect. The row now shows the Page's name and "Connected".
+5. On the "Instagram" row click "Connect" and complete the Instagram login. The row shows the account's username and "Connected".
+
+PART B — PUBLISH TO THE PAGE (pages_manage_posts)
+1. In the left sidebar click "Calendar".
+2. Click a post — either one in the week grid, or one under "Waiting to be placed" on the right. Choose a single-image post (a multi-image post publishes to Instagram only, as a carousel). Its card opens.
+3. Click "Publish now". The post goes to every network connected to this client; the card confirms "Published to Facebook" (and Instagram). Open the Page on facebook.com — the post is live with the caption and image. Photos are uploaded unpublished first, then attached to one feed post, so a retry never duplicates a post.
+
+PART C — PAGE ANALYTICS (pages_read_engagement)
+1. In the left sidebar click "Analytics".
+2. In the top controls switch the network toggle from "Instagram" to "Facebook" (it appears once a Page is connected). Selecting a period IS the request — there is no separate fetch button.
+3. The report fills from the Page's insights and published posts: follower level and daily follows/unfollows, post engagements, Page views, and a posts table with each post's reactions, comments and shares (GET /{page-id}/insights and GET /{page-id}/published_posts). Choose a longer period (e.g. 30 days) to see more history load.
+
+PART D — COMMENTS (pages_read_user_content, pages_manage_engagement, instagram_business_manage_comments)
+1. From a second account — a personal Facebook profile that is not the Page — leave a comment on the post you published in Part B. Do the same on a recent Instagram post from a second Instagram account.
+2. In the left sidebar click "Comments". In the client filter (top of the page, "All clients") choose "Kontuur", then click "Check now". Kontuur reads new comments on the client's Page posts and Instagram posts (pages_read_user_content for the Page; instagram_business_manage_comments for Instagram).
+3. Under the "Needs reply" tab both comments appear, each labelled with its network and post. Click one.
+4. Reply: type in "Reply as <page name>…" and click "Reply". Open the post on facebook.com / instagram.com — the reply is there, posted as the Page / as the account (pages_manage_engagement / instagram_business_manage_comments). The comment moves to the "Answered" tab.
+5. Hide: click "Hide". The comment moves to the "Hidden" tab, and Kontuur tells you who can still see it (the author and their friends). On facebook.com the comment is hidden. Click "Unhide" to restore it.
+6. Delete: click "Delete", then "Delete for good". The comment is removed from the post on the network (pages_read_user_content for a visitor's comment on the Page; instagram_business_manage_comments on Instagram).
+
+NOTE ON STANDARD ACCESS DURING REVIEW
+Until this review grants Advanced Access, Meta returns comment text only for people who hold a role on this app, and the Page permissions likewise return data only for role-holders' Pages. If a step above returns nothing for your test assets, that is this restriction, not a fault in the flow — the Comments page shows a banner explaining it. The attached screen recordings demonstrate every step with a role-holding account and fresh consent. If you would like your test user added as a Tester on the app so you can exercise the flows live, tell us in the review thread and we will add it within the hour.
+
+Privacy Policy: https://kontuur.app/privacy · Terms: https://kontuur.app/terms · Data deletion: https://kontuur.app/data-deletion
+```
+
 ## 4. Per-permission submission text and screencast scripts
 
 Every screencast MUST begin from a disconnected state and show the consent dialog — a
@@ -163,8 +221,10 @@ How it adds value for the person: The agency plans a month of content, gets the 
 Why it is necessary: Publishing to a Page is the product's core function for Facebook, and this is the permission that allows creating posts and uploading photos as the Page. Without it an approved post could only be exported and pasted into Facebook by hand, which is the exact chore the product exists to remove.
 ```
 
-**Steps / screencast:** Fresh consent + Page chosen (as above) → Calendar → approved post →
-tick Facebook → Publish now → show the post live on the Page. Include one multi-image post.
+**Steps / screencast:** Fresh consent + Page chosen (as above) → Calendar → click a waiting
+single-image post → Publish now (there is no per-network tick: it goes to every connected
+network; carousels are Instagram-only) → "Published to Facebook" → show the post live on the
+Page.
 
 ### pages_read_engagement
 
