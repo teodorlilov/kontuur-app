@@ -67,15 +67,19 @@ const NETWORKS: Record<OAuthPlatform, OAuthNetwork> = {
     appIdEnv: 'META_INSTAGRAM_APP_ID',
   },
   /**
-   * `pages_show_list` is what lists the Pages a person administers; the other three are what a
-   * Page connection is for. All four are Advanced-Access permissions granted by App Review, and
-   * the same Standard-Access reasoning above applies until it is.
+   * `pages_show_list` is what lists the Pages a person administers; the other four are what a
+   * Page connection is for. `pages_read_user_content` is the one that covers VISITORS' comments —
+   * reading them and deleting them; `pages_read_engagement` covers only content posted by the
+   * Page, and `pages_manage_engagement` deletes other Pages' comments only alongside it
+   * (`docs/APP-REVIEW.md` §2). All five are Advanced-Access permissions granted by App Review,
+   * and the same Standard-Access reasoning above applies until it is.
    */
   facebook: {
     authorizeUrl: FB_AUTHORIZE_URL,
     scopes: [
       'pages_show_list',
       'pages_read_engagement',
+      'pages_read_user_content',
       'pages_manage_posts',
       'pages_manage_engagement',
     ].join(','),

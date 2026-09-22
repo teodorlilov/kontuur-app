@@ -131,7 +131,8 @@ async function resolveComment(
  * `permission` is the one that matters and the one most likely to be misread: it does
  * NOT mean the app is missing Advanced Access — that failure is silent, a 200 with an
  * empty list. It means THIS connection's token predates the comment-moderation scope
- * (`instagram_business_manage_comments`, or `pages_manage_engagement` for a Page),
+ * (`instagram_business_manage_comments`, or `pages_manage_engagement` +
+ * `pages_read_user_content` for a Page),
  * because tokens never gain permissions after they are issued. The client can fix it
  * today by reconnecting, which is why the message says so.
  *
