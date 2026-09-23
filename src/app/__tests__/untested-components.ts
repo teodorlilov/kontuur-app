@@ -69,7 +69,6 @@ export const UNTESTED_COMPONENTS: string[] = [
   'features/marketing/components/nav.tsx',
   'components/posts/canva-design-picker.tsx',
   'components/posts/image-slot.tsx',
-  'features/review/components/review-queue.tsx',
   'features/review/components/send-to-client-dialog.tsx',
   'features/settings/components/integrations-tab.tsx',
   'features/settings/components/settings-view.tsx',
