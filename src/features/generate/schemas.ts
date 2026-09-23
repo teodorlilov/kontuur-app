@@ -1,18 +1,6 @@
 import { z } from 'zod'
 import { MAX_CAROUSEL_SLIDES, MAX_POSTS_PER_RUN, MIN_CAROUSEL_SLIDES } from '@/utils/constants'
-import { colorSchemeSchema } from '@/lib/visual/identity-schema'
 import type { PriorityPost } from '@/types/api'
-
-/** Input for logging an explicitly discarded wizard draft. */
-export const discardedDraftSchema = z.object({
-  clientId: z.uuid(),
-  clientSourceId: z.uuid().nullable(),
-  pillar: z.string().max(200).nullable(),
-  sourceUrl: z.string().max(2000).nullable(),
-  sourceType: z.string().max(40).nullable(),
-})
-
-export type DiscardedDraftInput = z.infer<typeof discardedDraftSchema>
 
 /**
  * The client-switch refetch of GET /api/clients/[id], validated at the
@@ -121,48 +109,6 @@ export const generateStreamSchema = z.object({
   targetPostCount: z.number().int().min(0).max(MAX_POSTS_PER_RUN).default(0),
   priorityPosts: z.array(priorityPostSchema).max(MAX_POSTS_PER_RUN).optional(),
   preloadedClientData: clientDataSchema,
-})
-
-/**
- * The wizard's draft-visual generation request. `slides` carries the whole array rather than the
- * one slide's fields so the route can hand it straight to `slideTextBlock` — the same derivation
- * the persisted-post path uses, instead of a second copy of the carousel-vs-single branch.
- *
- * `slideCount` is gone with it: the array's own length is the count, and the two could disagree.
- */
-export const generateDraftVisualSchema = z.object({
-  clientId: z.string().min(1),
-  draftId: z.string().min(1),
-  position: z.number().int().min(0),
-  postType: z.string().min(1),
-  slides: z.array(z.object({ headline: z.string(), body: z.string() })).default([]),
-  caption: z.string().nullable().default(null),
-  /** The storage path of the visual being replaced — present only on a regenerate, and what makes
-   *  each successive press produce a different composition instead of the same one. */
-  previousStoragePath: z.string().min(1).optional(),
-  /** This draft's position in its generation run, so a batch spreads across schemes rather than
-   *  three concurrent requests hashing onto the same one. Only sent on the FIRST generation — a
-   *  regenerate sends `scheme` instead, because by then the answer is known and need not be redrawn. */
-  runIndex: z.number().int().min(0).optional(),
-  /** One value shared by every draft in this run — what `runIndex` counts from. Consecutive offsets
-   *  only spread when they share a base; from per-draft bases they are just noise. Sent with
-   *  `runIndex` and meaningless without it. */
-  runBase: z.string().min(1).optional(),
-  /**
-   * The colour pair this draft's other slides already wear.
-   *
-   * Sent on a regenerate, and it is what stops one slide drifting away from its siblings. Without
-   * it the route re-picks from the ladder at offset 0, while the first generation picked at the
-   * draft's run offset — so rerolling slide 2 of the second or third draft in a run recoloured that
-   * slide alone. Exactly the desync `posts.visual_ground` prevents for persisted posts; drafts have
-   * no row to read, so the surface hands back what it was given.
-   */
-  scheme: colorSchemeSchema.optional(),
-})
-
-/** Discard cleanup: delete a draft's stored visuals. Paths are re-checked against the client's
- *  prefix in the route — this only proves the shape. */
-export const deleteDraftVisualsSchema = z.object({
-  clientId: z.string().min(1),
-  storagePaths: z.array(z.string().min(1)).min(1),
+  /** The client idea this run answers, when the wizard was opened from one. Verified server-side. */
+  ideaId: z.uuid().optional(),
 })

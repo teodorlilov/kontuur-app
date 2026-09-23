@@ -16,7 +16,7 @@ function image(position: number): PostImage {
 
 describe('toVisualSlots', () => {
   it('persisted images become done slots with their refs', () => {
-    const slots = toVisualSlots([image(0), image(1)], [], [], 2)
+    const slots = toVisualSlots([image(0), image(1)], [], [], [], 2)
     expect(slots).toHaveLength(2)
     expect(slots[0]).toMatchObject({
       position: 0,
@@ -26,17 +26,17 @@ describe('toVisualSlots', () => {
   })
 
   it('a position with neither image nor job is omitted — the empty frame renders', () => {
-    const slots = toVisualSlots([image(0)], [], [], 3)
+    const slots = toVisualSlots([image(0)], [], [], [], 3)
     expect(slots.map((s) => s.position)).toEqual([0])
   })
 
   it('an in-flight regeneration without an image yet shows a bare generating slot', () => {
-    const slots = toVisualSlots([], [1], [], 2)
+    const slots = toVisualSlots([], [1], [], [], 2)
     expect(slots).toEqual([{ position: 1, status: 'generating' }])
   })
 
   it('mid-compose keeps the clean refs so an approve attaches the clean art', () => {
-    const slots = toVisualSlots([image(0)], [], [0], 1)
+    const slots = toVisualSlots([image(0)], [], [0], [], 1)
     expect(slots[0]).toMatchObject({
       status: 'generating',
       publicUrl: 'https://cdn/img-0.jpg',
@@ -45,11 +45,23 @@ describe('toVisualSlots', () => {
   })
 
   it('a regenerating position that still has its old image keeps showing it', () => {
-    const slots = toVisualSlots([image(2)], [2], [], 3)
+    const slots = toVisualSlots([image(2)], [2], [], [], 3)
     expect(slots[0]).toMatchObject({
       position: 2,
       status: 'generating',
       publicUrl: 'https://cdn/img-2.jpg',
     })
+  })
+
+  it('a position whose last generation failed is an error slot, with whatever image it kept', () => {
+    expect(toVisualSlots([], [], [], [2], 3)).toEqual([{ position: 2, status: 'error' }])
+    expect(toVisualSlots([image(0)], [], [], [0], 1)[0]).toMatchObject({
+      status: 'error',
+      publicUrl: 'https://cdn/img-0.jpg',
+    })
+  })
+
+  it('a failed position that is being retried reads as generating, not failed', () => {
+    expect(toVisualSlots([], [1], [], [1], 2)).toEqual([{ position: 1, status: 'generating' }])
   })
 })

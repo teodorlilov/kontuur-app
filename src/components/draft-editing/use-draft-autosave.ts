@@ -1,22 +1,19 @@
 'use client'
 
 import { useCallback, useEffect, useRef } from 'react'
+import type { DraftEdits } from './use-draft-edits'
 
 const AUTOSAVE_DELAY_MS = 800
 
-interface QueueEdits {
-  caption: string
-  slidesJson: unknown
-}
-
 /**
- * Debounced persistence for the focused post's working copy. One pending slot:
- * scheduling edits for a different post flushes the previous one first, so a
- * fast draft-switch can never cross-save. Unmount flushes — leaving the tab
- * must not drop typed edits (the safe failure direction is an extra save).
+ * Debounced persistence for the focused draft's working copy, shared by the review queue and
+ * the generate flow's review — both edit a `posts` row in place. One pending slot: scheduling
+ * edits for a different post flushes the previous one first, so a fast draft-switch can never
+ * cross-save. Unmount flushes — leaving the tab must not drop typed edits (the safe failure
+ * direction is an extra save).
  */
-export function useQueueAutosave(persist: (postId: string, edits: QueueEdits) => Promise<void>) {
-  const pendingRef = useRef<{ postId: string; edits: QueueEdits } | null>(null)
+export function useDraftAutosave(persist: (postId: string, edits: DraftEdits) => Promise<void>) {
+  const pendingRef = useRef<{ postId: string; edits: DraftEdits } | null>(null)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const persistRef = useRef(persist)
   useEffect(() => {
@@ -38,7 +35,7 @@ export function useQueueAutosave(persist: (postId: string, edits: QueueEdits) =>
   }, [cancel])
 
   const schedule = useCallback(
-    (postId: string, edits: QueueEdits) => {
+    (postId: string, edits: DraftEdits) => {
       if (pendingRef.current && pendingRef.current.postId !== postId) void flush()
       pendingRef.current = { postId, edits }
       if (timerRef.current) clearTimeout(timerRef.current)

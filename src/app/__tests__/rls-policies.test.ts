@@ -55,6 +55,8 @@ const EXEMPT: Record<string, string> = {
 const POLICYLESS: Record<string, string> = {
   document_counters:
     'One counter row, read and written by the service role alone through the issue_sale_document RPC (migration 20260855). No tenant ever selects it, so no predicate could name a caller; the row belongs to nobody, and ownership is not a concept here.',
+  post_visual_jobs:
+    'A claim on a slide position while its picture is being generated (migration 20260859), taken and released by the service role inside generatePostVisual and read by the server components that decide what still owes a picture. No browser touches it; a forgeable claim would let one session stop another generating, which is exactly what the service-role-only posture prevents.',
 }
 
 interface Policy {

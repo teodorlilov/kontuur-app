@@ -254,7 +254,15 @@ export async function setIdeasStatus(
   if (error) throw new Error(`Failed to update ideas: ${error.message}`)
 }
 
-/** Records the post that fulfils an idea, and marks the idea generated in the same write. */
+/**
+ * Records the post that fulfils an idea, and marks the idea generated in the same write.
+ *
+ * Only an idea still `new` is claimed: every draft of an idea's run carries the idea, so the
+ * SECOND approval of that run must not move the link off the post that already fulfilled it.
+ * That rule used to live in a React ref, which meant it held only for as long as one browser tab —
+ * a resumed run, or a second tab, could overwrite `generated_post_id`. A no-op update is the
+ * correct answer here, not a failure: the idea is already fulfilled.
+ */
 export async function linkIdeaToPost(
   ideaId: string,
   agencyId: string,
@@ -266,6 +274,7 @@ export async function linkIdeaToPost(
     .update({ status: 'generated', generated_post_id: postId })
     .eq('id', ideaId)
     .eq('agency_id', agencyId)
+    .eq('status', 'new')
 
   if (error) throw new Error(`Failed to link idea to post: ${error.message}`)
 }

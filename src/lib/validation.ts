@@ -7,6 +7,29 @@ export const POST_STATUSES = ['draft', 'pending_review', 'approved', 'scheduled'
 
 export type PostStatus = (typeof POST_STATUSES)[number]
 
+/**
+ * The two statuses a reviewer has not decided on: `'draft'` is the wizard's private review step,
+ * `'pending_review'` the cron's batch waiting in the queue. A post in either is not yet a human
+ * signal about its source and is the only kind a generated draft is ever written as.
+ */
+export const UNDECIDED_POST_STATUSES = [
+  'draft',
+  'pending_review',
+] as const satisfies readonly PostStatus[]
+
+export type UndecidedPostStatus = (typeof UNDECIDED_POST_STATUSES)[number]
+
+/**
+ * The other two: a post a reviewer kept. Everything the app learns the client's voice from reads
+ * this — the exemplar bank (`fetchEngineContext`, lib/queries/db.ts) and the style memo's edit
+ * diffs — because typing on a draft that was then discarded is not a preference, and since
+ * 2026-09-20 a discarded wizard draft is a row like any other.
+ */
+export const DECIDED_POST_STATUSES = [
+  'approved',
+  'scheduled',
+] as const satisfies readonly PostStatus[]
+
 /** Discard-reason values — must mirror the discarded_drafts.reason check constraint (migration 20260805). */
 export const DISCARD_REASONS = [
   'off_brand',

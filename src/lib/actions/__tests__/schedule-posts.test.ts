@@ -26,6 +26,7 @@ const { mocks } = vi.hoisted(() => ({
     revalidatePath: vi.fn(),
     assignDestinations: vi.fn(),
     withdrawPendingPublications: vi.fn(),
+    recordPostTopics: vi.fn(),
   },
 }))
 
@@ -42,6 +43,9 @@ vi.mock('@/features/publishing/lib/destinations', () => ({
 }))
 vi.mock('@/features/publishing/lib/publication-store', () => ({
   withdrawPendingPublications: mocks.withdrawPendingPublications,
+}))
+vi.mock('@/lib/queries/post-history', () => ({
+  recordPostTopics: mocks.recordPostTopics,
 }))
 
 vi.mock('@/lib/auth/helpers', () => ({
@@ -66,13 +70,26 @@ import { schedulePost, schedulePosts } from '../post-actions'
 function fakeSupabase(
   updateError: { message: string } | null,
   readError: { message: string } | null = null,
-  caption = 'fine'
+  caption = 'fine',
+  row: { status?: string; topic_summary?: string | null } = {}
 ) {
   return {
     from: vi.fn(() => ({
       select: () => ({
         in: async () => ({
-          data: readError ? null : [{ id: POST_ID, caption, post_type: 'single' }],
+          data: readError
+            ? null
+            : [
+                {
+                  id: POST_ID,
+                  caption,
+                  post_type: 'single',
+                  client_id: 'c1',
+                  status: row.status ?? 'approved',
+                  topic_summary: row.topic_summary ?? null,
+                  ...row,
+                },
+              ],
           error: readError,
         }),
       }),
@@ -124,6 +141,67 @@ describe('the caption gate is per destination', () => {
     ])
 
     expect(result.ok).toBe(true)
+  })
+})
+
+describe("the client's topic history", () => {
+  /** A post the reviewer is deciding on right now, carrying the topic it was written for. */
+  function undecided(topic: string | null = 'Lip sync accuracy') {
+    mocks.resolveActionAuth.mockResolvedValue({
+      ok: true,
+      supabase: fakeSupabase(null, null, 'fine', {
+        status: 'pending_review',
+        topic_summary: topic,
+      }),
+      agencyId: AGENCY_ID,
+    })
+  }
+
+  it('records the topic when a reviewer keeps the post', async () => {
+    undecided()
+
+    await schedulePosts([
+      { postId: POST_ID, scheduledAt: '2026-09-08T09:00:00.000Z', platforms: ['instagram'] },
+    ])
+
+    expect(mocks.recordPostTopics).toHaveBeenCalledWith(expect.anything(), 'c1', [
+      'Lip sync accuracy',
+    ])
+  })
+
+  it('records nothing when an already-approved post is moved around the calendar', async () => {
+    mocks.resolveActionAuth.mockResolvedValue({
+      ok: true,
+      supabase: fakeSupabase(null, null, 'fine', {
+        status: 'scheduled',
+        topic_summary: 'Lip sync accuracy',
+      }),
+      agencyId: AGENCY_ID,
+    })
+
+    await schedulePosts([
+      { postId: POST_ID, scheduledAt: '2026-09-09T09:00:00.000Z', platforms: ['instagram'] },
+    ])
+
+    // The topic joined the history when it was first kept; a reschedule is not a second decision.
+    expect(mocks.recordPostTopics).not.toHaveBeenCalled()
+  })
+
+  it('records nothing when the row never moved', async () => {
+    mocks.resolveActionAuth.mockResolvedValue({
+      ok: true,
+      supabase: fakeSupabase({ message: 'deadlock detected' }, null, 'fine', {
+        status: 'pending_review',
+        topic_summary: 'Lip sync accuracy',
+      }),
+      agencyId: AGENCY_ID,
+    })
+
+    await schedulePosts([
+      { postId: POST_ID, scheduledAt: '2026-09-08T09:00:00.000Z', platforms: ['instagram'] },
+    ])
+
+    expect(mocks.recordPostTopics).not.toHaveBeenCalled()
   })
 })
 

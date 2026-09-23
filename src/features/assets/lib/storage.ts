@@ -8,11 +8,6 @@ import type { PostImageRow } from '@/types/index'
 
 const BUCKET = POST_IMAGES_BUCKET
 
-/** Storage prefix for wizard-draft visuals — files that have no `posts` row yet (attached on approve). */
-export function draftVisualPrefix(clientId: string): string {
-  return `${clientId}/drafts/`
-}
-
 export interface UploadResult {
   publicUrl: string
   storagePath: string
@@ -67,47 +62,6 @@ export async function uploadPostImage(
   )
 }
 
-/** Upload a wizard-draft visual (no `posts` row yet) under the client's drafts prefix. */
-export async function uploadDraftVisual(
-  file: Buffer,
-  clientId: string,
-  draftId: string,
-  position: number
-): Promise<UploadResult> {
-  return uploadToBucket(
-    BUCKET,
-    `${draftVisualPrefix(clientId)}${draftId}/${position}-${Date.now()}.jpg`,
-    file,
-    'image/jpeg'
-  )
-}
-
-/** Upload a canvas-element asset for an in-memory wizard draft (logo, cutout, generated vector). */
-export async function uploadDraftAsset(
-  file: Buffer,
-  contentType: string,
-  clientId: string,
-  draftId: string,
-  fileName: string
-): Promise<UploadResult> {
-  return uploadToBucket(
-    BUCKET,
-    `${draftVisualPrefix(clientId)}${draftId}/assets/${Date.now()}-${fileName}`,
-    file,
-    contentType
-  )
-}
-
-/** Batch-delete draft visuals from storage (discarded wizard drafts). Logs on failure but does not throw. */
-export async function deleteDraftVisuals(storagePaths: string[]): Promise<void> {
-  if (storagePaths.length === 0) return
-  const admin = createAdminSupabaseClient()
-  const { error } = await admin.storage.from(BUCKET).remove(storagePaths)
-  if (error) {
-    console.error('Failed to delete draft visuals from storage:', error.message)
-  }
-}
-
 /** Delete a post image from storage. Logs on failure but does not throw. */
 export async function deletePostImage(storagePath: string): Promise<void> {
   const admin = createAdminSupabaseClient()
@@ -125,10 +79,9 @@ export interface ExistingPostImage {
 /**
  * The image a position is about to hold, as every writer of one describes it.
  *
- * `fileName`/`fileSize`/`contentType` are optional because the columns are nullable and one caller
- * genuinely does not know them: approving a wizard draft attaches a storage object the browser
- * uploaded, and the request body carries a path and a URL, not a size. The row is written WHOLE, so
- * leaving one out on an existing row CLEARS it — pass what you have.
+ * `fileName`/`fileSize`/`contentType` are optional because the columns are nullable and a caller
+ * may genuinely not know them — a copy made from another row's path carries what that row had. The
+ * row is written WHOLE, so leaving one out on an existing row CLEARS it — pass what you have.
  */
 interface PostImageWrite {
   postId: string
@@ -196,9 +149,9 @@ export async function putPostImage(
  * Put several images in one statement. The only `post_images` write in the codebase — `putPostImage`
  * is this function plus the read and the stale-file cleanup that a single replacement needs.
  *
- * It exists separately because approving a wizard draft attaches a whole carousel at once, and
- * looping `putPostImage` would be one round trip per slide on a post whose positions are all empty
- * by construction. That is also its limit: it does NOT clean up files it replaces, so anything
+ * It exists separately because a duplicate attaches a whole carousel at once, and looping
+ * `putPostImage` would be one round trip per slide on a post whose positions are all empty by
+ * construction. That is also its limit: it does NOT clean up files it replaces, so anything
  * overwriting a position a user can already see must go through `putPostImage`.
  *
  * Every key is written on every row, `null` where absent — PostgREST rejects a batch whose objects
@@ -251,43 +204,13 @@ export async function copyPostImageObject(
   postId: string,
   position: number
 ): Promise<UploadResult | null> {
-  return relocate(
-    'copy',
-    fromPath,
-    `${postImagePrefix(clientId, postId)}/${position}-${fromPath.split('/').pop()}`
-  )
-}
-
-/**
- * The shared half of copy and move: run the storage op, report the new location, and report a
- * failure rather than throwing. Only the destination rule differs between the two.
- */
-async function relocate(
-  op: 'copy' | 'move',
-  fromPath: string,
-  toPath: string
-): Promise<UploadResult | null> {
+  const toPath = `${postImagePrefix(clientId, postId)}/${position}-${fromPath.split('/').pop()}`
   const admin = createAdminSupabaseClient()
   const bucket = admin.storage.from(BUCKET)
-  const { error } =
-    op === 'copy' ? await bucket.copy(fromPath, toPath) : await bucket.move(fromPath, toPath)
+  const { error } = await bucket.copy(fromPath, toPath)
   if (error) {
-    console.error(`Failed to ${op} ${fromPath} to ${toPath}:`, error.message)
+    console.error(`Failed to copy ${fromPath} to ${toPath}:`, error.message)
     return null
   }
   return { publicUrl: bucket.getPublicUrl(toPath).data.publicUrl, storagePath: toPath }
-}
-
-/** Move a storage object into a post's folder (drafts → post relocation on approve).
- *  Returns the new location, or null on failure (logged; the caller keeps the old path). */
-export async function movePostImageObject(
-  fromPath: string,
-  clientId: string,
-  postId: string
-): Promise<UploadResult | null> {
-  return relocate(
-    'move',
-    fromPath,
-    `${postImagePrefix(clientId, postId)}/${Date.now()}-${fromPath.split('/').pop()}`
-  )
 }

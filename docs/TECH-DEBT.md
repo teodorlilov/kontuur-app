@@ -75,8 +75,14 @@ keeping. It survived four months because it was nobody's task, not because it wa
 - **Workaround:** "Re-analyze from website" once per client seeds the description eagerly.
 - **Real fix:** cross-invocation lock or precompute step — not worth it at current scale.
 
-### 2.2 Orphaned draft visuals in storage
+### 2.2 Orphaned draft visuals in storage (historical prefix since 2026-09-20)
 
+- **Closed at the source 2026-09-20:** a wizard draft is a `posts` row the moment it streams
+  (status `'draft'`, written by `POST /api/ai/generate-stream` through `insertDraftPosts`), and its
+  visuals go through the persisted-post pipeline under `{clientId}/{postId}/` — `deletePost` sweeps
+  them with the row. Nothing writes under `drafts/` any more. What follows describes the files
+  that prefix already holds; they are still referenced by `post_images.storage_path` and
+  `post_canvas_docs` for every post approved before that date, so every warning below stands.
 - **What:** abandoned wizard tabs / mid-run errors leave files under `post-images/{clientId}/drafts/`
   (aborted fetches can't cancel the serverless run; discard-cleanup only fires on explicit discard).
 - **Impact:** storage pennies; no data-integrity issue (`post_images` rows are the source of truth).
@@ -99,6 +105,16 @@ keeping. It survived four months because it was nobody's task, not because it wa
 - **What:** generation triggered in one tab/surface doesn't live-update another already-open surface;
   rows exist server-side and appear on next load.
 - **Action:** accepted — no realtime plumbing planned.
+- **Narrowed 2026-09-23:** the one case where this cost a person something is closed. A slide whose
+  picture is being made by an invocation THIS browser cannot hear from (a resumed run, a second tab,
+  the cron) used to show "Generating image…" until the page was loaded again. `useGenerateVisuals`
+  now polls `fetchVisualProgress` every 5s for exactly those positions and stops the moment none is
+  in flight — a read of the claims and images that already exist, not realtime plumbing. What lands
+  that way goes through the same `pictureLanded` step a picture this session asked for does, so it
+  arrives with the slide's text baked on rather than as bare art, and a post the read cannot answer
+  for (deleted here or elsewhere) is dropped so the loop cannot outlive it. Everything else in this
+  entry stands: a surface with nothing in flight still issues no requests and still learns of
+  another surface's work on its next load.
 
 ### 2.4 Approve attaches images best-effort — RESOLVED 2026-08-24
 
@@ -149,8 +165,25 @@ branch previously returned silently.
   RAW model output which the client immediately supersedes with its composite; closing the
   editor without saving strands everything created that session.
 - **Impact:** storage pennies (same posture as 2.2/2.7); `post_canvas_docs` + `post_images` stay
-  the source of truth. Discard cleanup DOES cover element srcs referenced by draft docs
-  (`draftStoragePaths`); approve moves referenced element files out of `drafts/`.
+  the source of truth. (Until 2026-09-20 a wizard draft's discard swept the element files its
+  in-memory docs referenced, and approve moved them out of `drafts/`; both paths are gone with
+  the draft prefix — a draft is a row, and `deletePost` sweeps its whole `{clientId}/{postId}/`
+  folder, element files included.)
+- **Extended 2026-09-20 (drafts as rows):** one new member of the same class. A visual the
+  generate flow requested for a draft that is then discarded — `useGenerateVisuals.cancel` stops
+  the browser listening, but the server finishes the picture and fails to attach it to a row that
+  is gone — lands as a file under the deleted post's prefix that no sweep runs after. (The second
+  one this entry listed, a resumed run paying twice for a picture still in flight, was CLOSED on
+  2026-09-23 by the per-position claim in `lib/visual/visual-jobs.ts`: the generation takes the
+  position before the model is called, every reader of "what still owes a picture" skips a claimed
+  one, and a claim older than three minutes is treated as abandoned. What remains is cosmetic —
+  a slide claimed by an invocation this browser cannot hear from shows as generating until the
+  surface is loaded again — CLOSED on 2026-09-23 by the poll in §2.3.)
+- **Closed 2026-09-23 (the discarded draft's picture):** the file described above is now deleted by
+  the generation that made it. `generateClaimedVisual` uploads before it writes the row, so when
+  `putPostImage` throws — most often because the post was discarded during the ~52s the picture
+  took — it deletes the object it just uploaded and rethrows. Unconditional rather than keyed on a
+  foreign-key code: an unreferenced file is garbage whatever the write failed on.
 - **Fix if it ever matters:** the same periodic cleanup job as 2.2, extended to skip every path
   referenced by any doc's image nodes (`nodes[]` filtered by `isImageNode`, `src.storagePath`).
 - **Extended 2026-08-16 (Wave 9c):** an outpaint uploads a PADDED intermediate (the original on a
@@ -159,11 +192,11 @@ branch previously returned silently.
   as the raw inpaint output above it. One per Expand press.
 - **Extended 2026-08-15 (Wave 8):** in-editor background generation adds a new orphan class —
   every generated candidate is stored, and only the one the user picks is ever referenced. The rest
-  (and any generation the user cancels, which the server finishes regardless) are abandoned. For a
-  DRAFT target they land under the client's `drafts/` prefix, so the existing discard cleanup
-  (`DELETE /api/ai/generate-visual`) already reaches them; for a PERSISTED POST target nothing
-  collects them — the canvas PUT deletes exactly one displaced background per save. Same posture
-  as the rest of this entry: storage pennies, no integrity risk.
+  (and any generation the user cancels, which the server finishes regardless) are abandoned.
+  Nothing collects them — the canvas PUT deletes exactly one displaced background per save. Same
+  posture as the rest of this entry: storage pennies, no integrity risk. (A draft target used to
+  land them under `drafts/`, where the wizard's discard reached them; since 2026-09-20 every
+  target is a post.)
 
 ### 2.9 Supabase bucket MIME allowlist must include `image/svg+xml` (manual step)
 
@@ -790,11 +823,13 @@ left, with the audit's own ids so the reasoning is traceable.
   `preloadedClientData` keeps the documented re-narrowing.
 
 **Generation quality signals.**
-- **M12 — wizard drafts are never persisted, but their themes are.** `trackTheme` fires
-  unconditionally while the wizard persists nothing until approve, and
-  `fetchThemeDescriptions` feeds the last 10 runs into "RECENTLY COVERED TOPICS (do NOT
-  suggest these)". A theme rejected *because the draft was bad* is banned for ten runs,
-  identically to one that shipped.
+- **M12 — a rejected theme is banned like one that shipped.** `trackTheme` fires
+  unconditionally, and `fetchThemeDescriptions` feeds the last 10 runs into "RECENTLY COVERED
+  TOPICS (do NOT suggest these)". A theme rejected *because the draft was bad* is banned for ten
+  runs, identically to one that shipped. (Until 2026-09-20 the entry read "wizard drafts are never
+  persisted, but their themes are"; wizard drafts are rows now, and their `topic_summary` enters
+  `post_history` at insert like the cron's — so the asymmetry is gone, and the ten-run ban is now
+  the whole finding.)
 - **Skipped-pillar count uses a different allocation than the prompt** — `allocateByWeight`
   is computed twice with different inputs. ±1 item on marginal units only.
 

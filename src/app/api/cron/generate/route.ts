@@ -4,7 +4,7 @@ import { fetchClientData } from '@/lib/clients/fetch-client-data'
 import { fetchEngineContext } from '@/lib/queries/db'
 import { runGenerationBatch } from '@/ai/generation/generation-orchestrator'
 import { toTheme } from '@/ai/generation/to-theme'
-import { draftColumns } from '@/lib/generation/draft-columns'
+import { insertDraftPosts } from '@/lib/generation/draft-posts'
 import { performResearch } from '@/ai/research/research-orchestrator'
 import {
   finishGenerationRun,
@@ -26,7 +26,6 @@ import { fetchScheduleContext, getScheduleDue, notifyDraftsExhausted } from './h
 import type { PostType } from '@/types/api'
 import type { Theme } from '@/ai/generation/types'
 import { POSTING_SCHEDULE_DUE_COLUMNS } from '@/lib/queries/select-columns'
-import { recordPostTopics } from '@/lib/queries/post-history'
 import { notify, NOTIFY_EVERY_TIME } from '@/lib/notifications/notify'
 import { unauthorizedCron } from '@/lib/cron/authorize-cron'
 
@@ -182,7 +181,16 @@ export async function GET(request: NextRequest) {
       })
       continue
     }
-    const reservation = (landed: number) => ({ agencyId, entitlement, reserved: total, landed })
+    // A cron run never watches research: it closes as failed with nothing landed, or complete
+    // with the batch it saved, and its skipped pillars go unreported because nobody is watching.
+    const outcome = (status: 'complete' | 'failed', landed: number) => ({
+      status,
+      agencyId,
+      entitlement,
+      reserved: total,
+      landed,
+      skipped: null,
+    })
     const spender = { agencyId, clientId, flow: 'generation' as const }
     try {
       if (Date.now() - startedAt > TIME_BUDGET_MS) {
@@ -264,7 +272,7 @@ export async function GET(request: NextRequest) {
 
       if (researchTopics.length === 0) {
         console.error(`[cron] No research topics for client ${clientId} — skipping generation`)
-        if (runId) await finishGenerationRun(supabase, runId, 'failed', reservation(0))
+        if (runId) await finishGenerationRun(supabase, runId, outcome('failed', 0))
         continue
       }
 
@@ -283,34 +291,15 @@ export async function GET(request: NextRequest) {
       )
       const generationMs = Date.now() - generationStartedAt
 
-      // Batch insert rather than N serial round-trips.
+      // Batch insert rather than N serial round-trips. Every draft of this batch is unasked-for
+      // (`priority` stays false) and waits for the review queue as 'pending_review'.
       if (generationResults.length > 0) {
-        const { data: savedPosts, error: saveError } = await supabase
-          .from('posts')
-          .insert(
-            generationResults.map(({ post }) => ({
-              ...draftColumns(post),
-              status: 'pending_review',
-              priority: false,
-            }))
-          )
-          .select('id')
-
-        // Generated posts are expensive — a silent insert failure loses the whole batch
-        if (saveError) {
-          throw new Error(`Failed to save generated posts: ${saveError.message}`)
-        }
-
-        if (savedPosts && savedPosts.length > 0) {
-          // Swallows its own failure by design — the batch is already saved and the run must not
-          // be relabelled 'failed' past this point. See recordPostTopics.
-          await recordPostTopics(
-            supabase,
-            clientId,
-            generationResults.map(({ post }) => post.topic_summary)
-          )
-          results.posts_created += savedPosts.length
-        }
+        const savedPosts = await insertDraftPosts(
+          supabase,
+          generationResults.map(({ post }) => post),
+          'pending_review'
+        )
+        results.posts_created += savedPosts.length
       }
 
       // A run that saved nothing is failed, not complete. The dedup guard counts
@@ -321,7 +310,7 @@ export async function GET(request: NextRequest) {
       if (generationResults.length === 0) {
         console.error(`[cron] Generation produced no posts for client ${clientId}`)
         results.errors.push({ clientId, error: 'generation produced no posts' })
-        if (runId) await finishGenerationRun(supabase, runId, 'failed', reservation(0))
+        if (runId) await finishGenerationRun(supabase, runId, outcome('failed', 0))
         continue
       }
 
@@ -330,12 +319,7 @@ export async function GET(request: NextRequest) {
       // follow-up past this point must not relabel a saved batch and trigger a
       // duplicate next tick.
       if (runId)
-        await finishGenerationRun(
-          supabase,
-          runId,
-          'complete',
-          reservation(generationResults.length)
-        )
+        await finishGenerationRun(supabase, runId, outcome('complete', generationResults.length))
 
       try {
         // Every finished run is worth announcing, and the count varies anyway — the message is
@@ -370,7 +354,7 @@ export async function GET(request: NextRequest) {
           `${generationResults.length} posts`
       )
     } catch (err) {
-      if (runId) await finishGenerationRun(supabase, runId, 'failed', reservation(0))
+      if (runId) await finishGenerationRun(supabase, runId, outcome('failed', 0))
       results.errors.push({
         clientId: schedule.client_id,
         error: err instanceof Error ? err.message : 'Unknown error',

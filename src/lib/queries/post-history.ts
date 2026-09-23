@@ -5,10 +5,9 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 /**
  * Record the topics a client has already had, so later generation runs do not repeat them.
  *
- * Both places a post comes into existence write this — the cron batch and the approve-a-draft
- * route — and they were writing the identical two-column row from two files. That is the shape this
- * whole pass exists to remove: nothing kept them agreeing, and the next column added to the table
- * would have landed in one of them.
+ * Called from the one moment a post is KEPT (`recordKeptTopics`, lib/actions/post-actions.ts).
+ * Writing a draft records nothing: since 2026-09-20 a generated draft is a row as soon as it is
+ * written, and recording there meant a draft that was discarded burned its topic for good.
  *
  * Never throws. The post is already saved by the time this runs, and history only feeds topic
  * de-duplication, so losing a row costs a repeated topic weeks later — not the batch.

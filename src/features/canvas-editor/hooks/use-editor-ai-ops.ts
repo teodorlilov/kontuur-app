@@ -97,7 +97,7 @@ interface AiOpsInput {
   activePosition: number
   /** How many slides the post has, so a generation asks for this slide's REAL role. */
   slideTotal: number
-  /** The copy the editor is showing — travels with a generate request; the server has no row to read. */
+  /** The copy the editor is showing — travels with a generate request; the row may be behind unsaved edits. */
   slideCopy: SlideCopy | null
   docState: EditorDocState
   selection: EditorSelection

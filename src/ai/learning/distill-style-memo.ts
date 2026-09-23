@@ -5,6 +5,7 @@ import { sanitizePromptField, PROMPT_FIELD_LIMITS } from '@/ai/utils/sanitize'
 import { asJson } from '@/lib/queries/as-json'
 import { MS_PER_DAY } from '@/utils/constants'
 import { parseMemoBullets, type StyleMemoBullet } from '@/lib/learning/style-memo'
+import { DECIDED_POST_STATUSES } from '@/lib/validation'
 import type { PostRow } from '@/types'
 
 export const STYLE_MEMO_MAX_BULLETS = 15
@@ -111,6 +112,11 @@ function buildDiffBlock(rows: EditedPostRow[]): string {
  * discard reasons, and the client's own free-text approval notes. The cursor
  * advances ONLY after a successful memo write; too little new evidence returns
  * without touching anything, so unprocessed edits keep accumulating.
+ *
+ * Only posts a reviewer decided on count as an edit diff. Since 2026-09-20 a wizard draft is a
+ * row from the moment it streams (`insertDraftPosts`, lib/generation/draft-posts.ts), so without
+ * this the memo learnt the client's voice from typing on drafts that were then thrown away — the
+ * opposite of what a kept edit means. A discarded draft still speaks, through its discard reason.
  */
 export async function distillStyleMemo(
   admin: SupabaseClient,
@@ -146,6 +152,7 @@ export async function distillStyleMemo(
     .select('caption, generated_caption, slides_json, generated_slides_json, created_at, edited_at')
     .eq('client_id', clientId)
     .not('generated_caption', 'is', null)
+    .in('status', DECIDED_POST_STATUSES)
     .order('created_at', { ascending: false })
     .limit(EVIDENCE_POST_LIMIT)
   if (postsError) throw new Error(`style memo: posts read failed: ${postsError.message}`)

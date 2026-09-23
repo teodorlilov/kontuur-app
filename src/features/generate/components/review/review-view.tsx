@@ -12,21 +12,20 @@ import { InsightPanel } from '@/components/draft-editing/insight-panel'
 import { CommitmentBar } from '@/components/draft-editing/commitment-bar'
 import { ScheduleDialog } from '@/components/draft-editing/schedule-dialog'
 import { useDraftEdits } from '@/components/draft-editing/use-draft-edits'
+import { useDraftAutosave } from '@/components/draft-editing/use-draft-autosave'
+import { approvePost, saveDraftCopy } from '@/components/draft-editing/approve-post'
 import { useReviewKeyboard } from '@/components/draft-editing/use-review-keyboard'
 import type { ReviewDraft } from '@/components/draft-editing/types'
-import { approveDraft } from '@/features/generate/components/review/approve-draft'
 import { rewriteDraft } from '@/lib/rewrite-draft'
-import {
-  completedDraftImages,
-  draftScheme,
-  countVisualsByStatus,
-  type DraftVisual,
-} from '@/lib/visual/draft-visuals'
-import type { PillarAllocation } from '@/features/generate/lib/run-plan'
-import type { SkippedPillar } from '@/ai/research/types'
-import type { CarouselSlide } from '@/types/api'
+import { countVisualsByStatus, type DraftVisual } from '@/lib/visual/draft-visuals'
+import type { SkippedPillars } from '@/lib/generation/runs'
+import type { CarouselSlide, PostImage } from '@/types/api'
 import type { PostData } from '@/types/post'
 import type { ValidationData } from '@/types/api'
+
+/** The one shortfall an approve can report: the post is scheduled and nothing can publish it. */
+const NO_DESTINATION =
+  'Post approved and scheduled, but this client has no connected account that can publish it — connect one and re-schedule it.'
 
 type ReviewLayout = 'all' | 'focus'
 
@@ -35,15 +34,16 @@ interface RunContext {
   clientName: string
   postType: string
   slideCount: number
-  targetPostCount: number
+  /** How many posts the run asked for — what the skipped-pillar banner compares against. */
+  requestedCount: number
 }
 
 interface ReviewViewProps {
   posts: ReviewDraft[]
   approvedIds: Set<string>
   discardedIds: Set<string>
-  skippedPillars: SkippedPillar[]
-  allocation: PillarAllocation[]
+  /** What this run could not cover, as the run recorded it — streamed live, stored for a resume. */
+  skipped: SkippedPillars | null
   clientId: string
   /**
    * The agency zone, arriving as a prop rather than from `useShell`.
@@ -55,37 +55,43 @@ interface ReviewViewProps {
    */
   timeZone: string
   runContext: RunContext
+  /** The networks the client has a live connection to — the server narrows to this format. */
+  destinations: string[]
   visualsByDraft: Record<string, DraftVisual[]>
   onRegenerateVisual: (post: PostData, position: number) => void
   onReplaceVisual: (post: PostData, position: number, file: File) => Promise<boolean>
-  onEditedVisual: (draftId: string, visual: DraftVisual) => void
-  /** Post-POST bookkeeping — the POST itself happens here, where edits live. */
-  /** `savedPostId` is the row the POST created — the draft id does not exist in `posts`. */
-  onApproved: (postId: string, savedPostId: string) => void
-  onDiscarded: (postId: string) => void
+  /** An editor save landed a new image for the draft's slide. */
+  onSavedImage: (postId: string, image: PostImage) => void
+  /** The reviewer's typing reached the row — composed slides re-bake with the fresh copy. */
+  onCopySaved: (post: PostData) => void
+  /** Bookkeeping after the approve — the approve itself happens here, where edits live. */
+  onApproved: (postId: string) => void
+  /** Deletes the row; resolves false when it could not, and the draft stays live. */
+  onDiscarded: (postId: string) => Promise<boolean>
   onRewritten: (postId: string, updatedPost: PostData, validation: ValidationData) => void
   onNewRun: () => void
 }
 
 /**
  * Step 3 — the review shell and everything review-scoped: the All|Focus
- * layout, the focused draft, per-draft edits, the schedule dialog, and the
- * approve execution (single and bulk — both go through approveDraft, with
- * edits riding along).
+ * layout, the focused draft, per-draft edits (autosaved onto the row, like the
+ * queue's), the schedule dialog, and the approve execution (single and bulk —
+ * both go through `approvePost`, with edits riding along).
  */
 export function ReviewView({
   posts,
   approvedIds,
   discardedIds,
-  skippedPillars,
-  allocation,
+  skipped,
   clientId,
   timeZone,
   runContext,
+  destinations,
   visualsByDraft,
   onRegenerateVisual,
   onReplaceVisual,
-  onEditedVisual,
+  onSavedImage,
+  onCopySaved,
   onApproved,
   onDiscarded,
   onRewritten,
@@ -97,7 +103,18 @@ export function ReviewView({
   const [layout, setLayout] = useState<ReviewLayout>(posts.length === 1 ? 'focus' : 'all')
   const [focusedId, setFocusedId] = useState(posts[0]?.post.id ?? '')
   const [slideIdx, setSlideIdx] = useState(0)
-  const { editsFor, setEdits } = useDraftEdits()
+  const { editsFor, changesFor, setEdits } = useDraftEdits()
+  const autosave = useDraftAutosave(async (postId, edits) => {
+    const result = await saveDraftCopy(postId, edits)
+    if (!result.ok) {
+      toast.error('Failed to save edits')
+      return
+    }
+    const item = posts.find((p) => p.post.id === postId)
+    if (item) {
+      onCopySaved({ ...item.post, caption: edits.caption, slides_json: edits.slidesJson })
+    }
+  })
   const [scheduleTarget, setScheduleTarget] = useState<string | null>(null)
   const [approving, setApproving] = useState(false)
   const [rewriting, setRewriting] = useState(false)
@@ -150,58 +167,42 @@ export function ReviewView({
   }
 
   /**
-   * The one approve execution: POST with edits, then the owner's bookkeeping.
+   * The one approve execution: the row takes the working copy and its slot, then the owner's
+   * bookkeeping. Blocking, one draft at a time — approve-all walks the live drafts in order.
    *
-   * Partial-success warnings are RETURNED rather than raised here, because the same call
-   * serves one post and a bulk run: toasting inside would stack twelve identical
-   * "visuals could not be attached" messages on an approve-all where every post hit the
-   * same failure. The caller decides how many are worth showing.
+   * A slot nothing can publish is RETURNED rather than toasted here, because the same call
+   * serves one post and a bulk run: the caller decides whether it is worth saying.
    */
   async function executeApprove(
     postId: string,
     scheduledAt: string | null
-  ): Promise<{ ok: boolean; warnings: string[] }> {
+  ): Promise<{ ok: boolean; nowhereToGo: boolean }> {
     const item = posts.find((p) => p.post.id === postId)
-    if (!item) return { ok: false, warnings: [] }
-    const edits = editsFor(item)
-    const { postId: savedPostId, warnings } = await approveDraft({
-      post: item.post,
-      caption: edits.caption,
-      slidesJson: edits.slidesJson,
-      scheduledAt,
-      images: completedDraftImages(visualsByDraft[postId]),
-      ...(draftScheme(visualsByDraft[postId])
-        ? { visualScheme: draftScheme(visualsByDraft[postId]) }
-        : {}),
-    })
-    if (!savedPostId) {
-      toast.error('Failed to approve post')
-      return { ok: false, warnings: [] }
+    if (!item) return { ok: false, nowhereToGo: false }
+    autosave.cancel()
+    const result = await approvePost(postId, changesFor(postId), scheduledAt, destinations)
+    if (!result.ok) {
+      toast.error(result.error)
+      return { ok: false, nowhereToGo: false }
     }
-    onApproved(postId, savedPostId)
-    return { ok: true, warnings }
+    onApproved(postId)
+    return { ok: true, nowhereToGo: result.data.nowhereToGo }
   }
 
-  /**
-   * One toast per distinct shortfall, however many posts hit it.
-   *
-   * Held longer than a success toast: this is the only moment the user can learn a post
-   * saved without the visuals they were looking at.
-   */
-  function reportWarnings(warnings: string[], postCount: number) {
-    for (const warning of new Set(warnings)) {
-      toast.error(postCount > 1 ? `${warning} (${postCount} posts)` : warning, { duration: 12_000 })
-    }
+  /** Discard drops the reviewer's pending edits with the row — nothing to flush onto a deleted post. */
+  function handleDiscard(postId: string) {
+    autosave.cancel()
+    void onDiscarded(postId)
   }
 
   async function handleScheduleConfirm(scheduledAt: string | null) {
     if (!scheduleTarget) return
     setApproving(true)
-    const { ok, warnings } = await executeApprove(scheduleTarget, scheduledAt)
+    const { ok, nowhereToGo } = await executeApprove(scheduleTarget, scheduledAt)
     setApproving(false)
     if (ok) {
       toast.success(scheduledAt ? 'Approved · scheduled' : 'Post approved')
-      reportWarnings(warnings, 1)
+      if (nowhereToGo) toast.error(NO_DESTINATION, { duration: 12_000 })
       setScheduleTarget(null)
     }
   }
@@ -210,20 +211,12 @@ export function ReviewView({
     const remaining = [...liveDrafts]
     setApproving(true)
     let approved = 0
-    const warnings: string[] = []
-    let warnedPosts = 0
     for (const item of remaining) {
       const outcome = await executeApprove(item.post.id, null)
-      if (!outcome.ok) continue
-      approved++
-      if (outcome.warnings.length > 0) {
-        warnings.push(...outcome.warnings)
-        warnedPosts++
-      }
+      if (outcome.ok) approved++
     }
     setApproving(false)
     if (approved > 0) toast.success(`${approved} post${approved === 1 ? '' : 's'} approved`)
-    reportWarnings(warnings, warnedPosts)
   }
 
   function handleRewritten(postId: string, updatedPost: PostData, validation: ValidationData) {
@@ -233,10 +226,12 @@ export function ReviewView({
     onRewritten(postId, updatedPost, validation)
   }
 
-  /** Rewrite the focused draft's working copy — triggered from the insight panel. */
+  /** Rewrite the focused draft's working copy — triggered from the insight panel; the rewrite
+   *  lands on the row before it is shown. */
   async function handleRewrite() {
     if (!focused) return
     const edits = editsFor(focused)
+    autosave.cancel()
     setRewriting(true)
     const outcome = await rewriteDraft({
       post: focused.post,
@@ -259,7 +254,7 @@ export function ReviewView({
     onPrev: () => focusNeighbour(-1),
     onNext: () => focusNeighbour(1),
     onApprove: () => focused && setScheduleTarget(focused.post.id),
-    onDiscard: () => focused && onDiscarded(focused.post.id),
+    onDiscard: () => focused && handleDiscard(focused.post.id),
   })
 
   const focusedEdits = focused ? editsFor(focused) : null
@@ -322,13 +317,7 @@ export function ReviewView({
         </div>
       </div>
 
-      <SkippedBanner
-        skippedPillars={skippedPillars}
-        allocation={allocation}
-        requested={runContext.targetPostCount}
-        received={posts.length}
-        clientId={clientId}
-      />
+      <SkippedBanner skipped={skipped} requested={runContext.requestedCount} clientId={clientId} />
 
       {/* ── Layouts ── */}
       {layout === 'all' || !focused || !focusedEdits ? (
@@ -376,13 +365,20 @@ export function ReviewView({
               onPrev={() => focusNeighbour(-1)}
               onNext={() => focusNeighbour(1)}
               onSlideIdx={setSlideIdx}
-              onCaptionChange={(caption) => setEdits(focused.post.id, { ...focusedEdits, caption })}
-              onSlidesChange={(slides: CarouselSlide[]) =>
-                setEdits(focused.post.id, { ...focusedEdits, slidesJson: slides })
-              }
+              onCaptionChange={(caption) => {
+                const edits = { ...focusedEdits, caption }
+                setEdits(focused.post.id, edits)
+                autosave.schedule(focused.post.id, edits)
+              }}
+              onSlidesChange={(slides: CarouselSlide[]) => {
+                const edits = { ...focusedEdits, slidesJson: slides }
+                setEdits(focused.post.id, edits)
+                autosave.schedule(focused.post.id, edits)
+              }}
               onRegenerateVisual={(position) => onRegenerateVisual(focused.post, position)}
               onReplaceVisual={(position, file) => onReplaceVisual(focused.post, position, file)}
-              onEditedVisual={onEditedVisual}
+              editorTarget={{ postId: focused.post.id }}
+              onSavedImage={(image) => onSavedImage(focused.post.id, image)}
             />
             {/* Stacks under the work column below 900px — never hidden: the
                 quality and source panel is the reason this screen is a review. */}
@@ -405,7 +401,7 @@ export function ReviewView({
             composingVisuals={visualTallies.composing}
             approving={approving}
             onSkip={() => focusNeighbour(1)}
-            onDiscard={() => onDiscarded(focused.post.id)}
+            onDiscard={() => handleDiscard(focused.post.id)}
             onApproveAll={() => void handleApproveAll()}
             onApproveNext={() => setScheduleTarget(focused.post.id)}
           />

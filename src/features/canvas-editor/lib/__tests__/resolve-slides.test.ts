@@ -22,12 +22,11 @@ function storedDoc(): CanvasDoc {
   }
 }
 
-function slide(position: number, image = CLEAN, doc?: CanvasDoc | null): EditorSlide {
+function slide(position: number, image = CLEAN): EditorSlide {
   return {
     position,
     image,
     slideCopy: { kind: 'slide', headline: `Headline ${position}`, body: `Body ${position}` },
-    ...(doc === undefined ? {} : { doc }),
   }
 }
 
@@ -67,24 +66,23 @@ describe('resolveSlideDocs', () => {
     expect(resolved.get(0)?.doc.backgroundTransform).toBeUndefined()
   })
 
-  it('reads a draft slide’s doc from the slide itself, a post slide’s from the lookup', () => {
+  it('takes a slide’s doc from the lookup, and seeds when the lookup has none', () => {
     const inMemory = storedDoc()
-    const draft = resolveSlideDocs(
-      [slide(0, BAKED, inMemory)],
-      (s) => s.doc ?? null,
+    const byPosition = new Map([[0, inMemory]])
+    const stored = resolveSlideDocs(
+      [slide(0, BAKED)],
+      (s) => byPosition.get(s.position) ?? null,
       IDENTITY,
       SUBJECT
     )
-    expect(draft.get(0)?.seeded).toBe(false)
+    expect(stored.get(0)?.seeded).toBe(false)
 
-    // The same slide with no doc of its own falls back to seeding — the two targets differ only
-    // in where the stored doc comes from.
     const missing = resolveSlideDocs(
-      [slide(0, BAKED, null)],
-      (s) => s.doc ?? null,
+      [slide(1, BAKED)],
+      (s) => byPosition.get(s.position) ?? null,
       IDENTITY,
       SUBJECT
     )
-    expect(missing.get(0)?.seeded).toBe(true)
+    expect(missing.get(1)?.seeded).toBe(true)
   })
 })

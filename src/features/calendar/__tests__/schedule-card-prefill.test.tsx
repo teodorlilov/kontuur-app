@@ -24,13 +24,16 @@ vi.mock('@/hooks/use-canva-status', () => ({
 }))
 // The real return shape, not an invented one. A mock that drifts from its subject is a
 // test that passes against a component nobody ships — this one returned `generating: {}`
-// at first and blew up inside `missingImagePositions`, which wants an array.
+// at first and blew up inside `missingImagePositions`, which wants an array; the hook now
+// answers per post through `positionsFor`.
 vi.mock('@/components/posts/use-generate-visuals', () => ({
   useGenerateVisuals: () => ({
-    generatingPositions: [] as number[],
-    composingPositions: [] as number[],
+    positionsFor: () => ({ generating: [] as number[], composing: [] as number[] }),
     generate: vi.fn(),
     recompose: vi.fn(),
+    composeMissing: vi.fn(),
+    replaceImage: vi.fn(),
+    cancel: vi.fn(),
   }),
 }))
 vi.mock('@/components/posts/image-slot', () => ({

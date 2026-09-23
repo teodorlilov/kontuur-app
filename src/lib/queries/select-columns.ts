@@ -80,6 +80,11 @@ export const POST_COLUMN_KEYS = [
   'client_source_id',
   'topic_summary',
   'created_at',
+  // What a draft would otherwise only know while its wizard tab is open: the date the brief asked
+  // for, the idea that asked, and the run it belongs to.
+  'target_date',
+  'client_idea_id',
+  'generation_run_id',
 ] as const satisfies readonly (keyof PostRow)[]
 
 /**

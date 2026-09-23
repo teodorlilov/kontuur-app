@@ -4,9 +4,14 @@ import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import 'server-only'
 import { revalidateTag } from 'next/cache'
 import { validateInstagramCaption } from '@/lib/meta/networks/instagram-caption'
-import { recordDiscardedDraft } from '@/lib/queries/discarded-drafts'
+import { recordDiscardedDraft, type DiscardSource } from '@/lib/queries/discarded-drafts'
 import { z } from 'zod'
-import { resolveActionAuth, fetchOwnedPost, verifyPostsOwnership } from '@/lib/auth/helpers'
+import {
+  resolveActionAuth,
+  fetchOwnedPost,
+  verifyPostsOwnership,
+  type SupabaseServerClient,
+} from '@/lib/auth/helpers'
 import { parseStoredValidation } from '@/lib/validation/stored-validation-schema'
 import {
   parsePostUpdate,
@@ -14,8 +19,9 @@ import {
   type PostCopyInput,
   type PostFieldUpdate,
 } from '@/lib/validation/post-update-schema'
-import { DISCARD_REASONS } from '@/lib/validation'
-import { draftColumns } from '@/lib/generation/draft-columns'
+import { DISCARD_REASONS, UNDECIDED_POST_STATUSES } from '@/lib/validation'
+import { insertDraftPosts } from '@/lib/generation/draft-posts'
+import { recordPostTopics } from '@/lib/queries/post-history'
 import type { ActionResult } from './types'
 import { parseActionId } from './parse-input'
 import { statusForSlot } from '@/lib/posts/status-for-slot'
@@ -28,7 +34,23 @@ import { copyPostImageObject, postImagePrefix, putPostImages } from '@/features/
 import { POST_IMAGES_BUCKET } from '@/utils/constants'
 import { requireEntitledAction } from '@/lib/billing/require-entitled'
 
-const deletePostOptionsSchema = z.object({ reason: z.enum(DISCARD_REASONS).optional() }).optional()
+/**
+ * `countAsDiscard: false` is the wizard throwing away a client's waiting drafts to start a new run —
+ * a housekeeping delete, not a verdict on the sources that fueled them, so no `discarded_drafts`
+ * row. Absent means true: a person pressed Discard on this post.
+ */
+const deletePostOptionsSchema = z
+  .object({
+    reason: z.enum(DISCARD_REASONS).optional(),
+    countAsDiscard: z.boolean().optional(),
+  })
+  .optional()
+
+/** Which surface a discard is attributed to, by the status the post held — the two undecided ones. */
+const DISCARD_SOURCE_BY_STATUS: Partial<Record<string, DiscardSource>> = {
+  draft: 'wizard',
+  pending_review: 'review',
+}
 
 const persistRewriteSchema = z.object({
   caption: z.string(),
@@ -180,8 +202,10 @@ export async function persistRewrite(
  * "Use again" therefore means a new row with its own lifecycle, which is what a person asking
  * to reuse a post actually wants: the content, running through review and scheduling afresh.
  *
- * Written through `draftColumns`, the one place a draft becomes a write, so a duplicate carries
- * exactly what the cron and the wizard write and cannot drift from them.
+ * Written through `insertDraftPosts`, the one insert of a generated draft, so a duplicate carries
+ * exactly what the cron and the wizard write and cannot drift from them. Back to the start of the
+ * editorial lifecycle with no slot — a duplicate is something to review and schedule, not something
+ * already on the calendar — and its topic is not recorded again: the original's already is.
  *
  * The visuals come with it. They cannot come by reference — `deletePost` sweeps the whole
  * `{clientId}/{postId}/` prefix, so two posts pointing at one object would mean deleting either
@@ -211,27 +235,23 @@ export async function duplicatePostAsDraft(postId: string): Promise<ActionResult
   const { data, error } = await supabase
     .from('posts')
     .select(
-      'client_id, caption, post_type, slides_json, validation_json, quality_score_avg, topic_summary, source_url, source_title, source_type, source_excerpt, client_source_id, pillar'
+      // The date the brief asked for travels with the copy; the idea and the run do not — the
+      // copy was nobody's request and belongs to no run. `generated_*` travel because they are
+      // what the AI wrote: without them `draftColumns` files the reviewer's edit as the model's
+      // own words and the edit-diff the style memo reads disappears for the copy.
+      'client_id, caption, post_type, slides_json, validation_json, quality_score_avg, topic_summary, source_url, source_title, source_type, source_excerpt, client_source_id, pillar, target_date, generated_caption, generated_slides_json'
     )
     .eq('id', postId)
     .single()
   if (error || !data) return { ok: false, error: 'Could not read that post' }
 
-  const { data: created, error: insertError } = await supabase
-    .from('posts')
-    .insert({
-      ...draftColumns(data),
-      // Back to the start of the editorial lifecycle, with no slot: a duplicate is something
-      // to review and schedule, not something already on the calendar.
-      status: 'pending_review',
-      scheduled_at: null,
-    })
-    .select('id')
-    .single()
-  if (insertError || !created) {
-    console.error(`[posts] duplicate of ${postId} failed:`, insertError?.message)
-    return { ok: false, error: 'Could not create the copy' }
+  let created: { id: string } | undefined
+  try {
+    ;[created] = await insertDraftPosts(supabase, [data], 'pending_review')
+  } catch (err) {
+    console.error(`[posts] duplicate of ${postId} failed:`, err)
   }
+  if (!created) return { ok: false, error: 'Could not create the copy' }
 
   const copyFailure = await copyImagesOnto(data.client_id, postId, created.id)
   if (copyFailure) {
@@ -328,10 +348,17 @@ async function copyImagesOnto(
   return null
 }
 
-/** Delete a post by ID, recording its outcome (and the reviewer's reason) as a review discard first. */
+/**
+ * Delete a post by ID, recording its outcome (and the reviewer's reason) as a discard first.
+ *
+ * A discard is only a discard while nobody had approved the post: a wizard draft (`'draft'`,
+ * logged as the wizard's) or a queue draft (`'pending_review'`, the review's). Deleting an approved
+ * or published post is housekeeping, not a rejection of its source — and it already counted as an
+ * approval, so logging a discard would double-skew the stats.
+ */
 export async function deletePost(
   postId: string,
-  options?: { reason?: string }
+  options?: { reason?: string; countAsDiscard?: boolean }
 ): Promise<ActionResult> {
   const parsedOptions = deletePostOptionsSchema.safeParse(options)
   if (!parsedOptions.success) return { ok: false, error: 'Invalid discard reason' }
@@ -344,30 +371,30 @@ export async function deletePost(
   if (!post) return { ok: false, error: 'Post not found' }
 
   // Outcome telemetry: best-effort — a failed log must never block the delete.
-  // Only pending_review drafts count as a discard — deleting an already-approved
-  // or published post is housekeeping, not a rejection of its source (and it
-  // already counted as an approval, so logging a discard would double-skew stats).
   // discarded_drafts is service-role-only (RLS with no policies), so the insert
   // must go through the admin client — the user-scoped one fails silently.
-  try {
-    const { data: row } = await supabase
-      .from('posts')
-      .select('client_id, client_source_id, pillar, source_url, source_type, status')
-      .eq('id', postId)
-      .single()
-    if (row?.client_id && row.status === 'pending_review') {
-      await recordDiscardedDraft({
-        clientId: row.client_id,
-        clientSourceId: row.client_source_id ?? null,
-        pillar: row.pillar ?? null,
-        sourceUrl: row.source_url ?? null,
-        sourceType: row.source_type ?? null,
-        discardedFrom: 'review',
-        reason: parsedOptions.data?.reason ?? null,
-      })
+  if (parsedOptions.data?.countAsDiscard !== false) {
+    try {
+      const { data: row } = await supabase
+        .from('posts')
+        .select('client_id, client_source_id, pillar, source_url, source_type, status')
+        .eq('id', postId)
+        .single()
+      const discardedFrom = DISCARD_SOURCE_BY_STATUS[row?.status ?? '']
+      if (row?.client_id && discardedFrom) {
+        await recordDiscardedDraft({
+          clientId: row.client_id,
+          clientSourceId: row.client_source_id ?? null,
+          pillar: row.pillar ?? null,
+          sourceUrl: row.source_url ?? null,
+          sourceType: row.source_type ?? null,
+          discardedFrom,
+          reason: parsedOptions.data?.reason ?? null,
+        })
+      }
+    } catch (err) {
+      console.error('[posts] failed to log discard:', err)
     }
-  } catch (err) {
-    console.error('[posts] failed to log review discard:', err)
   }
 
   const { error } = await supabase.from('posts').delete().eq('id', postId)
@@ -411,6 +438,34 @@ export async function schedulePost(
   return result.data.succeeded === 1
     ? { ok: true, data: { nowhereToGo: result.data.nowhereToGo > 0 } }
     : { ok: false, error: 'Could not update that post' }
+}
+
+/**
+ * Add the topics of the posts a human just kept to the client's history.
+ *
+ * `post_history` is the "do not suggest these again" list the research prompt reads
+ * (`fetchPostHistoryByClient`, lib/queries/db.ts), so a topic belongs there once somebody decides
+ * to publish it — not when the model writes one. Since 2026-09-20 every generated draft is a row
+ * the moment it streams, and recording it there burned the topic of every draft that was then
+ * discarded. Between writing and keeping, a run cannot repeat itself anyway: the same prompt also
+ * reads the run's own themes (`fetchThemeDescriptions`, lib/generation/runs.ts).
+ *
+ * Only a post leaving an undecided status counts, so moving an approved post around the calendar
+ * never records its topic twice. Grouped by client because the history is one client's list.
+ */
+async function recordKeptTopics(
+  supabase: SupabaseServerClient,
+  kept: Array<{ client_id: string; status: string; topic_summary: string | null }>
+): Promise<void> {
+  const byClient = new Map<string, string[]>()
+  for (const post of kept) {
+    if (!post.topic_summary) continue
+    if (!UNDECIDED_POST_STATUSES.some((status) => status === post.status)) continue
+    byClient.set(post.client_id, [...(byClient.get(post.client_id) ?? []), post.topic_summary])
+  }
+  for (const [clientId, topics] of byClient) {
+    await recordPostTopics(supabase, clientId, topics)
+  }
 }
 
 /**
@@ -482,7 +537,7 @@ export async function schedulePosts(
   )
   const { data: captionRows, error: readError } = await supabase
     .from('posts')
-    .select('id, caption, client_id, post_type')
+    .select('id, caption, client_id, post_type, status, topic_summary')
     .in('id', [...verifiedIds])
   // The error was discarded. This one read feeds BOTH the caption gate and the client/post_type
   // every publication is built from, so losing it silently skipped validation and then created no
@@ -492,10 +547,15 @@ export async function schedulePosts(
     console.error('[posts] schedule read failed:', readError.message)
     return { ok: false, error: 'Could not read those posts' }
   }
-  const postTypeById = new Map(
+  const postById = new Map(
     (captionRows ?? []).map((row) => [
       row.id,
-      { client_id: row.client_id, post_type: (row.post_type ?? 'single') as PostType },
+      {
+        client_id: row.client_id,
+        post_type: (row.post_type ?? 'single') as PostType,
+        status: row.status,
+        topic_summary: row.topic_summary,
+      },
     ])
   )
   const captionBlocked = new Map<string, string>()
@@ -547,11 +607,16 @@ export async function schedulePosts(
    * not waiting for anything. Only ones that have not gone out are withdrawn, so pulling a
    * published post off the calendar cannot erase the record that it went out.
    */
+  await recordKeptTopics(
+    supabase,
+    [...moved].flatMap((postId) => postById.get(postId) ?? [])
+  )
+
   const admin = createAdminSupabaseClient()
   const nowhereToGo: string[] = []
   for (const [scheduledAt, ids] of byTime) {
     for (const postId of ids) {
-      const post = postTypeById.get(postId)
+      const post = postById.get(postId)
       if (!post || !moved.has(postId)) continue
       /**
        * Caught per post. All three of these throw on a database error, and nothing caught them —

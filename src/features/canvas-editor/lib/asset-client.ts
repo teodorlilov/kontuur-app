@@ -7,7 +7,7 @@ export interface AssetRef {
 }
 
 /** Unwrap an upload/generate response into its stored asset, or throw the server's reason. */
-export async function parseAssetResponse(
+async function parseAssetResponse(
   res: Response,
   fallbackError: string
 ): Promise<AssetRef & { width?: number; height?: number }> {
@@ -27,11 +27,9 @@ export async function parseAssetResponse(
   }
 }
 
-// The asset routes address a persisted post by id, or an in-memory draft by client + draft ids.
+// The asset routes address the post by id; ownership is theirs to check.
 function targetIds(target: EditorTarget): Record<string, string> {
-  return target.kind === 'post'
-    ? { postId: target.postId }
-    : { clientId: target.clientId, draftId: target.draftId }
+  return { postId: target.postId }
 }
 
 /** Upload a user-picked element asset for the editor's target; returns the stored ref. */
@@ -85,8 +83,8 @@ export async function generateSvgAsset(
 
 /**
  * Generate a fresh background for the slide being edited; returns the stored ref. The slide's copy
- * travels with the request because the server cannot re-derive it — a wizard draft has no row, and
- * a post's row can be behind unsaved edits.
+ * travels with the request because the server cannot re-derive it — the post's row can be behind
+ * unsaved edits.
  *
  * The only wire call that takes a signal: it is the only one that runs long enough (~52s) for
  * cancelling to mean anything. Aborting abandons the response, not the server's work — the image
@@ -111,10 +109,6 @@ export async function generateBackgroundAsset(input: {
       slideCopy: input.slideCopy,
       position: input.position,
       total: input.total,
-      // A draft's colour pair travels with the request; a post's is read from its row server-side.
-      ...(input.target.kind === 'draft' && input.target.scheme
-        ? { scheme: input.target.scheme }
-        : {}),
       ...(input.nonce ? { nonce: input.nonce } : {}),
       ...(input.direction ? { direction: input.direction } : {}),
     }),

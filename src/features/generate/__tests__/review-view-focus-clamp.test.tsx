@@ -1,8 +1,17 @@
-import { describe, expect, it, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { ReviewView } from '../components/review/review-view'
 import type { ReviewDraft } from '@/components/draft-editing/types'
+
+const mocks = vi.hoisted(() => ({ approvePost: vi.fn(), savePostCopy: vi.fn() }))
+vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn(), info: vi.fn() } }))
+vi.mock('@/components/draft-editing/approve-post', () => ({
+  approvePost: (...args: unknown[]) => mocks.approvePost(...args),
+  saveDraftCopy: (...args: unknown[]) => mocks.savePostCopy(...args),
+}))
+vi.mock('@/lib/rewrite-draft', () => ({ rewriteDraft: vi.fn() }))
+
+import { ReviewView } from '../components/review/review-view'
 
 /**
  * The focus-clamp effect, pinned.
@@ -63,22 +72,23 @@ function renderView(over: Record<string, unknown> = {}) {
       posts={DRAFTS}
       approvedIds={new Set<string>()}
       discardedIds={new Set<string>()}
-      skippedPillars={[]}
-      allocation={[]}
+      skipped={null}
       clientId="client-1"
       timeZone="Europe/Sofia"
       runContext={{
         clientName: 'Acme',
         postType: 'single',
         slideCount: 1,
-        targetPostCount: 3,
+        requestedCount: 3,
       }}
+      destinations={['instagram']}
       visualsByDraft={{}}
       onRegenerateVisual={vi.fn()}
       onReplaceVisual={vi.fn()}
-      onEditedVisual={vi.fn()}
+      onSavedImage={vi.fn()}
+      onCopySaved={vi.fn()}
       onApproved={vi.fn()}
-      onDiscarded={vi.fn()}
+      onDiscarded={vi.fn().mockResolvedValue(true)}
       onRewritten={vi.fn()}
       onNewRun={vi.fn()}
       {...over}
@@ -90,6 +100,68 @@ function renderView(over: Record<string, unknown> = {}) {
 function focusedDraftId(): string | null {
   return screen.queryByTestId('work-column')?.getAttribute('data-draft-id') ?? null
 }
+
+beforeEach(() => {
+  mocks.approvePost.mockReset().mockResolvedValue({ ok: true, data: { nowhereToGo: false } })
+  mocks.savePostCopy.mockReset().mockResolvedValue({ ok: true, data: undefined })
+})
+
+describe('ReviewView approve', () => {
+  it('approves every live draft through the one approve, to the networks it can reach', async () => {
+    const user = userEvent.setup()
+    const onApproved = vi.fn()
+    renderView({ posts: [draft('a', 'Draft A'), draft('b', 'Draft B')], onApproved })
+
+    await user.click(screen.getByRole('button', { name: 'Approve all 2' }))
+
+    await waitFor(() => expect(onApproved).toHaveBeenCalledTimes(2))
+    // Nobody typed into these drafts, so approve carries no copy to write — one action, not two.
+    expect(mocks.approvePost).toHaveBeenNthCalledWith(1, 'a', null, null, ['instagram'])
+    expect(onApproved).toHaveBeenCalledWith('a')
+    expect(onApproved).toHaveBeenCalledWith('b')
+  })
+
+  it('a draft the row refused stays live', async () => {
+    const user = userEvent.setup()
+    const onApproved = vi.fn()
+    mocks.approvePost.mockResolvedValue({ ok: false, error: 'Post not found' })
+    renderView({ posts: [draft('a', 'Draft A'), draft('b', 'Draft B')], onApproved })
+
+    await user.click(screen.getByRole('button', { name: 'Approve all 2' }))
+
+    await waitFor(() => expect(mocks.approvePost).toHaveBeenCalledTimes(2))
+    expect(onApproved).not.toHaveBeenCalled()
+  })
+})
+
+describe('ReviewView skipped banner', () => {
+  it("says what the run could not cover, in the run's own numbers", () => {
+    // What a resumed group carries: the run stored this when it closed, so the reviewer opening
+    // these drafts a day later is told why there are fewer of them than asked for. The shortfall
+    // is the run's own number — counting the drafts on screen would report one that never
+    // happened, since an approved draft has left the group.
+    const { container } = renderView({
+      posts: [draft('a', 'Draft A')],
+      skipped: { names: ['Behind the scenes'], cost: 2 },
+    })
+
+    expect(screen.getByText('1 pillar skipped')).toBeInTheDocument()
+    expect(screen.getByText('Behind the scenes')).toBeInTheDocument()
+    expect(container.textContent).toContain('2 posts short of the 3 asked for')
+  })
+
+  it('a pillar that was allocated nothing did not shorten the run, and the copy says so', () => {
+    const { container } = renderView({ skipped: { names: ['Tips'], cost: 0 } })
+
+    expect(container.textContent).toContain('Nothing was allocated to it at this size')
+    expect(container.textContent).not.toContain('short of')
+  })
+
+  it('shows nothing for a run that covered everything', () => {
+    renderView({ skipped: null })
+    expect(screen.queryByText(/pillar/)).not.toBeInTheDocument()
+  })
+})
 
 describe('ReviewView focus clamp', () => {
   it('opens focused on the first draft', async () => {
@@ -121,22 +193,23 @@ describe('ReviewView focus clamp', () => {
         posts={[draft('a', 'Draft A'), draft('b', 'Draft B')]}
         approvedIds={new Set(['a'])}
         discardedIds={new Set<string>()}
-        skippedPillars={[]}
-        allocation={[]}
+        skipped={null}
         clientId="client-1"
         timeZone="Europe/Sofia"
         runContext={{
           clientName: 'Acme',
           postType: 'single',
           slideCount: 1,
-          targetPostCount: 2,
+          requestedCount: 2,
         }}
+        destinations={['instagram']}
         visualsByDraft={{}}
         onRegenerateVisual={vi.fn()}
         onReplaceVisual={vi.fn()}
-        onEditedVisual={vi.fn()}
+        onSavedImage={vi.fn()}
+        onCopySaved={vi.fn()}
         onApproved={vi.fn()}
-        onDiscarded={vi.fn()}
+        onDiscarded={vi.fn().mockResolvedValue(true)}
         onRewritten={vi.fn()}
         onNewRun={vi.fn()}
       />
@@ -154,22 +227,23 @@ describe('ReviewView focus clamp', () => {
         posts={[draft('a', 'Draft A')]}
         approvedIds={new Set(['a'])}
         discardedIds={new Set<string>()}
-        skippedPillars={[]}
-        allocation={[]}
+        skipped={null}
         clientId="client-1"
         timeZone="Europe/Sofia"
         runContext={{
           clientName: 'Acme',
           postType: 'single',
           slideCount: 1,
-          targetPostCount: 1,
+          requestedCount: 1,
         }}
+        destinations={['instagram']}
         visualsByDraft={{}}
         onRegenerateVisual={vi.fn()}
         onReplaceVisual={vi.fn()}
-        onEditedVisual={vi.fn()}
+        onSavedImage={vi.fn()}
+        onCopySaved={vi.fn()}
         onApproved={vi.fn()}
-        onDiscarded={vi.fn()}
+        onDiscarded={vi.fn().mockResolvedValue(true)}
         onRewritten={vi.fn()}
         onNewRun={vi.fn()}
       />

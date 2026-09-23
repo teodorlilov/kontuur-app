@@ -83,8 +83,7 @@ export async function POST(request: Request) {
       const { position, total } = slidePlace(body)
       // The same colour pair the slide's siblings wear. Without it this route was the one generation
       // path that produced art with no ground and no accent instruction — a picture that could not
-      // belong to the post it was being made for. A post's pair is read from its row; a draft's rides
-      // in on the request, because there is no row to read until approve.
+      // belong to the post it was being made for. The pair is read from the post's row.
       //
       // Passing `postId` is what makes a post-target generation WRITE the pair it derives. It used to
       // only read: a post with no stored pair got one picked, spent a generation on it and threw it
@@ -97,14 +96,9 @@ export async function POST(request: Request) {
       const scheme = await resolveScheme({
         clientId: destination.clientId,
         identity,
-        ...(destination.postId ? { postId: destination.postId } : {}),
-        base: body.postId ?? body.draftId ?? destination.clientId,
-        // A post's pair came back on the ownership check; a draft's rides in on the request.
-        ...(destination.storedScheme
-          ? { stored: destination.storedScheme }
-          : body.scheme
-            ? { stored: body.scheme }
-            : {}),
+        postId: destination.postId,
+        base: destination.postId,
+        stored: destination.storedScheme,
       })
 
       const visual = await generateVisual({
@@ -114,7 +108,7 @@ export async function POST(request: Request) {
         // Rerolled per press: the editor's whole point is "give me another one", and an empty nonce
         // would hand back the same framing every time while only the model's own noise differed.
         variation: {
-          subject: body.postId ?? body.draftId ?? '',
+          subject: destination.postId,
           position,
           total,
           nonce: body.nonce ?? '',

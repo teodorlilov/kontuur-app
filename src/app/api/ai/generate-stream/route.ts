@@ -14,8 +14,12 @@ import {
   finishGenerationRun,
   startGenerationRun,
   trackGenerationTheme,
+  type SkippedPillars,
 } from '@/lib/generation/runs'
 import { runGenerationBatch } from '@/ai/generation/generation-orchestrator'
+import { persistStreamedDraft } from '@/lib/generation/draft-posts'
+import { fetchIdeaById } from '@/features/ideas/lib/ideas'
+import { fetchIdentityForGeneration } from '@/lib/visual/generate-visual'
 import { toTheme, toThemeTitle } from '@/ai/generation/to-theme'
 import type { ResearchTopic, TopicBrief } from '@/ai/research/types'
 import type { UnifiedStreamEvent } from '@/features/generate/lib/stream-events'
@@ -42,6 +46,23 @@ type GenerateStreamRequestBody = Omit<
  * with no slot key — a run a human asked for is never deduped against a schedule — and the draft
  * allowance is reserved inside that claim, before any model call, so a refusal is a 402 before
  * the stream opens.
+ *
+ * Every draft is a `posts` row (status 'draft') BEFORE its `result` event goes out, under the id
+ * the orchestrator minted (`persistStreamedDraft`, lib/generation/draft-posts.ts), so the draft the
+ * browser reviews is the row — approve, discard, edits and visuals all address it, and closing the
+ * tab loses nothing already written. A draft whose insert fails never reaches the browser and is
+ * not billed: `produced` counts rows, and the orchestrator fails that theme alone
+ * (`collectResult`, generation-orchestrator.ts).
+ *
+ * Once the browser is gone — the stream's `cancel`, or an enqueue that fails — nothing more is
+ * written or billed: `send` goes quiet and `onResult` stops persisting. What the person saw land is
+ * exactly what waits for them on /generate, and "start over" deletes exactly that; a run that kept
+ * writing after the tab closed would leave billed drafts nobody saw. The model work already in
+ * flight still completes on the server; that cost is accepted.
+ *
+ * `landing` counts drafts as they ARRIVE and `produced` drafts that WERE WRITTEN: two counters,
+ * because up to five themes land concurrently and the colour offset must be taken before this
+ * draft's insert awaits, while billing must count only after it succeeded.
  */
 export async function POST(request: Request) {
   const auth = await resolveAuth()
@@ -73,14 +94,27 @@ export async function POST(request: Request) {
   // The check above proves `body.clientId`. Generation then writes `client_id` from
   // `preloadedClientData`, which the caller supplies — so without this, a crafted
   // request could pass ownership for one client and produce a draft attributed to
-  // another, written in that other client's voice, from its sources. Approve
-  // re-verifies at POST /api/posts, so the blast radius stayed inside the agency;
-  // it was still silent and unlogged.
+  // another, written in that other client's voice, from its sources, and now
+  // inserted under that client the moment it lands.
   if (body.preloadedClientData.id !== body.clientId) {
     console.error(
       `[generate-stream] client mismatch: body.clientId=${body.clientId} preloaded=${body.preloadedClientData.id}`
     )
     return NextResponse.json({ error: 'Client not found' }, { status: 404 })
+  }
+
+  // The idea is verified rather than believed: it is written onto every draft of this run, and
+  // approving one of them marks that idea generated. An id this agency cannot see is dropped and
+  // the run proceeds — the drafts are what the person came for, and an idea deleted between
+  // opening the wizard and pressing Generate must not cost them the batch.
+  let clientIdeaId: string | null = null
+  if (body.ideaId) {
+    clientIdeaId = (await fetchIdeaById(body.ideaId, agencyId))?.id ?? null
+    if (!clientIdeaId) {
+      console.warn(
+        `[generate-stream] idea ${body.ideaId} is not this agency's — running without it`
+      )
+    }
   }
 
   // Voice exemplars are fetched here, server-side, never trusted from the body:
@@ -103,12 +137,30 @@ export async function POST(request: Request) {
   const { runId } = claim
   const spender = { agencyId, clientId: body.clientId, flow: 'generation' as const }
   let produced = 0
+  let landing = 0
+  let runSkipped: SkippedPillars | null = null
+  const identity = fetchIdentityForGeneration(body.clientId).catch((err: unknown) => {
+    console.error(`[generate-stream] identity read failed for client ${body.clientId}:`, err)
+    return null
+  })
 
   const encoder = new TextEncoder()
+  let clientGone = false
   const stream = new ReadableStream<Uint8Array>({
+    cancel() {
+      clientGone = true
+      console.warn(`[generate-stream] client left mid-run for client ${body.clientId}`)
+    },
     async start(controller) {
-      const send = (event: UnifiedStreamEvent) =>
-        controller.enqueue(encoder.encode(JSON.stringify(event) + '\n'))
+      const send = (event: UnifiedStreamEvent) => {
+        if (clientGone) return
+        try {
+          controller.enqueue(encoder.encode(JSON.stringify(event) + '\n'))
+        } catch (err) {
+          clientGone = true
+          console.warn(`[generate-stream] stream closed under client ${body.clientId}:`, err)
+        }
+      }
 
       let runFailed = false
       try {
@@ -148,8 +200,12 @@ export async function POST(request: Request) {
                 stage: phase === 'gathering' ? 'sources' : 'research',
               }),
             onTopic: (topic) => topics.push(topic),
-            onSkippedPillars: (pillars, skippedCount) =>
-              send({ type: 'skipped_pillars', pillars, skippedCount }),
+            onSkippedPillars: (pillars, skippedCount) => {
+              // Kept as well as sent: the browser shows it now, the run carries it for whoever
+              // opens these drafts tomorrow.
+              runSkipped = { names: pillars.map((pillar) => pillar.name), cost: skippedCount }
+              send({ type: 'skipped_pillars', skipped: runSkipped })
+            },
           })
         )
 
@@ -196,7 +252,14 @@ export async function POST(request: Request) {
             themes,
             trackTheme: (theme, postCount) =>
               trackGenerationTheme(supabase, runId, theme, postCount),
-            onResult: (result) => {
+            onResult: async (result) => {
+              if (clientGone) return
+              await persistStreamedDraft(supabase, {
+                post: result.post,
+                identity: await identity,
+                run: { id: runId, index: landing++, clientId: body.clientId },
+                clientIdeaId,
+              })
               produced++
               send({ type: 'result', data: result })
             },
@@ -218,13 +281,15 @@ export async function POST(request: Request) {
         send({ type: 'error', message: err instanceof Error ? err.message : 'Generation failed' })
       } finally {
         if (runId)
-          await finishGenerationRun(supabase, runId, runFailed ? 'failed' : 'complete', {
+          await finishGenerationRun(supabase, runId, {
+            status: runFailed ? 'failed' : 'complete',
             agencyId,
             entitlement,
             reserved: targetCount,
             landed: produced,
+            skipped: runSkipped,
           })
-        controller.close()
+        if (!clientGone) controller.close()
       }
     },
   })

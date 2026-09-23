@@ -11,6 +11,15 @@ This platform transforms raw business data (websites/social accounts) into highl
 
 ## Implementation Status
 
+> **Drafts became rows — 2026-09-20.** Every wizard draft is a `posts` row (status `'draft'`) from
+> the moment it streams, so its visuals go through the persisted-post pipeline like the queue's and
+> the calendar's: `POST /api/posts/[id]/visuals`, `PUT /api/posts/[id]/canvas`, the post's own
+> storage folder. The draft-only surface this document describes below — `POST /api/ai/generate-visual`
+> and `/upload`, `GET /api/clients/[id]/visual-identity`, `POST /api/posts` with `images[]`, the
+> `{clientId}/drafts/` prefix, the `'draft'` editor target, the approve-time attach and relocation —
+> no longer exists (see docs/OPERATIONS.md, Posts and Visuals). Those passages are kept as the
+> record of how it was built; read them as history.
+
 **Phase 1 — Brand Visual-Identity Foundation — SHIPPED, then SLIMMED 2026-07-21** (branch
 `feat/ai-visual-flow`, commits `ef575e8` → `bf27e38` → `71eb9e0`).
 

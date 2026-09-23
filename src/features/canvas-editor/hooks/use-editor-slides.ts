@@ -4,7 +4,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { CanvasDoc } from '@/types/canvas'
 import type { SeedIdentity } from '@/lib/canvas/seed-doc'
 import { fetchCanvasDocs } from '../lib/canvas-state-client'
-import { fetchClientIdentity } from '../lib/identity-client'
 import { resolveSlideDocs, type ResolvedSlide } from '../lib/resolve-slides'
 import {
   commitHistory,
@@ -121,12 +120,7 @@ export function useEditorSlides(
         setLoad({
           status: 'ready',
           identity,
-          resolved: resolveSlideDocs(
-            slides,
-            storedDoc,
-            identity,
-            target.kind === 'post' ? target.postId : target.draftId
-          ),
+          resolved: resolveSlideDocs(slides, storedDoc, identity, target.postId),
         })
       })
       .catch((err: unknown) => {
@@ -299,18 +293,11 @@ export function useEditorSlides(
   }
 }
 
-/** The identity to seed from, and where each slide's stored doc comes from for this target kind. */
+/** The identity to seed from, and each slide's stored doc — one read for the whole editor. */
 async function loadSlides(
   target: EditorTarget
 ): Promise<{ identity: SeedIdentity; storedDoc: (slide: EditorSlide) => CanvasDoc | null }> {
-  if (target.kind === 'post') {
-    const { docs, identity } = await fetchCanvasDocs(target.postId)
-    const byPosition = new Map(docs.map((entry) => [entry.position, entry.doc]))
-    return { identity, storedDoc: (slide) => byPosition.get(slide.position) ?? null }
-  }
-  // A wizard draft has no rows yet — the surface holds each slide's doc in memory and hands it over.
-  return {
-    identity: await fetchClientIdentity(target.clientId),
-    storedDoc: (slide) => slide.doc ?? null,
-  }
+  const { docs, identity } = await fetchCanvasDocs(target.postId)
+  const byPosition = new Map(docs.map((entry) => [entry.position, entry.doc]))
+  return { identity, storedDoc: (slide) => byPosition.get(slide.position) ?? null }
 }

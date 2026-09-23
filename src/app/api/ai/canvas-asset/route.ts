@@ -7,8 +7,8 @@ import {
 import { validateImageFile } from '@/features/assets/lib/validate-image-file'
 
 /**
- * Upload a user-provided canvas-element asset (logo/graphic) for a persisted post or an
- * in-memory wizard draft. Returns the stored ref the element embeds in its doc.
+ * Upload a user-provided canvas-element asset (logo/graphic) for a post. Returns the stored ref
+ * the element embeds in its doc.
  */
 export async function POST(request: Request) {
   const auth = await resolveAuth()

@@ -1,7 +1,10 @@
 'use client'
 
+import { ClockCircleIcon } from '@solar-icons/react/linear'
 import { Card } from '@/components/ui/card'
 import { Spinner } from '@/components/ui/spinner'
+import { FLOW_NOTICE_ACTION_CLASS, FlowNotice } from '@/features/generate/components/flow-notice'
+import { pluralise } from '@/utils/format'
 import { ClientPicker, type PickerClient } from './client-picker'
 import { FormatCards } from './format-cards'
 import { CountSteppers } from './count-steppers'
@@ -32,7 +35,19 @@ interface SetupViewProps {
   onBriefsChange: (briefs: PriorityPost[]) => void
   /** Leading briefs the user may not remove — a client idea they opened the run from. */
   lockedBriefCount?: number
+  /** Drafts still waiting for review — one row per group, above the picker. */
+  waiting: WaitingRow[]
+  onReviewWaiting: (key: number) => void
   onGenerate: () => void
+}
+
+/** One group of waiting drafts as the setup row says them. */
+interface WaitingRow {
+  key: number
+  clientName: string
+  count: number
+  /** "2h ago", "3d ago" — pinned to the server's render instant so SSR and hydration agree. */
+  writtenAgo: string
 }
 
 /** Step 1 — everything on one screen; the run panel updates as choices land. */
@@ -58,6 +73,30 @@ export function SetupView(props: SetupViewProps) {
             ? 'This run writes the client’s idea. Add researched posts alongside it if you want more.'
             : 'Everything on one screen. The panel on the right updates as you choose.'}
         </p>
+
+        {props.waiting.length > 0 && (
+          <div className="mt-5 flex flex-col gap-2">
+            {props.waiting.map((row) => (
+              <FlowNotice
+                key={row.key}
+                glyph={ClockCircleIcon}
+                action={
+                  <button
+                    type="button"
+                    className={FLOW_NOTICE_ACTION_CLASS}
+                    onClick={() => props.onReviewWaiting(row.key)}
+                  >
+                    Review {row.count === 1 ? 'it' : 'them'}
+                  </button>
+                }
+              >
+                <span className="font-semibold text-pending">{pluralise(row.count, 'draft')}</span>{' '}
+                for <i>{row.clientName}</i> {row.count === 1 ? 'is' : 'are'} waiting for review —
+                from a run {row.writtenAgo}.
+              </FlowNotice>
+            ))}
+          </div>
+        )}
 
         <SetupGroup title="Client" first>
           <ClientPicker

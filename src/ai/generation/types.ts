@@ -57,12 +57,9 @@ export interface DraftPost {
   client_source_id: string | null
   pillar: string | null
   /**
-   * The date a brief asked for, carried through to the schedule dialog.
-   *
-   * Not a `posts` column and never persisted — `draftColumns` does not read it. It
-   * reached the writer's prompt and stopped there, so a client saying "before the
-   * 12th" shaped the wording and then vanished, leaving the reviewer to schedule
-   * against nothing.
+   * The date a brief asked for — what the client wants, as against `scheduled_at`, which is what
+   * somebody decided. Written to `posts.target_date` through `draftColumns`, so the schedule
+   * dialog still opens on it when the draft is read back days after the run.
    */
   target_date: string | null
   created_at: string
@@ -103,8 +100,12 @@ export interface GenerationRunContext {
   slideCount?: number
   themes: Theme[]
   trackTheme: (theme: EnrichedTheme, postCount: number) => Promise<void>
-  /** Called immediately when each theme's result is ready. Used for streaming responses. */
-  onResult?: (result: GenerationResult) => void
+  /**
+   * Called as each theme's result is ready, and AWAITED before the result counts: the wizard
+   * stream persists the draft here, so a draft that could not be written fails its theme
+   * (logged by the batch) instead of reaching the browser as a row that does not exist.
+   */
+  onResult?: (result: GenerationResult) => void | Promise<void>
   /**
    * Called as each theme moves through writing, judging, and (rarely) the
    * bounded refine round.

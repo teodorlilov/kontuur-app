@@ -15,7 +15,7 @@
  * types the result from the table, not from the projection string.
  */
 
-import type { PostStatus } from '@/lib/validation'
+import { DECIDED_POST_STATUSES, UNDECIDED_POST_STATUSES } from '@/lib/validation'
 import {
   CLIENT_COLUMNS,
   AGENCY_SETTINGS_COLUMNS,
@@ -534,10 +534,12 @@ export interface SourceUsageStats {
   discardedCount: number
 }
 
+const UNDECIDED_STATUSES: ReadonlySet<string> = new Set(UNDECIDED_POST_STATUSES)
+
 /**
- * Per-source outcome counts for a client: posts fueled (any post row past
- * pending_review) and drafts discarded. Powers the "Fueled N posts" surface
- * and the rank-stage approval boost.
+ * Per-source outcome counts for a client: posts fueled (any post row a reviewer approved —
+ * neither a wizard draft nor a cron draft counts until then) and drafts discarded. Powers the
+ * "Fueled N posts" surface and the rank-stage approval boost.
  *
  * Used in:
  *   src/app/(dashboard)/clients/[id]/sources/page.tsx
@@ -569,8 +571,7 @@ export async function fetchSourceUsageStats(
   }
 
   for (const row of posts ?? []) {
-    // pending_review cron drafts are not yet a human signal
-    if (row.client_source_id && row.status !== 'pending_review') {
+    if (row.client_source_id && !UNDECIDED_STATUSES.has(row.status)) {
       get(row.client_source_id).approvedCount++
     }
   }
@@ -614,7 +615,9 @@ const EXEMPLAR_MAX_CHARS = 1200
  * research) — this is approved caption TEXT, for the writer to imitate.
  *
  * Human-edited posts rank first: `caption` on an edited row is the reviewer's
- * corrected text, the closest thing to ground truth on this client's voice.
+ * corrected text, the closest thing to ground truth on this client's voice. Only posts a reviewer
+ * kept qualify (`DECIDED_POST_STATUSES`, lib/validation.ts) — publish transit or failure does not
+ * un-approve the copy, and those states left this column for `post_publications` anyway.
  *
  * Used in:
  *   src/app/api/ai/generate-stream/route.ts
@@ -629,12 +632,7 @@ export async function fetchEngineContext(
       .from('posts')
       .select(EXEMPLAR_COLUMNS)
       .eq('client_id', clientId)
-      // Everything past review counts — publish transit or failure does not un-approve the
-      // copy, and excluding those states would churn the cached prompt prefix as posts move
-      // through publishing. That is now exactly these two: the publish lifecycle left this
-      // column for `post_publications`, so 'publishing', 'published' and 'failed' were three
-      // values it can no longer hold, describing an intent the remaining two already satisfy.
-      .in('status', ['approved', 'scheduled'] satisfies readonly PostStatus[])
+      .in('status', DECIDED_POST_STATUSES)
       .order('edited_at', { ascending: false, nullsFirst: false })
       .order('created_at', { ascending: false })
       .limit(24),

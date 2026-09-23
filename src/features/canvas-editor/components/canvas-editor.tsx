@@ -21,7 +21,7 @@ const CanvasEditorOverlay = dynamic(() => import('./canvas-editor-overlay'), {
     ),
 })
 
-/** The canvas text-overlay editor. Mounted once per post or wizard draft; it holds every slide. */
+/** The canvas text-overlay editor. Mounted once per post; it holds every slide. */
 export function CanvasEditor(props: CanvasEditorProps) {
   return <CanvasEditorOverlay {...props} />
 }

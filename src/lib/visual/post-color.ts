@@ -23,11 +23,12 @@ import { adjacencyWindow, deriveToneLadder, pickScheme, type ColorScheme } from 
 export async function resolveScheme(input: {
   clientId: string
   /**
-   * The post this art belongs to, when there is one.
+   * The post this art belongs to, when the row already exists.
    *
    * Present → a freshly derived pair is CLAIMED on the row and the winner comes back, so
-   * concurrent slides of one post cannot each pick their own. Absent (a wizard draft) → there is no
-   * row to claim on and the pair is carried by the surface instead.
+   * concurrent slides of one post cannot each pick their own. Absent → the pick is being made for
+   * a row about to be inserted with it (the wizard stream, `lib/generation/draft-posts.ts`), and
+   * the insert is the claim.
    */
   postId?: string
   /**

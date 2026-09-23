@@ -2,15 +2,11 @@ import { describe, expect, it } from 'vitest'
 import { generateBackgroundSchema } from '../schemas'
 
 describe('generateBackgroundSchema', () => {
-  it('accepts either target id set and passes them through untouched', () => {
+  it('passes the post id through untouched', () => {
     expect(generateBackgroundSchema.parse({ postId: 'p1' })).toEqual({ postId: 'p1' })
-    expect(generateBackgroundSchema.parse({ clientId: 'c1', draftId: 'd1' })).toEqual({
-      clientId: 'c1',
-      draftId: 'd1',
-    })
   })
 
-  it('does not decide which id set is valid — resolveAssetDestination owns that', () => {
+  it('does not decide whether the id is valid — resolveAssetDestination owns that', () => {
     // A second validator here would be a second place for the ownership rule to drift, so an empty
     // body parses and the route's destination resolver emits the canonical 400.
     expect(generateBackgroundSchema.safeParse({}).success).toBe(true)

@@ -3,8 +3,8 @@ import type { PostImage } from '@/types/api'
 
 /**
  * Per-slide image/visual props threaded PostDetailLayout → PostContentDisplay → CarouselSlides/ImageSlot.
- * Persisted posts pass `postId` + callbacks (upload/delete/AI-generate); wizard drafts pass
- * `renderImageSlot` instead, since no `posts` row exists yet.
+ * Editable surfaces pass `postId` + callbacks (upload/delete/AI-generate); the read-only approval
+ * portal passes `renderImageSlot` instead — it shows a slide, it does not change one.
  */
 export interface PostVisualsProps {
   postId?: string

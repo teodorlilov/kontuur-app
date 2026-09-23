@@ -18,10 +18,12 @@ import type { CalendarPost } from '@/types/api'
 vi.mock('@/hooks/use-canva-status', () => ({ useCanvaStatus: () => false }))
 vi.mock('@/components/posts/use-generate-visuals', () => ({
   useGenerateVisuals: () => ({
-    generatingPositions: [] as number[],
-    composingPositions: [] as number[],
+    positionsFor: () => ({ generating: [] as number[], composing: [] as number[] }),
     generate: vi.fn(),
     recompose: vi.fn(),
+    composeMissing: vi.fn(),
+    replaceImage: vi.fn(),
+    cancel: vi.fn(),
   }),
 }))
 vi.mock('@/components/posts/image-slot', () => ({ ImageSlot: () => <div /> }))

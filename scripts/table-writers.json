@@ -75,14 +75,17 @@
     "src/lib/actions/post-actions.ts": "resolveChangeRequest closes a change request from the agency side."
   },
   "post_canvas_docs": {
-    "src/lib/canvas/doc-store.ts": "upsertCanvasDoc for an edit, insertCanvasDocs when a post is created with docs already made."
+    "src/lib/canvas/doc-store.ts": "upsertCanvasDoc — the one write: a slide's doc replaced whenever its canvas is saved or auto-composed. There was an insertCanvasDocs beside it for docs made before the post existed; every draft is a row now, so there is no such moment."
   },
   "post_history": {
-    "src/lib/queries/post-history.ts": "recordPostTopics — the cron batch and the approve route both record topics, and were writing the identical row from two files until 2026-08-31."
+    "src/lib/queries/post-history.ts": "recordPostTopics — one row shape, written from one place: the moment a reviewer keeps a post (schedulePosts). Writing a draft records nothing, or a discarded one would burn its topic for good."
   },
   "post_images": {
     "src/features/assets/lib/storage.ts": "putPostImage / putPostImages — the only way an image lands at a position. There were four, three of which deleted the row and its file before inserting, so a failed insert lost the picture.",
     "src/app/api/posts/[id]/images/route.ts": "DELETE removes a slide the user deleted. A removal, not a write of an image — it has no row to put."
+  },
+  "post_visual_jobs": {
+    "src/lib/visual/visual-jobs.ts": "claimVisualJob takes a slide position before its picture is made, releaseVisualJob gives it back, and clearStaleVisualJobs drops the claims of invocations that were killed — one file, because a claim nobody releases is a slide stuck looking busy. The only writer by design: a claim written anywhere else would not be seen by the readers that decide what still owes a picture."
   },
   "posting_schedules": {
     "src/features/clients/actions/client-actions.ts": "createClient seeds it; updateSchedule is the schedule editor.",
@@ -92,9 +95,8 @@
     "src/features/publishing/lib/publication-store.ts": "The ONE writer, with seven operations: createPublications records where a post is going, withdrawPendingPublications drops the destinations of a post pulled off the calendar (only ones that have not gone out, so unscheduling cannot erase that it published), claimPublication takes a destination for an attempt, setPublishRef persists the reference a network handed back, markPublicationPublished and markPublicationFailed record the outcome, and rearmPublication is the only place attempts are reset. They are in one file BY DESIGN — they are the states of one lifecycle."
   },
   "posts": {
-    "src/lib/actions/post-actions.ts": "The agency's edits: updatePost (nine validated columns), savePostCopy (caption and slides, partial — the calendar saves a caption with no slides), persistRewrite, schedulePosts, deletePost, duplicatePostAsDraft (a published post reused as a fresh draft, through draftColumns — never a mutation of the published row, whose publications carry the ids the network knows it by).",
-    "src/app/api/posts/route.ts": "POST creates a post from an approved wizard draft, through draftColumns.",
-    "src/app/api/cron/generate/route.ts": "The nightly batch inserts generated drafts, through the same draftColumns.",
+    "src/lib/actions/post-actions.ts": "The agency's edits: updatePost (nine validated columns), savePostCopy (caption and slides, partial — the calendar saves a caption with no slides), persistRewrite, schedulePosts, deletePost. duplicatePostAsDraft (a published post reused as a fresh draft — never a mutation of the published row, whose publications carry the ids the network knows it by) inserts through insertDraftPosts, not here.",
+    "src/lib/generation/draft-posts.ts": "insertDraftPosts — the ONE insert of a generated draft, through draftColumns: the cron's batch as pending_review, the wizard stream's rows as draft the moment they land, a duplicate. Three files spelled this insert out and drifted on priority and scheduled_at.",
     "src/app/api/posts/[id]/publish/route.ts": "Publish-now stamps the slot on a post published straight from the unscheduled tray — scheduled_at plus the status statusForSlot pairs with it — because the cron's backstop window only selects rows that have one. It writes nothing else: the claim, the attempt counter and the outcome are the publication's, in publication-store.ts.",
     "src/features/calendar/actions/post-recovery.ts": "rearmFailedPublication — the user putting a failed destination back in the queue. It writes the post's SLOT (scheduled_at with the status statusForSlot pairs with it) and nothing else; the attempt counter it used to reset belongs to the publication now, in rearmPublication.",
     "src/app/api/cron/visuals/route.ts": "The visuals lane's own attempt counter and status, which is separate from the publish counter on purpose.",

@@ -14,7 +14,7 @@ import { toPublicationSummary } from '@/lib/posts/publish-state'
 import { capableDestinations } from '@/features/publishing/lib/destinations'
 import type { Tables } from '@/types/database'
 import { fetchImagesByPost } from '@/lib/posts/fetch-post-images'
-import { toValidationData } from '@/features/review/lib/adapt-validation'
+import { toValidationData } from '@/lib/validation/adapt-validation'
 import { CalendarView } from '@/features/calendar/components/calendar-view'
 import type { CalendarPost, PostType } from '@/types/api'
 

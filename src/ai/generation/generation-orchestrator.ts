@@ -191,7 +191,7 @@ class GenerationPipeline {
     }
   }
 
-  private collectResult(validation: PostValidationResult, post: DraftPost): void {
+  private async collectResult(validation: PostValidationResult, post: DraftPost): Promise<void> {
     const item: GenerationResult = {
       post,
       language: validation.language,
@@ -200,8 +200,8 @@ class GenerationPipeline {
       scores: validation.scores,
       ...(validation.sourceGrounding ? { sourceGrounding: validation.sourceGrounding } : {}),
     }
+    await this.ctx.onResult?.(item)
     this.results.push(item)
-    this.ctx.onResult?.(item)
   }
 
   private validateCarousel(theme: EnrichedTheme, result: CarouselResult) {
@@ -259,7 +259,7 @@ class GenerationPipeline {
       chosen.result.slides,
       chosen.validation
     )
-    this.collectResult(
+    await this.collectResult(
       applied.validation,
       this.buildDraftRecord(theme, {
         caption: applied.caption,
@@ -346,7 +346,7 @@ class GenerationPipeline {
       }
 
       const applied = applyPostCorrections(item.caption, null, item.validation)
-      this.collectResult(
+      await this.collectResult(
         applied.validation,
         this.buildDraftRecord(theme, {
           caption: applied.caption,

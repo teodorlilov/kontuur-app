@@ -44,14 +44,14 @@ export interface ResolvedSlide {
  * output → render over the stored clean background; a changed image → rebind to it as the new clean
  * background; no doc at all → seed from that slide's copy.
  *
- * `storedDoc` is supplied rather than read, because the two targets keep their docs in different
- * places: a post's live on the server, a wizard draft's in the surface's memory.
+ * `storedDoc` is supplied rather than read: the editor reads the post's docs once for every slide
+ * and answers from that, where a read per slide was a round trip each.
  */
 export function resolveSlideDocs(
   slides: EditorSlide[],
   storedDoc: (slide: EditorSlide) => CanvasDoc | null,
   identity: SeedIdentity,
-  /** The post or draft these slides belong to — what keys the lockup a reseeded slide gets. */
+  /** The post these slides belong to — what keys the lockup a reseeded slide gets. */
   subject: string
 ): Map<number, ResolvedSlide> {
   return new Map(

@@ -1,5 +1,5 @@
 import type { GenerationResult } from '@/ai/generation/types'
-import type { SkippedPillar } from '@/ai/research/types'
+import type { SkippedPillars } from '@/lib/generation/runs'
 
 /**
  * The four stages the progress rail moves through.
@@ -32,5 +32,7 @@ export type UnifiedStreamEvent =
   | { type: 'total'; count: number }
   | { type: 'phase'; message: string; stage: GenerationStage }
   | { type: 'result'; data: GenerationResult }
-  | { type: 'skipped_pillars'; pillars: SkippedPillar[]; skippedCount: number }
+  // The same object the run stores, so the live banner and a resumed one say the same thing from
+  // the same numbers — the names research could not cover, and what they cost this run.
+  | { type: 'skipped_pillars'; skipped: SkippedPillars }
   | { type: 'error'; message: string }

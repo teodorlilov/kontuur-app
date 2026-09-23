@@ -1,5 +1,4 @@
 import { z } from 'zod'
-import { colorSchemeSchema } from '@/lib/visual/identity-schema'
 
 /**
  * Zod schemas for the canvas editor's own route boundaries.
@@ -25,8 +24,7 @@ const MAX_COPY_CHARS = 4000
 
 /**
  * The copy a slide carries, as the editor holds it. The client sends this rather than the server
- * re-deriving it: a wizard draft has no row to read (it lives in browser memory until approve), and
- * a persisted post's row can be behind unsaved edits the user is looking at right now.
+ * re-deriving it: the post's row can be behind unsaved edits the user is looking at right now.
  */
 const slideCopySchema = z.union([
   z.object({
@@ -41,21 +39,14 @@ const slideCopySchema = z.union([
 ])
 
 /**
- * The three target ids every canvas-asset route accepts, in the shape
- * `resolveAssetDestination` reads them.
+ * The post id every canvas-asset route accepts, in the shape `resolveAssetDestination` reads it.
  *
- * Shape only. Which combination is legal, and who owns the row, stays entirely with
- * `resolveAssetDestination` for the reason in this file's header — this schema
- * deliberately cannot express "postId OR (clientId AND draftId)", because expressing it
- * here is how the two would drift.
- *
- * Optional rather than uuid: a caller sending a malformed id must reach the resolver and
- * get its canonical 404, not a 400 from here that says something subtly different about
- * an id the resolver would have rejected anyway.
+ * Shape only: who owns the row stays entirely with `resolveAssetDestination`, for the reason in
+ * this file's header. Optional rather than uuid: a caller sending a malformed id must reach the
+ * resolver and get its canonical 404, not a 400 from here that says something subtly different
+ * about an id the resolver would have rejected anyway.
  */
 const assetTargetSchema = z.object({
-  clientId: z.string().optional(),
-  draftId: z.string().optional(),
   postId: z.string().optional(),
 })
 
@@ -75,8 +66,6 @@ export const generateBackgroundSchema = assetTargetSchema.extend({
    */
   position: z.number().int().min(0).optional(),
   total: z.number().int().min(1).optional(),
-  /** A draft's colour pair. A post's is read from its row instead — see `EditorTarget`. */
-  scheme: colorSchemeSchema.optional(),
   /**
    * What separates one press of Generate from the next.
    *

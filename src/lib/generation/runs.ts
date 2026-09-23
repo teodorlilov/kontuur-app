@@ -7,6 +7,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { formatClientName } from '@/utils/format'
 import type { ActiveRun } from '@/types/api'
+import type { Json } from '@/types/database'
 import type { Entitlement } from '@/lib/billing/entitlement'
 import { type AllowanceError, consumeUsage, settleUsage } from '@/lib/billing/usage'
 
@@ -107,6 +108,40 @@ export async function startGenerationRun(
 }
 
 /**
+ * What a run ended as: how it finished, what it reserved against what landed, and the pillars
+ * research could not cover. One object because these are one fact — the same `finally` knows all
+ * of it, and a run closed with any part missing is a run nobody can explain afterwards.
+ */
+interface RunOutcome {
+  status: 'complete' | 'failed'
+  agencyId: string
+  entitlement: Entitlement
+  reserved: number
+  landed: number
+  /** Null for a run that skipped nothing, and for every run that never got as far as research. */
+  skipped: SkippedPillars | null
+}
+
+/**
+ * The pillars a run could not cover, kept on the run itself.
+ *
+ * `cost` is what those pillars were allocated — the orchestrator's own number, not a re-derivation
+ * — so the reviewer is told the run came back short only when it actually did. Stored because a
+ * draft read back tomorrow has no stream behind it to have said so.
+ */
+export interface SkippedPillars {
+  names: string[]
+  cost: number
+}
+
+/** What a waiting group's run can still tell its reviewer, days after the run itself ended. */
+export interface WaitingRun {
+  /** What the run was asked for — the number the banner's "instead of" compares against. */
+  targetCount: number | null
+  skipped: SkippedPillars | null
+}
+
+/**
  * Marks a run terminal so the shell stops reporting it as in flight, and settles the drafts it
  * reserved: what landed is counted — the posts written, or the drafts streamed — and the rest of
  * the reservation is given back, whether research found fewer topics than asked or the run failed
@@ -115,25 +150,28 @@ export async function startGenerationRun(
 export async function finishGenerationRun(
   supabase: SupabaseClient,
   runId: string,
-  status: 'complete' | 'failed',
-  reservation: { agencyId: string; entitlement: Entitlement; reserved: number; landed: number }
+  outcome: RunOutcome
 ): Promise<void> {
   await settleUsage(
-    reservation.entitlement,
-    reservation.agencyId,
+    outcome.entitlement,
+    outcome.agencyId,
     'draft',
-    reservation.reserved,
-    reservation.landed
+    outcome.reserved,
+    outcome.landed
   )
   const { error } = await supabase
     .from('generation_runs')
-    .update({ status, completed_at: new Date().toISOString() })
+    .update({
+      status: outcome.status,
+      completed_at: new Date().toISOString(),
+      skipped_pillars: outcome.skipped,
+    })
     .eq('id', runId)
 
   // The staleness window hides this from the UI within minutes, which is
   // exactly why it would otherwise never be noticed.
   if (error) {
-    console.error(`[generation] could not close run ${runId} as ${status}:`, error.message)
+    console.error(`[generation] could not close run ${runId} as ${outcome.status}:`, error.message)
   }
 }
 
@@ -241,5 +279,56 @@ export async function trackGenerationTheme(
   })
   if (error) {
     console.error(`[generation] theme insert failed for run ${runId}:`, error.message)
+  }
+}
+
+/**
+ * The runs behind a set of waiting drafts, by run id.
+ *
+ * Read once for a whole resume rather than per group: the drafts carry their run id, and this is
+ * what turns it into what the reviewer is owed — what was asked for, and which pillars research
+ * could not cover. Degrades to nothing on a failed read: the drafts are the point, and a group
+ * without its run simply shows no banner.
+ */
+export async function fetchWaitingRuns(
+  supabase: SupabaseClient,
+  runIds: string[]
+): Promise<Map<string, WaitingRun>> {
+  const byId = new Map<string, WaitingRun>()
+  if (runIds.length === 0) return byId
+
+  const { data, error } = await supabase
+    .from('generation_runs')
+    .select('id, target_count, skipped_pillars')
+    .in('id', runIds)
+  if (error) {
+    console.error('[generation] waiting run read failed:', error.message)
+    return byId
+  }
+
+  for (const row of data ?? []) {
+    byId.set(row.id, {
+      targetCount: row.target_count,
+      skipped: toSkippedPillars(row.skipped_pillars),
+    })
+  }
+  return byId
+}
+
+/**
+ * The stored jsonb as the app's shape, or null for anything else.
+ *
+ * `skipped_pillars` is written by one function and read by one, but it is still a column the
+ * generated types describe as `Json` — a run closed before the column existed, or by an older
+ * deploy, comes back as null, and a malformed value must read as "nothing to say" rather than
+ * render a banner about undefined pillars.
+ */
+function toSkippedPillars(value: Json): SkippedPillars | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null
+  const stored = value as { names?: unknown; cost?: unknown }
+  if (!Array.isArray(stored.names) || typeof stored.cost !== 'number') return null
+  return {
+    names: stored.names.filter((name): name is string => typeof name === 'string'),
+    cost: stored.cost,
   }
 }

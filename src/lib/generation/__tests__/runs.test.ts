@@ -140,24 +140,33 @@ describe('finishGenerationRun', () => {
 
   it('counts the drafts that landed and gives the rest of the reservation back', async () => {
     const { supabase, updates } = closing()
-    await finishGenerationRun(supabase, 'run-1', 'complete', {
+    await finishGenerationRun(supabase, 'run-1', {
+      status: 'complete',
       agencyId: 'a1',
       entitlement: ENTITLEMENT,
       reserved: 3,
       landed: 2,
+      skipped: { names: ['Behind the scenes'], cost: 1 },
     })
     expect(settleUsage).toHaveBeenCalledWith(ENTITLEMENT, 'a1', 'draft', 3, 2)
-    expect(updates[0]).toMatchObject({ status: 'complete' })
+    // The pillars are stored with the close: a draft read back tomorrow has no stream to say it.
+    expect(updates[0]).toMatchObject({
+      status: 'complete',
+      skipped_pillars: { names: ['Behind the scenes'], cost: 1 },
+    })
   })
 
   it('a failed run lands nothing, so nothing of it is on the meter', async () => {
-    const { supabase } = closing()
-    await finishGenerationRun(supabase, 'run-1', 'failed', {
+    const { supabase, updates } = closing()
+    await finishGenerationRun(supabase, 'run-1', {
+      status: 'failed',
       agencyId: 'a1',
       entitlement: ENTITLEMENT,
       reserved: 3,
       landed: 0,
+      skipped: null,
     })
     expect(settleUsage).toHaveBeenCalledWith(ENTITLEMENT, 'a1', 'draft', 3, 0)
+    expect(updates[0]).toMatchObject({ status: 'failed', skipped_pillars: null })
   })
 })

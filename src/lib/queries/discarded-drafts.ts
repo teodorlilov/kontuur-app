@@ -11,7 +11,7 @@ import type { DiscardReason } from '@/lib/validation'
  * `reason` next door has had `DISCARD_REASONS` mirroring a database check constraint all along;
  * this column had nothing.
  */
-type DiscardSource = 'wizard' | 'review'
+export type DiscardSource = 'wizard' | 'review'
 
 /** One rejected draft, as outcome telemetry. Provenance is copied from the post it came from. */
 interface DiscardedDraft {

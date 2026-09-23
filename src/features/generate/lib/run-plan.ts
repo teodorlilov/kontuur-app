@@ -90,32 +90,22 @@ export function computeRunPlan({
 }
 
 /**
- * Which of the client's connections can take THIS post is the adapters' business, and they
- * are server-side. This preview claims only what it can see from the browser: a publishing
- * connection with a live token, neither lapsed nor retired. Canva rows share the table and are
- * not one.
+ * The networks the browser can see a live connection for: a publishing connection with a live
+ * token, neither lapsed nor retired. Canva rows share the table and are not one. Which of them
+ * can take THIS post is the adapters' business (`capableDestinations`), and the server intersects
+ * again before anything publishes — this is the client-side half every reader shares.
  */
-function computePublishState(connections: MetaConnection[]): PublishState {
-  const working = connections.some(
-    (c) =>
-      toPublishingPlatform(c.platform) &&
-      !isConnectionRetired(c) &&
-      !isTokenExpired(c.token_expires_at)
-  )
-  return working ? { kind: 'connected' } : { kind: 'not_connected' }
+export function livePublishingPlatforms(connections: MetaConnection[]): string[] {
+  return connections.flatMap((c) => {
+    const platform = toPublishingPlatform(c.platform)
+    return platform && !isConnectionRetired(c) && !isTokenExpired(c.token_expires_at)
+      ? [platform]
+      : []
+  })
 }
 
-/**
- * How many posts the skipped pillars actually cost this run. Pre-skipped
- * pillars allocate 0 by construction — the run redistributes their share — so
- * only post-research skips (a fed pillar research came back empty for)
- * contribute, and the review banner's copy must not claim the run came back
- * short when it did not.
- */
-export function allocationCostOfSkips(
-  allocation: PillarAllocation[],
-  skippedNames: string[]
-): number {
-  const skipped = new Set(skippedNames)
-  return allocation.reduce((sum, a) => (skipped.has(a.pillar.pillar) ? sum + a.count : sum), 0)
+function computePublishState(connections: MetaConnection[]): PublishState {
+  return livePublishingPlatforms(connections).length > 0
+    ? { kind: 'connected' }
+    : { kind: 'not_connected' }
 }

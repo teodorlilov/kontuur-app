@@ -1,9 +1,7 @@
 import { mapImageRow } from '@/lib/posts/map-image-row'
-import { parseAssetResponse } from './asset-client'
 import type { CanvasDoc } from '@/types/canvas'
 import type { PostImage } from '@/types/api'
 import type { PostImageRow } from '@/types/index'
-import type { DraftVisualResult } from '../types'
 
 function flattenedFile(blob: Blob, position: number): File {
   return new File([blob], `slide-${position + 1}.jpg`, { type: 'image/jpeg' })
@@ -35,26 +33,4 @@ export async function savePostCanvas(
   if (res.status === 409) throw new StaleImageError()
   if (!res.ok || !body.image) throw new Error(body.error ?? 'Saving the design failed')
   return mapImageRow(body.image)
-}
-
-/** Upload a draft's flattened jpeg; the doc stays in wizard memory (returned with its new path). */
-export async function saveDraftCanvas(
-  target: { clientId: string; draftId: string },
-  position: number,
-  doc: CanvasDoc,
-  blob: Blob,
-  previousStoragePath?: string
-): Promise<{ visual: DraftVisualResult; doc: CanvasDoc }> {
-  const formData = new FormData()
-  formData.set('file', flattenedFile(blob, position))
-  formData.set('clientId', target.clientId)
-  formData.set('draftId', target.draftId)
-  formData.set('position', String(position))
-  if (previousStoragePath) formData.set('previousStoragePath', previousStoragePath)
-  const res = await fetch('/api/ai/generate-visual/upload', { method: 'POST', body: formData })
-  const asset = await parseAssetResponse(res, 'Saving the design failed')
-  return {
-    visual: { position, publicUrl: asset.publicUrl, storagePath: asset.storagePath },
-    doc: { ...doc, flattenedStoragePath: asset.storagePath },
-  }
 }

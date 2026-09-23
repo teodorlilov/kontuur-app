@@ -754,6 +754,7 @@ export type Database = {
           created_at: string | null
           id: string
           kind: string
+          skipped_pillars: Json | null
           slot_key: string | null
           status: string
           target_count: number | null
@@ -764,6 +765,7 @@ export type Database = {
           created_at?: string | null
           id?: string
           kind?: string
+          skipped_pillars?: Json | null
           slot_key?: string | null
           status?: string
           target_count?: number | null
@@ -774,6 +776,7 @@ export type Database = {
           created_at?: string | null
           id?: string
           kind?: string
+          skipped_pillars?: Json | null
           slot_key?: string | null
           status?: string
           target_count?: number | null
@@ -1483,6 +1486,32 @@ export type Database = {
           },
         ]
       }
+      post_visual_jobs: {
+        Row: {
+          position: number
+          post_id: string
+          started_at: string
+        }
+        Insert: {
+          position: number
+          post_id: string
+          started_at?: string
+        }
+        Update: {
+          position?: number
+          post_id?: string
+          started_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "post_visual_jobs_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       posting_schedules: {
         Row: {
           auto_generate_day: string
@@ -1528,11 +1557,13 @@ export type Database = {
         Row: {
           caption: string | null
           client_id: string
+          client_idea_id: string | null
           client_source_id: string | null
           created_at: string
           edited_at: string | null
           generated_caption: string | null
           generated_slides_json: Json | null
+          generation_run_id: string | null
           id: string
           pillar: string | null
           post_type: string
@@ -1546,6 +1577,7 @@ export type Database = {
           source_type: string | null
           source_url: string | null
           status: string
+          target_date: string | null
           topic_summary: string | null
           validation_json: Json | null
           visual_accent: string | null
@@ -1557,11 +1589,13 @@ export type Database = {
         Insert: {
           caption?: string | null
           client_id: string
+          client_idea_id?: string | null
           client_source_id?: string | null
           created_at?: string
           edited_at?: string | null
           generated_caption?: string | null
           generated_slides_json?: Json | null
+          generation_run_id?: string | null
           id?: string
           pillar?: string | null
           post_type?: string
@@ -1575,6 +1609,7 @@ export type Database = {
           source_type?: string | null
           source_url?: string | null
           status?: string
+          target_date?: string | null
           topic_summary?: string | null
           validation_json?: Json | null
           visual_accent?: string | null
@@ -1586,11 +1621,13 @@ export type Database = {
         Update: {
           caption?: string | null
           client_id?: string
+          client_idea_id?: string | null
           client_source_id?: string | null
           created_at?: string
           edited_at?: string | null
           generated_caption?: string | null
           generated_slides_json?: Json | null
+          generation_run_id?: string | null
           id?: string
           pillar?: string | null
           post_type?: string
@@ -1604,6 +1641,7 @@ export type Database = {
           source_type?: string | null
           source_url?: string | null
           status?: string
+          target_date?: string | null
           topic_summary?: string | null
           validation_json?: Json | null
           visual_accent?: string | null
@@ -1621,10 +1659,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "posts_client_idea_id_fkey"
+            columns: ["client_idea_id"]
+            isOneToOne: false
+            referencedRelation: "client_ideas"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "posts_client_source_id_fkey"
             columns: ["client_source_id"]
             isOneToOne: false
             referencedRelation: "client_sources"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "posts_generation_run_id_fkey"
+            columns: ["generation_run_id"]
+            isOneToOne: false
+            referencedRelation: "generation_runs"
             referencedColumns: ["id"]
           },
         ]

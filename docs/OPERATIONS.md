@@ -124,8 +124,9 @@ Meta's data-deletion callback that erases third parties.
 
 | Operation | Function | File |
 | --- | --- | --- |
-| Close a generation run | `finishGenerationRun` | [lib/generation/runs.ts](../src/lib/generation/runs.ts) |
+| Close a generation run — its status, its settled reservation and the pillars it could not cover | `finishGenerationRun` | [lib/generation/runs.ts](../src/lib/generation/runs.ts) |
 | Generate a client's batch of drafts when its slot comes due | `GET` | [app/api/cron/generate/route.ts](../src/app/api/cron/generate/route.ts) |
+| Insert generated drafts into `posts` — the cron's batch, the wizard stream's rows, a duplicate | `insertDraftPosts` | [lib/generation/draft-posts.ts](../src/lib/generation/draft-posts.ts) |
 | Log a discarded draft | `recordDiscardedDraft` | [lib/queries/discarded-drafts.ts](../src/lib/queries/discarded-drafts.ts) |
 | Open a generation run (and reserve its drafts from the allowance) | `startGenerationRun` | [lib/generation/runs.ts](../src/lib/generation/runs.ts) |
 | Record a theme a run produced | `trackGenerationTheme` | [lib/generation/runs.ts](../src/lib/generation/runs.ts) |
@@ -133,7 +134,7 @@ Meta's data-deletion callback that erases third parties.
 | Settle a reservation — count what landed, give back the rest | `settleUsage` | [lib/billing/usage.ts](../src/lib/billing/usage.ts) |
 | Release the reservations a killed invocation never settled (daily cron) | `clearStaleReservations` | [lib/billing/usage.ts](../src/lib/billing/usage.ts) |
 | Add a provider call's tokens and cost to the day's telemetry row | `recordAiUsage` | [lib/billing/telemetry.ts](../src/lib/billing/telemetry.ts) |
-| Record topics a post covered | `recordPostTopics` | [lib/queries/post-history.ts](../src/lib/queries/post-history.ts) |
+| Record the topics of the posts a reviewer just kept | `recordPostTopics` | [lib/queries/post-history.ts](../src/lib/queries/post-history.ts) |
 | Write the week's global platform brief (one row per UTC Monday) | `writeWeeklyBriefing` | [features/dashboard/lib/write-briefing.ts](../src/features/dashboard/lib/write-briefing.ts) |
 
 ### Posts
@@ -141,7 +142,6 @@ Meta's data-deletion callback that erases third parties.
 | Operation | Function | File |
 | --- | --- | --- |
 | Change a post's status | `updatePost` | [lib/actions/post-actions.ts](../src/lib/actions/post-actions.ts) |
-| Create a post from an approved wizard draft | `POST` | [app/api/posts/route.ts](../src/app/api/posts/route.ts) |
 | Delete a post and sweep its files | `deletePost` | [lib/actions/post-actions.ts](../src/lib/actions/post-actions.ts) |
 | Use a published post again, as a new draft | `duplicatePostAsDraft` | [lib/actions/post-actions.ts](../src/lib/actions/post-actions.ts) |
 | Derive status from a slot | `statusForSlot` | [lib/posts/status-for-slot.ts](../src/lib/posts/status-for-slot.ts) |
@@ -186,10 +186,12 @@ operation below is about a destination, not about a post — which is why none o
 | Operation | Function | File |
 | --- | --- | --- |
 | Attach a whole carousel at once | `putPostImages` | [features/assets/lib/storage.ts](../src/features/assets/lib/storage.ts) |
-| Attach an approved draft's canvas documents | `insertCanvasDocs` | [lib/canvas/doc-store.ts](../src/lib/canvas/doc-store.ts) |
 | Claim a post's colour pair | `resolveScheme` | [lib/visual/post-color.ts](../src/lib/visual/post-color.ts) |
 | Generate a slide's AI image | `generateVisual` | [lib/visual/generate-visual.ts](../src/lib/visual/generate-visual.ts) |
 | Generate and store a post slide's visual | `generatePostVisual` | [lib/visual/generate-post-visual.ts](../src/lib/visual/generate-post-visual.ts) |
+| Take a slide position while its picture is being made | `claimVisualJob` | [lib/visual/visual-jobs.ts](../src/lib/visual/visual-jobs.ts) |
+| Give the position back when it is done | `releaseVisualJob` | [lib/visual/visual-jobs.ts](../src/lib/visual/visual-jobs.ts) |
+| Release the claims a killed invocation never gave back (hourly cron) | `clearStaleVisualJobs` | [lib/visual/visual-jobs.ts](../src/lib/visual/visual-jobs.ts) |
 | Paint missing visuals for pending drafts (cron) | `GET` | [app/api/cron/visuals/route.ts](../src/app/api/cron/visuals/route.ts) |
 | Put an image at a slide position | `putPostImage` | [features/assets/lib/storage.ts](../src/features/assets/lib/storage.ts) |
 | Remove a slide image | `DELETE` | [app/api/posts/[id]/images/route.ts](../src/app/api/posts/[id]/images/route.ts) |
@@ -238,11 +240,23 @@ nobody "fixes" them:
 - **`social_connections.last_sync_error`** — `recordSyncHealth` stamps a metrics run's verdict;
   `storeConnection` clears it, because a connection that was just (re)made has no verdict and the
   one left behind is usually the dead token the reconnect fixed.
-- **`posts.status`** — `schedulePosts` derives it from the slot and the publish-now route stamps
-  the same pair when it gives a tray post one; `updatePost` handles the one transition a slot
-  cannot express (`pending_review`, i.e. undo). `publishOnePost` was listed here as moving the
-  column through the publish lifecycle. It no longer touches `posts` at all — that lifecycle is
-  `post_publications.status`, one row per destination.
+- **`posts.status`** — `insertDraftPosts` writes the status a draft is born with (`'draft'` for
+  the wizard, `'pending_review'` for the cron); `schedulePosts` derives it from the slot and the
+  publish-now route stamps the same pair when it gives a tray post one; `updatePost` handles the
+  one transition a slot cannot express (`pending_review`, i.e. undo). `publishOnePost` was listed
+  here as moving the column through the publish lifecycle. It no longer touches `posts` at all —
+  that lifecycle is `post_publications.status`, one row per destination.
+- **`posts.target_date` / `client_idea_id` / `generation_run_id`** — what a draft would only have
+  known while its wizard tab was open, all three written once by `insertDraftPosts`: the date its
+  brief asked for (from the draft itself), and the idea and run the stream route hands it. Nothing
+  updates them afterwards — they are facts about how the draft came to exist, not state. The idea is
+  read back at approve (`linkIdeaToPost` claims it, and only while it is still `new`) and the run
+  when a resumed group needs to say what it asked for and what it could not cover.
+- **`posts.visual_ground` / `visual_accent`** — `insertDraftPosts` stamps the pair a wizard draft
+  is born with, picked by the stream route with the run as base so drafts landing seconds apart
+  spread across schemes; `claimScheme` (lib/visual/post-color.ts) is the compare-and-swap for a
+  row that reaches its first visual with no pair — the cron's drafts, a duplicate, a wizard draft
+  whose kit could not be read. Two moments in a row's life, not two opinions.
 - **`client_sources.pillar_ids`** — `updateSource` is the user scoping a source;
   `removeDeletedPillarIds` is a cascade of a pillar deletion.
 - **Deleting a client vs. Meta-mandated erasure** — `deleteClient` leans on the database cascade

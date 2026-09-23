@@ -3,7 +3,8 @@
 import { useState } from 'react'
 import type { ReviewDraft } from './types'
 
-interface DraftEdits {
+/** A reviewer's working copy of a draft — what autosave persists and approve sends. */
+export interface DraftEdits {
   caption: string
   slidesJson: unknown
 }
@@ -11,7 +12,9 @@ interface DraftEdits {
 /**
  * Per-draft working copies for the review surface. Defaults are derived
  * lazily from the draft itself — nothing is seeded on mount, so an explicit
- * setEdits (e.g. after a rewrite) always wins over the stored copy.
+ * setEdits (e.g. after a rewrite) always wins over the stored copy, and
+ * `changesFor` answers null for a draft nobody touched, so an approve does not
+ * write the row's own copy back onto it.
  */
 export function useDraftEdits() {
   const [editsByDraft, setEditsByDraft] = useState<Record<string, DraftEdits>>({})
@@ -25,9 +28,13 @@ export function useDraftEdits() {
     )
   }
 
+  function changesFor(postId: string): DraftEdits | null {
+    return editsByDraft[postId] ?? null
+  }
+
   function setEdits(postId: string, edits: DraftEdits) {
     setEditsByDraft((prev) => ({ ...prev, [postId]: edits }))
   }
 
-  return { editsFor, setEdits }
+  return { editsFor, changesFor, setEdits }
 }

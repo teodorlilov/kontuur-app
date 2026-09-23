@@ -1,5 +1,5 @@
 import { parseStoredValidation } from '@/lib/validation/stored-validation-schema'
-import { deriveSlopFromValidation } from '@/features/review/lib/derive-slop'
+import { deriveSlopFromValidation } from '@/lib/validation/derive-slop'
 import type { ValidationData } from '@/types/api'
 
 /**

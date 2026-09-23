@@ -21,7 +21,6 @@ const GATED: Record<string, 'spend' | 'publish' | 'create'> = {
   'app/api/ai/generate-background/route.ts': 'spend',
   'app/api/ai/generate-stream/route.ts': 'spend',
   'app/api/ai/generate-svg/route.ts': 'spend',
-  'app/api/ai/generate-visual/route.ts': 'spend',
   'app/api/ai/inpaint/route.ts': 'spend',
   'app/api/ai/isolate-subject/route.ts': 'spend',
   'app/api/ai/rewrite/route.ts': 'spend',

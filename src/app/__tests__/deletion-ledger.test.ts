@@ -75,6 +75,19 @@ describe('deleted files stay deleted', () => {
     // it carried Facebook tokens under an Instagram name.
     'src/features/publishing/lib/connection.ts',
     'src/features/publishing/lib/types.ts',
+    // Drafts became rows (2026-09-20): a wizard draft is a `posts` row the moment it streams,
+    // so the routes that generated, uploaded and deleted visuals for an in-memory draft under
+    // `{clientId}/drafts/`, the route that inserted a row on approve, and the hooks that held a
+    // draft's visuals and approve outside the persisted-post path all lost their reason. A file
+    // here again means a draft living somewhere other than its row.
+    'src/app/api/ai/generate-visual',
+    'src/app/api/posts/route.ts',
+    'src/features/generate/components/review/approve-draft.ts',
+    'src/features/generate/actions/discard-actions.ts',
+    'src/features/review/hooks/use-queue-visuals.ts',
+    'src/features/review/hooks/use-queue-autosave.ts',
+    'src/features/canvas-editor/lib/identity-client.ts',
+    'src/app/api/clients/[id]/visual-identity/route.ts',
   ])('%s does not exist', (relPath) => {
     expect(existsSync(path.resolve(SRC, '..', relPath))).toBe(false)
   })
@@ -84,6 +97,14 @@ describe('deleted symbols stay unreferenced', () => {
   // Comment lines are skipped: prose may name a retired symbol to explain its
   // absence. Code may not.
   const DELETED = [
+    // Drafts became rows (2026-09-20): nothing may attach, upload, relocate or compose a
+    // visual for a draft that has no row, and no surface may approve by inserting one.
+    'saveDraftCanvas',
+    'composeDraftVisual',
+    'uploadDraftVisual',
+    'draftVisualPrefix',
+    'attachDraftImages',
+    'approveDraft(',
     'generateTopUpTopics',
     'IDEA_STAGE_LABELS',
     'GenerateStreamEvent',

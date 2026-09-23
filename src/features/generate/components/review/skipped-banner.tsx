@@ -2,59 +2,54 @@
 
 import Link from 'next/link'
 import { DangerCircleIcon } from '@solar-icons/react/linear'
-import { Icon } from '@/components/ui/icon'
-import { allocationCostOfSkips, type PillarAllocation } from '@/features/generate/lib/run-plan'
-import type { SkippedPillar } from '@/ai/research/types'
+import { FLOW_NOTICE_ACTION_CLASS, FlowNotice } from '@/features/generate/components/flow-notice'
+import type { SkippedPillars } from '@/lib/generation/runs'
 
 interface SkippedBannerProps {
-  skippedPillars: SkippedPillar[]
-  allocation: PillarAllocation[]
+  /** The run's own record of what it could not cover — null for a run that covered everything. */
+  skipped: SkippedPillars | null
+  /** How many posts the run was asked for, from the run itself. */
   requested: number
-  received: number
   clientId: string
 }
 
 /**
- * What the skips actually cost — the same sum the orchestrator reports as
- * skippedCount. A pillar allocated nothing this run cost nothing, and the
- * copy must not claim the run came back short when it did not.
+ * What the skips actually cost, in the run's own numbers.
+ *
+ * Both come from the run: `cost` is what research allocated to those pillars before it found
+ * nothing for them, and `requested` is what the run was asked for. Nothing is counted off the
+ * drafts on screen — a resumed run shows only the ones still waiting, so counting them reported a
+ * shortfall to anyone who had approved a few and come back. A pillar allocated nothing cost
+ * nothing, and the copy says so.
  */
-export function SkippedBanner({
-  skippedPillars,
-  allocation,
-  requested,
-  received,
-  clientId,
-}: SkippedBannerProps) {
-  if (skippedPillars.length === 0) return null
-  const names = skippedPillars.map((p) => p.name)
-  const cost = allocationCostOfSkips(allocation, names)
+export function SkippedBanner({ skipped, requested, clientId }: SkippedBannerProps) {
+  if (!skipped || skipped.names.length === 0) return null
+  const { names, cost } = skipped
 
   return (
-    <div className="mb-4 flex items-start gap-3 rounded-panel bg-pending-bg px-4 py-3 text-caption text-text2">
-      <Icon glyph={DangerCircleIcon} size="sm" className="mt-0.5 flex-none text-pending" />
-      <p className="min-w-0 flex-1">
-        <span className="font-semibold text-pending">
-          {names.length} pillar{names.length === 1 ? '' : 's'} skipped
-        </span>{' '}
-        — research found nothing for{' '}
-        {names.map((name, i) => (
-          <span key={name}>
-            {i > 0 && ', '}
-            <i>{name}</i>
-          </span>
-        ))}
-        .{' '}
-        {cost > 0
-          ? `This run came back with ${received} post${received === 1 ? '' : 's'} instead of ${requested}.`
-          : 'Nothing was allocated to it at this size, so the count is unaffected — but it stays skipped until it has a source.'}
-      </p>
-      <Link
-        href={`/clients/${clientId}/sources`}
-        className="flex-none whitespace-nowrap font-semibold text-pending underline decoration-pending/35 underline-offset-2"
-      >
-        Add a source
-      </Link>
-    </div>
+    <FlowNotice
+      glyph={DangerCircleIcon}
+      className="mb-4"
+      action={
+        <Link href={`/clients/${clientId}/sources`} className={FLOW_NOTICE_ACTION_CLASS}>
+          Add a source
+        </Link>
+      }
+    >
+      <span className="font-semibold text-pending">
+        {names.length} pillar{names.length === 1 ? '' : 's'} skipped
+      </span>{' '}
+      — research found nothing for{' '}
+      {names.map((name, i) => (
+        <span key={name}>
+          {i > 0 && ', '}
+          <i>{name}</i>
+        </span>
+      ))}
+      .{' '}
+      {cost > 0
+        ? `That left the run ${cost} post${cost === 1 ? '' : 's'} short of the ${requested} asked for.`
+        : 'Nothing was allocated to it at this size, so the count is unaffected — but it stays skipped until it has a source.'}
+    </FlowNotice>
   )
 }

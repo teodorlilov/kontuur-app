@@ -3,18 +3,20 @@ import type { PostType } from '@/types/api'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { requireSessionUser } from '@/lib/auth/session'
 import { getCachedAgencyClients } from '@/lib/queries/cache'
-import { POST_COLUMNS, type PostColumns } from '@/lib/queries/select-columns'
-import { fetchCanvasDocPositions, fetchImagesByPost } from '@/lib/posts/fetch-post-images'
-import {
-  fallbackValidationData,
-  needsSlopFallback,
-  toValidationData,
-} from '@/features/review/lib/adapt-validation'
+import { fetchEditorialPosts } from '@/lib/posts/fetch-editorial-posts'
 import { fetchWeekSchedule, type WeekScheduledPost } from '@/features/review/lib/week-schedule'
 import { getMondayISO } from '@/utils/date-helpers'
 import { ReviewQueue } from '@/features/review/components/review-queue'
 import type { QueueApproval, QueuePost } from '@/features/review/lib/queue-post'
 
+/**
+ * The review queue's data, in ONE round: the editorial read (which fans out to images and docs
+ * itself), the clients' flags and connections, the week strip, and the pending sign-off tokens —
+ * reached through their post's client rather than by post id, so they need not wait for the posts
+ * to come back first; every token of the agency's posts comes back and only the queue's rows read
+ * theirs. The queue's own fields ride on the shared editorial read; the raw validation blob stays
+ * server-side (`validation_json: null` keeps the shape assignable to PostData).
+ */
 export default async function ReviewPage() {
   const { agencyId } = await requireSessionUser()
   const supabase = await createServerSupabaseClient()
@@ -31,9 +33,8 @@ export default async function ReviewPage() {
     social_connections: Array<{ platform: string }> | null
   }
 
-  // Oldest first: the queue drains, it doesn't silt up. The week schedule only
-  // needs client ids, so it rides in this first round instead of a second one.
-  const [{ data: clientRows }, { data: postRows }, weekSchedule] = await Promise.all([
+  type TokenRow = { post_id: string; status: string; expires_at: string }
+  const [{ data: clientRows }, editorial, weekSchedule, { data: tokenRows }] = await Promise.all([
     supabase
       .from('clients')
       .select('id, brand_profiles(is_health_niche), social_connections(platform)')
@@ -41,19 +42,20 @@ export default async function ReviewPage() {
       // destination, and the rule must match `resolveDestinations` without selecting the token.
       .not('social_connections.access_token', 'is', null)
       .eq('agency_id', agencyId),
-    clientIds.length > 0
-      ? supabase
-          .from('posts')
-          .select(POST_COLUMNS)
-          .in('client_id', clientIds)
-          .eq('status', 'pending_review')
-          .order('created_at', { ascending: true })
-      : Promise.resolve({ data: [] as unknown[] }),
+    fetchEditorialPosts(supabase, clientIds, 'pending_review'),
     // Week context fills the dialog's week strip — worth degrading, never failing for.
     fetchWeekSchedule(supabase, clientIds, getMondayISO()).catch((err: unknown) => {
       console.error('[review] week schedule failed:', err)
       return [] as WeekScheduledPost[]
     }),
+    clientIds.length > 0
+      ? supabase
+          .from('post_approval_tokens')
+          .select('post_id, status, expires_at, posts!inner(client_id)')
+          .eq('status', 'pending')
+          .gt('expires_at', new Date().toISOString())
+          .in('posts.client_id', clientIds)
+      : Promise.resolve({ data: [] as TokenRow[] }),
   ])
 
   const clientList = (clientRows as ClientRow[] | null) ?? []
@@ -68,47 +70,22 @@ export default async function ReviewPage() {
     clientList.map((c) => [c.id, (c.social_connections ?? []).map((conn) => conn.platform)])
   )
 
-  // `PostColumns`, not a local Pick: this restated 18 of the 23 columns POST_COLUMNS
-  // selects, and disagreed with the calendar's list about three of them.
-  const typedPostRows = (postRows as PostColumns[] | null) ?? []
-  const postIds = typedPostRows.map((p) => p.id)
-
-  type TokenRow = { post_id: string; status: string; expires_at: string }
-  const [imagesByPost, composedByPost, { data: tokenRows }] = await Promise.all([
-    fetchImagesByPost(postIds),
-    fetchCanvasDocPositions(postIds),
-    postIds.length > 0
-      ? supabase
-          .from('post_approval_tokens')
-          .select('post_id, status, expires_at')
-          .eq('status', 'pending')
-          .gt('expires_at', new Date().toISOString())
-          .in('post_id', postIds)
-      : Promise.resolve({ data: [] as TokenRow[] }),
-  ])
-
   const approvalByPost = new Map<string, QueueApproval>()
   for (const token of (tokenRows as TokenRow[] | null) ?? []) {
     approvalByPost.set(token.post_id, { status: 'pending', expiresAt: token.expires_at })
   }
 
-  // Validation is adapted here, server-side: the client gets ValidationData,
-  // never the raw blob — that keeps zod (and legacy-shape parsing) out of the
-  // queue's bundle and per-render work.
-  const posts: QueuePost[] = typedPostRows.map((p) => ({
-    ...p,
+  const posts: QueuePost[] = editorial.map(({ post, ...evidence }) => ({
+    ...post,
+    ...evidence,
     validation_json: null,
-    validation: toValidationData(p.validation_json) ?? fallbackValidationData(p.quality_score_avg),
-    needsSlopCheck: needsSlopFallback(p.validation_json),
-    client_name: nameByClient.get(p.client_id) ?? 'Unknown',
+    client_name: nameByClient.get(post.client_id) ?? 'Unknown',
     destinations: capableDestinations(
-      connectedByClient.get(p.client_id) ?? [],
-      (p.post_type ?? 'single') as PostType
+      connectedByClient.get(post.client_id) ?? [],
+      (post.post_type ?? 'single') as PostType
     ),
-    is_health_niche: healthByClient.get(p.client_id) ?? false,
-    images: imagesByPost.get(p.id) ?? [],
-    composedPositions: composedByPost.get(p.id) ?? [],
-    approval: approvalByPost.get(p.id) ?? null,
+    is_health_niche: healthByClient.get(post.client_id) ?? false,
+    approval: approvalByPost.get(post.id) ?? null,
   }))
 
   const postsPerWeekByClient = Object.fromEntries(

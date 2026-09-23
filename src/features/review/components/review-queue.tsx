@@ -18,7 +18,8 @@ import { ScheduleDialog } from '@/components/draft-editing/schedule-dialog'
 import { useDraftEdits } from '@/components/draft-editing/use-draft-edits'
 import { useReviewKeyboard } from '@/components/draft-editing/use-review-keyboard'
 import { parseSlides } from '@/lib/posts/parse-slides'
-import { deletePost, persistRewrite, savePostCopy, schedulePost } from '@/lib/actions/post-actions'
+import { deletePost } from '@/lib/actions/post-actions'
+import { approvePost, saveDraftCopy } from '@/components/draft-editing/approve-post'
 import { rewriteDraft } from '@/lib/rewrite-draft'
 import { countVisualsByStatus, type DraftVisual } from '@/lib/visual/draft-visuals'
 import { upsertImageAtPosition } from '@/lib/posts/image-list'
@@ -26,11 +27,10 @@ import { TriageBuckets } from './triage-buckets'
 import { DiscardToast, DISCARD_TOAST_MS } from '@/components/ui/discard-toast'
 import { QueueInsightSections } from './queue-insight-sections'
 import { SendToClientDialog } from './send-to-client-dialog'
-import { useQueueAutosave } from '@/features/review/hooks/use-queue-autosave'
-import { useQueueVisuals } from '@/features/review/hooks/use-queue-visuals'
-import { totalVisualSlots } from '@/lib/visual/visual-backlog'
-import { computeTriage, type TriageBucket, type TriagedPost } from '@/features/review/lib/triage'
-import { toVisualSlots } from '@/features/review/lib/visual-slots'
+import { useDraftAutosave } from '@/components/draft-editing/use-draft-autosave'
+import { useGenerateVisuals } from '@/components/posts/use-generate-visuals'
+import { unbakedImages } from '@/lib/visual/visual-backlog'
+import { computeTriage, type TriageBucket } from '@/features/review/lib/triage'
 import { getMondayISO, getWeekDayKeys, toDateKey } from '@/utils/date-helpers'
 import { APPROVAL_TOKEN_EXPIRY_HOURS, MS_PER_HOUR } from '@/utils/constants'
 import type { WeekScheduledPost } from '@/features/review/lib/week-schedule'
@@ -40,7 +40,7 @@ import {
   type DiscardReason,
 } from '@/features/review/lib/discard-reasons'
 import type { QueuePost } from '@/features/review/lib/queue-post'
-import type { ReviewDraft } from '@/components/draft-editing/types'
+import { toReviewDraft } from '@/components/draft-editing/types'
 import type { CarouselSlide, PostImage, SlopDetection } from '@/types/api'
 import type { ValidationData } from '@/types/api'
 
@@ -56,10 +56,6 @@ interface ReviewQueueProps {
 }
 
 const EMPTY_ID_SET = new Set<string>()
-
-function toDraft(t: TriagedPost): ReviewDraft {
-  return { post: t.post, ...t.validation }
-}
 
 /**
  * The queue's state owner: triaged buckets over persisted pending_review
@@ -80,7 +76,7 @@ export function ReviewQueue({
   const [view, setView] = useState<'buckets' | 'focus'>('buckets')
   const [focusedId, setFocusedId] = useState<string | null>(null)
   const [slideIdx, setSlideIdx] = useState(0)
-  const { editsFor, setEdits } = useDraftEdits()
+  const { editsFor, changesFor, setEdits } = useDraftEdits()
   const [scheduleTarget, setScheduleTarget] = useState<string | null>(null)
   const [rewriting, setRewriting] = useState(false)
   const [approvedCount, setApprovedCount] = useState(0)
@@ -110,24 +106,6 @@ export function ReviewQueue({
     postsRef.current = posts
   })
   const composeRequestedRef = useRef(new Set<string>())
-  // Written by the effect below the visuals hook; read only inside async callbacks.
-  const focusedPostIdRef = useRef('')
-  // Typed as the async function it actually holds. It was declared `=> void`, which let the
-  // call sites below read as synchronous when every one of them starts a compose and returns.
-  const recomposeRef = useRef<
-    (
-      source: { post_type: string; slides_json: unknown; caption: string | null },
-      images: PostImage[]
-    ) => Promise<void>
-  >(() => Promise.resolve())
-  // Same reason as recomposeRef: the compose-on-open effect keys on the focused post, and reading
-  // the hook's callback through a ref keeps it out of the dependency list.
-  const composeMissingRef = useRef<
-    (
-      source: { post_type: string; slides_json: unknown; caption: string | null },
-      images: PostImage[]
-    ) => Promise<void>
-  >(() => Promise.resolve())
   const slopRequestedRef = useRef(new Set<string>())
   // Discards pending their undo window: id → commit. Unmount commits them all —
   // leaving the tab must not resurrect a post the reviewer already dismissed.
@@ -186,7 +164,6 @@ export function ReviewQueue({
 
   const focused = bucketItems.find((t) => t.post.id === focusedId) ?? bucketItems[0]
   const focusedIndex = focused ? bucketItems.indexOf(focused) : -1
-  const focusedPostId = focused?.post.id ?? ''
 
   // Keep the focused id valid as posts settle; an emptied bucket exits focus.
   // Adjusted during render (the documented pattern), not in an effect.
@@ -200,12 +177,22 @@ export function ReviewQueue({
     }
   }
 
+  // ── Visuals ──
+  /** A landed image names its post, so a late response after a focus switch still lands on the
+   *  post that requested it. */
+  const mergeImage = useCallback((postId: string, image: PostImage) => {
+    setPosts((prev) =>
+      prev.map((p) =>
+        p.id === postId ? { ...p, images: upsertImageAtPosition(p.images, image) } : p
+      )
+    )
+  }, [])
+
+  const visuals = useGenerateVisuals(mergeImage)
+
   // ── Persistence ──
-  const autosave = useQueueAutosave(async (postId, edits) => {
-    const result = await savePostCopy(postId, {
-      caption: edits.caption,
-      slides_json: edits.slidesJson,
-    })
+  const autosave = useDraftAutosave(async (postId, edits) => {
+    const result = await saveDraftCopy(postId, edits)
     if (!result.ok) {
       toast.error('Failed to save edits')
       return
@@ -215,82 +202,68 @@ export function ReviewQueue({
         p.id === postId ? { ...p, caption: edits.caption, slides_json: edits.slidesJson } : p
       )
     )
-    // Re-bake composed slides with the fresh copy — only while the visuals
-    // hook is still bound to this post; a text-only save is the safe fallback.
+    // Re-bake composed slides with the fresh copy; a text-only save is the safe fallback.
     const post = postsRef.current.find((p) => p.id === postId)
-    if (post && postId === focusedPostIdRef.current) {
-      void recomposeRef.current(
-        { post_type: post.post_type, slides_json: edits.slidesJson, caption: edits.caption },
+    if (post) {
+      void visuals.recompose(
+        {
+          id: postId,
+          post_type: post.post_type,
+          slides_json: edits.slidesJson,
+          caption: edits.caption,
+        },
         post.images
       )
     }
   })
 
-  // ── Visuals (bound to the focused post) ──
-  // Captured per render: a late response after a focus switch still lands on
-  // the post whose closure requested it.
-  function mergeImage(image: PostImage) {
-    const targetId = focusedPostId
-    setPosts((prev) =>
-      prev.map((p) =>
-        p.id === targetId ? { ...p, images: upsertImageAtPosition(p.images, image) } : p
-      )
-    )
-  }
-
-  const focusedEdits = focused ? editsFor(toDraft(focused)) : null
-  const copySource = focused
+  const focusedEdits = focused ? editsFor(toReviewDraft(focused)) : null
+  const focusedVisualPost = focused
     ? {
+        id: focused.post.id,
         post_type: focused.post.post_type,
         slides_json: focusedEdits?.slidesJson ?? focused.post.slides_json,
         caption: focusedEdits?.caption ?? focused.post.caption,
       }
     : null
 
-  const visuals = useQueueVisuals({ postId: focusedPostId, copySource, onImage: mergeImage })
-  const visualsRecompose = visuals.recompose
-  const visualsComposeMissing = visuals.composeMissing
-  useEffect(() => {
-    focusedPostIdRef.current = focusedPostId
-    recomposeRef.current = visualsRecompose
-    composeMissingRef.current = visualsComposeMissing
-  }, [focusedPostId, visualsRecompose, visualsComposeMissing])
-
   const visualsByPost = useMemo(() => {
     const map: Record<string, DraftVisual[]> = {}
-    for (const t of triaged) {
-      const isFocused = t.post.id === focusedPostId
-      map[t.post.id] = toVisualSlots(
-        t.post.images,
-        isFocused ? visuals.generatingPositions : [],
-        isFocused ? visuals.composingPositions : [],
-        totalVisualSlots(t.post)
-      )
-    }
+    for (const t of triaged) map[t.post.id] = visuals.slotsFor(t.post, t.post.images)
     return map
-  }, [triaged, focusedPostId, visuals.generatingPositions, visuals.composingPositions])
+  }, [triaged, visuals])
+
+  /** Pictures the cron is painting right now read as generating rather than as empty slots. */
+  const noteInFlight = visuals.noteInFlight
+  useEffect(() => {
+    for (const post of initialPosts) noteInFlight(post, post.generatingPositions)
+  }, [initialPosts, noteInFlight])
 
   // Cron art arrives clean — bake the copy onto it on first open, once per post per session.
-  // Only AI-generated files (visual-*.jpg) without a canvas doc qualify: a user-uploaded creative
-  // is finished work, never painted over.
+  // Only `visual-*` files with no canvas doc qualify (`unbakedImages`, lib/visual/visual-backlog.ts):
+  // a picture somebody uploaded was composed as it landed, and a flattened slide already carries
+  // its text — re-baking either would paint over work.
   //
   // Through the hook's own pass, which is what serialises it against a regenerate-compose. This
   // used to be a second implementation here — its own import, its own canvas read, its own loop —
   // sharing no semaphore with the hook, so both could drive an offscreen Konva canvas at once.
+  const composeMissing = visuals.composeMissing
   useEffect(() => {
     const target = focused?.post
     if (!target || composeRequestedRef.current.has(target.id)) return
-    const composed = new Set(target.composedPositions)
-    const pending = target.images.filter(
-      (image) => image.fileName?.startsWith('visual-') && !composed.has(image.position)
-    )
+    const pending = unbakedImages(target.images, target.composedPositions)
     if (pending.length === 0) return
     composeRequestedRef.current.add(target.id)
-    void composeMissingRef.current(
-      { post_type: target.post_type, slides_json: target.slides_json, caption: target.caption },
+    void composeMissing(
+      {
+        id: target.id,
+        post_type: target.post_type,
+        slides_json: target.slides_json,
+        caption: target.caption,
+      },
       pending
     )
-  }, [focused])
+  }, [focused, composeMissing])
 
   // Legacy rows without a stored human score get one detect-slop pass on focus.
   useEffect(() => {
@@ -354,13 +327,12 @@ export function ReviewQueue({
    * Optimistic, the same trust-then-verify shape as discard below: the card
    * leaves and the slot is claimed before the write returns, and a failed or
    * thrown write reinstates the post, frees the slot and corrects the count.
-   * The generate flow's approve stays blocking on purpose — it creates the
-   * post and needs the server's id back before its owner can proceed.
+   * The write itself is `approvePost`, shared with the generate flow's review,
+   * which awaits it instead — one draft at a time, in the order it reads them.
    */
   function executeApprove(postId: string, scheduledAt: string | null): boolean {
     const target = triaged.find((t) => t.post.id === postId)
     if (!target) return false
-    const edits = editsFor(toDraft(target))
     autosave.cancel()
 
     const post = target.post
@@ -377,27 +349,7 @@ export function ReviewQueue({
     }
 
     pendingApprovalsRef.current += 1
-    /**
-     * The copy and the workflow move are two writes, through the two functions that own them.
-     *
-     * This used to be one `updatePost` carrying caption and slides_json alongside status and
-     * scheduled_at — so one editing session wrote the same two columns through savePostCopy on
-     * every autosave flush and through updatePost here, under two different schemas.
-     *
-     * Copy first: if the status write fails the rollback restores the queue, and the user's
-     * typing has still been saved. The reverse order could approve a post carrying stale text.
-     * savePostCopy deliberately skips the client-post-stats revalidation, and does not need to —
-     * schedulePosts busts that tag after the status write (post-actions.ts), which is the write
-     * that changes a count. (This said `updatePost`, naming a function this path stopped calling
-     * in the same commit that wrote the sentence.)
-     */
-    savePostCopy(postId, { caption: edits.caption, slides_json: edits.slidesJson })
-      .then((copy) => {
-        if (!copy.ok) return copy
-        // Through the one scheduler, so approving a single post and scheduling a selection from
-        // the batch bar on this same screen validate the instant identically.
-        return schedulePost(postId, scheduledAt, post.destinations)
-      })
+    approvePost(postId, changesFor(postId), scheduledAt, post.destinations)
       .then((result) => {
         if (!result.ok) rollback()
       })
@@ -499,10 +451,10 @@ export function ReviewQueue({
     )
   }
 
-  // ── Rewrite (persisted) ──
+  // ── Rewrite ──
   async function handleRewrite() {
     if (!focused || !focusedEdits) return
-    const draft = toDraft(focused)
+    const draft = toReviewDraft(focused)
     setRewriting(true)
     const outcome = await rewriteDraft({
       post: draft.post,
@@ -511,25 +463,12 @@ export function ReviewQueue({
       aiTells: focused.validation.slop.ai_tells_found,
       qualityIssues: focused.validation.criteria.issues.map((i) => `${i.type}: ${i.description}`),
     })
+    setRewriting(false)
     if (!outcome.ok) {
-      setRewriting(false)
       toast.error(outcome.error)
       return
     }
     const postId = focused.post.id
-    // Persistence builds the stored validation server-side — the zod schema
-    // stays out of this bundle.
-    const persisted = await persistRewrite(postId, {
-      caption: outcome.updatedPost.caption ?? '',
-      slides_json: outcome.updatedPost.slides_json,
-      quality_score_avg: outcome.updatedPost.quality_score_avg ?? null,
-      validation: outcome.validation,
-    })
-    setRewriting(false)
-    if (!persisted.ok) {
-      toast.error('Failed to save the rewrite')
-      return
-    }
     setPosts((prev) =>
       prev.map((p) =>
         p.id === postId
@@ -539,7 +478,7 @@ export function ReviewQueue({
               slides_json: outcome.updatedPost.slides_json,
               quality_score_avg: outcome.updatedPost.quality_score_avg,
               was_rewritten: true,
-              rewrite_count: persisted.data.rewriteCount,
+              rewrite_count: outcome.updatedPost.rewrite_count ?? p.rewrite_count,
               validation: outcome.validation,
               needsSlopCheck: false,
             }
@@ -562,6 +501,7 @@ export function ReviewQueue({
     if (post) {
       void visuals.recompose(
         {
+          id: postId,
           post_type: post.post_type,
           slides_json: outcome.updatedPost.slides_json,
           caption: outcome.updatedPost.caption,
@@ -713,7 +653,7 @@ export function ReviewQueue({
               <div className="grid items-start gap-4 min-[900px]:grid-cols-[minmax(0,1fr)_320px] min-[1200px]:grid-cols-[240px_minmax(0,1fr)_320px]">
                 <div className="max-[1199px]:hidden">
                   <DraftRail
-                    posts={bucketItems.map(toDraft)}
+                    posts={bucketItems.map(toReviewDraft)}
                     approvedIds={EMPTY_ID_SET}
                     discardedIds={EMPTY_ID_SET}
                     visualsByDraft={visualsByPost}
@@ -723,7 +663,7 @@ export function ReviewQueue({
                 </div>
                 <WorkColumn
                   key={focused.post.id}
-                  post={toDraft(focused).post}
+                  post={toReviewDraft(focused).post}
                   visuals={visualsByPost[focused.post.id]}
                   positionInRun={`${focusedIndex + 1} of ${bucketItems.length}`}
                   metaLine={[focused.post.client_name, focused.post.pillar, focused.post.post_type]
@@ -747,17 +687,20 @@ export function ReviewQueue({
                     setEdits(focused.post.id, edits)
                     autosave.schedule(focused.post.id, edits)
                   }}
-                  onRegenerateVisual={(position) => void visuals.generate([position])}
-                  onReplaceVisual={(position, file) => visuals.replaceImage(position, file)}
-                  onEditedVisual={() => {
-                    // Post-target saves come back through onSavedImage; nothing draft-side.
-                  }}
-                  editorTarget={{ kind: 'post', postId: focused.post.id }}
-                  onSavedImage={mergeImage}
+                  onRegenerateVisual={(position) =>
+                    focusedVisualPost && void visuals.generate(focusedVisualPost, [position])
+                  }
+                  onReplaceVisual={(position, file) =>
+                    focusedVisualPost
+                      ? visuals.replaceImage(focusedVisualPost, position, file)
+                      : Promise.resolve(false)
+                  }
+                  editorTarget={{ postId: focused.post.id }}
+                  onSavedImage={(image) => mergeImage(focused.post.id, image)}
                 />
                 <InsightPanel
                   key={`insight-${focused.post.id}`}
-                  post={toDraft(focused).post}
+                  post={toReviewDraft(focused).post}
                   validation={focused.validation}
                   rewriting={rewriting}
                   onRewrite={() => void handleRewrite()}

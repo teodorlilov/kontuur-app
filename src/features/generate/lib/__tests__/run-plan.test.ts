@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { computeRunPlan, allocationCostOfSkips } from '../run-plan'
+import { computeRunPlan } from '../run-plan'
 import { allocateByWeight, type WeightedPillar } from '@/lib/clients/content-pillars'
 import type { ClientSourceSummary } from '@/lib/queries/db'
 import type { MetaConnection } from '@/types/api'
@@ -141,21 +141,5 @@ describe('computeRunPlan', () => {
       })
       expect(plan.publishState).toEqual({ kind: 'not_connected' })
     })
-  })
-})
-
-describe('allocationCostOfSkips', () => {
-  it('sums the skipped pillars’ allocated counts', () => {
-    const plan = computeRunPlan({ ...base, targetPostCount: 10 })
-    const cost = allocationCostOfSkips(plan.allocation, ['Meta ads', 'Tips'])
-    const expected = allocateByWeight(pillars, 10)
-    expect(cost).toBe((expected.get('Meta ads') ?? 0) + (expected.get('Tips') ?? 0))
-  })
-
-  it('returns 0 for a skipped pillar that was allocated nothing', () => {
-    // At 3 posts across 40/30/20/10, the 10% pillar gets nothing
-    const plan = computeRunPlan(base)
-    expect(plan.allocation.find((a) => a.pillar.pillar === 'Tips')?.count).toBe(0)
-    expect(allocationCostOfSkips(plan.allocation, ['Tips'])).toBe(0)
   })
 })

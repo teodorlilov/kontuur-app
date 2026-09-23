@@ -63,8 +63,6 @@ const EXEMPT: Record<string, string> = {
   // ig_account_metrics was modeled on — and is recorded beside the type.
   'features/sources/actions/source-actions.ts:UpdateSourceInput':
     'A write contract, all fields optional so a caller can send only what changed. Same reason as UpdatePostInput.',
-  'features/generate/hooks/use-draft-visuals.ts:DraftPostInput':
-    "A structural contract deliberately satisfied by BOTH PostData and DraftPost, so it cannot be tied to either. slides_json is `unknown` rather than the column's Json for exactly that reason.",
 
   // The three below narrow a structurally-untyped `Json` column into the shape the app
   // actually writes. Deriving them would replace a useful assertion with `Json` and

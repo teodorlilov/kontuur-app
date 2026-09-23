@@ -2,6 +2,7 @@ import 'server-only'
 
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import {
+  deletePostImage,
   uploadPostImage,
   putPostImage,
   type ExistingPostImage,
@@ -11,11 +12,12 @@ import { slideTextBlock } from '@/lib/visual/prompt'
 import { fetchIdentityForGeneration, generateVisual } from '@/lib/visual/generate-visual'
 import { resolveScheme } from '@/lib/visual/post-color'
 import { totalVisualSlots } from '@/lib/visual/visual-backlog'
+import { claimVisualJob, releaseVisualJob } from '@/lib/visual/visual-jobs'
 import type { PostImageRow } from '@/types/index'
 
 type GeneratePostVisualResult =
   | { ok: true; image: PostImageRow }
-  | { ok: false; reason: 'not_found' | 'no_copy' }
+  | { ok: false; reason: 'not_found' | 'no_copy' | 'in_flight' }
 
 /**
  * Generate the AI visual for one post position and store it as a regular
@@ -26,6 +28,12 @@ type GeneratePostVisualResult =
  * which the route answers with a 402 and the cron counts as a skip. The caller
  * declares who is spending with `runMetered` (src/lib/billing/usage.ts) before calling — the
  * plain `runAsSpender` is refused by the paid model, since nobody would settle its reservation.
+ *
+ * The position is CLAIMED before the model is called (`lib/visual/visual-jobs.ts`) and released
+ * when this returns, however it returns. A position already being generated refuses as
+ * `in_flight` before anything is spent: a picture leaves no trace until it lands, so without the
+ * claim a resumed run, a second tab or the cron beside a person all ask for the same slide again
+ * and the workspace pays twice for the one picture that survives.
  */
 export async function generatePostVisual(input: {
   postId: string
@@ -51,8 +59,44 @@ export async function generatePostVisual(input: {
   })
   if (!textBlock) return { ok: false, reason: 'no_copy' }
 
-  // ONE read of the client's kit for the whole generation — the scheme and the prompt both need it.
-  const identity = await fetchIdentityForGeneration(clientId)
+  if (!(await claimVisualJob(admin, postId, position))) return { ok: false, reason: 'in_flight' }
+  try {
+    return await generateClaimedVisual({
+      admin,
+      postId,
+      clientId,
+      position,
+      identity: await fetchIdentityForGeneration(clientId),
+      textBlock,
+      postRow,
+    })
+  } finally {
+    await releaseVisualJob(admin, postId, position)
+  }
+}
+
+/**
+ * The generation itself, with the position already claimed: colours, picture, file, row.
+ *
+ * Split from the claim so that every exit — the throw of a failed generation as much as a
+ * finished picture — passes through one `finally` that gives the position back. A claim this
+ * function leaked would make the slide look busy until it aged out.
+ */
+async function generateClaimedVisual(input: {
+  admin: ReturnType<typeof createAdminSupabaseClient>
+  postId: string
+  clientId: string
+  position: number
+  identity: Awaited<ReturnType<typeof fetchIdentityForGeneration>>
+  textBlock: string
+  postRow: {
+    post_type: string
+    slides_json: unknown
+    visual_ground: string | null
+    visual_accent: string | null
+  }
+}): Promise<GeneratePostVisualResult> {
+  const { admin, postId, clientId, position, identity, textBlock, postRow } = input
   // `postId` is what makes this claim the pair on the row rather than merely derive one, so a
   // sibling slide generating at the same moment adopts it instead of picking its own.
   const scheme = await resolveScheme({
@@ -89,21 +133,30 @@ export async function generatePostVisual(input: {
     postId
   )
 
-  const image = await putPostImage(
-    admin,
-    {
-      postId,
-      position,
-      publicUrl,
-      storagePath,
-      fileName,
-      fileSize: visual.buffer.byteLength,
-      contentType: visual.contentType,
-    },
-    replacing
-  )
-
-  return { ok: true, image }
+  try {
+    const image = await putPostImage(
+      admin,
+      {
+        postId,
+        position,
+        publicUrl,
+        storagePath,
+        fileName,
+        fileSize: visual.buffer.byteLength,
+        contentType: visual.contentType,
+      },
+      replacing
+    )
+    return { ok: true, image }
+  } catch (err) {
+    // The file is ours and nothing points at it: the row that would have is the write that just
+    // failed. The commonest cause is the post being discarded during the ~52s this took, which
+    // leaves the picture in the deleted post's folder after `deletePost` already swept it. Deleted
+    // whatever the cause rather than on a foreign-key code, because an unreferenced file is garbage
+    // either way. Best-effort by contract, then the failure goes on to the caller's boundary.
+    await deletePostImage(storagePath)
+    throw err
+  }
 }
 
 /**

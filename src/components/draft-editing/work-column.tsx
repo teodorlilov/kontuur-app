@@ -19,7 +19,7 @@ import { slideCopyAt } from '@/lib/posts/slide-copy'
 import type { EditorSlide, EditorTarget } from '@/features/canvas-editor/types'
 import { VisualFrame } from './visual-frame'
 import { updateSlideField } from '@/components/posts/slides-edit'
-import { schemeOf, type DraftVisual } from '@/lib/visual/draft-visuals'
+import type { DraftVisual } from '@/lib/visual/draft-visuals'
 import type { CarouselSlide, PostImage } from '@/types/api'
 import type { PostData } from '@/types/post'
 
@@ -40,11 +40,10 @@ interface WorkColumnProps {
   onSlidesChange: (slides: CarouselSlide[]) => void
   onRegenerateVisual: (position: number) => void
   onReplaceVisual: (position: number, file: File) => Promise<boolean>
-  onEditedVisual: (draftId: string, visual: DraftVisual) => void
-  /** Overrides the wizard-draft editor target — the queue points at persisted posts. */
-  editorTarget?: EditorTarget
-  /** Post-target editor saves land here (CanvasEditor onSaved); draft saves keep onEditedVisual. */
-  onSavedImage?: (image: PostImage) => void
+  /** The row the editor saves against — every draft under review is one. */
+  editorTarget: EditorTarget
+  /** Editor saves land here (CanvasEditor onSaved) — the fresh image for the slide. */
+  onSavedImage: (image: PostImage) => void
 }
 
 /**
@@ -70,7 +69,6 @@ export function WorkColumn({
   onSlidesChange,
   onRegenerateVisual,
   onReplaceVisual,
-  onEditedVisual,
   editorTarget,
   onSavedImage,
 }: WorkColumnProps) {
@@ -98,7 +96,6 @@ export function WorkColumn({
       position: visual.position,
       image: { publicUrl: visual.publicUrl!, storagePath: visual.storagePath! },
       slideCopy: slideCopyAt(workingPost, visual.position),
-      doc: visual.canvasDoc ?? null,
     }))
     .sort((a, b) => a.position - b.position)
   const canEditPosition =
@@ -351,32 +348,11 @@ export function WorkColumn({
 
       {canEditPosition && editingPosition !== null && (
         <CanvasEditor
-          // The editor's save path follows the target kind: draft targets fire
-          // onSavedDraft, post targets fire onSaved — passing both is inert.
-          // A draft carries its colour pair to the editor, because the server has no row to read it
-          // from — without it, a picture generated in the editor comes back with no ground or accent
-          // instruction while the slides beside it wear the pair.
-          target={
-            editorTarget ?? {
-              kind: 'draft',
-              clientId: post.client_id,
-              draftId: post.id,
-              ...schemeOf(visuals),
-            }
-          }
+          target={editorTarget}
           slides={editorSlides}
           initialPosition={editingPosition}
           onSaved={onSavedImage}
           onClose={() => setEditingPosition(null)}
-          onSavedDraft={(visual, doc) =>
-            onEditedVisual(post.id, {
-              position: visual.position,
-              status: 'done',
-              publicUrl: visual.publicUrl,
-              storagePath: visual.storagePath,
-              canvasDoc: doc,
-            })
-          }
         />
       )}
     </div>

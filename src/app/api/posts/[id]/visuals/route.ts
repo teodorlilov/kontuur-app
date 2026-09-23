@@ -43,12 +43,22 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       generatePostVisual({ postId, clientId: post.client_id, position })
     )
     if (!result.ok) {
-      return result.reason === 'not_found'
-        ? NextResponse.json({ error: 'Post not found' }, { status: 404 })
-        : NextResponse.json(
-            { error: 'No slide copy at this position to generate from' },
-            { status: 400 }
-          )
+      if (result.reason === 'not_found') {
+        return NextResponse.json({ error: 'Post not found' }, { status: 404 })
+      }
+      // 409, not an error: something else is already making this picture (a run resumed in
+      // another tab, the visuals cron). The surface shows the slide as generating and waits
+      // rather than paying for a second one.
+      if (result.reason === 'in_flight') {
+        return NextResponse.json(
+          { error: 'This visual is already being generated' },
+          { status: 409 }
+        )
+      }
+      return NextResponse.json(
+        { error: 'No slide copy at this position to generate from' },
+        { status: 400 }
+      )
     }
     return NextResponse.json({ image: result.image })
   } catch (err) {

@@ -354,18 +354,32 @@
         }
       }
 
-      /* Danger: transparent, Clay text — DESIGN.md § Buttons. Leaving mid-run
-     discards drafts, so it is destructive and says so. */
+      /* The exit. Drafts are rows the moment they stream, so on setup and review it is a quiet
+     secondary "Back to dashboard" — nothing is lost by leaving. Only while a run is streaming does
+     it turn into the Clay-text danger button (DESIGN.md § Buttons) and read "Stop run". */
       .quit {
         flex: none;
         font-size: var(--text-caption);
         line-height: 1;
-        color: var(--danger);
+        color: var(--text2);
         padding: 8px 16px;
+        border: 1px solid var(--line2);
         border-radius: var(--radius-md);
-        transition: background 0.15s var(--ease-contour);
+        background: var(--surface);
+        transition:
+          background 0.15s var(--ease-contour),
+          color 0.15s var(--ease-contour);
       }
       .quit:hover {
+        background: var(--wash);
+        color: var(--ink);
+      }
+      .quit.stopping {
+        color: var(--danger);
+        border-color: transparent;
+        background: transparent;
+      }
+      .quit.stopping:hover {
         background: var(--danger-bg);
       }
 
@@ -2436,7 +2450,7 @@
           ><i>k</i><span>kontuur<em>.</em></span></span
         >
         <nav class="steps" id="steps" aria-label="Generation progress"></nav>
-        <button class="quit" id="quit">Cancel run</button>
+        <button class="quit" id="quit">Back to dashboard</button>
       </header>
 
       <main class="stage" id="stage">
@@ -2447,6 +2461,49 @@
             <p class="sub">
               Everything on one screen. The panel on the right updates as you choose.
             </p>
+
+            <!-- Drafts a previous run left waiting for another client. The same notice shell as
+                 the skipped-pillar banner in review (`FlowNotice`): icon, one sentence, one action.
+                 The selected client's own waiting drafts never show here — the flow opens straight
+                 into them. -->
+            <div class="banner waiting" style="margin-top: 20px; margin-bottom: 0">
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.5"
+                aria-hidden="true"
+              >
+                <circle cx="12" cy="12" r="9" />
+                <path d="M12 7v5l3 2" stroke-linecap="round" stroke-linejoin="round" />
+              </svg>
+              <p style="margin: 0; min-width: 0; flex: 1">
+                <b>3 drafts</b> for <i>Bakery Sofia</i> are waiting for review — from a run
+                yesterday.
+              </p>
+              <a href="#">Review them</a>
+            </div>
+            <div class="banner waiting" style="margin-top: 8px; margin-bottom: 0">
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.5"
+                aria-hidden="true"
+              >
+                <circle cx="12" cy="12" r="9" />
+                <path d="M12 7v5l3 2" stroke-linecap="round" stroke-linejoin="round" />
+              </svg>
+              <p style="margin: 0; min-width: 0; flex: 1">
+                <b>1 draft</b> for <i>Atelier Nord</i> is waiting for review — from a run 3 days
+                ago.
+              </p>
+              <a href="#">Review it</a>
+            </div>
 
             <div class="grp" style="border-top: none; margin-top: 20px; padding-top: 0">
               <h2>Client</h2>
@@ -2831,14 +2888,14 @@
 
     <dialog id="dlgQuit">
       <form method="dialog" class="dlg">
-        <h2>Discard this run?</h2>
+        <h2>Stop this run?</h2>
         <p id="quitBody">
-          The drafts generated so far are not saved yet. Leaving now discards them, along with the
-          visuals composed for them.
+          This run is still going. Drafts written so far are kept and wait for you on Generate;
+          anything still being written may be lost.
         </p>
         <div class="acts">
           <button class="btn ghost" value="stay">Keep working</button>
-          <button class="btn danger" value="quit">Discard and leave</button>
+          <button class="btn danger" value="quit">Stop and leave</button>
         </div>
       </form>
     </dialog>
@@ -3438,6 +3495,8 @@
         })
         el('stage').scrollTop = 0
         el('quit').hidden = v === 4
+        el('quit').classList.toggle('stopping', v === 2)
+        el('quit').textContent = v === 2 ? 'Stop run' : 'Back to dashboard'
         renderSteps()
       }
 
@@ -4675,23 +4734,19 @@
    ══════════════════════════════════════════════════════════════════════ */
       el('go').onclick = startRun
 
+      // Only a streaming run confirms: drafts are rows, so leaving setup or review loses nothing.
       el('quit').onclick = function () {
-        if (S.view === 1) {
-          toast('Back to the dashboard')
+        if (S.view !== 2) {
+          toast('Back to the dashboard — waiting drafts stay on Generate')
           return
         }
-        var n = live().length
-        el('quitBody').textContent = n
-          ? plural(n, 'draft') +
-            ' generated so far are not saved yet. Leaving now discards them, along with the visuals composed for them.'
-          : 'This run is still going. Leaving now stops it — nothing generated so far is saved.'
         el('dlgQuit').showModal()
       }
       el('dlgQuit').addEventListener('close', function () {
         if (this.returnValue === 'quit') {
           resetRun()
           show(1)
-          toast('Run discarded')
+          toast('Run stopped — drafts written so far are waiting')
         }
       })
 

@@ -7,6 +7,7 @@ import { fetchEntitledClients } from '@/lib/billing/entitled-clients'
 import type { Spender } from '@/lib/billing/spend-context'
 import { AllowanceError, readUsage, runMetered } from '@/lib/billing/usage'
 import { missingPositions, pickVisualBacklog, type BacklogPost } from '@/lib/visual/visual-backlog'
+import { clearStaleVisualJobs } from '@/lib/visual/visual-jobs'
 import { VISUAL_BACKLOG_POST_COLUMNS } from '@/lib/queries/select-columns'
 import { MS_PER_HOUR, QUALITY_FLOOR } from '@/utils/constants'
 import { unauthorizedCron } from '@/lib/cron/authorize-cron'
@@ -52,12 +53,31 @@ const BACKLOG_FETCH_LIMIT = 100
  * backstop for a race with a wizard user in the same minute. A picture is counted only once it is
  * on its row (`runMetered`); a failed one still costs the post an attempt.
  */
+/**
+ * Drop the claims of invocations that were killed, before deciding what still owes a picture.
+ *
+ * Every reader already ignores them by age, so this frees the position for a retry instead of
+ * making the reviewer wait the window out, and stops the table keeping a row per dead generation.
+ * Housekeeping, never a precondition: the sweep throws on a failed delete, and a tick that painted
+ * nothing because a cleanup query hiccuped is a worse outcome than a claim living an hour longer.
+ */
+async function releaseAbandonedClaims(admin: ReturnType<typeof createAdminSupabaseClient>) {
+  try {
+    const released = await clearStaleVisualJobs(admin)
+    if (released > 0) console.info(`[cron/visuals] released ${released} abandoned claim(s)`)
+  } catch (err) {
+    console.error('[cron/visuals] stale claim sweep failed:', err)
+  }
+}
+
 export async function GET(request: NextRequest) {
   const unauthorized = unauthorizedCron(request)
   if (unauthorized) return unauthorized
 
   const startedAt = Date.now()
   const admin = createAdminSupabaseClient()
+
+  await releaseAbandonedClaims(admin)
 
   // Server-side mirror of pickVisualBacklog's gates: an hourly tick must not ship
   // every pending post's slides_json across the wire to conclude nothing is due.
@@ -179,6 +199,7 @@ export async function GET(request: NextRequest) {
   let generated = 0
   let failed = 0
   let skippedNoCopy = 0
+  let skippedInFlight = 0
   let skippedForTime = 0
 
   await Promise.all(
@@ -205,6 +226,7 @@ export async function GET(request: NextRequest) {
             generatePostVisual({ postId: job.postId, clientId: job.clientId, position })
           )
           if (result.ok) generated++
+          else if (result.reason === 'in_flight') skippedInFlight++
           else skippedNoCopy++
         } catch (err) {
           if (err instanceof AllowanceError) {
@@ -225,6 +247,8 @@ export async function GET(request: NextRequest) {
     generated,
     failed,
     skipped_no_copy: skippedNoCopy,
+    /** Positions a person or another tick was already generating — the claim doing its job. */
+    skipped_in_flight: skippedInFlight,
     skipped_allowance: skippedAllowance,
     skipped_for_time: skippedForTime,
     duration_ms: Date.now() - startedAt,

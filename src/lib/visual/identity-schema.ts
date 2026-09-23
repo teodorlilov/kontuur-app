@@ -3,7 +3,6 @@ import { formatZodIssues } from '@/lib/validation/format-issues'
 import type { VisualIdentity } from '@/types/visual'
 import { BRAND_STYLE_IDS, DEFAULT_BRAND_STYLE_ID } from './brand-styles'
 import { FONT_FAMILY_NAMES } from '@/lib/canvas/font-library'
-import type { ColorScheme } from './color-scheme'
 import type { SeedIdentity } from '@/lib/canvas/seed-doc'
 import { HEX_COLOR } from '@/lib/validation'
 
@@ -29,18 +28,6 @@ const paletteSchema = z.object({
 })
 
 /**
- * The ground/accent pair, over the wire. One definition because three boundaries now carry it — the
- * draft-visual request, the post insert, and back out on the generate response — and a colour pair
- * that validates differently at each of them is a pair that desynchronises at one of them.
- */
-export const colorSchemeSchema = z.object({ ground: hex, accent: hex })
-
-const _schemeForward: ColorScheme = null as unknown as z.infer<typeof colorSchemeSchema>
-const _schemeBackward: z.infer<typeof colorSchemeSchema> = null as unknown as ColorScheme
-void _schemeForward
-void _schemeBackward
-
-/**
  * What a surface needs to SEED a canvas doc — the palette, the brand style, and the client's name.
  *
  * Deliberately NOT `visualIdentitySchema`. That one validates the stored `brand_visual_identity.identity`
@@ -48,8 +35,8 @@ void _schemeBackward
  * blob would give one fact two homes that drift. But the two shapes were being conflated: the canvas
  * route hand-built `{ palette, style }` in two places, the client re-derived the same pair through
  * `safeParseVisualIdentity`, and when `clientName` was added to `SeedIdentity` the stored-blob schema
- * silently stripped it — so the `quote` lockup got its byline on wizard drafts and lost it on every
- * persisted post, which made the picker stop recognising an approved draft's own layout.
+ * silently stripped it — so the `quote` lockup got its byline on one read path and lost it on the
+ * other, which made the picker stop recognising a post's own layout.
  *
  * One schema, both directions guarded, so a field added to `SeedIdentity` fails the build until every
  * wire that carries it is updated.

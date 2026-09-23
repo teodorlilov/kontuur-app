@@ -5,9 +5,8 @@ import type { CanvasDoc, CanvasNode } from '@/types/canvas'
  * the index arithmetic it implies — nothing else should reverse a node list.
  *
  * It lives feature-side rather than in `lib/canvas/doc-nodes.ts` because "topmost first" is a
- * presentation decision, and doc-nodes is shared non-UI logic reached by a server route
- * (`api/posts/route.ts`) and by `lib/visual/draft-visuals.ts` — see the components/features split in
- * docs/CLAUDE.md.
+ * presentation decision, and doc-nodes is shared non-UI logic — see the components/features
+ * split in docs/CLAUDE.md.
  */
 
 /** The doc's nodes in the order the panel shows them: topmost first. */

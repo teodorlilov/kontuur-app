@@ -60,7 +60,6 @@ export const UNTESTED_COMPONENTS: string[] = [
   'features/dashboard/components/client-coverage.tsx',
   'features/dashboard/components/count-up.tsx',
   'features/dashboard/components/pending-review-list.tsx',
-  'features/generate/components/generate-flow.tsx',
   'features/generate/components/setup/brief-list.tsx',
   'features/ideas/components/idea-form-client.tsx',
   'features/ideas/components/idea-form-tab.tsx',

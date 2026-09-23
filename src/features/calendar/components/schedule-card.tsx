@@ -179,12 +179,10 @@ export const ScheduleCard = memo(function ScheduleCard({
 
   // Delegate merging to the calendar state hook (functional updates) — computing the merged array
   // here from a captured `post` snapshot loses images when concurrent generations complete.
-  const handleImageUploaded = useCallback(
-    (image: PostImage) => {
-      if (!post) return
-      onImageUpserted(post.id, image)
-    },
-    [post, onImageUpserted]
+  /** A picture is now this slide's — from a generation, a compose, or the editor's save. */
+  const mergeImage = useCallback(
+    (postId: string, image: PostImage) => onImageUpserted(postId, image),
+    [onImageUpserted]
   )
 
   const handleImageDeleted = useCallback(
@@ -199,6 +197,7 @@ export const ScheduleCard = memo(function ScheduleCard({
     () =>
       post
         ? {
+            id: post.id,
             post_type: post.post_type,
             slides_json: post.slides_json,
             caption: post.caption ?? null,
@@ -207,11 +206,15 @@ export const ScheduleCard = memo(function ScheduleCard({
     [post]
   )
 
-  const { generatingPositions, composingPositions, generate, recompose } = useGenerateVisuals(
-    post?.id ?? '',
-    handleImageUploaded,
-    copySource
+  const visuals = useGenerateVisuals(mergeImage)
+  const { generating: generatingPositions, composing: composingPositions } = visuals.positionsFor(
+    post?.id ?? ''
   )
+  const generate = (positions: number[]) => copySource && visuals.generate(copySource, positions)
+  /** The person supplied their own picture: it lands like a generated one, text and all. */
+  const handleUpload = (image: PostImage) => {
+    if (copySource) visuals.pictureLanded(copySource, image.position, image)
+  }
   const [editingPosition, setEditingPosition] = useState<number | null>(null)
 
   /**
@@ -412,8 +415,9 @@ export const ScheduleCard = memo(function ScheduleCard({
   // Copy edits never regenerate the AI art — but baked text re-composes from the fresh values
   // (the `post` prop lags the optimistic save, so the just-saved fields come in explicitly).
   function recomposeBakedText(updates: ContentUpdates) {
-    void recompose(
+    void visuals.recompose(
       {
+        id: currentPost.id,
         post_type: currentPost.post_type,
         slides_json: updates.slides_json ?? currentPost.slides_json,
         caption: updates.caption ?? currentPost.caption ?? null,
@@ -659,7 +663,7 @@ export const ScheduleCard = memo(function ScheduleCard({
                   flaggedSlides={flaggedSlideNumbers}
                   postId={currentPost.id}
                   images={images}
-                  onImageUploaded={handleImageUploaded}
+                  onImageUploaded={handleUpload}
                   onImageDeleted={handleImageDeleted}
                   canvaConnected={canvaConnected}
                   onGenerateImage={
@@ -684,7 +688,7 @@ export const ScheduleCard = memo(function ScheduleCard({
                   postId={currentPost.id}
                   position={0}
                   image={images.find((img) => img.position === 0) ?? null}
-                  onUploaded={handleImageUploaded}
+                  onUploaded={handleUpload}
                   onDeleted={handleImageDeleted}
                   canvaConnected={canvaConnected}
                   onGenerate={
@@ -779,11 +783,11 @@ export const ScheduleCard = memo(function ScheduleCard({
       </ConfirmDialog>
       {canEditPosition && editingPosition !== null && (
         <CanvasEditor
-          target={{ kind: 'post', postId: currentPost.id }}
+          target={{ postId: currentPost.id }}
           slides={editorSlides}
           initialPosition={editingPosition}
           onClose={() => setEditingPosition(null)}
-          onSaved={handleImageUploaded}
+          onSaved={(image) => mergeImage(currentPost.id, image)}
         />
       )}
     </div>

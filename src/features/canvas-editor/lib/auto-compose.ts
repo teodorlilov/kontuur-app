@@ -4,10 +4,9 @@ import { applyCopyToDoc, seedCanvasDoc, type SeedIdentity } from '@/lib/canvas/s
 import type { CanvasBackgroundRef, CanvasDoc, CanvasNode } from '@/types/canvas'
 import type { PostImage } from '@/types/api'
 import { composeDoc } from './compose'
-import { saveDraftCanvas, savePostCanvas } from './save-canvas'
+import { savePostCanvas } from './save-canvas'
 import { fetchCanvasDocs } from './canvas-state-client'
 import { copyFields } from './resolve-slides'
-import type { DraftVisualResult } from '../types'
 import type { SlideCopy } from '@/lib/posts/slide-copy'
 import type { VariationKey } from '@/lib/visual/variation'
 
@@ -55,13 +54,13 @@ export async function loadPostCanvas(
 }
 
 /**
- * Auto-compose after a persisted post's image generates: reuse the position's existing doc over
- * the fresh clean image (custom layouts survive regenerates), else seed from the post copy; then
- * flatten and save through the canvas PUT. Null = nothing to bake.
+ * Auto-compose after a picture lands at a persisted post's position — generated, or uploaded by the
+ * reviewer: reuse the position's existing doc over the new clean image (custom layouts survive
+ * both), else seed from the post copy; then flatten and save through the canvas PUT. Null =
+ * nothing to bake.
  *
- * Takes `identity` and `doc` rather than fetching them — the same shape `composeDraftVisual` below
- * has always had. The two halves of this file disagreed about that, and the persisted half's version
- * cost a round trip per slide.
+ * Takes `identity` and `doc` rather than fetching them: a pass reads the post's canvas once and
+ * composes every position against it, where fetching per slide cost a round trip each.
  */
 export async function composePersistedPosition(input: {
   postId: string
@@ -76,8 +75,8 @@ export async function composePersistedPosition(input: {
   const { identity, doc: stored } = input
 
   const background = { publicUrl: input.image.publicUrl, storagePath: input.image.storagePath }
-  // The image's storage PATH is the layout nonce — the same key `resolve-slides` and the draft path
-  // use, so one slide gets the same answer whichever of the three seeded it.
+  // The image's storage PATH is the layout nonce — the same key `resolve-slides` uses, so one slide
+  // gets the same answer whichever of the two seeded it.
   //
   // The path rather than the row id, which this used to read. A row id only changed because writes
   // deleted and re-inserted; `putPostImage` upserts, so the id now survives a regenerate and a
@@ -92,9 +91,9 @@ export async function composePersistedPosition(input: {
     total: input.total,
     nonce: input.image.storagePath,
   }
-  // The image is always fresh art here (this runs right after it generated), so it unconditionally
-  // becomes the new clean background. Which is also why reading the stored doc BEFORE that image
-  // existed is sound: it gets rebound to the new one either way.
+  // The image is whatever just landed at this position, so it unconditionally becomes the new
+  // clean background. Which is also why reading the stored doc BEFORE that image existed is sound:
+  // it gets rebound to the new one either way.
   const doc = stored
     ? rebindDocToImage(stored, background)
     : input.slideCopy && seedFromCopy(identity, background, input.slideCopy, variation)
@@ -127,45 +126,4 @@ export async function recomposePersistedPosition(input: {
 
   const { doc: fitted, blob } = await composeDoc(updated, input.identity.palette)
   return savePostCanvas(input.postId, input.position, fitted, blob, input.baseImagePath)
-}
-
-/** Auto-compose a freshly generated wizard draft visual (clean file stays as the doc background). */
-export async function composeDraftVisual(input: {
-  clientId: string
-  draftId: string
-  position: number
-  total: number
-  identity: SeedIdentity
-  slideCopy: SlideCopy
-  clean: CanvasBackgroundRef
-}): Promise<{ visual: DraftVisualResult; doc: CanvasDoc } | null> {
-  const doc = seedFromCopy(input.identity, input.clean, input.slideCopy, {
-    subject: input.draftId,
-    position: input.position,
-    total: input.total,
-    // The clean file's path stands in for an image id a draft does not have yet: it is unique per
-    // generation, so a reroll lands on a different layout exactly as it does for a persisted post.
-    nonce: input.clean.storagePath,
-  })
-  if (!doc) return null
-  const { doc: fitted, blob } = await composeDoc(doc, input.identity.palette)
-  return saveDraftCanvas(input, input.position, fitted, blob)
-}
-
-/**
- * Re-compose a draft after a copy rewrite (D3e): role-seeded layers take the new text (hand-edited
- * ones keep their wording), the untouched AI art is re-flattened, the old flattened file replaced.
- */
-export async function recomposeDraftVisual(input: {
-  clientId: string
-  draftId: string
-  position: number
-  identity: SeedIdentity
-  slideCopy: SlideCopy
-  doc: CanvasDoc
-  previousFlattenedPath?: string
-}): Promise<{ visual: DraftVisualResult; doc: CanvasDoc }> {
-  const updated = applyCopyToDoc(input.doc, copyFields(input.slideCopy))
-  const { doc: fitted, blob } = await composeDoc(updated, input.identity.palette)
-  return saveDraftCanvas(input, input.position, fitted, blob, input.previousFlattenedPath)
 }

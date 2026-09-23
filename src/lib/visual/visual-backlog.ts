@@ -15,6 +15,26 @@ export function totalVisualSlots(post: { post_type: string; slides_json: unknown
   return post.post_type === 'carousel' ? parseSlides(post.slides_json).length : 1
 }
 
+/**
+ * AI art as it leaves the model: a `visual-*` file, which is what `generatePostVisual` names every
+ * picture it makes (lib/visual/generate-post-visual.ts). A flattened slide is written as
+ * `slide-N.jpg` by `savePostCanvas`, and a person's own upload keeps its own name — so this is
+ * the one question "does this picture still owe its text?" is asked through.
+ */
+export function isUnbakedArt(image: PostImage): boolean {
+  return image.fileName?.startsWith('visual-') === true
+}
+
+/**
+ * The images a surface bakes over on open — the cron's pictures in the queue, an interrupted run's
+ * on resume. A position that already carries a canvas doc is left alone: its text is on it, and
+ * re-baking would undo whatever was done to it in the editor.
+ */
+export function unbakedImages(images: PostImage[], composedPositions: number[]): PostImage[] {
+  const composed = new Set(composedPositions)
+  return images.filter((image) => isUnbakedArt(image) && !composed.has(image.position))
+}
+
 /** The slide positions a post still owes a picture for, in slide order. */
 export function missingPositions(
   post: { post_type: string; slides_json: unknown },

@@ -14,7 +14,10 @@ import { DEFAULT_RUN_SIZE } from '@/utils/constants'
 import { fetchIdeaById } from '@/features/ideas/lib/ideas'
 import { AWAITING_DECISION } from '@/features/ideas/lib/idea-filters'
 import { GenerateFlow } from '@/features/generate/components/generate-flow'
+import { groupWaitingDrafts, type WaitingDrafts } from '@/features/generate/lib/waiting-drafts'
 import { requireBusinessSetup } from '@/features/onboarding/lib/require-business-setup'
+import { fetchEditorialPosts } from '@/lib/posts/fetch-editorial-posts'
+import { fetchWaitingRuns } from '@/lib/generation/runs'
 import type { MetaConnection } from '@/types/api'
 
 interface PageProps {
@@ -32,6 +35,11 @@ interface PageProps {
  * It also reads what this run may still draw on, so the stepper and the Generate button can say
  * so before anyone presses it — the server reserves the same number, so the two never disagree.
  * An unmetered workspace passes null: no cap to show.
+ *
+ * And it reads the drafts still waiting for review — rows in status `'draft'`, written by the
+ * stream the moment they landed — with the runs that wrote them, so the flow can open straight
+ * into a run and still say what that run could not cover. A failed read is logged and degrades to
+ * "nothing waiting": the wizard must never be hidden behind its own resume.
  */
 export default async function GeneratePage({ searchParams }: PageProps) {
   // The params do not depend on the session, and the idea does not depend on the client list, so
@@ -49,7 +57,24 @@ export default async function GeneratePage({ searchParams }: PageProps) {
     getCachedAgency(agencyId),
     getCachedEntitlement(agencyId),
   ])
-  const usage = await readUsage(agencyId, entitlement.periodKey)
+  const [usage, waitingDrafts] = await Promise.all([
+    readUsage(agencyId, entitlement.periodKey),
+    fetchEditorialPosts(
+      supabase,
+      clients.map((c) => c.id),
+      'draft'
+    )
+      .then(async (posts) => {
+        // The runs behind those drafts, in one read: what each asked for, and what it could not
+        // cover. Sequential on purpose — which runs to read is the drafts' own answer.
+        const runIds = [...new Set(posts.flatMap((item) => item.post.generation_run_id ?? []))]
+        return groupWaitingDrafts(posts, await fetchWaitingRuns(supabase, runIds))
+      })
+      .catch((err: unknown): WaitingDrafts[] => {
+        console.error('[generate] waiting drafts read failed:', err)
+        return []
+      }),
+  ])
   const draftLimit = meteredLimit(entitlement.limits.draft)
   const draftsLeft = draftLimit === null ? null : Math.max(0, draftLimit - usage.committed.draft)
 
@@ -112,6 +137,8 @@ export default async function GeneratePage({ searchParams }: PageProps) {
       initialClientId={requestedClientId}
       initialSources={initialSources}
       initialConnections={initialConnections}
+      waitingDrafts={waitingDrafts}
+      loadedAt={new Date().toISOString()}
     />
   )
 }

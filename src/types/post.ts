@@ -13,7 +13,8 @@ export type PostSummary = Pick<PostRow, 'id' | 'client_id' | 'scheduled_at'>
  *
  * Derived from the generated row type: a column that changes shape fails the build
  * here rather than drifting. The `Partial` half is the tail every surface may omit —
- * attribution and publish bookkeeping that only some reads project.
+ * attribution, publish bookkeeping, and what a draft remembers of the run that made it
+ * (the date its brief asked for, the idea that asked, the run it belongs to).
  */
 export type PostData = Pick<
   PostRow,
@@ -30,12 +31,6 @@ export type PostData = Pick<
    *  (CarouselSlide[], ValidationData) rather than trusting the column. */
   slides_json: unknown
   validation_json: unknown
-  /**
-   * The date a priority brief asked for. Present only on wizard drafts, which are
-   * not rows yet — there is no `posts.target_date`, and nothing persists it. It
-   * exists so the schedule dialog can default to what the client asked for.
-   */
-  target_date?: string | null
 } & Partial<
     Pick<
       PostRow,
@@ -48,5 +43,8 @@ export type PostData = Pick<
       | 'pillar'
       | 'source_excerpt'
       | 'client_source_id'
+      | 'target_date'
+      | 'client_idea_id'
+      | 'generation_run_id'
     >
   >

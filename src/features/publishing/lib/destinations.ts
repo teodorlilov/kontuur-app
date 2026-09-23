@@ -57,12 +57,13 @@ async function resolveDestinations(
 /**
  * Record where a post is going, from the destinations its caller chose.
  *
- * The SLOT itself stays with the caller — the three writers stamp it differently (a batch update
- * by id, a fresh insert, a conditional stamp on publish-now) and folding that in would mean this
- * function wrote `posts` as well. What it owns is the half that was being pasted: decide the real
- * destinations, then record them. The third slot writer pasted only the first half — `POST
- * /api/posts`, the generate wizard's approve — so those posts sat in the calendar looking
- * scheduled while the cron, which is rooted on `post_publications`, could never see them.
+ * The SLOT itself stays with the caller — the two writers stamp it differently (a batch update
+ * by id, a conditional stamp on publish-now) and folding that in would mean this function wrote
+ * `posts` as well. What it owns is the half that was being pasted: decide the real destinations,
+ * then record them. A slot writer that pastes only the first half leaves posts sitting in the
+ * calendar looking scheduled while the cron, which is rooted on `post_publications`, can never
+ * see them — which is how the generate wizard's approve behaved until it went through
+ * `schedulePosts` like every other approve, passing what the client can reach.
  *
  * Returns what it recorded. An empty array is the answer worth acting on: nothing will publish
  * this post. Idempotent through `createPublications`, so re-scheduling cannot duplicate a
@@ -75,8 +76,8 @@ export async function assignDestinations(
   postType: PostType,
   /**
    * Which destinations to record. `'all'` is every one this post can reach — what a caller with
-   * no choice to offer means, like publishing on demand or approving a draft straight into a
-   * slot. An array narrows to those, and is what the calendar sends.
+   * no choice to offer means, like publishing on demand. An array narrows to those, and is what
+   * the calendar and both review surfaces send.
    *
    * Named rather than optional: "send it everywhere" and "send it to these" are different
    * intents, and an absent argument would leave which one a caller meant to be inferred.
