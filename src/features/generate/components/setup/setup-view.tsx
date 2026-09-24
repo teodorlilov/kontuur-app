@@ -1,6 +1,7 @@
 'use client'
 
-import { ClockCircleIcon } from '@solar-icons/react/linear'
+import Link from 'next/link'
+import { ClockCircleIcon, DangerCircleIcon } from '@solar-icons/react/linear'
 import { Card } from '@/components/ui/card'
 import { Spinner } from '@/components/ui/spinner'
 import { FLOW_NOTICE_ACTION_CLASS, FlowNotice } from '@/features/generate/components/flow-notice'
@@ -10,9 +11,11 @@ import { FormatCards } from './format-cards'
 import { CountSteppers } from './count-steppers'
 import { BriefList } from './brief-list'
 import { RunPanel } from './run-panel'
-import { DEFAULT_RUN_SIZE } from '@/utils/constants'
+import { DEFAULT_RUN_SIZE, PLAN_AND_BILLING_PATH } from '@/utils/constants'
+import { postsLeft as postsLeftLine } from '@/lib/billing/copy'
 import type { RunPlan } from '@/features/generate/lib/run-plan'
 import type { PostType, PriorityPost, ClientIdea } from '@/types/api'
+import type { PostsAffordable } from '@/lib/billing/post-allowance'
 
 interface SetupViewProps {
   clients: PickerClient[]
@@ -22,8 +25,8 @@ interface SetupViewProps {
   postType: PostType
   slideCount: number
   postCount: number
-  /** AI drafts left this period, or null when the workspace is unmetered. */
-  draftsLeft: number | null
+  /** Posts this period can still pay for at the chosen format; zero replaces the form. */
+  affordable: PostsAffordable
   briefs: PriorityPost[]
   runPlan: RunPlan
   sourceIdea?: ClientIdea
@@ -50,10 +53,18 @@ interface WaitingRow {
   writtenAgo: string
 }
 
-/** Step 1 — everything on one screen; the run panel updates as choices land. */
+/**
+ * Step 1 — everything on one screen; the run panel updates as choices land.
+ *
+ * With nothing left to spend the form is replaced by the refusal rather than rendered around a
+ * stepper that cannot leave zero: the choices exist to size a run, and there is no run to size.
+ * The waiting rows stay — drafts from earlier runs are still reviewable, and this route is where
+ * they live.
+ */
 export function SetupView(props: SetupViewProps) {
   const { sourceIdea } = props
   const isIdeaFlow = !!sourceIdea
+  const spent = props.affordable.posts === 0
   const selectedClient = props.clients.find((c) => c.id === props.clientId)
   const postsPerWeek = selectedClient?.posts_per_week ?? DEFAULT_RUN_SIZE
 
@@ -98,68 +109,86 @@ export function SetupView(props: SetupViewProps) {
           </div>
         )}
 
-        <SetupGroup title="Client" first>
-          <ClientPicker
-            clients={props.clients}
-            selectedId={props.clientId}
-            meta={props.clientMeta}
-            onSelect={props.onClientChange}
-            disabled={isIdeaFlow}
-          />
-          {props.clientLoading && (
-            <p className="mt-2 flex items-center gap-2 text-caption text-text2">
-              <Spinner size="sm" /> Loading brand profile…
-            </p>
-          )}
-        </SetupGroup>
+        {spent ? (
+          <FlowNotice
+            glyph={DangerCircleIcon}
+            className="mt-5"
+            action={
+              <Link href={PLAN_AND_BILLING_PATH} className={FLOW_NOTICE_ACTION_CLASS}>
+                Plan &amp; billing
+              </Link>
+            }
+          >
+            {postsLeftLine(0, props.affordable.limiting)}
+          </FlowNotice>
+        ) : (
+          <>
+            <SetupGroup title="Client" first>
+              <ClientPicker
+                clients={props.clients}
+                selectedId={props.clientId}
+                meta={props.clientMeta}
+                onSelect={props.onClientChange}
+                disabled={isIdeaFlow}
+              />
+              {props.clientLoading && (
+                <p className="mt-2 flex items-center gap-2 text-caption text-text2">
+                  <Spinner size="sm" /> Loading brand profile…
+                </p>
+              )}
+            </SetupGroup>
 
-        <SetupGroup title="Format">
-          <FormatCards
-            value={props.postType}
-            slideCount={props.slideCount}
-            onChange={props.onPostTypeChange}
-          />
-        </SetupGroup>
+            <SetupGroup title="Format">
+              <FormatCards
+                value={props.postType}
+                slideCount={props.slideCount}
+                onChange={props.onPostTypeChange}
+              />
+            </SetupGroup>
 
-        {/* Shown on the idea flow too. An idea is a locked priority brief, not a
+            {/* Shown on the idea flow too. An idea is a locked priority brief, not a
             different kind of run — it starts the stepper at 0 so "just this idea"
             is one post, and raising it adds researched posts alongside. Hiding the
             stepper made that combination unreachable while the flow beneath it
             already summed briefs and researched posts correctly. */}
-        <SetupGroup title="How many">
-          <CountSteppers
-            postCount={props.postCount}
-            draftsLeft={props.draftsLeft}
-            slideCount={props.slideCount}
-            briefCount={props.briefs.length}
-            postType={props.postType}
-            postsPerWeek={postsPerWeek}
-            onPostCount={props.onPostCountChange}
-            onSlideCount={props.onSlideCountChange}
-          />
-        </SetupGroup>
+            <SetupGroup title="How many">
+              <CountSteppers
+                postCount={props.postCount}
+                affordable={props.affordable}
+                slideCount={props.slideCount}
+                briefCount={props.briefs.length}
+                postType={props.postType}
+                postsPerWeek={postsPerWeek}
+                onPostCount={props.onPostCountChange}
+                onSlideCount={props.onSlideCountChange}
+              />
+            </SetupGroup>
 
-        <SetupGroup title="Priority briefs" hint={isIdeaFlow ? undefined : '— optional'}>
-          <BriefList
-            briefs={props.briefs}
-            onChange={props.onBriefsChange}
-            lockedCount={props.lockedBriefCount ?? 0}
-          />
-        </SetupGroup>
+            <SetupGroup title="Priority briefs" hint={isIdeaFlow ? undefined : '— optional'}>
+              <BriefList
+                briefs={props.briefs}
+                onChange={props.onBriefsChange}
+                lockedCount={props.lockedBriefCount ?? 0}
+              />
+            </SetupGroup>
+          </>
+        )}
       </Card>
 
-      <RunPanel
-        runPlan={props.runPlan}
-        // The real numbers, not a hardcoded 1. The idea is already one of `briefs`,
-        // so the panel's postCount + briefCount is the same sum the server writes.
-        postCount={props.postCount}
-        briefCount={props.briefs.length}
-        draftsLeft={props.draftsLeft}
-        metaLine={metaLine}
-        clientId={props.clientId}
-        generating={props.generating}
-        onGenerate={props.onGenerate}
-      />
+      {!spent && (
+        <RunPanel
+          runPlan={props.runPlan}
+          // The real numbers, not a hardcoded 1. The idea is already one of `briefs`,
+          // so the panel's postCount + briefCount is the same sum the server writes.
+          postCount={props.postCount}
+          briefCount={props.briefs.length}
+          affordable={props.affordable}
+          metaLine={metaLine}
+          clientId={props.clientId}
+          generating={props.generating}
+          onGenerate={props.onGenerate}
+        />
+      )}
     </div>
   )
 }

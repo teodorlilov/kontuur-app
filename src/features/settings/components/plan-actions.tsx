@@ -12,7 +12,7 @@ import type { PlanId } from '@/lib/billing/plans'
 interface PlanActionsProps {
   state: EntitlementState
   plan: PlanId
-  /** What choosing the plan bills, worded by copy.ts on the server: "€19.00 a month per client · 3 clients today". */
+  /** What choosing the plan bills, worded by copy.ts on the server: "€29.00 a month per client · 3 clients today". */
   summary: string
   /** Whether a paid plan is already set to end (`Entitlement.endsOn`) — picks Cancel plan or Keep plan. */
   ending: boolean

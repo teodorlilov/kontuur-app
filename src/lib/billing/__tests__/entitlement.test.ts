@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { AgencyBillingColumns } from '@/lib/queries/select-columns'
 import { entitlementFor, noEntitlement } from '../entitlement'
-import { GRACE_DAYS, PRO_PLAN, TRIAL_BRANDS, TRIAL_PER_BRAND } from '../plans'
+import { GRACE_DAYS, PRO_PLAN, TRIAL_ALLOWANCE, TRIAL_BRANDS } from '../plans'
 
 const NOW = new Date('2026-09-13T12:00:00Z')
 
@@ -47,7 +47,7 @@ describe('entitlementFor — the trial', () => {
     expect(e.state).toBe('trial')
     expect([e.canSpend, e.canPublish, e.canCreate]).toEqual([true, true, true])
     expect(e.brands).toBe(TRIAL_BRANDS.agency)
-    expect(e.limits.draft).toBe(TRIAL_PER_BRAND.draft * TRIAL_BRANDS.agency)
+    expect(e.limits).toEqual(TRIAL_ALLOWANCE)
     expect(e.periodKey).toBe('trial')
     expect(e.trialEndsAt?.toISOString()).toBe(daysFromNow(7))
     expect(e.resetsOn).toBeNull()
@@ -56,11 +56,12 @@ describe('entitlementFor — the trial', () => {
     expect(e.timezone).toBe('Europe/Sofia')
   })
 
-  it('a solo trial is one brand with one brand of allowance', () => {
+  it('a solo trial is one brand, on the same one trial allowance', () => {
     const e = entitlementFor(row({ mode: 'solo' }), NOW)
     expect(e.mode).toBe('solo')
     expect(e.brands).toBe(1)
-    expect(e.limits.image).toBe(TRIAL_PER_BRAND.image)
+    // The cap on clients is the mode's; what the trial may spend is the workspace's, either way.
+    expect(e.limits).toEqual(TRIAL_ALLOWANCE)
   })
 
   it('an ended trial inside the grace publishes but spends nothing, until the grace ends', () => {

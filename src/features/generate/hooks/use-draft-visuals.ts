@@ -23,8 +23,15 @@ interface ResumedVisuals {
  *
  * Approving a draft only stops tracking it: pictures still in flight finish onto the row, which is
  * what the commitment bar promises. Discarding cancels them — the row is about to go.
+ *
+ * `canPaint` is whether the period can still pay for a picture at all. With the image pool spent,
+ * a resumed draft is tracked and its clean art is still composed, but nothing is REQUESTED: every
+ * such request is refused, and asking again on every visit to this route cost a post read, a job
+ * claim and a 402 per missing slide while re-announcing the same refusal. The slide keeps its own
+ * Regenerate, and the next visit after a plan or a period reset paints it — which is the only
+ * recovery a wizard draft has, the visuals cron's backlog being `pending_review`.
  */
-export function useDraftVisuals() {
+export function useDraftVisuals({ canPaint }: { canPaint: boolean }) {
   const [imagesByPost, setImagesByPost] = useState<Record<string, PostImage[]>>({})
   const tracked = useRef(new Set<string>())
 
@@ -60,11 +67,11 @@ export function useDraftVisuals() {
       const owed = missingPositions(post, images).filter(
         (position) => !generatingPositions.includes(position)
       )
-      if (owed.length > 0) void visuals.generate(post, owed)
+      if (canPaint && owed.length > 0) void visuals.generate(post, owed)
       const clean = unbakedImages(images, composedPositions)
       if (clean.length > 0) void visuals.composeMissing(post, clean)
     },
-    [visuals]
+    [visuals, canPaint]
   )
 
   const regenerate = useCallback(

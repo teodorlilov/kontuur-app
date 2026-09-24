@@ -7,7 +7,7 @@ import {
   checkoutActivated,
   deleteWorkspaceNotice,
   deleteWorkspaceRefusal,
-  draftsLeft,
+  postsLeft,
   shellNotice,
 } from '../copy'
 import { entitlementFor } from '../entitlement'
@@ -124,10 +124,12 @@ describe('the refusal sentences', () => {
   })
 
   it('are the same words in the wizard before the server is asked', () => {
-    expect(draftsLeft(5)).toBe('5 AI drafts left this period')
-    expect(draftsLeft(1)).toBe('1 AI draft left this period')
-    expect(draftsLeft(2, 3)).toBe('You have 2 AI drafts left this period and this needs 3.')
-    expect(draftsLeft(0)).toBe("You've used all your AI drafts for this period.")
+    expect(postsLeft(5, 'draft')).toBe('5 posts left this period')
+    expect(postsLeft(1, 'draft')).toBe('1 post left this period')
+    expect(postsLeft(2, 'draft', 3)).toBe('You have 2 posts left this period and this needs 3.')
+    expect(postsLeft(0, 'draft')).toBe("You've used all your AI drafts for this period.")
+    // The pool that ran out is the one named — a carousel run is usually stopped by its pictures.
+    expect(postsLeft(0, 'image')).toBe("You've used all your AI images for this period.")
   })
 
   it('the 80 % bell names the reset date instead of a period key', () => {
@@ -200,7 +202,7 @@ describe('checkoutActivated — the card once the plan is live', () => {
     expect(card.title).toBe('You’re on Pro')
     expect(card.facts).toEqual([
       { label: 'Clients', value: '3' },
-      { label: 'A month', value: '€57.00' },
+      { label: 'A month', value: '€87.00' },
       { label: 'Renews', value: '1 October 2026' },
     ])
     expect(card.text).toBe(

@@ -22,7 +22,10 @@ import {
 } from '@/utils/constants'
 import { clamp } from '@/lib/canvas/clamp'
 import { distillStyleMemo } from '@/ai/learning/distill-style-memo'
-import { fetchScheduleContext, getScheduleDue, notifyDraftsExhausted } from './helpers'
+import { fetchScheduleContext, getScheduleDue, notifyAllowanceExhausted } from './helpers'
+import { postsAffordable } from '@/lib/billing/post-allowance'
+import { visualSlots } from '@/lib/visual/visual-backlog'
+import { allowanceUsedUp } from '@/lib/billing/copy'
 import type { PostType } from '@/types/api'
 import type { Theme } from '@/ai/generation/types'
 import { POSTING_SCHEDULE_DUE_COLUMNS } from '@/lib/queries/select-columns'
@@ -165,19 +168,37 @@ export async function GET(request: NextRequest) {
     let runId: string | null = null
     const { id: clientId, agency_id: agencyId } = clientRow
     const entitlement = ctx.entitlements.get(agencyId)
-    const budget = ctx.draftBudgets.get(agencyId)
-    if (!entitlement || !budget) continue
+    const committed = ctx.committed.get(agencyId)
+    if (!entitlement || !committed) continue
     const asked = (schedule as { frequency_value: number }).frequency_value || 1
-    const total = Math.min(asked, Math.max(0, budget.quota - budget.used))
+    // The format decides what one post costs in pictures, so it is resolved here rather than
+    // below with the rest of the run: a batch trimmed to the drafts alone is how the loop came to
+    // write text the visuals cron then refused whole, post after post.
+    const brandProfile = ctx.brandProfiles.get(clientId) ?? null
+    const postType = (brandProfile?.default_post_type ?? 'single') as PostType
+    const slideCount = clamp(
+      brandProfile?.default_carousel_slides ?? DEFAULT_CAROUSEL_SLIDES,
+      MIN_CAROUSEL_SLIDES,
+      MAX_CAROUSEL_SLIDES
+    )
+    const slotsPerPost = visualSlots(postType, slideCount)
+    const affordable = postsAffordable(entitlement.limits, committed, slotsPerPost)
+    const total = Math.min(asked, affordable.posts ?? asked)
     if (total === 0) {
       results.skipped_over_allowance.push(clientId)
-      await notifyDraftsExhausted(supabase, {
+      // Whichever pool ran out — a carousel client is usually stopped by its pictures, and the
+      // sentence has to name the one it is actually short of.
+      const kind = affordable.limiting ?? 'draft'
+      await notifyAllowanceExhausted(supabase, {
         agencyId,
         clientId,
-        used: budget.used,
-        quota: budget.quota,
-        needed: asked,
-        entitlement,
+        message: allowanceUsedUp(
+          kind,
+          committed[kind],
+          entitlement.limits[kind],
+          kind === 'image' ? asked * slotsPerPost : asked,
+          entitlement
+        ),
       })
       continue
     }
@@ -200,21 +221,12 @@ export async function GET(request: NextRequest) {
       }
       const clientStartedAt = Date.now()
 
-      const brandProfile = ctx.brandProfiles.get(clientId) ?? null
-
       const clientResult = await fetchClientData(supabase, clientId, agencyId)
       if ('error' in clientResult) continue
       // Voice exemplars + learned memo attach at generation time only — engine
       // context, never part of the browser-facing ClientData round-trip.
       const { exemplars, styleMemo } = await fetchEngineContext(supabase, clientId)
       const client = { ...clientResult.data, exemplars, styleMemo }
-
-      const postType = (brandProfile?.default_post_type ?? 'single') as PostType
-      const slideCount = clamp(
-        brandProfile?.default_carousel_slides ?? DEFAULT_CAROUSEL_SLIDES,
-        MIN_CAROUSEL_SLIDES,
-        MAX_CAROUSEL_SLIDES
-      )
 
       // Under hourly ticks the run row IS the slot's dedup key: a batch
       // generated without one would be regenerated every remaining tick
@@ -232,13 +244,12 @@ export async function GET(request: NextRequest) {
       })
       if ('refused' in claim) {
         results.skipped_over_allowance.push(clientId)
-        await notifyDraftsExhausted(supabase, {
+        // The reservation lost a race the budget had already cleared; its refusal is the one
+        // that knows what the counter actually said.
+        await notifyAllowanceExhausted(supabase, {
           agencyId,
           clientId,
-          used: claim.refused.used,
-          quota: claim.refused.quota,
-          needed: claim.refused.needed,
-          entitlement,
+          message: claim.refused.message,
         })
         continue
       }
@@ -257,7 +268,10 @@ export async function GET(request: NextRequest) {
         continue
       }
       runId = claim.runId
-      budget.used += total
+      // Both pools, so a second client of the same agency sees what this batch took — the drafts
+      // it will write and the pictures they will owe.
+      committed.draft += total
+      committed.image += total * slotsPerPost
 
       const researchStartedAt = Date.now()
       const researchTopics = await runAsSpender(spender, () =>

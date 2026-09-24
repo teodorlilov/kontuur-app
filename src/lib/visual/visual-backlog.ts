@@ -3,6 +3,18 @@ import type { PostImage } from '@/types/api'
 import type { PostRow } from '@/types'
 
 /**
+ * What one post of this format costs in pictures: a slide each, or one for a single image.
+ *
+ * Taken before a row exists, by whoever is about to decide a run — the wizard from the format
+ * being chosen, the generate cron from the client's brand profile — so that what a post costs the
+ * image allowance is answered the same way whether it is a plan or a post
+ * (`postsAffordable`, lib/billing/post-allowance.ts).
+ */
+export function visualSlots(postType: string, slideCount: number): number {
+  return postType === 'carousel' ? slideCount : 1
+}
+
+/**
  * Every slot a post is supposed to FILL — carousels one per slide, singles one.
  *
  * Deliberately NOT `slideTotal` (lib/posts/slide-copy.ts), which floors at 1. The
@@ -12,7 +24,7 @@ import type { PostRow } from '@/types'
  * never finishes. Kept apart on purpose; see the note on `slideTotal`.
  */
 export function totalVisualSlots(post: { post_type: string; slides_json: unknown }): number {
-  return post.post_type === 'carousel' ? parseSlides(post.slides_json).length : 1
+  return visualSlots(post.post_type, parseSlides(post.slides_json).length)
 }
 
 /**

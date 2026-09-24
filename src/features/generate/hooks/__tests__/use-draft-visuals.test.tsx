@@ -73,7 +73,7 @@ beforeEach(() => {
 
 describe('useDraftVisuals', () => {
   it('a fresh draft owes every slot', () => {
-    const { result } = renderHook(() => useDraftVisuals())
+    const { result } = renderHook(() => useDraftVisuals({ canPaint: true }))
     act(() => result.current.enqueuePost(CAROUSEL))
     expect(mocks.generate).toHaveBeenCalledWith(CAROUSEL, [0, 1, 2])
     expect(mocks.composeMissing).not.toHaveBeenCalled()
@@ -81,7 +81,7 @@ describe('useDraftVisuals', () => {
   })
 
   it('a resumed draft owes only the missing positions, and text on the clean art it has', () => {
-    const { result } = renderHook(() => useDraftVisuals())
+    const { result } = renderHook(() => useDraftVisuals({ canPaint: true }))
     const existing = [image(0), image(1, 'mine.jpg')]
     act(() => result.current.enqueuePost(CAROUSEL, { images: existing, composedPositions: [1] }))
 
@@ -92,7 +92,7 @@ describe('useDraftVisuals', () => {
   })
 
   it('leaves a position that is already being generated to whoever is generating it', () => {
-    const { result } = renderHook(() => useDraftVisuals())
+    const { result } = renderHook(() => useDraftVisuals({ canPaint: true }))
     act(() =>
       result.current.enqueuePost(CAROUSEL, { images: [image(0)], generatingPositions: [1] })
     )
@@ -106,7 +106,7 @@ describe('useDraftVisuals', () => {
   })
 
   it('keeps a landed picture for a tracked draft and ignores one for a draft it let go', () => {
-    const { result } = renderHook(() => useDraftVisuals())
+    const { result } = renderHook(() => useDraftVisuals({ canPaint: true }))
     act(() => result.current.enqueuePost(CAROUSEL))
     act(() => mocks.onImage?.('p1', image(0)))
     expect(result.current.slotsFor(CAROUSEL)).toEqual([
@@ -120,8 +120,22 @@ describe('useDraftVisuals', () => {
     expect(mocks.cancel).not.toHaveBeenCalled()
   })
 
+  it('with the image pool spent it asks for nothing, and still bakes the art that landed', () => {
+    const { result } = renderHook(() => useDraftVisuals({ canPaint: false }))
+    const existing = [image(0)]
+    act(() => result.current.enqueuePost(CAROUSEL, { images: existing }))
+
+    // Every request would be refused, and asking again on each visit to this route is what made
+    // one exhausted workspace re-announce the same refusal for every missing slide.
+    expect(mocks.generate).not.toHaveBeenCalled()
+    expect(mocks.composeMissing).toHaveBeenCalledWith(CAROUSEL, existing)
+    expect(result.current.slotsFor(CAROUSEL)).toEqual([
+      expect.objectContaining({ position: 0, status: 'done' }),
+    ])
+  })
+
   it('discarding cancels what is still coming for that draft', () => {
-    const { result } = renderHook(() => useDraftVisuals())
+    const { result } = renderHook(() => useDraftVisuals({ canPaint: true }))
     act(() => result.current.enqueuePost(CAROUSEL))
     act(() => result.current.discardDraft('p1'))
     expect(mocks.cancel).toHaveBeenCalledWith('p1')

@@ -20,7 +20,7 @@ vi.mock('@/features/settings/components/plan-end-control', () => ({
 
 import { PlanActions } from '../plan-actions'
 
-const SUMMARY = '€19.00 a month per client · 3 clients today'
+const SUMMARY = '€29.00 a month per client · 3 clients today'
 /** The plan's end is `PlanEndControl`'s own test; here it only has to appear beside the portal. */
 const END = {
   ending: false,

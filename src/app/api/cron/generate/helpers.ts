@@ -4,7 +4,7 @@ import type { BrandProfileRow, ClientRow, PostingScheduleRow } from '@/types'
 import { AGENCY_ENTITLEMENT_COLUMNS } from '@/lib/queries/select-columns'
 import { entitlementFor, type Entitlement } from '@/lib/billing/entitlement'
 import { readUsage } from '@/lib/billing/usage'
-import { allowanceUsedUp } from '@/lib/billing/copy'
+import type { Allowance } from '@/lib/billing/plans'
 import { notify } from '@/lib/notifications/notify'
 
 type ScheduleRow = Pick<
@@ -22,19 +22,18 @@ type BrandProfileContext = Pick<
 >
 
 /**
- * An agency's draft allowance this period, read once per tick; the route moves `used` as it claims
- * batches, so a second client of the same agency sees what the first one took.
+ * What an agency has committed this period, read once per tick — both pools, because a post is
+ * text AND its pictures and the cron used to budget only the first, writing posts the visuals
+ * cron then refused whole. The route moves these as it claims batches, so a second client of the
+ * same agency sees what the first one took.
  */
-interface DraftBudget {
-  used: number
-  quota: number
-}
+type CommittedUsage = Allowance
 
 interface ScheduleContext {
   /** Per agency, what it may do this tick — absent means the agency cannot spend. */
   entitlements: Map<string, Entitlement>
-  /** Per entitled agency, the drafts left — the route draws these down as it claims batches. */
-  draftBudgets: Map<string, DraftBudget>
+  /** Per entitled agency, what is already committed — the route draws these down per batch. */
+  committed: Map<string, CommittedUsage>
   clients: Map<string, ClientContext>
   brandProfiles: Map<string, BrandProfileContext>
   agencyTimezones: Map<string, string>
@@ -44,7 +43,8 @@ interface ScheduleContext {
  * Batch-fetch all clients, brand profiles, and agency timezones for active schedules — and each
  * agency's entitlement from the same read, so the route can drop clients whose workspace cannot
  * spend before it claims a slot for them, plus one usage read per entitled agency so a client
- * with fewer drafts left than its schedule asks for gets a smaller batch rather than none.
+ * whose period cannot pay for its whole schedule — in drafts or in the pictures its slides need —
+ * gets a smaller batch rather than none.
  */
 export async function fetchScheduleContext(
   supabase: AdminClient,
@@ -91,12 +91,11 @@ export async function fetchScheduleContext(
     if (entitlement.canSpend) entitlements.set(row.id, entitlement)
   }
 
-  const draftBudgets = new Map<string, DraftBudget>()
+  const committed = new Map<string, CommittedUsage>()
   await Promise.all(
     [...entitlements].map(async ([agencyId, entitlement]) => {
       const usage = await readUsage(agencyId, entitlement.periodKey)
-      const quota = entitlement.limits.draft
-      draftBudgets.set(agencyId, { used: usage.committed.draft, quota })
+      committed.set(agencyId, usage.committed)
     })
   )
 
@@ -105,30 +104,25 @@ export async function fetchScheduleContext(
     brandProfiles.set(row.client_id, row)
   }
 
-  return { clients, brandProfiles, agencyTimezones, entitlements, draftBudgets }
+  return { clients, brandProfiles, agencyTimezones, entitlements, committed }
 }
 
 /**
- * The one bell for a period whose drafts are spent, worded by the sentence every other refusal
- * carries. `notify` dedups on the message for a month, so it lands once per period per client
- * however many hourly ticks find the pool empty.
+ * The one bell for a period a scheduled run cannot be paid for. The sentence is the caller's,
+ * because the two who raise it know different things — the budget knows which pool ran out, the
+ * reservation race is handed the refusal itself — and both come from `allowanceUsedUp`, so a
+ * workspace stopped by its pictures is never told it is out of drafts. `notify` dedups on the
+ * message for a month, so it lands once per period per client however many ticks find it empty.
  */
-export async function notifyDraftsExhausted(
+export async function notifyAllowanceExhausted(
   supabase: AdminClient,
-  input: {
-    agencyId: string
-    clientId: string
-    used: number
-    quota: number
-    needed: number
-    entitlement: Entitlement
-  }
+  input: { agencyId: string; clientId: string; message: string }
 ): Promise<void> {
   await notify(supabase, {
     agencyId: input.agencyId,
     clientId: input.clientId,
     type: 'allowance_reached',
-    message: allowanceUsedUp('draft', input.used, input.quota, input.needed, input.entitlement),
+    message: input.message,
     cooldownDays: 31,
   })
 }

@@ -12,7 +12,8 @@ interface NextUpCardProps {
   failed: FailedPublish[]
   connectedClientCount: number
   clientCount: number
-  timezone: string
+  timezone: string /** Why this workspace cannot generate right now, or null — the empty-queue footer says it. */
+  generateRefusal: string | null
 }
 
 /** One publish, as the cron will attempt it. */
@@ -60,6 +61,7 @@ export function NextUpCard({
   connectedClientCount,
   clientCount,
   timezone,
+  generateRefusal,
 }: NextUpCardProps) {
   if (failed.length > 0) {
     return (
@@ -148,9 +150,13 @@ export function NextUpCard({
       icon={<Icon glyph={PlaneIcon} size="lg" />}
       pill={{ text: 'Nothing queued', tone: 'muted' }}
       footer={
-        <Link href="/generate" className="text-forest underline-offset-2 hover:underline">
-          Generate posts
-        </Link>
+        generateRefusal ? (
+          <span className="text-text3">{generateRefusal}</span>
+        ) : (
+          <Link href="/generate" className="text-forest underline-offset-2 hover:underline">
+            Generate posts
+          </Link>
+        )
       }
     >
       <p className="mt-1.5 text-body leading-relaxed text-text2">

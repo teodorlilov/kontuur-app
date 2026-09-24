@@ -72,6 +72,11 @@ vi.mock('../components/setup/run-panel', () => ({
 }))
 
 import { GenerateFlow } from '../components/generate-flow'
+import { UNMETERED } from '@/lib/billing/plans'
+
+/** An unmetered workspace: the flow's allowance is not what these cases are about. */
+const UNLIMITED = { draft: UNMETERED, image: UNMETERED, rewrite: UNMETERED }
+const NOTHING_USED = { draft: 0, image: 0, rewrite: 0 }
 
 const CLIENTS = [
   { id: 'c1', name: 'Bakery Sofia', niche: 'bakery', language: 'bg', posts_per_week: 3 },
@@ -145,7 +150,7 @@ function renderFlow(over: Partial<Parameters<typeof GenerateFlow>[0]> = {}) {
   return render(
     <GenerateFlow
       timeZone="Europe/Sofia"
-      draftsLeft={null}
+      allowance={{ limits: UNLIMITED, committed: NOTHING_USED }}
       initialClients={CLIENTS}
       initialClientData={null}
       initialTargetPostCount={3}

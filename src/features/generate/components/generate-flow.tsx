@@ -21,6 +21,9 @@ import { computeRunPlan, livePublishingPlatforms } from '@/features/generate/lib
 import type { WaitingDrafts } from '@/features/generate/lib/waiting-drafts'
 import { parseSlides } from '@/lib/posts/parse-slides'
 import { useDraftVisuals } from '@/features/generate/hooks/use-draft-visuals'
+import { postsAffordable } from '@/lib/billing/post-allowance'
+import { visualSlots } from '@/lib/visual/visual-backlog'
+import type { Allowance } from '@/lib/billing/plans'
 import { useUnloadGuard } from '@/hooks/use-unload-guard'
 import { deletePost } from '@/lib/actions/post-actions'
 import { linkGeneratedPost } from '@/features/ideas/actions/idea-actions'
@@ -47,8 +50,8 @@ interface GenerateFlowProps {
   initialConnections?: MetaConnection[]
   /** The agency zone, read on the server: this route group has no ShellProvider. */
   timeZone: string
-  /** AI drafts left this period, or null for an unmetered workspace. Read on the server. */
-  draftsLeft: number | null
+  /** The period's pools, read on the server — what they buy depends on the format chosen here. */
+  allowance: { limits: Allowance; committed: Allowance }
   /** Drafts still waiting for review, per client — rows the last runs left behind. */
   waitingDrafts?: WaitingDrafts[]
   /** The server's render instant — the rows' "2h ago" keys off it so SSR and hydration agree. */
@@ -84,7 +87,7 @@ function formatOf(group: WaitingDrafts): { postType: PostType; slideCount: numbe
  */
 export function GenerateFlow({
   timeZone,
-  draftsLeft,
+  allowance,
   initialClients,
   initialClientData,
   initialTargetPostCount,
@@ -120,8 +123,19 @@ export function GenerateFlow({
       ? formatOf(resumedGroup).slideCount
       : (initialClientData?.defaultCarouselSlides ?? DEFAULT_CAROUSEL_SLIDES)
   )
+  // What the period can still pay for AT THIS FORMAT — the one number the setup step is sized
+  // by, recomputed as the format changes because every slide is another picture.
+  const affordable = postsAffordable(
+    allowance.limits,
+    allowance.committed,
+    visualSlots(postType, slideCount)
+  )
   const [targetPostCount, setTargetPostCount] = useState(() =>
-    resumedGroup ? resumedGroup.posts.length : initialIdea ? 0 : initialTargetPostCount
+    resumedGroup
+      ? resumedGroup.posts.length
+      : initialIdea
+        ? 0
+        : Math.min(initialTargetPostCount, affordable.posts ?? Number.POSITIVE_INFINITY)
   )
   const [priorityPosts, setPriorityPosts] = useState<PriorityPost[]>(
     initialIdea
@@ -175,7 +189,7 @@ export function GenerateFlow({
   // sent its own request. Which one wins is settled in the database (`linkIdeaToPost` claims only
   // an idea still `new`); this only keeps the flow from asking again once it knows the answer.
   const linkedIdeasRef = useRef<Set<string>>(new Set())
-  const draftVisuals = useDraftVisuals()
+  const draftVisuals = useDraftVisuals({ canPaint: affordable.posts !== 0 })
 
   const selectedClient = clients.find((c) => c.id === clientId)
   const clientName = formatClientName(selectedClient?.name)
@@ -557,7 +571,7 @@ export function GenerateFlow({
             postType={postType}
             slideCount={slideCount}
             postCount={targetPostCount}
-            draftsLeft={draftsLeft}
+            affordable={affordable}
             briefs={priorityPosts}
             lockedBriefCount={lockedBriefCount}
             waiting={waitingRows}

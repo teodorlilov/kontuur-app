@@ -5,7 +5,8 @@ import { cn } from '@/utils/cn'
 import { Button } from '@/components/ui/button'
 import { ContentMixList } from './content-mix-list'
 import type { RunPlan } from '@/features/generate/lib/run-plan'
-import { draftsLeft as draftsLeftLine } from '@/lib/billing/copy'
+import { postsLeft as postsLeftLine } from '@/lib/billing/copy'
+import type { PostsAffordable } from '@/lib/billing/post-allowance'
 import { PLAN_AND_BILLING_PATH } from '@/utils/constants'
 
 interface RunPanelProps {
@@ -14,8 +15,8 @@ interface RunPanelProps {
   postCount: number
   /** Priority briefs riding on top; the server writes postCount + briefCount. */
   briefCount: number
-  /** AI drafts left this period, or null when unmetered — the run cannot exceed it. */
-  draftsLeft: number | null
+  /** Posts this period can still pay for at this format — the run cannot exceed it. */
+  affordable: PostsAffordable
   metaLine: string
   clientId: string
   generating: boolean
@@ -27,15 +28,15 @@ interface RunPanelProps {
  * lime relationship inverts and New Growth becomes the figure — the count and
  * the Generate button are the field band's one lime answer: the commitment.
  *
- * It refuses in words before the server does: when the run wants more drafts than the period
- * has left, the button is disabled and the footnote says the sentence the reservation would
- * answer with, with the way to the plan beside it.
+ * It refuses in words before the server does: when the run wants more posts than the period can
+ * pay for — its drafts or the pictures its slides need — the button is disabled and the footnote
+ * says the sentence the reservation would answer with, with the way to the plan beside it.
  */
 export function RunPanel({
   runPlan,
   postCount,
   briefCount,
-  draftsLeft,
+  affordable,
   metaLine,
   clientId,
   generating,
@@ -45,7 +46,9 @@ export function RunPanel({
   // The headline promises what actually lands — briefs write extra posts.
   const totalCount = postCount + briefCount
   const refusal =
-    draftsLeft !== null && totalCount > draftsLeft ? draftsLeftLine(draftsLeft, totalCount) : null
+    affordable.posts !== null && totalCount > affordable.posts
+      ? postsLeftLine(affordable.posts, affordable.limiting, totalCount)
+      : null
 
   return (
     <aside className="surface-dark-capsule flex flex-col overflow-hidden rounded-card bg-forest-deep text-ink-inv shadow-dark lg:sticky lg:top-6">

@@ -27,17 +27,35 @@ export type AllowanceKind = 'draft' | 'image' | 'rewrite'
 
 export type Allowance = Record<AllowanceKind, number>
 
-/** The one paid plan: euro cents per brand per month, net of VAT, and what each brand adds to the pool. */
+/**
+ * The one paid plan: euro cents per brand per month, net of VAT, and what each brand adds to the
+ * pool.
+ *
+ * Both halves are priced off measured cost, 2026-09-24. One draft's text costs €0.077 (five Claude
+ * calls and 2.5 Tavily searches) and one picture €0.050, and 75 real posts run 79 % carousels of
+ * 4.62 slides — so a finished post costs about €0.29 and takes 4.2 pictures once re-rolls are
+ * counted. The allowance is 25 posts, carried as the drafts and the pictures those posts need so
+ * neither pool strands the other: 25 × 4.2 ≈ 105. Fully spent it costs us €7.34 against €28.32 net
+ * of Stripe's fee. A client posting the default three times a week uses about half of it.
+ */
 export const PRO_PLAN: { priceCents: number; perBrand: Allowance } = {
-  priceCents: 1900,
-  perBrand: { draft: 40, image: 120, rewrite: 30 },
+  priceCents: 2900,
+  perBrand: { draft: 25, image: 105, rewrite: 15 },
 }
 
 /** Brands a trial workspace may create, by workspace mode. */
 export const TRIAL_BRANDS = { agency: 3, solo: 1 } as const
 
-/** Per brand, for the whole trial — pooled like a paid allowance. */
-export const TRIAL_PER_BRAND: Allowance = { draft: 20, image: 50, rewrite: 15 }
+/**
+ * The whole trial's allowance — twelve posts, for the WORKSPACE rather than per brand.
+ *
+ * It used to be scaled by the brand cap, so an agency trial received three brands of allowance
+ * whether it created three clients or one: one two-client workspace spent all 60 drafts and all
+ * 150 pictures, €12.14 of provider money, with no card on file. Twelve posts is enough to judge
+ * the product and costs €3.43, and the brand cap above is unchanged — how many clients a trial may
+ * hold is a different question from how much it may spend.
+ */
+export const TRIAL_ALLOWANCE: Allowance = { draft: 12, image: 50, rewrite: 5 }
 
 /** Days after the trial ends, and after a failed renewal, before the workspace is paused. */
 export const GRACE_DAYS = 7

@@ -3,7 +3,6 @@ import { requireSessionUser } from '@/lib/auth/session'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { getCachedAgency, getCachedAgencyClients, getCachedEntitlement } from '@/lib/queries/cache'
 import { readUsage } from '@/lib/billing/usage'
-import { meteredLimit } from '@/lib/billing/plans'
 import {
   fetchClientSourceSummaries,
   fetchConnectionsByClient,
@@ -32,9 +31,10 @@ interface PageProps {
  * agency-worded empty state. The client list it reads is fresh because `createClient`
  * (features/clients/actions/client-actions.ts) busts its tag with `{ expire: 0 }`.
  *
- * It also reads what this run may still draw on, so the stepper and the Generate button can say
- * so before anyone presses it — the server reserves the same number, so the two never disagree.
- * An unmetered workspace passes null: no cap to show.
+ * It also reads what this run may still draw on — both pools, because how many POSTS they buy
+ * depends on a format only the browser knows: a carousel costs one image per slide
+ * (`postsAffordable`, lib/billing/post-allowance.ts). The stepper and the Generate button say so
+ * before anyone presses it, and the server reserves against the same counters.
  *
  * And it reads the drafts still waiting for review — rows in status `'draft'`, written by the
  * stream the moment they landed — with the runs that wrote them, so the flow can open straight
@@ -75,9 +75,6 @@ export default async function GeneratePage({ searchParams }: PageProps) {
         return []
       }),
   ])
-  const draftLimit = meteredLimit(entitlement.limits.draft)
-  const draftsLeft = draftLimit === null ? null : Math.max(0, draftLimit - usage.committed.draft)
-
   requireBusinessSetup(agency?.mode, clients.length, entitlement.canCreate)
 
   // An `?ideaId=` that resolves to nothing used to fall through to `clients[0]`, so a
@@ -129,10 +126,8 @@ export default async function GeneratePage({ searchParams }: PageProps) {
       timeZone={agency?.timezone ?? 'UTC'}
       initialClients={clients}
       initialClientData={initialClientData}
-      initialTargetPostCount={
-        draftsLeft === null ? initialTargetPostCount : Math.min(initialTargetPostCount, draftsLeft)
-      }
-      draftsLeft={draftsLeft}
+      initialTargetPostCount={initialTargetPostCount}
+      allowance={{ limits: entitlement.limits, committed: usage.committed }}
       initialIdea={initialIdea ?? undefined}
       initialClientId={requestedClientId}
       initialSources={initialSources}

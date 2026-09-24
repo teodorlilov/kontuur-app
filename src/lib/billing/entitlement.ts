@@ -3,8 +3,8 @@ import { MS_PER_DAY } from '@/utils/constants'
 import {
   GRACE_DAYS,
   PRO_PLAN,
+  TRIAL_ALLOWANCE,
   TRIAL_BRANDS,
-  TRIAL_PER_BRAND,
   UNMETERED,
   type Allowance,
   type AllowanceKind,
@@ -124,8 +124,9 @@ function plusGrace(from: Date): Date {
 }
 
 function trialLimits(mode: 'agency' | 'solo'): { brands: number; limits: Allowance } {
-  const brands = TRIAL_BRANDS[mode]
-  return { brands, limits: scaled(TRIAL_PER_BRAND, brands) }
+  // The cap on clients scales with the mode; the allowance does not — it is the workspace's one
+  // trial, not three brands' worth (plans.ts, TRIAL_ALLOWANCE).
+  return { brands: TRIAL_BRANDS[mode], limits: TRIAL_ALLOWANCE }
 }
 
 /** A workspace with no row to derive from — locked, nothing allowed. */

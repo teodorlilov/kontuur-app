@@ -66,13 +66,16 @@ export function allowanceUsedUp(
 }
 
 /**
- * What the wizard says about the drafts pool before the server is asked: how many are left, or —
- * when the run wants more than that — the same refusal the server would answer with.
+ * What the wizard says about what a run may still make, before the server is asked: how many
+ * posts are left, or — when the run wants more than that — the refusal the reservation would
+ * answer with. `limiting` is the pool that ran out first (`postsAffordable`, post-allowance.ts),
+ * so an empty image pool is named as one rather than reported as missing drafts.
  */
-export function draftsLeft(left: number, needed = 0): string {
-  if (left === 0) return allUsed('draft', null)
-  if (needed > left) return tooFew('draft', left, needed)
-  return left === 1 ? '1 AI draft left this period' : `${left} AI drafts left this period`
+export function postsLeft(left: number, limiting: AllowanceKind | null, needed = 0): string {
+  if (left === 0) return allUsed(limiting ?? 'draft', null)
+  const posts = left === 1 ? '1 post' : `${left} posts`
+  if (needed > left) return `You have ${posts} left this period and this needs ${needed}.`
+  return `${posts} left this period`
 }
 
 /**

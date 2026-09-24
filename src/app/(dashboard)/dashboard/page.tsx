@@ -10,7 +10,11 @@ import {
   getCachedAgency,
   getCachedAgencyClients,
   getCachedClientWeekCoverage,
+  getCachedEntitlement,
 } from '@/lib/queries/cache'
+import { readUsage } from '@/lib/billing/usage'
+import { canMakeAPost, postsAffordable } from '@/lib/billing/post-allowance'
+import { postsLeft } from '@/lib/billing/copy'
 import { getMondayISO, getWeekdayIndex } from '@/utils/date-helpers'
 import { formatRelativeTime, parseTimestamp } from '@/utils/format'
 import { fetchDashboardData } from '@/features/dashboard/queries/dashboard-data'
@@ -49,9 +53,10 @@ export default async function DashboardPage() {
   const { agencyId } = await requireSessionUser()
 
   // Both calls hit React cache() populated by the dashboard layout — zero extra DB queries
-  const [agency, clients] = await Promise.all([
+  const [agency, clients, entitlement] = await Promise.all([
     getCachedAgency(agencyId),
     getCachedAgencyClients(agencyId),
+    getCachedEntitlement(agencyId),
   ])
 
   const isSolo = agency?.mode === 'solo'
@@ -62,11 +67,19 @@ export default async function DashboardPage() {
   const weekStartISO = getMondayISO(new Date(), timezone)
   const todayIndex = getWeekdayIndex(new Date(), timezone)
 
-  const [data, coverage, briefing] = await Promise.all([
+  const [data, coverage, briefing, usage] = await Promise.all([
     fetchDashboardData(agencyId, clients, weekStartISO, timezone),
     getCachedClientWeekCoverage(agencyId, weekStartISO, timezone),
     getCachedBriefing(),
+    readUsage(agencyId, entitlement.periodKey),
   ])
+
+  // What the three "generate" calls to action promise, checked before they are offered: the
+  // cheapest post there is needs one draft and one picture, and a workspace without both is
+  // walked into a wizard that can only refuse (`postsAffordable`, lib/billing/post-allowance.ts).
+  const generateRefusal = canMakeAPost(entitlement.limits, usage.committed)
+    ? null
+    : postsLeft(0, postsAffordable(entitlement.limits, usage.committed, 1).limiting)
 
   const { metrics } = data
   const filledPerDay = countFilledPerDay(coverage)
@@ -82,6 +95,7 @@ export default async function DashboardPage() {
         pendingCount={metrics.pendingCount}
         oldestPendingAt={metrics.oldestPendingAt}
         failedCount={data.failedPublishes.length}
+        generateRefusal={generateRefusal}
       />
 
       <div className={cn(PAGE_SHELL, '@container pb-12 pt-6')}>
@@ -148,6 +162,7 @@ export default async function DashboardPage() {
               connectedClientCount={metrics.connectedClientCount}
               clientCount={clients.length}
               timezone={timezone}
+              generateRefusal={generateRefusal}
             />
           </div>
         </div>
@@ -208,7 +223,11 @@ export default async function DashboardPage() {
         </div>
 
         <div className="rv mt-4 [--d:280ms]">
-          <QuickActionsStrip pendingCount={metrics.pendingCount} isSolo={isSolo} />
+          <QuickActionsStrip
+            pendingCount={metrics.pendingCount}
+            isSolo={isSolo}
+            generateRefusal={generateRefusal}
+          />
         </div>
       </div>
     </>

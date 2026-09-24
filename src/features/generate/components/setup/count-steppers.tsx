@@ -3,7 +3,8 @@
 import { AddIcon, MinusIcon } from '@solar-icons/react/linear'
 import { Icon } from '@/components/ui/icon'
 import { MIN_CAROUSEL_SLIDES, MAX_CAROUSEL_SLIDES, POSTS_PER_RUN_OPTIONS } from '@/utils/constants'
-import { draftsLeft as draftsLeftLine } from '@/lib/billing/copy'
+import { postsLeft as postsLeftLine } from '@/lib/billing/copy'
+import type { PostsAffordable } from '@/lib/billing/post-allowance'
 import { cn } from '@/utils/cn'
 import type { PostType } from '@/types/api'
 
@@ -60,8 +61,8 @@ interface CountSteppersProps {
   postsPerWeek: number
   /** Priority briefs ride on top of the stepper's researched count. */
   briefCount: number
-  /** AI drafts left this period — the stepper cannot ask for more; null when unmetered. */
-  draftsLeft: number | null
+  /** Posts this period can still pay for — the stepper cannot ask for more; null when unmetered. */
+  affordable: PostsAffordable
   onPostCount: (value: number) => void
   onSlideCount: (value: number) => void
 }
@@ -70,7 +71,8 @@ interface CountSteppersProps {
  * How many posts, and how many slides each — one row, because they are one
  * decision: the size of the run. The slides stepper hides in place when the
  * format is a single image, so nothing below it moves. The posts ceiling is
- * what the period has left, less the briefs — they are drafts too.
+ * what the period can still pay for at this format, less the briefs — they are posts too, and
+ * raising the slide count lowers the ceiling because each slide is another picture.
  */
 export function CountSteppers({
   postCount,
@@ -78,15 +80,14 @@ export function CountSteppers({
   postType,
   postsPerWeek,
   briefCount,
-  draftsLeft,
+  affordable,
   onPostCount,
   onSlideCount,
 }: CountSteppersProps) {
   const isCarousel = postType === 'carousel'
+  const { posts, limiting } = affordable
   const maxPosts =
-    draftsLeft === null
-      ? MAX_POSTS
-      : Math.max(MIN_POSTS, Math.min(MAX_POSTS, draftsLeft - briefCount))
+    posts === null ? MAX_POSTS : Math.max(MIN_POSTS, Math.min(MAX_POSTS, posts - briefCount))
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center gap-6">
@@ -115,9 +116,9 @@ export function CountSteppers({
           </span>
         )}
       </div>
-      {draftsLeft !== null && (
-        <p className={cn('text-caption', draftsLeft === 0 ? 'text-danger' : 'text-text2')}>
-          {draftsLeftLine(draftsLeft)}
+      {posts !== null && (
+        <p className={cn('text-caption', posts === 0 ? 'text-danger' : 'text-text2')}>
+          {postsLeftLine(posts, limiting)}
         </p>
       )}
       <p className="text-caption text-text2">

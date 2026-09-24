@@ -23,7 +23,7 @@ import { PAGE_SHELL } from '@/components/layout/page-header/shared'
 import { RosterPagination } from '@/features/clients/components/roster/roster-pagination'
 import { RosterSort as RosterSortControl } from '@/features/clients/components/roster/roster-sort'
 import { RosterTable } from '@/features/clients/components/roster/roster-table'
-import { AddClientAction } from '@/features/clients/components/roster/add-client-action'
+import { GatedAction } from '@/components/ui/gated-action'
 import { addBrandCost, addBrandRefusal } from '@/lib/billing/copy'
 import { formatRelativeTime } from '@/utils/format'
 import { parseParam } from '@/utils/parse-param'
@@ -145,7 +145,13 @@ export default async function ClientsPage({ searchParams }: ClientsPageProps) {
                 name: buildHref(filter, 'name'),
               }}
             />
-            <AddClientAction refusal={addRefusal} note={addBrandCost(entitlement)} />
+            <GatedAction
+              href="/clients/new"
+              label="Add client"
+              refusal={addRefusal}
+              note={addBrandCost(entitlement)}
+              refusalId="add-client-refusal"
+            />
           </>
         }
         tabs={<TabRail items={tabs} active={filter} label="Filter clients" />}

@@ -2,6 +2,7 @@ import { hasCyrillic } from '@/lib/canvas/font-library'
 import { formatRelativeTime, parseTimestamp } from '@/utils/format'
 import { cn } from '@/utils/cn'
 import { ActionLink } from '@/components/ui/action-link'
+import { GatedAction } from '@/components/ui/gated-action'
 import {
   HeaderMeta,
   MetaFlag,
@@ -18,6 +19,8 @@ interface DashboardHeaderProps {
   pendingCount: number
   oldestPendingAt: string | null
   failedCount: number
+  /** Why this workspace cannot generate right now, or null — the CTA carries it. */
+  generateRefusal: string | null
 }
 
 /** Time-of-day greeting in the agency's own timezone. */
@@ -41,6 +44,7 @@ export function DashboardHeader({
   pendingCount,
   oldestPendingAt,
   failedCount,
+  generateRefusal,
 }: DashboardHeaderProps) {
   const name = agencyName || 'there'
 
@@ -88,9 +92,12 @@ export function DashboardHeader({
               Add client
             </ActionLink>
           )}
-          <ActionLink href="/generate">
-            {isSolo ? 'Create content' : 'Generate posts'} <span aria-hidden="true">→</span>
-          </ActionLink>
+          <GatedAction
+            href="/generate"
+            label={isSolo ? 'Create content' : 'Generate posts'}
+            refusal={generateRefusal}
+            refusalId="generate-refusal"
+          />
         </>
       }
     />
