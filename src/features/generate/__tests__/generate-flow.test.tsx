@@ -11,13 +11,35 @@ import type { EditorialPost } from '@/lib/posts/fetch-editorial-posts'
  * tests; here they are reduced to what the flow hands them.
  */
 
-const mocks = vi.hoisted(() => ({
-  push: vi.fn(),
-  enqueuePost: vi.fn(),
-  deletePost: vi.fn(),
-  linkGeneratedPost: vi.fn(),
+/**
+ * The spies and values the `vi.mock` factories hand out. `draftVisuals` is one object across
+ * renders, as the real hook's memoised value is.
+ */
+const mocks = vi.hoisted(() => {
+  const enqueuePost = vi.fn()
+  return {
+    push: vi.fn(),
+    refresh: vi.fn(),
+    canPaint: vi.fn(),
+    enqueuePost,
+    deletePost: vi.fn(),
+    linkGeneratedPost: vi.fn(),
+    draftVisuals: {
+      slotsFor: () => [],
+      enqueuePost,
+      regenerate: vi.fn(),
+      replaceVisual: vi.fn(),
+      recomposeDraft: vi.fn(),
+      mergeImage: vi.fn(),
+      abandonDraft: vi.fn(),
+      discardDraft: vi.fn(),
+      resetAll: vi.fn(),
+    },
+  }
+})
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ push: mocks.push, refresh: mocks.refresh, replace: vi.fn() }),
 }))
-vi.mock('next/navigation', () => ({ useRouter: () => ({ push: mocks.push }) }))
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn(), info: vi.fn() } }))
 vi.mock('@/lib/actions/post-actions', () => ({
   deletePost: (...args: unknown[]) => mocks.deletePost(...args),
@@ -26,17 +48,10 @@ vi.mock('@/features/ideas/actions/idea-actions', () => ({
   linkGeneratedPost: (...args: unknown[]) => mocks.linkGeneratedPost(...args),
 }))
 vi.mock('@/features/generate/hooks/use-draft-visuals', () => ({
-  useDraftVisuals: () => ({
-    slotsFor: () => [],
-    enqueuePost: mocks.enqueuePost,
-    regenerate: vi.fn(),
-    replaceVisual: vi.fn(),
-    recomposeDraft: vi.fn(),
-    mergeImage: vi.fn(),
-    abandonDraft: vi.fn(),
-    discardDraft: vi.fn(),
-    resetAll: vi.fn(),
-  }),
+  useDraftVisuals: ({ canPaint }: { canPaint: boolean }) => {
+    mocks.canPaint(canPaint)
+    return mocks.draftVisuals
+  },
 }))
 vi.mock('../components/review/review-view', () => ({
   ReviewView: ({
@@ -65,10 +80,28 @@ vi.mock('../components/review/review-view', () => ({
   ),
 }))
 vi.mock('../components/setup/client-picker', () => ({
-  ClientPicker: () => <div data-testid="client-picker" />,
+  ClientPicker: ({
+    clients,
+    onSelect,
+  }: {
+    clients: Array<{ id: string; name: string }>
+    onSelect: (id: string) => void
+  }) => (
+    <div data-testid="client-picker">
+      {clients.map((client) => (
+        <button key={client.id} onClick={() => onSelect(client.id)}>
+          Pick {client.name}
+        </button>
+      ))}
+    </div>
+  ),
 }))
 vi.mock('../components/setup/run-panel', () => ({
-  RunPanel: () => <div data-testid="run-panel" />,
+  RunPanel: ({ onGenerate }: { onGenerate: () => void }) => (
+    <button data-testid="run-panel" onClick={onGenerate}>
+      Start the run
+    </button>
+  ),
 }))
 
 import { GenerateFlow } from '../components/generate-flow'
@@ -77,6 +110,7 @@ import { UNMETERED } from '@/lib/billing/plans'
 /** An unmetered workspace: the flow's allowance is not what these cases are about. */
 const UNLIMITED = { draft: UNMETERED, image: UNMETERED, rewrite: UNMETERED }
 const NOTHING_USED = { draft: 0, image: 0, rewrite: 0 }
+const NONE_OWED = { posts: 0, images: 0 }
 
 const CLIENTS = [
   { id: 'c1', name: 'Bakery Sofia', niche: 'bakery', language: 'bg', posts_per_week: 3 },
@@ -150,7 +184,8 @@ function renderFlow(over: Partial<Parameters<typeof GenerateFlow>[0]> = {}) {
   return render(
     <GenerateFlow
       timeZone="Europe/Sofia"
-      allowance={{ limits: UNLIMITED, committed: NOTHING_USED }}
+      allowance={{ limits: UNLIMITED, committed: NOTHING_USED, owed: NONE_OWED }}
+      gate={{ refusal: null, wayOut: true }}
       initialClients={CLIENTS}
       initialClientData={null}
       initialTargetPostCount={3}
@@ -216,7 +251,7 @@ describe('GenerateFlow — resume', () => {
     expect(screen.getByRole('button', { name: 'Review it' })).toBeInTheDocument()
   })
 
-  it("carries the resumed run's own account of itself into the review", () => {
+  it("carries the resumed run's own record of what it asked for and skipped into the review, as the banner showed it live", () => {
     renderFlow({
       initialClientId: 'c1',
       waitingDrafts: [
@@ -224,23 +259,18 @@ describe('GenerateFlow — resume', () => {
       ],
     })
 
-    // Two drafts of a run that asked for four, and the reason: the run recorded both when it
-    // closed, so the banner says the same thing now as it did while the run was on screen.
     const review = screen.getByTestId('review-view')
     expect(review).toHaveAttribute('data-skipped', 'Tips')
     expect(review).toHaveAttribute('data-requested', '4')
   })
 
-  it('approving a resumed draft marks the idea it was written for generated, once', async () => {
+  it('approving a resumed draft marks the idea it was written for generated, once, when only the drafts still know it', async () => {
     const user = userEvent.setup()
-    // No `initialIdea`: this session opened on /generate, days after the run. The drafts are the
-    // only thing that still knows which idea asked for them.
     renderFlow({ initialClientId: 'c1', waitingDrafts: [ideaGroup('c1', ['a', 'b'], 'i1')] })
 
     await user.click(screen.getByRole('button', { name: 'Approve a' }))
     expect(mocks.linkGeneratedPost).toHaveBeenCalledWith('i1', 'a')
 
-    // The second draft of the run carries the same idea; the first approval already fulfilled it.
     await user.click(screen.getByRole('button', { name: 'Approve b' }))
     expect(mocks.linkGeneratedPost).toHaveBeenCalledTimes(1)
   })
@@ -253,7 +283,7 @@ describe('GenerateFlow — resume', () => {
     expect(mocks.linkGeneratedPost).not.toHaveBeenCalled()
   })
 
-  it('a waiting group keeps its own format after the client switch resolves', async () => {
+  it('a waiting group of single images keeps its format after switching to a client whose default is carousel', async () => {
     const user = userEvent.setup()
     vi.stubGlobal(
       'fetch',
@@ -269,8 +299,75 @@ describe('GenerateFlow — resume', () => {
     renderFlow({ initialClientId: 'c1', waitingDrafts: [group('c2', ['x'])] })
 
     await user.click(screen.getByRole('button', { name: 'Review it' }))
-    // The group's drafts are single images; the client's carousel default must not relabel them.
     expect(await screen.findByTestId('review-view')).toHaveTextContent('single')
+    vi.unstubAllGlobals()
+  })
+})
+
+describe('GenerateFlow — the allowance', () => {
+  it('paints drafts while the raw image pool has any left, whatever the drafts pool says: owed pictures are what it is kept for', () => {
+    const limits = { draft: 10, image: 10, rewrite: 5 }
+    renderFlow({
+      allowance: { limits, committed: { draft: 10, image: 0, rewrite: 0 }, owed: NONE_OWED },
+    })
+    expect(mocks.canPaint).toHaveBeenLastCalledWith(true)
+    renderFlow({
+      allowance: { limits, committed: { draft: 0, image: 10, rewrite: 0 }, owed: NONE_OWED },
+    })
+    expect(mocks.canPaint).toHaveBeenLastCalledWith(false)
+  })
+
+  it('refreshes the page after a refused run, so the counts shown are the server’s', async () => {
+    const user = userEvent.setup()
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: false,
+        json: () =>
+          Promise.resolve({ error: 'You have 1 post left this period and this needs 3.' }),
+      })
+    )
+    renderFlow()
+    await user.click(screen.getByRole('button', { name: 'Start the run' }))
+    expect(mocks.refresh).toHaveBeenCalledTimes(1)
+    vi.unstubAllGlobals()
+  })
+
+  it("returns to setup and says the run failed when a refusal carries no JSON body, like an edge 502's HTML page", async () => {
+    const user = userEvent.setup()
+    const { toast } = await import('sonner')
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(new Response('<html>Bad gateway</html>', { status: 502 }))
+    )
+    renderFlow()
+    await user.click(screen.getByRole('button', { name: 'Start the run' }))
+    expect(toast.error).toHaveBeenCalledWith('Generation failed')
+    expect(await screen.findByTestId('run-panel')).toBeInTheDocument()
+    vi.unstubAllGlobals()
+  })
+
+  it('clamps the count to the one single-image post one image left pays for, on first load and after a client switch', async () => {
+    const user = userEvent.setup()
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        json: () =>
+          Promise.resolve({
+            clientData: { id: 'c2', defaultPostType: 'single', defaultCarouselSlides: 5 },
+            sources: [],
+            connections: [],
+          }),
+      })
+    )
+    const limits = { draft: 100, image: 1, rewrite: 5 }
+    renderFlow({ allowance: { limits, committed: NOTHING_USED, owed: NONE_OWED } })
+    expect(screen.getByRole('button', { name: 'One post more' })).toBeDisabled()
+    expect(screen.getByText('1 post left this period')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Pick Atelier Nord' }))
+    expect(await screen.findByRole('button', { name: 'One post more' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'One post fewer' })).toBeEnabled()
     vi.unstubAllGlobals()
   })
 })

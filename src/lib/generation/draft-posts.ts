@@ -65,8 +65,7 @@ export async function insertDraftPosts(
  *
  * The run is also what places the colour pick: drafts of one run land seconds apart and would
  * otherwise hash onto the same scheme, so the pair is drawn against the run with this draft's
- * ordinal as the step, falling back to the client when no run could be opened (which spreads
- * nothing, but keeps the pick working). Picking without a `postId` is the pre-insert form of
+ * ordinal as the step. Picking without a `postId` is the pre-insert form of
  * `resolveScheme` — the insert is the claim. A run whose kit could not be read (`identity` null)
  * inserts without a pair; the first visual then claims one.
  */
@@ -76,7 +75,7 @@ export async function persistStreamedDraft(
     post: DraftPost
     identity: VisualIdentity | null
     /** The run this draft belongs to, and where in it this one landed. */
-    run: { id: string | null; index: number; clientId: string }
+    run: { id: string; index: number }
     /** The client idea whose brief started the run, when one did. */
     clientIdeaId: string | null
   }
@@ -85,7 +84,7 @@ export async function persistStreamedDraft(
     ? await resolveScheme({
         clientId: input.post.client_id,
         identity: input.identity,
-        base: input.run.id ?? input.run.clientId,
+        base: input.run.id,
         offset: input.run.index,
       })
     : null

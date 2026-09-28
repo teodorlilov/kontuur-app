@@ -7,7 +7,8 @@ if (!process.env.ANTHROPIC_API_KEY) {
   throw new Error('ANTHROPIC_API_KEY is not set')
 }
 
-export const anthropic = new Anthropic({
+/** Private: every call reaches it through `attributedClaudeCall`, which attributes and records it. */
+const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
 })
 
@@ -84,17 +85,65 @@ function isRetryable(err: unknown): boolean {
 }
 
 /**
- * Every Claude call the app makes, with retries and the forced-tool output shape.
- *
- * Two billing rules live here because this is the one door: the call is refused when no spender
- * is in scope — the boundary (a gated route, an action, a cron's per-client loop) declares one
- * with `runAsSpender`, so a new caller cannot burn money unattributed — and the final message's
- * `usage` is recorded to `ai_usage_daily` for that spender. The recording never blocks or throws.
+ * The one door to Claude. Two billing rules live here: the call is refused, before `call` runs,
+ * when no spender is in scope — the boundary (a gated route, an action, a cron's per-client loop)
+ * declares one with `runAsSpender`, so a new caller cannot burn money unattributed — and the
+ * returned message's `usage` is recorded to `ai_usage_daily` for that spender, which never blocks
+ * or throws. `callAnthropic` is the common case; a request it cannot express, such as the weekly
+ * brief's server-side web search, passes its own `call`.
+ */
+export async function attributedClaudeCall(
+  model: string,
+  call: (client: Anthropic) => Promise<Message>
+): Promise<Message> {
+  if (!currentSpender()) {
+    throw new Error(
+      `Claude call to ${model}: no spender in scope — wrap the boundary in runAsSpender`
+    )
+  }
+  const message = await call(anthropic)
+  void recordAiUsage({ provider: 'anthropic', model, usage: anthropicUsageOf(message) })
+  return message
+}
+
+/**
+ * Stream one request, retrying transient failures with exponential back-off — but never once a
+ * token has reached `onToken`, since a retry would replay the text from the start (duplicated
+ * output in a streaming UI).
+ */
+async function streamWithRetries(
+  client: Anthropic,
+  requestParams: Parameters<Anthropic['messages']['stream']>[0],
+  onToken: ((text: string) => void) | undefined
+): Promise<Message> {
+  for (let attempt = 0; ; attempt++) {
+    let emittedTokens = false
+    try {
+      const stream = client.messages.stream(requestParams)
+      if (onToken) {
+        stream.on('text', (text) => {
+          emittedTokens = true
+          onToken(text)
+        })
+      }
+      return await stream.finalMessage()
+    } catch (err) {
+      if (!isRetryable(err) || emittedTokens || attempt >= MAX_RETRIES) throw err
+      const delay = RETRY_BASE_DELAY_MS * 2 ** attempt
+      console.warn(
+        `[ai-client] transient API error, retrying in ${delay}ms (attempt ${attempt + 1}/${MAX_RETRIES})`,
+        err
+      )
+      await new Promise((r) => setTimeout(r, delay))
+    }
+  }
+}
+
+/**
+ * Every ordinary Claude call the app makes, with retries and the forced-tool output shape,
+ * through `attributedClaudeCall`.
  */
 export async function callAnthropic(opts: CallAnthropicOptions): Promise<Message> {
-  if (!currentSpender()) {
-    throw new Error('callAnthropic: no spender in scope — wrap the boundary in runAsSpender')
-  }
   const {
     systemPrompt,
     userMessage,
@@ -139,35 +188,5 @@ export async function callAnthropic(opts: CallAnthropicOptions): Promise<Message
     }),
   }
 
-  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
-    // Once tokens have reached the caller a retry would replay the text from
-    // the start (duplicated output in streaming UIs) — fail instead.
-    let emittedTokens = false
-    try {
-      const stream = anthropic.messages.stream(requestParams)
-      if (onToken) {
-        stream.on('text', (text) => {
-          emittedTokens = true
-          onToken(text)
-        })
-      }
-      const message = await stream.finalMessage()
-      void recordAiUsage({ provider: 'anthropic', model, usage: anthropicUsageOf(message) })
-      return message
-    } catch (err) {
-      if (isRetryable(err) && !emittedTokens && attempt < MAX_RETRIES) {
-        const delay = RETRY_BASE_DELAY_MS * 2 ** attempt
-        console.warn(
-          `[ai-client] transient API error, retrying in ${delay}ms (attempt ${attempt + 1}/${MAX_RETRIES})`,
-          err
-        )
-        await new Promise((r) => setTimeout(r, delay))
-        continue
-      }
-      throw err
-    }
-  }
-
-  // Unreachable — loop always throws or returns
-  throw new Error('callAnthropic: exhausted retries')
+  return attributedClaudeCall(model, (client) => streamWithRetries(client, requestParams, onToken))
 }

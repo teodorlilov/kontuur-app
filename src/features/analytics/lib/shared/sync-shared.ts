@@ -4,10 +4,8 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { retireConnection } from '@/lib/meta/connection-store'
 import { GraphApiError } from '@/lib/meta/graph-errors'
 import { notify } from '@/lib/notifications/notify'
-import {
-  SOCIAL_CONNECTION_SYNC_COLUMNS,
-  type SyncableConnection,
-} from '@/lib/queries/select-columns'
+import type { ClientSyncableConnection } from '@/lib/queries/select-columns'
+import { fetchSyncRoster } from '@/lib/queries/sync-roster'
 
 /**
  * What the two nightly metric syncs share: the outcome vocabulary, the roster read, the failure
@@ -49,10 +47,12 @@ export interface SyncPhase {
  * Every live connection on one network, synced one client at a time, with the failure ladder
  * both nightly runs answer to.
  *
+ * Only a connection that names a client whose workspace may still publish is synced. The rest —
+ * a paused workspace's, and one with no `client_id`, which has nothing to file rows under — are
+ * counted as skipped, never failed (`fetchSyncRoster`, src/lib/queries/sync-roster.ts).
+ *
  * The ladder, in order: a time budget checked BETWEEN clients, never inside one, so a client
- * either syncs whole or not at all; a connection with no `client_id` counted as a failure rather
- * than dropped silently, because it can be neither synced nor reported and a row like that is a
- * data problem worth seeing in the totals; a dead token retiring the connection and a missing
+ * either syncs whole or not at all; a dead token retiring the connection and a missing
  * permission notifying the agency, either way moving on; one rate-limit answer ending the run,
  * since it poisons every remaining call and is self-healing by tomorrow — a stored verdict, no
  * alert; and anything else notifying that the sync did not finish, because otherwise a
@@ -61,8 +61,6 @@ export interface SyncPhase {
  * `recordSyncHealth` runs on both outcomes, so the run's own verdict is stored rather than
  * inferred later from the metric day rows — which the on-demand refill writes too, and so cannot
  * distinguish a sync that landed from a phase that has been failing nightly.
- *
- * The roster projection is cast because the shared `SupabaseClient` parameter is untyped.
  */
 export async function syncRoster(
   admin: SupabaseClient,
@@ -75,26 +73,20 @@ export async function syncRoster(
     /**
      * Clients whose workspace may still publish — resolved ONCE per tick by the cron route
      * (`fetchEntitledClients`) and shared by every network's roster, so a paused workspace's
-     * connections are dropped here and counted as skipped rather than synced for nobody.
+     * connections are dropped from the roster and counted as skipped rather than synced for
+     * nobody.
      */
     entitledClientIds: ReadonlySet<string>
-    syncOne: (connection: SyncableConnection & { client_id: string }) => Promise<void>
+    syncOne: (connection: ClientSyncableConnection) => Promise<void>
   }
 ): Promise<MetricsSyncOutcome> {
   const { platform, networkLabel, timeBudgetMs, entitledClientIds, syncOne } = options
   const startedAt = Date.now()
-  const outcome: MetricsSyncOutcome = { synced: 0, skipped: 0, failed: 0, errors: [] }
-
-  const { data, error } = await admin
-    .from('social_connections')
-    .select(SOCIAL_CONNECTION_SYNC_COLUMNS)
-    .eq('platform', platform)
-    .not('access_token', 'is', null)
-    .not('account_id', 'is', null)
-  if (error) throw new Error(`${platform} connection roster query failed: ${error.message}`)
-  const roster = (data ?? []) as SyncableConnection[]
-  const connections = roster.filter((c) => c.client_id && entitledClientIds.has(c.client_id))
-  outcome.skipped += roster.length - connections.length
+  const { connections, skipped } = await fetchSyncRoster(admin, {
+    platforms: [platform],
+    entitledClientIds,
+  })
+  const outcome: MetricsSyncOutcome = { synced: 0, skipped, failed: 0, errors: [] }
 
   const noteSideEffectFailure = (clientId: string, what: 'notify' | 'retire', err: unknown) =>
     outcome.errors.push({
@@ -108,13 +100,8 @@ export async function syncRoster(
       break
     }
     const { client_id: clientId } = connection
-    if (!clientId) {
-      outcome.failed++
-      outcome.errors.push({ clientId: connection.account_id, error: 'connection has no client_id' })
-      continue
-    }
     try {
-      await syncOne({ ...connection, client_id: clientId })
+      await syncOne(connection)
       outcome.synced++
       await recordSyncHealth(admin, clientId, platform, null)
     } catch (err) {

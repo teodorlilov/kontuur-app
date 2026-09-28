@@ -5,8 +5,8 @@ import { cn } from '@/utils/cn'
 import { Button } from '@/components/ui/button'
 import { ContentMixList } from './content-mix-list'
 import type { RunPlan } from '@/features/generate/lib/run-plan'
-import { postsLeft as postsLeftLine } from '@/lib/billing/copy'
-import type { PostsAffordable } from '@/lib/billing/post-allowance'
+import { postsLeft as postsLeftLine, type ImagePool } from '@/lib/billing/copy'
+import { runShortfall, type PostsAffordable } from '@/lib/billing/post-allowance'
 import { PLAN_AND_BILLING_PATH } from '@/utils/constants'
 
 interface RunPanelProps {
@@ -17,6 +17,8 @@ interface RunPanelProps {
   briefCount: number
   /** Posts this period can still pay for at this format — the run cannot exceed it. */
   affordable: PostsAffordable
+  /** The image pool, for saying why pictures bind: what is left, one post's cost, what is owed. */
+  pool?: ImagePool
   metaLine: string
   clientId: string
   generating: boolean
@@ -28,27 +30,29 @@ interface RunPanelProps {
  * lime relationship inverts and New Growth becomes the figure — the count and
  * the Generate button are the field band's one lime answer: the commitment.
  *
- * It refuses in words before the server does: when the run wants more posts than the period can
- * pay for — its drafts or the pictures its slides need — the button is disabled and the footnote
- * says the sentence the reservation would answer with, with the way to the plan beside it.
+ * It refuses in words before the server does, by the server's rule (`runShortfall`): the whole
+ * run, briefs included and never under one post, against what the period can pay once owed
+ * pictures are set aside. A count of zero is allowed (a briefs-only run); a run totalling zero is
+ * disabled, since it would open a run just to fail.
+ * The Research row has no idea special case: an idea is a priority brief with its own web query.
  */
 export function RunPanel({
   runPlan,
   postCount,
   briefCount,
   affordable,
+  pool,
   metaLine,
   clientId,
   generating,
   onGenerate,
 }: RunPanelProps) {
   const { publishState, webResearchActive, starvedPillars, webOnlyPillars } = runPlan
-  // The headline promises what actually lands — briefs write extra posts.
   const totalCount = postCount + briefCount
-  const refusal =
-    affordable.posts !== null && totalCount > affordable.posts
-      ? postsLeftLine(affordable.posts, affordable.limiting, totalCount)
-      : null
+  const asked = Math.max(totalCount, 1)
+  const refusal = runShortfall(affordable, asked, pool?.perPost ?? 1)
+    ? postsLeftLine(affordable.posts ?? 0, affordable.limiting, asked, pool)
+    : null
 
   return (
     <aside className="surface-dark-capsule flex flex-col overflow-hidden rounded-card bg-forest-deep text-ink-inv shadow-dark lg:sticky lg:top-6">
@@ -62,11 +66,6 @@ export function RunPanel({
 
       <div className="flex flex-col p-5 pt-4">
         <CapsuleRow label="Drafts land in" value="Review queue" />
-        {/* No idea-flow special case. This said "From your brief" and suppressed the
-            good state, which was true when an idea bypassed research entirely. An
-            idea is now a locked priority brief planned in the same pass as every
-            other topic — including a focus web query of its own — so the panel was
-            reporting no research while a live search decided the outcome. */}
         <CapsuleRow
           label="Research"
           value={webResearchActive ? 'Sources + web' : 'Sources only'}
@@ -128,8 +127,6 @@ export function RunPanel({
           size="lg"
           loading={generating}
           onClick={onGenerate}
-          // 0 is expressible (briefs-only runs) but not runnable: a zero-post run
-          // opens a generation_runs row just to fail with a misleading error.
           disabled={totalCount === 0 || refusal !== null}
           className="w-full bg-accent text-forest-deep hover:bg-accent-deep hover:shadow-none"
         >

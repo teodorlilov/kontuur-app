@@ -3,8 +3,8 @@
 import { AddIcon, MinusIcon } from '@solar-icons/react/linear'
 import { Icon } from '@/components/ui/icon'
 import { MIN_CAROUSEL_SLIDES, MAX_CAROUSEL_SLIDES, POSTS_PER_RUN_OPTIONS } from '@/utils/constants'
-import { postsLeft as postsLeftLine } from '@/lib/billing/copy'
-import type { PostsAffordable } from '@/lib/billing/post-allowance'
+import { postsLeft as postsLeftLine, type ImagePool } from '@/lib/billing/copy'
+import { runCeiling, type PostsAffordable } from '@/lib/billing/post-allowance'
 import { cn } from '@/utils/cn'
 import type { PostType } from '@/types/api'
 
@@ -63,6 +63,8 @@ interface CountSteppersProps {
   briefCount: number
   /** Posts this period can still pay for — the stepper cannot ask for more; null when unmetered. */
   affordable: PostsAffordable
+  /** The image pool, for saying why pictures bind: what is left, one post's cost, what is owed. */
+  pool?: ImagePool
   onPostCount: (value: number) => void
   onSlideCount: (value: number) => void
 }
@@ -72,7 +74,9 @@ interface CountSteppersProps {
  * decision: the size of the run. The slides stepper hides in place when the
  * format is a single image, so nothing below it moves. The posts ceiling is
  * what the period can still pay for at this format, less the briefs — they are posts too, and
- * raising the slide count lowers the ceiling because each slide is another picture.
+ * raising the slide count lowers the ceiling because each slide is another picture
+ * (`runCeiling`). The briefs are said beside the count with the total, or a locked idea's
+ * "0 posts" beside a panel promising 1 would read as a contradiction rather than a sum.
  */
 export function CountSteppers({
   postCount,
@@ -81,13 +85,13 @@ export function CountSteppers({
   postsPerWeek,
   briefCount,
   affordable,
+  pool,
   onPostCount,
   onSlideCount,
 }: CountSteppersProps) {
   const isCarousel = postType === 'carousel'
   const { posts, limiting } = affordable
-  const maxPosts =
-    posts === null ? MAX_POSTS : Math.max(MIN_POSTS, Math.min(MAX_POSTS, posts - briefCount))
+  const maxPosts = Math.min(MAX_POSTS, runCeiling(affordable, briefCount))
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center gap-6">
@@ -118,7 +122,7 @@ export function CountSteppers({
       </div>
       {posts !== null && (
         <p className={cn('text-caption', posts === 0 ? 'text-danger' : 'text-text2')}>
-          {postsLeftLine(posts, limiting)}
+          {postsLeftLine(posts, limiting, 0, pool)}
         </p>
       )}
       <p className="text-caption text-text2">
@@ -132,9 +136,6 @@ export function CountSteppers({
             · carousels run {MIN_CAROUSEL_SLIDES}–{MAX_CAROUSEL_SLIDES} slides
           </>
         )}
-        {/* Briefs are not in the stepper — without this line, a locked idea
-            makes "0 posts" sit beside a panel promising 1 and the two look
-            like a contradiction instead of a sum. */}
         {briefCount > 0 && (
           <>
             {' '}

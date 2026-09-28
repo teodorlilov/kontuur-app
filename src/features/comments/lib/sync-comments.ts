@@ -9,10 +9,7 @@ import type { CommentsAdapter, NetworkAccount, PlatformComment } from '@/lib/met
 import { mapWithConcurrency } from '@/lib/concurrency'
 import { fetchPostIdsByMediaId } from '@/lib/queries/posts-by-media-id'
 import { upsertPostMetricRows } from '@/features/analytics/lib/shared/post-metrics-store'
-import {
-  SOCIAL_CONNECTION_SYNC_COLUMNS,
-  type SyncableConnection,
-} from '@/lib/queries/select-columns'
+import { fetchSyncRoster } from '@/lib/queries/sync-roster'
 import { MS_PER_DAY } from '@/utils/constants'
 
 /**
@@ -20,8 +17,8 @@ import { MS_PER_DAY } from '@/utils/constants'
  * calling the network — the adapter (`resolveComments`) speaks the dialect; this
  * file owns the budget, the compare-then-fetch, and every write.
  *
- * The shape of this file is copied from `syncAllClientMetrics`, and copied on
- * purpose — that shape encodes constraints this run has too. Sequential across
+ * The run follows `syncRoster`'s shape (features/analytics/lib/shared/sync-shared.ts)
+ * on purpose — that shape encodes constraints this run has too. Sequential across
  * clients rather than parallel, a wall-clock budget checked between clients, and
  * a hard stop on the first rate-limit answer, because Meta's quota is per-app and
  * one 429 poisons every remaining call in the run.
@@ -30,7 +27,7 @@ import { MS_PER_DAY } from '@/utils/constants'
  * This one runs every 30 minutes and can afford to because of one trick: the
  * media list already reports `comments_count`, so a client's whole roster of
  * posts costs ONE call, and only the posts whose count disagrees with what we
- * stored are fetched. A quiet half hour costs one call per client.
+ * stored are fetched. A quiet half hour costs one call per connected account.
  */
 
 /** How far back a post can be and still have its comments watched. */
@@ -61,7 +58,10 @@ type CommentRow = Database['public']['Tables']['platform_comments']['Insert']
 interface CommentsSyncOutcome {
   /** Clients whose comments were brought up to date. */
   synced: number
-  /** Clients not reached — time budget spent, or the run stopped on a rate limit. */
+  /**
+   * Connections not synced: a paused workspace's, one with no `client_id`, and those the time
+   * budget or a rate-limit stop left unreached.
+   */
   skipped: number
   failed: number
   /** Posts whose stored count already matched, so no comment call was made. */
@@ -72,11 +72,13 @@ interface CommentsSyncOutcome {
 }
 
 /**
- * Syncs comments for every client with a live connection on a network that has comments.
- *
- * Per-client failures are contained as the metrics cron contains them, minus the notifying: a
- * failed comment sync is not something the agency can act on. A dead token is, and this
- * half-hourly run (`vercel.json`) is where it is caught soonest, so it retires the connection.
+ * Syncs comments for every client with a live connection on a network that has comments. The
+ * roster (`fetchSyncRoster`) is filtered by `COMMENTABLE_PLATFORMS`, the adapter registry's own
+ * list and never a literal, so roster and adapters cannot disagree about which networks are read.
+ * The budget check stays between clients, so a client's comments land whole or not at all; a
+ * rate-limit stop (see the module doc) costs at most one 30-minute cycle of freshness. Failures
+ * are contained per client without notifying, since the agency cannot act on them; a dead token it
+ * can, and this run (`vercel.json`) catches it soonest, so it retires the connection.
  */
 export async function syncAllClientComments(
   admin: SupabaseClient,
@@ -90,46 +92,25 @@ export async function syncAllClientComments(
   }
 ): Promise<CommentsSyncOutcome> {
   const startedAt = Date.now()
+  const { connections, skipped } = await fetchSyncRoster(admin, {
+    platforms: COMMENTABLE_PLATFORMS,
+    entitledClientIds,
+  })
   const outcome: CommentsSyncOutcome = {
     synced: 0,
-    skipped: 0,
+    skipped,
     failed: 0,
     unchanged: 0,
     fetched: 0,
     errors: [],
   }
 
-  const { data, error } = await admin
-    .from('social_connections')
-    .select(SOCIAL_CONNECTION_SYNC_COLUMNS)
-    /**
-     * Every network with a comments adapter, derived from the registry rather than listed here.
-     *
-     * This read `platform = 'instagram'` while the post list came from Instagram's media edge —
-     * widening it then would have handed a Page token to that edge. The list is the adapter's
-     * now, so the filter is the registry's.
-     */
-    .in('platform', COMMENTABLE_PLATFORMS)
-    .not('access_token', 'is', null)
-    .not('account_id', 'is', null)
-  if (error) throw new Error(`connection roster query failed: ${error.message}`)
-  // WHY as: the shared SupabaseClient param is untyped, so the projection does not infer.
-  const roster = (data ?? []) as SyncableConnection[]
-  const connections = roster.filter((c) => c.client_id && entitledClientIds.has(c.client_id))
-  outcome.skipped += roster.length - connections.length
-
   for (const [index, connection] of connections.entries()) {
-    // Between clients, not inside one: a client's comments either come whole or not at all.
     if (Date.now() - startedAt > timeBudgetMs) {
       outcome.skipped += connections.length - index
       break
     }
     const { client_id: clientId } = connection
-    if (!clientId) {
-      outcome.failed++
-      outcome.errors.push({ clientId: connection.account_id, error: 'connection has no client_id' })
-      continue
-    }
     try {
       const result = await syncClientComments(admin, {
         clientId,
@@ -159,9 +140,6 @@ export async function syncAllClientComments(
         }
         continue
       }
-      // One rate-limit answer poisons every remaining call in this run. Unlike the
-      // nightly metrics sync there is nothing to wait for — the next run is in 30
-      // minutes, so this costs at most one cycle of freshness.
       if (err instanceof GraphApiError && err.failure === 'rate_limited') {
         outcome.skipped += connections.length - index - 1
         break

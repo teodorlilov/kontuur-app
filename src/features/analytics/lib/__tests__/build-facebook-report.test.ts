@@ -65,8 +65,7 @@ function input(overrides: Partial<BuildFacebookReportInput>): BuildFacebookRepor
 }
 
 describe('buildFacebookReport', () => {
-  /** The NULL contract rides the series out: a day the API skipped is a gap, never a zero. */
-  it('feeds engagements and page views into the strip, split across the two windows', () => {
+  it('feeds engagements and page views into the strip, split across the two windows, a skipped day a gap, never a zero', () => {
     const report = buildFacebookReport(
       input({
         pageRows: [
@@ -83,8 +82,7 @@ describe('buildFacebookReport', () => {
     expect(report.engagements.series).toEqual([3, 4, null])
   })
 
-  /** Day 2 captured no level: the anchored walk derives it from day 1's 64 plus that day's net. */
-  it('anchors the follower curve on the level and tells the flow story', () => {
+  it('anchors the follower curve on the level, derives a day with none from the day before plus its net, and tells the flow story', () => {
     const report = buildFacebookReport(
       input({
         pageRows: [
@@ -100,8 +98,7 @@ describe('buildFacebookReport', () => {
     expect(report.followersTotal).toBe(64)
   })
 
-  /** What Meta does not serve for a Page post stays null on every row — never zero. */
-  it('ranks posts by interactions, because per-post reach is dead for Pages', () => {
+  it('ranks posts by interactions, because per-post reach is dead for Pages, and keeps what Meta does not serve null', () => {
     const report = buildFacebookReport(
       input({
         postRows: [
@@ -144,13 +141,7 @@ describe('buildFacebookReport', () => {
 })
 
 describe('the app ledger pin', () => {
-  /**
-   * A pin from the comparison window matches none of the current window's metric rows, so
-   * `buildPosts` would push it with every measure null and a "removed" verdict — a 30-day window
-   * showing the preceding month as deleted from the Page. Enforced in `buildPosts` rather than
-   * left to each caller's query bounds, so a third network cannot rediscover it.
-   */
-  it("does not pull the comparison window's publications into this period", () => {
+  it("does not pull the comparison window's publications into this period, where they would read as removed from the Page", () => {
     const report = buildFacebookReport(
       input({
         publishedPosts: [

@@ -1,17 +1,15 @@
+import { z } from 'zod'
 import type { ApprovalRequest } from './schema'
+import { readRouteBody } from '@/utils/read-route-body'
 
 /**
- * Ask the server for an approval link, or to email one.
+ * Ask the server for an approval link, or to email one — the one client-side approval request, for
+ * `use-approval`'s two channels, the generate flow's done view and the review queue's
+ * send-to-client dialog.
  *
- * The same twelve lines existed four times — `use-approval` for each of its two
- * channels, the generate flow's done view, and the review queue's send-to-client dialog.
- * All four built the same body, unwrapped `{ error }` the same way, and disagreed only in
- * what they did with the result: two threw, one toasted inline, and one read the response
- * body before checking `res.ok`.
- *
- * Both functions **throw** with the server's own message. Deciding what a failure looks
- * like belongs to the surface that failed — a dialog toasts, a hook sets an error — and
- * a helper that toasts on their behalf would take that decision away from all four.
+ * Both functions **throw** with the server's own message (`readRouteBody`). Deciding what a
+ * failure looks like belongs to the surface that failed — a dialog toasts, a hook sets an error —
+ * and a helper that toasted on their behalf would take that decision away from every caller.
  */
 
 type Channel = 'send' | 'email'
@@ -22,29 +20,33 @@ const FALLBACK: Record<Channel, string> = {
   email: 'Failed to send approval email',
 }
 
-async function post<T>(channel: Channel, request: ApprovalRequest): Promise<T> {
+/** `/api/approval/send`'s success body: the link, and how many posts it covers. */
+const linkAnswerSchema = z.object({ url: z.string(), postCount: z.number() })
+
+/** `/api/approval/email`'s success body: how many posts the email covers. */
+const emailAnswerSchema = z.object({ postCount: z.number() })
+
+async function post<T>(
+  channel: Channel,
+  request: ApprovalRequest,
+  answer: z.ZodType<T>
+): Promise<T> {
   const res = await fetch(`/api/approval/${channel}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(request),
   })
-
-  // Tolerated rather than awaited blindly: a 502 from the edge has no JSON body, and
-  // `res.json()` throwing there would surface a SyntaxError instead of the failure.
-  const data = (await res.json().catch(() => null)) as (T & { error?: string }) | null
-
-  if (!res.ok || !data) throw new Error(data?.error || FALLBACK[channel])
-  return data
+  return readRouteBody(res, answer, FALLBACK[channel])
 }
 
 /** A shareable link the agency copies. Also reports how many posts it covers. */
 export function requestApprovalLink(
   request: ApprovalRequest
 ): Promise<{ url: string; postCount: number }> {
-  return post('send', request)
+  return post('send', request, linkAnswerSchema)
 }
 
 /** The same batch, sent to the client's contact address. */
 export function requestApprovalEmail(request: ApprovalRequest): Promise<{ postCount: number }> {
-  return post('email', request)
+  return post('email', request, emailAnswerSchema)
 }

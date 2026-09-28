@@ -6,8 +6,10 @@ import { requireEntitledRoute } from '@/lib/billing/require-entitled'
 import { runAsSpender } from '@/lib/billing/spend-context'
 import { analyzeBrand } from '@/lib/sources/analyze-brand'
 
-// A sitemap lookup, up to seven page fetches (8s timeout each, in two parallel waves) and a model
-// call. The single-page version this replaced fitted comfortably in the default; this does not.
+/**
+ * Must cover all of `analyzeBrand` (src/lib/sources/analyze-brand.ts) in one request: a sitemap
+ * lookup, up to seven page fetches (8s timeout each, in two parallel waves) and a model call.
+ */
 export const maxDuration = 60
 
 /** Both fields optional here; the "at least one" rule is checked below so the two cases give distinct errors. */
@@ -16,14 +18,15 @@ const analyzeUrlSchema = z.object({
   instagramHandle: z.string().optional(),
 })
 
-/** Fetch a website and/or Instagram profile and return an LLM analysis of the brand. */
+/**
+ * Fetch a website and/or Instagram profile and return an LLM analysis of the brand. Rate-limited for
+ * two reasons: every request is a paid model call, and it fetches a caller-supplied URL, so
+ * unthrottled it would let a caller aim our egress at a third party.
+ */
 export async function POST(request: Request) {
   const auth = await resolveAuth()
   if (!auth.ok) return auth.response
 
-  // Metered like the other model calls, and for a second reason the rest do not have:
-  // this route fetches an arbitrary caller-supplied URL, so unthrottled it is also a way
-  // to aim our egress at a third party.
   const limited = aiRateLimitResponse('analyze-url', auth.userId)
   if (limited) return limited
   const refused = await requireEntitledRoute(auth.agencyId, 'spend')

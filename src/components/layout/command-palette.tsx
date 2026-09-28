@@ -13,6 +13,7 @@ import type { Icon as Glyph } from '@solar-icons/react/lib/types'
 import { Icon } from '@/components/ui/icon'
 import { cn } from '@/utils/cn'
 import { getNavItems } from '@/components/layout/nav-items'
+import type { AddBrandGate } from '@/lib/billing/copy'
 
 interface PaletteEntry {
   id: string
@@ -20,6 +21,11 @@ interface PaletteEntry {
   hint: string
   href: string
   icon: Glyph
+  /**
+   * Why this entry leads nowhere right now: it is disabled and never navigates. The sentence shows
+   * through `hint`, which the builder sets to it.
+   */
+  refusal?: string | null
 }
 
 interface CommandPaletteProps {
@@ -27,17 +33,31 @@ interface CommandPaletteProps {
   onOpenChange: (open: boolean) => void
   agencyMode: 'agency' | 'solo'
   clients: Array<{ id: string; name: string }>
+  /** What "Add client" says: its refusal, or what a client costs (`addBrandGate`, src/lib/billing/copy.ts). */
+  addClient: AddBrandGate
 }
 
-/** Presentation only. ⌘K is bound in ShellProvider — see `usePaletteHotkey` for why. */
-export function CommandPalette({ open, onOpenChange, agencyMode, clients }: CommandPaletteProps) {
+/**
+ * Presentation only. ⌘K is bound in ShellProvider — see `usePaletteHotkey` for why. Radix unmounts
+ * the content when closed, so the search state is always fresh and needs no reset effect.
+ */
+export function CommandPalette({
+  open,
+  onOpenChange,
+  agencyMode,
+  clients,
+  addClient,
+}: CommandPaletteProps) {
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-[200] bg-ink/40 backdrop-blur-[2px] [animation:fade-in_150ms_ease]" />
-        {/* Radix unmounts the content when closed, so the search state below is
-            always fresh — no reset effect needed. */}
-        <PaletteBody onOpenChange={onOpenChange} agencyMode={agencyMode} clients={clients} />
+        <PaletteBody
+          onOpenChange={onOpenChange}
+          agencyMode={agencyMode}
+          clients={clients}
+          addClient={addClient}
+        />
       </Dialog.Portal>
     </Dialog.Root>
   )
@@ -45,9 +65,20 @@ export function CommandPalette({ open, onOpenChange, agencyMode, clients }: Comm
 
 /**
  * The searchable list. A solo workspace is one business, so it gets neither the per-client
- * "Client settings" rows (its "My business" nav row is that one screen) nor "Add client".
+ * "Client settings" rows (its "My business" nav row is that one screen) nor "Add client". An
+ * "Add client" the plan refuses stays listed, disabled, with the reason as its hint — found but
+ * never followed, on a click or on Enter — and a paid workspace's hint says what it costs.
+ * "Generate posts" stays a plain link, like the sidebar's row: `/generate` is where waiting
+ * drafts live (docs/plans/BILLING.md step 14), and gating it would need a usage read in the
+ * layout, which renders on every page. The highlight is clamped during render rather than synced
+ * in an effect, because filtering can shrink the list under it.
  */
-function PaletteBody({ onOpenChange, agencyMode, clients }: Omit<CommandPaletteProps, 'open'>) {
+function PaletteBody({
+  onOpenChange,
+  agencyMode,
+  clients,
+  addClient,
+}: Omit<CommandPaletteProps, 'open'>) {
   const router = useRouter()
   const [query, setQuery] = useState('')
   const [activeIndex, setActiveIndex] = useState(0)
@@ -82,9 +113,10 @@ function PaletteBody({ onOpenChange, agencyMode, clients }: Omit<CommandPaletteP
       !isSolo && {
         id: 'action:add-client',
         label: 'Add client',
-        hint: 'Action',
+        hint: addClient.refusal ?? addClient.note ?? 'Action',
         href: '/clients/new',
         icon: UserPlusRoundedIcon,
+        refusal: addClient.refusal,
       },
     ]
     return [
@@ -92,7 +124,7 @@ function PaletteBody({ onOpenChange, agencyMode, clients }: Omit<CommandPaletteP
       ...clientEntries,
       ...actions.filter((action): action is PaletteEntry => action !== false),
     ]
-  }, [agencyMode, clients])
+  }, [agencyMode, clients, addClient])
 
   const results = useMemo(() => {
     const term = query.trim().toLowerCase()
@@ -100,13 +132,12 @@ function PaletteBody({ onOpenChange, agencyMode, clients }: Omit<CommandPaletteP
     return entries.filter((entry) => entry.label.toLowerCase().includes(term))
   }, [entries, query])
 
-  // Clamp during render rather than syncing with an effect: filtering can shrink
-  // the list under the highlight.
   const highlighted = Math.min(activeIndex, Math.max(results.length - 1, 0))
 
-  function navigateTo(href: string) {
+  function navigateTo(entry: PaletteEntry) {
+    if (entry.refusal) return
     onOpenChange(false)
-    router.push(href)
+    router.push(entry.href)
   }
 
   function handleKeyDown(event: React.KeyboardEvent) {
@@ -126,7 +157,7 @@ function PaletteBody({ onOpenChange, agencyMode, clients }: Omit<CommandPaletteP
       const entry = results[highlighted]
       if (entry) {
         event.preventDefault()
-        navigateTo(entry.href)
+        navigateTo(entry)
       }
     }
   }
@@ -170,11 +201,13 @@ function PaletteBody({ onOpenChange, agencyMode, clients }: Omit<CommandPaletteP
                 key={entry.id}
                 type="button"
                 data-active={isActive}
+                aria-disabled={entry.refusal ? true : undefined}
                 onMouseEnter={() => setActiveIndex(index)}
-                onClick={() => navigateTo(entry.href)}
+                onClick={() => navigateTo(entry)}
                 className={cn(
                   'flex w-full items-center gap-2.5 rounded-chip px-2.5 py-2 text-left transition-colors',
-                  isActive ? 'bg-wash' : 'bg-transparent'
+                  isActive ? 'bg-wash' : 'bg-transparent',
+                  entry.refusal && 'cursor-not-allowed opacity-60'
                 )}
               >
                 <Icon

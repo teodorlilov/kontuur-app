@@ -5,8 +5,8 @@ import type { SupabaseClient } from '@supabase/supabase-js'
  * The half-hourly sync.
  *
  * The behaviour worth pinning is what it does NOT do. A comments queue that
- * refetched every post on every run would cost ~66 Graph calls per client-hour on a
- * quota the publish cron shares, so the whole design rests on the count comparison
+ * refetched every post on every run would spend the Graph quota the publish cron shares, every
+ * half hour, so the whole design rests on the count comparison
  * skipping posts that have not changed. Nothing in `npm run check` can see a Graph
  * call, which makes these the only guard on that.
  */
@@ -18,6 +18,7 @@ const fetchMediaComments = vi.fn()
  * The sync now asks a comments ADAPTER, resolved from the connection's platform, rather than a
  * module named after one network. The spy stands in for that adapter's read; the rest of the
  * contract is present because the sync resolves the whole adapter, not one method.
+ * `flags.countIsExact` stays true except in the one case that flips it and restores it.
  */
 const flags = vi.hoisted(() => ({ countIsExact: true }))
 
@@ -25,8 +26,6 @@ vi.mock('@/lib/meta/networks', () => ({
   resolveComments: () => ({
     platform: 'instagram',
     label: 'Instagram',
-    // The exact-count contract most of these tests pin: equal counts mean no fetch. The
-    // untrusted path flips the flag in its own case.
     countIsExact: flags.countIsExact,
     listCommentablePosts: (...a: unknown[]) => listCommentablePosts(...a),
     fetchComments: (...a: unknown[]) => fetchMediaComments(...a),
@@ -34,7 +33,7 @@ vi.mock('@/lib/meta/networks', () => ({
     setHidden: vi.fn(),
     remove: vi.fn(),
   }),
-  COMMENTABLE_PLATFORMS: ['instagram', 'facebook'],
+  COMMENTABLE_PLATFORMS: ['instagram', 'facebook', 'registry-only'],
 }))
 vi.mock('@/lib/queries/posts-by-media-id', () => ({
   fetchPostIdsByMediaId: async () => new Map([['media-1', 'post-1']]),
@@ -59,11 +58,11 @@ const { GraphApiError } = await import('@/lib/meta/graph-errors')
 /**
  * A Supabase stand-in that records what was asked of `platform_comments`.
  *
- * `storedIds` seeds the rows the count comparison reads back, which is the only
- * database state any of these assertions depends on.
+ * `storedByMedia` seeds the rows the count comparison reads back, which is the only
+ * database state any of these assertions depends on. `upsert` declares its args so
+ * `upsert.mock.calls[0][0]` is the rows, not an empty tuple.
  */
 function fakeAdmin(storedByMedia: Record<string, string[]> = {}) {
-  // Args declared so `upsert.mock.calls[0][0]` is the rows, not an empty tuple.
   const upsert = vi.fn(async (_rows: Array<Record<string, unknown>>, _options?: unknown) => ({
     error: null,
   }))
@@ -97,7 +96,7 @@ function fakeAdmin(storedByMedia: Record<string, string[]> = {}) {
   return { client, upsert, deleted }
 }
 
-/** The identity fields Instagram's adapter supplies; Facebook's returns null instead. */
+/** A post identity as an adapter reports one; no case checks its values (the identity case builds its own). */
 const IDENTITY = {
   caption: 'x',
   permalink: null,
@@ -105,6 +104,21 @@ const IDENTITY = {
   mediaType: null,
   mediaProductType: null,
   postedAt: null,
+}
+
+/**
+ * What the Instagram adapter makes of a comment whose text and author were withheld: the id alone,
+ * `hidden` false, every other field null — pinned in
+ * src/lib/meta/networks/__tests__/instagram-comments.test.ts; this suite checks the row it becomes.
+ */
+const WITHHELD_COMMENT = {
+  id: 'c1',
+  parentId: null,
+  authorName: null,
+  text: null,
+  hidden: false,
+  likeCount: null,
+  commentedAt: null,
 }
 
 const CONNECTION = {
@@ -121,11 +135,7 @@ beforeEach(() => {
 })
 
 describe('media identity', () => {
-  it('records what a commented post IS, even when its comments have not changed', async () => {
-    // The queue renders the post a comment sits under, and read that only from what
-    // the NIGHTLY sync wrote. So a post commented on this morning showed as an
-    // untitled grey box until 03:30, and a post never published from Kontuur showed
-    // as nothing at all — which on a live account was 18 of 20 media.
+  it('records what a commented post IS even when its comments are unchanged, so the queue need not wait for the nightly sync', async () => {
     listCommentablePosts.mockResolvedValue([
       {
         externalPostId: 'media-1',
@@ -144,7 +154,6 @@ describe('media identity', () => {
 
     await syncClientComments(client, CONNECTION)
 
-    // Unchanged, so no comment call — but the identity is recorded anyway.
     expect(fetchMediaComments).not.toHaveBeenCalled()
     const [, rows] = upsertPostMetricRows.mock.calls[0] as [unknown, Array<Record<string, unknown>>]
     expect(rows[0]).toMatchObject({
@@ -157,7 +166,7 @@ describe('media identity', () => {
     })
   })
 
-  it('never writes the measurement columns', async () => {
+  it('never writes the measurement columns — a zero here would read as a measured zero on the analytics page', async () => {
     listCommentablePosts.mockResolvedValue([
       { externalPostId: 'media-1', commentCount: 1, identity: IDENTITY },
     ])
@@ -170,9 +179,6 @@ describe('media identity', () => {
 
     await syncClientComments(client, CONNECTION)
 
-    // Reach, views and the rest belong to the nightly job. A zero written here is
-    // indistinguishable from a measured zero on the analytics page — and this sync
-    // has measured nothing.
     const [, rows] = upsertPostMetricRows.mock.calls[0] as [unknown, Array<Record<string, unknown>>]
     for (const column of ['reach', 'views', 'comments_count', 'like_count', 'total_interactions']) {
       expect(rows[0]).not.toHaveProperty(column)
@@ -189,7 +195,6 @@ describe('syncClientComments', () => {
 
     const result = await syncClientComments(client, CONNECTION)
 
-    // The entire economics of the feature. Two stored, two reported, nothing fetched.
     expect(fetchMediaComments).not.toHaveBeenCalled()
     expect(result).toEqual({ unchanged: 1, fetched: 0 })
   })
@@ -223,7 +228,7 @@ describe('syncClientComments', () => {
     expect(fetchMediaComments).not.toHaveBeenCalled()
   })
 
-  it('follows the cursor — fetchMediaComments returns one page, not all of them', async () => {
+  it('follows the cursor — fetchMediaComments returns one page, so ignoring it would cap a busy post at 50', async () => {
     listCommentablePosts.mockResolvedValue([
       { externalPostId: 'media-1', commentCount: 2, identity: IDENTITY },
     ])
@@ -234,14 +239,11 @@ describe('syncClientComments', () => {
 
     await syncClientComments(client, CONNECTION)
 
-    // A caller that ignored the cursor would silently cap every busy post at 50.
     expect(fetchMediaComments).toHaveBeenCalledTimes(2)
     expect(upsert.mock.calls[0]![0]).toHaveLength(2)
   })
 
-  it('stores nothing and stops when Instagram withholds the comments', async () => {
-    // Standard Access: HTTP 200, empty array, a truthful comments_count. Nothing
-    // throws, so only the flag distinguishes this from a quiet post.
+  it('stores nothing and stops when Instagram withholds the comments — an empty 200 only the withheld flag tells apart from a quiet post', async () => {
     listCommentablePosts.mockResolvedValue([
       { externalPostId: 'media-1', commentCount: 4, identity: IDENTITY },
     ])
@@ -254,14 +256,11 @@ describe('syncClientComments', () => {
     expect(upsert).not.toHaveBeenCalled()
   })
 
-  it('stores replies as rows carrying parent_id', async () => {
+  it("stores the adapter's flat replies as rows carrying parent_id, so whether we answered is read from stored rows", async () => {
     listCommentablePosts.mockResolvedValue([
       { externalPostId: 'media-1', commentCount: 1, identity: IDENTITY },
     ])
     fetchMediaComments.mockResolvedValue({
-      // Flat, each naming the comment it answers: nesting is the NETWORK's shape, and the
-      // adapter resolves it before the sync ever sees it. Instagram nests replies in one
-      // response and Facebook keeps them on a second edge; neither reaches here.
       comments: [
         { id: 'c1', parentId: null, text: 'A question', authorName: 'maria.kx' },
         { id: 'r1', parentId: 'c1', text: 'An answer', authorName: 'haelanclinic' },
@@ -273,8 +272,6 @@ describe('syncClientComments', () => {
 
     await syncClientComments(client, CONNECTION)
 
-    // "Have we answered this" is a question about rows we already hold, which only
-    // works if replies are rows.
     const rows = upsert.mock.calls[0]![0]
     expect(rows).toHaveLength(2)
     expect(rows[0]).toMatchObject({ id: 'c1', parent_id: null })
@@ -302,10 +299,7 @@ describe('syncClientComments', () => {
     })
   })
 
-  it("fetches an equal-count post anyway when the network's tally is not exact", async () => {
-    // Facebook's summary disagreed with its own edge live (probe 2026-09-06): a stored
-    // reply offset a new top-level comment and the equality gate read "unchanged" over a
-    // real change. An inexact count is a hint, never a gate.
+  it("fetches an equal-count post anyway when the network's tally is not exact, and deletes the comment that vanished", async () => {
     flags.countIsExact = false
     try {
       listCommentablePosts.mockResolvedValue([
@@ -322,7 +316,6 @@ describe('syncClientComments', () => {
 
       expect(fetchMediaComments).toHaveBeenCalled()
       expect(outcome.fetched).toBe(1)
-      // The refetch is also the reconcile: the vanished comment leaves with it.
       expect(deleted).toContainEqual(['c-old'])
     } finally {
       flags.countIsExact = true
@@ -330,8 +323,6 @@ describe('syncClientComments', () => {
   })
 
   it('refetches a post whose count fell to zero, so deleted comments leave the queue', async () => {
-    // A post with stored rows used to be filtered out the moment its count hit zero —
-    // before the staleness gate, so deleteVanished never saw it and the rows were immortal.
     listCommentablePosts.mockResolvedValue([
       { externalPostId: 'media-1', commentCount: 0, identity: IDENTITY },
     ])
@@ -357,29 +348,15 @@ describe('syncClientComments', () => {
 
     await syncClientComments(client, CONNECTION)
 
-    // c2 was deleted by its author upstream. c1 survives.
     expect(deleted).toContainEqual(['c2'])
   })
 
-  it('stores a withheld comment as nulls rather than dropping it', async () => {
+  it('stores a withheld comment as nulls rather than dropping it — a NOT NULL column would turn a permission gap into a failed sync', async () => {
     listCommentablePosts.mockResolvedValue([
       { externalPostId: 'media-1', commentCount: 1, identity: IDENTITY },
     ])
-    // What the Instagram adapter actually produces from `{ id: 'c1' }` — the id alone, every
-    // other field explicitly null. That mapping is pinned in the adapter's own suite; this
-    // asserts the row it becomes.
     fetchMediaComments.mockResolvedValue({
-      comments: [
-        {
-          id: 'c1',
-          parentId: null,
-          authorName: null,
-          text: null,
-          hidden: false,
-          likeCount: null,
-          commentedAt: null,
-        },
-      ],
+      comments: [WITHHELD_COMMENT],
       withheld: false,
       nextCursor: null,
     })
@@ -387,15 +364,11 @@ describe('syncClientComments', () => {
 
     await syncClientComments(client, CONNECTION)
 
-    // Null, not undefined and not a crash: a NOT NULL column here would turn a
-    // permissions state into a failed sync.
     const rows = upsert.mock.calls[0]![0]
     expect(rows[0]).toMatchObject({ text: null, author_username: null, hidden: false })
   })
 
-  it('lets a rate limit propagate, so the run can stop rather than keep asking', async () => {
-    // Code 4 classifies as rate_limited, which is what syncAllClientComments breaks
-    // the whole run on — one 429 poisons every remaining call against a per-app quota.
+  it('lets a rate limit (Graph code 4) propagate, so the run can stop rather than keep spending the per-app quota', async () => {
     const rateLimited = new GraphApiError({
       httpStatus: 400,
       code: 4,
@@ -414,6 +387,29 @@ describe('syncClientComments', () => {
   })
 })
 
+const LIVE_CONNECTION = {
+  client_id: 'c1',
+  platform: 'instagram',
+  account_id: 'acct',
+  access_token: 'tok',
+}
+
+/**
+ * A Supabase stand-in answering the roster read with `roster`, and the retention sweep. The
+ * roster's platform filter is recorded for the test.
+ */
+function fakeRosterAdmin(roster: Array<{ client_id: string | null }>) {
+  const platformFilter = vi.fn((_column: string, _values: readonly string[]) => ({
+    not: () => ({
+      not: () => Promise.resolve({ data: roster, error: null }),
+    }),
+  }))
+  const select = vi.fn(() => ({ in: platformFilter }))
+  const del = vi.fn(() => ({ lt: () => Promise.resolve({ error: null }) }))
+  const client = { from: vi.fn(() => ({ select, delete: del })) } as unknown as SupabaseClient
+  return { client, platformFilter }
+}
+
 describe('syncAllClientComments on a dead token', () => {
   it('retires the connection the moment Graph answers 190 — this run is the half-hourly heartbeat', async () => {
     retireConnection.mockReset()
@@ -428,23 +424,7 @@ describe('syncAllClientComments on a dead token', () => {
         fbtraceId: null,
       })
     )
-    const roster = vi.fn(() => ({
-      in: () => ({
-        not: () => ({
-          not: () =>
-            Promise.resolve({
-              data: [
-                { client_id: 'c1', platform: 'instagram', account_id: 'acct', access_token: 'tok' },
-              ],
-              error: null,
-            }),
-        }),
-      }),
-    }))
-    const del = vi.fn(() => ({ lt: () => Promise.resolve({ error: null }) }))
-    const admin = {
-      from: vi.fn(() => ({ select: roster, delete: del })),
-    } as unknown as SupabaseClient
+    const { client: admin } = fakeRosterAdmin([LIVE_CONNECTION])
 
     const outcome = await syncAllClientComments(admin, {
       timeBudgetMs: 10_000,
@@ -457,5 +437,39 @@ describe('syncAllClientComments on a dead token', () => {
       platform: 'instagram',
       reason: 'Error validating access token',
     })
+  })
+})
+
+describe('syncAllClientComments and its roster', () => {
+  it('skips a connection with no client, counting it with the entitlement skips, not as a failure', async () => {
+    listCommentablePosts.mockResolvedValue([])
+    const { client: admin } = fakeRosterAdmin([
+      { ...LIVE_CONNECTION, client_id: null },
+      LIVE_CONNECTION,
+    ])
+
+    const outcome = await syncAllClientComments(admin, {
+      timeBudgetMs: 10_000,
+      entitledClientIds: new Set(['c1']),
+    })
+
+    expect(listCommentablePosts).toHaveBeenCalledTimes(1)
+    expect(outcome).toMatchObject({ synced: 1, skipped: 1, failed: 0, errors: [] })
+  })
+
+  it('reads the networks the comments registry lists — a network only the registry knows included', async () => {
+    listCommentablePosts.mockResolvedValue([])
+    const { client: admin, platformFilter } = fakeRosterAdmin([LIVE_CONNECTION])
+
+    await syncAllClientComments(admin, {
+      timeBudgetMs: 10_000,
+      entitledClientIds: new Set(['c1']),
+    })
+
+    expect(platformFilter).toHaveBeenCalledWith('platform', [
+      'instagram',
+      'facebook',
+      'registry-only',
+    ])
   })
 })

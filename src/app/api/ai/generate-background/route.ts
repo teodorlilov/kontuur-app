@@ -17,11 +17,10 @@ export const maxDuration = 120
 /**
  * Where the edited slide sits, defaulting to a lone cover.
  *
- * The route used to hardcode `(1, 3)` with a comment calling it "the richly detailed middle slide"
- * default. It is not: `slideRole(1, 3)` returns QUIET, so every picture generated from the editor
- * was briefed as "a restrained, minimal take on the style — ONE small supporting subject only", and
- * `artDirectionFor` stays silent on that role, so it got no framing or treatment either. Editing a
- * cover asked the model for the opposite of a cover.
+ * The place picks the brief: `slideRole` (src/lib/visual/prompt.ts:38) makes an odd interior slide
+ * QUIET — one small subject, mostly plain canvas — and `artDirectionFor`
+ * (src/lib/visual/variation.ts:66) gives that role no framing. So a missing place defaults to the
+ * cover, never to a guessed interior slot, which could brief a cover as its opposite.
  */
 function slidePlace(body: GenerateBackgroundBody): { position: number; total: number } {
   const position = body.position ?? 0
@@ -51,6 +50,12 @@ function editorTextBlock(body: GenerateBackgroundBody): string {
  * Generate a fresh background for one slide, in the editor. The image is stored next to the
  * target's other canvas assets and returned as a bare ref — deliberately NOT written to
  * `post_images`, because the user has not picked it yet and may generate several.
+ *
+ * The kit and the colour pair come from the VERIFIED owner and post, never a caller-supplied id:
+ * they decide whose palette the paid generation uses. Passing `postId` to `resolveScheme` makes a
+ * post with no pair claim the one derived here, so the art wears its siblings' pair and the next
+ * press lands on the same one. `nonce` is what makes each press a new framing; empty, every press
+ * gets the same brief.
  */
 export async function POST(request: Request) {
   const auth = await resolveAuth()
@@ -81,17 +86,6 @@ export async function POST(request: Request) {
   try {
     return await runMetered(spender, async () => {
       const { position, total } = slidePlace(body)
-      // The same colour pair the slide's siblings wear. Without it this route was the one generation
-      // path that produced art with no ground and no accent instruction — a picture that could not
-      // belong to the post it was being made for. The pair is read from the post's row.
-      //
-      // Passing `postId` is what makes a post-target generation WRITE the pair it derives. It used to
-      // only read: a post with no stored pair got one picked, spent a generation on it and threw it
-      // away, so the next press could land somewhere else as the client's recent posts moved
-      // underneath it. The comment here claimed this path healed a half-written row; it did not.
-      // ONE read of the client's kit for the whole generation — the scheme and the prompt both need it.
-      // Resolved against the VERIFIED owner, never the caller-supplied clientId: this decides whose
-      // palette and brand style the paid generation runs against.
       const identity = await fetchIdentityForGeneration(destination.clientId)
       const scheme = await resolveScheme({
         clientId: destination.clientId,
@@ -105,15 +99,12 @@ export async function POST(request: Request) {
         identity,
         textBlock: editorTextBlock(body),
         scheme,
-        // Rerolled per press: the editor's whole point is "give me another one", and an empty nonce
-        // would hand back the same framing every time while only the model's own noise differed.
         variation: {
           subject: destination.postId,
           position,
           total,
           nonce: body.nonce ?? '',
         },
-        // Sanitized like every other user string that reaches the model (URLs, #tags, @mentions out).
         ...(body.direction ? { direction: sanitizePromptText(body.direction) } : {}),
       })
       const { publicUrl, storagePath } = await destination.upload(
@@ -124,6 +115,6 @@ export async function POST(request: Request) {
       return NextResponse.json({ publicUrl, storagePath })
     })
   } catch (err) {
-    return spendFailureResponse(err, 'generate-background', 'Background generation failed', 502)
+    return spendFailureResponse(err, 'generate-background', 'Background generation failed')
   }
 }

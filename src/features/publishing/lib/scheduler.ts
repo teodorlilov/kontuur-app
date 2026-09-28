@@ -94,7 +94,9 @@ interface PublishSchedulerResult {
  * Find and publish every destination that is due — for the workspaces that may still publish.
  * That roster is resolved once and applied INSIDE both queries below, ahead of the BATCH_LIMIT,
  * so a paused workspace's rows neither occupy the window nor get swept: they stay 'scheduled',
- * unclaimed, and go out on the first tick after the workspace is back.
+ * unclaimed, until the workspace is back — then the ones due in the last day go out and older
+ * ones are failed for the calendar to offer a reschedule, as for any overdue post (the paused
+ * wall says the same, `WORKSPACE_LOCKED_DETAIL` in src/lib/billing/copy.ts).
  */
 export async function publishDuePosts(): Promise<PublishSchedulerResult> {
   const admin = createAdminSupabaseClient()

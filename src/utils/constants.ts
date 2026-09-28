@@ -2,6 +2,8 @@ export const PROMPT_HISTORY_LIMIT = 10
 export const DAYS_PER_WEEK = 7
 export const MS_PER_HOUR = 3_600_000
 export const MS_PER_DAY = 86_400_000
+/** Postgres' unique_violation code — how a unique index or key refuses a second row. */
+export const UNIQUE_VIOLATION = '23505'
 /** The same day in the unit Meta's Graph API takes for since/until. */
 export const SECONDS_PER_DAY = 86_400
 
@@ -54,8 +56,11 @@ export const BILLING_DOCUMENTS_BUCKET = 'billing-documents'
 
 /**
  * The company behind Kontuur, as every invoice and filing must name it (ЗДДС чл. 114) — under
- * its registered Latin name, since every document is in English. The two legal pages still
- * spell it by hand; they move onto this with the Phase 3 rewrite.
+ * its registered Latin name, since every document is in English. Read by the sale documents
+ * (src/lib/billing/document-render.ts), by the NRA audit file for the UIC and the shop's domain
+ * (src/app/api/billing/audit-file/route.ts), and by the Privacy and Terms pages for the
+ * operator's name, the contact block and the platform's domain (src/app/(marketing)/privacy and
+ * terms).
  */
 export const COMPANY = {
   legalName: 'Chelling Ltd',
@@ -64,6 +69,13 @@ export const COMPANY = {
   address: '27 Gabar St, 1320 Bankya, Bulgaria',
   domain: 'kontuur.app',
 } as const
+
+/**
+ * The zone every sale document is dated in, whatever the customer's own — and the zone the NRA's
+ * calendar month is counted in for the audit file. Read by the renderer, the audit file, the
+ * document email and the documents list.
+ */
+export const DOCUMENT_TIMEZONE = 'Europe/Sofia'
 
 /**
  * Where sign-in, sign-up and password reset live: the landing page, which opens the matching

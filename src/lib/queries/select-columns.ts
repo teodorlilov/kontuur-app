@@ -269,7 +269,6 @@ const AGENCY_KEYS = [
   'name',
   'agency_logo',
   'created_at',
-  'billing_updated_at',
   ...AGENCY_BILLING_KEYS,
 ] as const satisfies readonly (keyof AgencyRow)[]
 
@@ -303,9 +302,16 @@ export const AGENCY_ENTITLEMENT_COLUMNS = AGENCY_ENTITLEMENT_KEYS.join(', ') as 
   ', '
 >
 
+/**
+ * A generation run as the generate cron reads the last day of them (`fetchRecentRuns`,
+ * src/lib/generation/runs.ts): what its slot dedup and its abandoned-run closer need, with the
+ * agency the run's client belongs to.
+ */
+export const RECENT_RUN_COLUMNS =
+  'id, client_id, kind, status, created_at, target_count, period_key, clients(agency_id)'
+
 /** What the Stripe snapshot must know about the row before it writes it (src/lib/billing/subscription-store.ts). */
-export const AGENCY_SNAPSHOT_COLUMNS =
-  'stripe_subscription_id, current_period_start, past_due_since'
+export const AGENCY_SNAPSHOT_COLUMNS = 'stripe_subscription_id, subscription_status, past_due_since'
 
 // client_sources
 export const CLIENT_SOURCE_COLUMNS =
@@ -395,7 +401,10 @@ export type SocialConnectionAuthColumns = Pick<
   'platform' | 'account_id' | 'account_name' | 'access_token' | 'token_expires_at'
 >
 
-/** The metrics cron's roster read — AUTH_COLUMNS plus the client to file rows under. */
+/**
+ * The sync crons' roster read (`fetchSyncRoster`, src/lib/queries/sync-roster.ts) — AUTH_COLUMNS
+ * plus the client to file rows under.
+ */
 const SOCIAL_CONNECTION_SYNC_KEYS = [
   'client_id',
   // Which network's connection this is. A client can hold several, and a sync that did not
@@ -434,6 +443,12 @@ export type SyncableConnection = SocialConnectionSyncColumns & {
   account_id: string
   access_token: string
 }
+
+/**
+ * A roster row that names its client — what a sync can file rows under. The roster read narrows
+ * to it with a type guard (`fetchSyncRoster`, src/lib/queries/sync-roster.ts) and skips the rest.
+ */
+export type ClientSyncableConnection = SyncableConnection & { client_id: string }
 
 // ig_account_metrics — the analytics document's daily rows: only what it renders.
 // Columns the sync captures but nothing displays yet (accounts_engaged,
@@ -645,9 +660,12 @@ export const EXEMPLAR_COLUMNS = 'caption, slides_json, post_type, edited_at, cre
 // post_canvas_docs
 export const POST_CANVAS_DOC_COLUMNS = 'id, post_id, position, doc, created_at, updated_at'
 
-/** The fields the visuals cron needs to pick its backlog. */
+/**
+ * The fields the visuals cron needs to pick its backlog, and the owed-images count reads
+ * (lib/visual/owed-images.ts) — the same predicate over the same columns.
+ */
 export const VISUAL_BACKLOG_POST_COLUMNS =
-  'id, client_id, post_type, slides_json, quality_score_avg, visuals_attempts, visuals_attempted_at, created_at'
+  'id, client_id, status, post_type, slides_json, quality_score_avg, visuals_attempts, visuals_attempted_at, created_at'
 
 // post_images
 export const POST_IMAGE_COLUMNS =
@@ -729,6 +747,7 @@ const SALE_DOCUMENT_KEYS = [
   'stripe_refund_id',
   'refunds',
   'issued_at',
+  'tax_event_at',
   'customer',
   'lines',
   'net_cents',

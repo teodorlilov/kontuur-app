@@ -1,6 +1,7 @@
 import 'server-only'
 
 import { fal, ApiError } from '@fal-ai/client'
+import { z } from 'zod'
 import { currentSpender } from '@/lib/billing/spend-context'
 import { recordAiUsage } from '@/lib/billing/telemetry'
 import { reserveUsage } from '@/lib/billing/usage'
@@ -38,10 +39,6 @@ const PAID_MODELS = new Set([FAL_MODEL, EDIT_MODEL, VECTOR_MODEL])
  * — and it is that boundary that counts the image once the picture has landed, or gives it back
  * when anything after this call fails. The cutout model records telemetry only. The refusal is
  * an `AllowanceError`, which the routes turn into a 402 and the visuals cron into a skip.
- *
- * fal's ApiError message is only the HTTP status text ("Forbidden"), while the actual reason —
- * exhausted balance, a locked key, a flagged prompt — rides in the response body's `detail` and
- * would otherwise be dropped.
  */
 async function subscribeFal(model: string, input: Record<string, unknown>) {
   ensureConfigured()
@@ -57,12 +54,21 @@ async function subscribeFal(model: string, input: Record<string, unknown>) {
   }
 }
 
+/** The part of an `ApiError` body that carries fal's reason — a string, or structured. */
+const falErrorBodySchema = z.object({ detail: z.unknown() })
+
+/**
+ * One fal call, keeping fal's reason for a failure. An `ApiError` message is only the HTTP status
+ * text ("Forbidden"), while the reason — exhausted balance, a locked key, a flagged prompt — rides
+ * in the body's `detail` and would otherwise be dropped. Any other failure rethrows as it came.
+ */
 async function callFal(model: string, input: Record<string, unknown>) {
   try {
     return await fal.subscribe(model, { input })
   } catch (err) {
-    if (err instanceof ApiError && err.body) {
-      const detail = (err.body as { detail?: unknown }).detail
+    if (err instanceof ApiError) {
+      const body = falErrorBodySchema.safeParse(err.body)
+      const detail = body.success ? body.data.detail : undefined
       if (detail) {
         const reason = typeof detail === 'string' ? detail : JSON.stringify(detail)
         throw new Error(`${model}: ${err.message} — ${reason}`, { cause: err })
@@ -72,23 +78,29 @@ async function callFal(model: string, input: Record<string, unknown>) {
   }
 }
 
+/** A hosted file in a fal answer. */
+const falFileSchema = z.object({ url: z.string() })
+
+/** An answer carrying an `images` array (gpt-image-2, its edit model, Recraft vectors). */
+const imagesAnswerSchema = z.object({ images: z.tuple([falFileSchema]).rest(z.unknown()) })
+
+/** BiRefNet's answer: a single `image` file, not an `images` array. */
+const singleImageAnswerSchema = z.object({ image: falFileSchema })
+
+/**
+ * The URL of the first file in an `images` answer, or null when there is none; callers throw on
+ * null. `subscribeFal` names its model as a plain string, so fal's per-endpoint result types never
+ * apply and the answer arrives untyped: it is parsed here, not trusted.
+ */
 function firstImageUrl(data: unknown): string | null {
-  if (!data || typeof data !== 'object') return null
-  // fal's subscribe() result is typed per-endpoint; gpt-image-2 isn't in the client's endpoint map,
-  // so narrow the untyped payload by hand.
-  const images = (data as Record<string, unknown>).images
-  if (!Array.isArray(images) || images.length === 0) return null
-  const first = images[0] as Record<string, unknown>
-  return typeof first?.url === 'string' ? first.url : null
+  const answer = imagesAnswerSchema.safeParse(data)
+  return answer.success ? answer.data.images[0].url : null
 }
 
-// BiRefNet returns a single `image` file, not an `images` array — its own narrowing.
+/** The URL of BiRefNet's single `image` file, or null when there is none; callers throw on null. */
 function singleImageUrl(data: unknown): string | null {
-  if (!data || typeof data !== 'object') return null
-  const image = (data as Record<string, unknown>).image
-  if (!image || typeof image !== 'object') return null
-  const url = (image as Record<string, unknown>).url
-  return typeof url === 'string' ? url : null
+  const answer = singleImageAnswerSchema.safeParse(data)
+  return answer.success ? answer.data.image.url : null
 }
 
 /** Download a temporary fal-hosted file into memory (their URLs expire; callers persist the bytes). */

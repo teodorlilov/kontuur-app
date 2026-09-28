@@ -23,10 +23,12 @@ the schema and its output is held to ASCII so its declared encoding is true.
    consent tick without a Terms URL); EUR payouts; Tax → Locations: Bulgaria, domestic, with the
    "small seller" answer *yes* until an OSS registration exists; Stripe's own receipt and invoice
    emails **off**; the customer portal: card update on, name / email / address / tax-ID update
-   on, cancel at period end on, subscription update **off**, invoice history **off**.
-2. **The price** — product "Kontuur", one price: €19, EUR, monthly, per unit, unit label
+   on, cancellation **off** (a plan ends from inside the app, `setPlanEnding`), subscription update
+   **off**, invoice history **off**.
+2. **The price** — product "Kontuur", one price: €29, EUR, monthly, per unit, unit label
    "client", tax behaviour exclusive, tax code `txcd_10103001`. Once in test mode, once in live
-   mode; each id in that environment's `STRIPE_PRICE_ID`.
+   mode; each id in that environment's `STRIPE_PRICE_ID`. Checkout refuses a price that is not
+   `PRO_PLAN.priceCents` euro a month (`verifiedPriceId`, `src/lib/billing/stripe.ts`).
 3. **NRA — Приложение 33** for kontuur.app, with a КЕП, at portal.nra.bg. What it asks for:
    - domain: kontuur.app; own software (this repository); hosting: Vercel (Dublin);
      database: Supabase (EU);
@@ -36,35 +38,64 @@ the schema and its output is held to ASCII so its declared encoding is true.
    - the virtual POS identifier: the Stripe account id (`acct_…`).
    Then `NRA_ESHOP_NUMBER` (the number the NRA assigns) and `STRIPE_ACCOUNT_ID` in Vercel. No
    document can be rendered without them. Changes to any of the above are reported within 7 days.
-4. **Accountant** — four confirmations this build assumes:
+4. **Accountant** — seven confirmations this build assumes:
    - the invoice may serve as the sale document (чл. 52о, ал. 3);
    - the audit file's payment code for a Stripe charge is 2 (virtual POS), not 4 (payment
      service provider);
    - the tax groups printed on the lines: Б for 20 % Bulgarian VAT, А for reverse charge,
      outside the EU and OSS (`TAX_GROUPS`, `src/lib/billing/document-render.ts`);
    - the document number range assigned to Kontuur (migration 20260855 seeds it) and that
-     credit notes share the invoices' sequence.
+     credit notes share the invoices' sequence;
+   - how to report a sale at a fractional OSS rate (25.5 % and the like): the audit file's
+     `art_vat_rate` is a whole number, so such a month is refused rather than rounded;
+   - how to report a month with refunds and no sale: the schema requires at least one order, so
+     such a month is refused;
+   - whether a chargeback the bank won is reported as a returned order (the convention below).
    Plus the OSS registration once the first consumer outside Bulgaria appears — Stripe's
    threshold monitor emails when the €10,000 EU total is near.
 5. **Live keys** — `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET` on Production only; the
-   webhook endpoint registered in live mode with the six event types
+   webhook endpoint registered in live mode with the seven event types
    (`customer.subscription.created|updated|deleted`, `invoice.paid`, `invoice.payment_failed`,
-   `credit_note.created`), its API version set to the one the installed SDK pins.
+   `invoice.upcoming`, `credit_note.created`), its API version set to the one the installed SDK
+   pins; Billing → Subscriptions must send upcoming-renewal events, which lower the client count
+   before each renewal is invoiced.
 
 ## Every month, by the 15th
 
 ```sh
-curl -H "Authorization: Bearer $CRON_SECRET" \
+curl -sS -w 'HTTP %{http_code}\n' -H "Authorization: Bearer $CRON_SECRET" \
   "https://kontuur.app/api/billing/audit-file?month=2026-10" -o audit-2026-10.xml
 ```
 
-Upload the file at inetdec.nra.bg (Подаване на стандартизиран одиторски файл) with a КЕП. A
-204 means the month holds no document and nothing is due. The portal's own validator is the
-final check on the first upload; if the NRA has republished the schema for euro amounts, the
-builder follows it.
+The command prints the answer's status; the file holds whatever came back, so read the status
+first:
+
+- **HTTP 200** — upload `audit-2026-10.xml` at inetdec.nra.bg (Подаване на стандартизиран
+  одиторски файл) with a КЕП;
+- **HTTP 204** — the month holds no document and nothing is due; the file is empty;
+- **HTTP 409** — the file holds a sentence naming what the schema cannot carry as it stands (a
+  fractional rate, refunds with no sale): take it to the accountant, and upload nothing;
+- **anything else** — the file holds the error; nothing to upload until it is fixed.
+
+The portal's own validator is the final check on the first upload; if the NRA has republished the
+schema for euro amounts, the builder follows it.
+
+Each order is dated by its payment (the tax point, `tax_event_at`) and each document by its issue
+(`issued_at`); a month is cut on the issue date. The same month, run
+`supabase/queries/undocumented-sales.sql` in the Supabase SQL editor: it lists every paid invoice
+that took money and has no document — one made by hand in the Stripe Dashboard (not supported: do
+not make them, and take any found to the accountant), or one whose document failed to issue.
 
 ## Refunds
 
-Always through Stripe: Dashboard → the invoice → credit note **with refund**. That is the one
-path that produces a credit note document and a refund line in the audit file. A bare refund on
-the charge leaves no document and no line — do not use it.
+Always through Stripe: Dashboard → the invoice → credit note **with refund** of the whole total.
+That is the one path that produces a credit note document and a refund line in the audit file. A
+bare refund on the charge leaves no document and no line — do not use it. A credit note is issued
+only in two shapes, and any other fails loudly (`issueCreditNote`):
+
+- **one refund of the note's whole total** — the normal refund;
+- **no refund and the whole total "out of band"** — the convention for a chargeback the bank won:
+  the money went back through the card network, not through a Stripe refund, so the credit note
+  records it with the original charge as its transaction.
+
+A credit to the customer's balance, a part refund, or two refunds on one note are not supported.

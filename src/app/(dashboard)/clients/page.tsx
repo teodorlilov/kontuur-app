@@ -24,7 +24,7 @@ import { RosterPagination } from '@/features/clients/components/roster/roster-pa
 import { RosterSort as RosterSortControl } from '@/features/clients/components/roster/roster-sort'
 import { RosterTable } from '@/features/clients/components/roster/roster-table'
 import { GatedAction } from '@/components/ui/gated-action'
-import { addBrandCost, addBrandRefusal } from '@/lib/billing/copy'
+import { addBrandGate } from '@/lib/billing/copy'
 import { formatRelativeTime } from '@/utils/format'
 import { parseParam } from '@/utils/parse-param'
 import { cn } from '@/utils/cn'
@@ -49,21 +49,21 @@ interface ClientsPageProps {
 }
 
 /**
- * The client roster — an agency surface. A solo workspace is one business, so for it /clients is
- * that business: the "My business" sidebar row points here and is sent on to the settings page.
- * `clients[0]` is safe because the dashboard layout's gate (features/onboarding/lib/
- * require-business-setup.ts) redirects a solo workspace with no client before any page renders.
- * The two roster-only reads in the wave are spent on that hop rather than splitting the wave,
- * which would serialise a round trip on the agency path. The Add-client action is refused where
- * it stands, by the same rule `createClient` applies, rather than at the end of the form.
+ * The client roster, an agency surface. A solo workspace's "My business" row points here and is
+ * sent on to its one business's settings. The dashboard layout's gate
+ * (features/onboarding/lib/require-business-setup.ts) redirects a clientless solo workspace only
+ * while it can create, so a locked one may have no `clients[0]`: keep the `&& clients[0]` guard.
+ * That hop spends the two roster-only reads rather than splitting the one parallel wave, which
+ * would add a round trip on the agency path. Add client is refused where it stands (`addBrandGate`,
+ * the rule `createClient` applies), not at the end of the form. Roster status is computed in
+ * memory, bounded by the client count; past roughly 200 clients, split the connections embed first.
  */
 export default async function ClientsPage({ searchParams }: ClientsPageProps) {
-  const [{ agencyId }, params] = await Promise.all([requireSessionUser(), searchParams])
+  const [{ agencyId, role }, params] = await Promise.all([requireSessionUser(), searchParams])
 
   const filter = parseParam(params.filter, FILTERS, DEFAULT_FILTER)
   const sort = parseParam(params.sort, SORTS, DEFAULT_SORT)
 
-  // None of these depends on another's result — one round trip, not a waterfall.
   const [agency, clients, upcoming, approvals, entitlement] = await Promise.all([
     getCachedAgency(agencyId),
     getCachedClientRoster(agencyId),
@@ -75,10 +75,7 @@ export default async function ClientsPage({ searchParams }: ClientsPageProps) {
   if (agency?.mode === 'solo' && clients[0]) redirect(`/clients/${clients[0].id}/edit`)
 
   const timezone = agency?.timezone ?? 'UTC'
-  const addRefusal = addBrandRefusal(entitlement, clients.length)
-  // Derivation is in-memory because status is computed, not stored. Bounded by
-  // the agency's client count; past roughly 200 the connections embed is what
-  // would need splitting first.
+  const addClient = addBrandGate(entitlement, clients.length, role)
   const roster = buildRoster(clients, upcoming, approvals, new Date())
   const summary = summariseRoster(roster)
   const visible = sortRoster(
@@ -86,8 +83,6 @@ export default async function ClientsPage({ searchParams }: ClientsPageProps) {
     sort
   )
 
-  // Every roster figure is a count on one of these tabs, so no summary strip
-  // repeats them elsewhere on the page.
   const tabs: Array<TabItem<RosterFilter>> = [
     {
       id: 'attention',
@@ -128,7 +123,6 @@ export default async function ClientsPage({ searchParams }: ClientsPageProps) {
               ) : (
                 'Every client is on schedule'
               ),
-              // Posts, not clients — six can be waiting on a single brand.
               summary.awaitingApprovalPosts > 0 &&
                 `${summary.awaitingApprovalPosts} post${summary.awaitingApprovalPosts === 1 ? '' : 's'} awaiting approval`,
               summary.oldestApprovalAt &&
@@ -148,9 +142,10 @@ export default async function ClientsPage({ searchParams }: ClientsPageProps) {
             <GatedAction
               href="/clients/new"
               label="Add client"
-              refusal={addRefusal}
-              note={addBrandCost(entitlement)}
+              refusal={addClient.refusal}
+              note={addClient.note}
               refusalId="add-client-refusal"
+              wayOut={addClient.wayOut}
             />
           </>
         }

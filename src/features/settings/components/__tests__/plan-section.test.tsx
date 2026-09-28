@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { PlanSection } from '../plan-section'
-import { noEntitlement, type Entitlement } from '@/lib/billing/entitlement'
+import { entitlementFor, noEntitlement, type Entitlement } from '@/lib/billing/entitlement'
 import { UNMETERED } from '@/lib/billing/plans'
+import { WORKSPACE_LOCKED } from '@/lib/billing/copy'
+import { trialRow } from '@/lib/billing/__tests__/fixtures'
 
 const USAGE = { draft: 12, image: 40, rewrite: 3 }
 
@@ -137,5 +139,36 @@ describe('PlanSection', () => {
     expect(screen.getByText('7 clients')).toBeInTheDocument()
     expect(screen.getByText('12 AI drafts')).toBeInTheDocument()
     expect(screen.queryByText(/^\d+ of \d+$/)).not.toBeInTheDocument()
+  })
+
+  it('shows a paused workspace a plain count and the reason, not meters against nothing', () => {
+    const NOW = new Date('2026-09-26T12:00:00Z')
+    const paused = entitlementFor(trialRow(NOW, { trial_ends_at: '2026-08-01T00:00:00Z' }), NOW)
+    render(<PlanSection entitlement={paused} usage={USAGE} brandCount={3} />)
+    expect(screen.getByText('3 clients')).toBeInTheDocument()
+    expect(screen.getByText(WORKSPACE_LOCKED)).toBeInTheDocument()
+    expect(screen.queryByText(/ of 0$/)).not.toBeInTheDocument()
+    expect(screen.queryByText('AI drafts')).not.toBeInTheDocument()
+    expect(screen.queryByText(/used this period$/)).not.toBeInTheDocument()
+  })
+
+  it('a paused solo workspace counts one business', () => {
+    const NOW = new Date('2026-09-26T12:00:00Z')
+    const paused = entitlementFor(
+      trialRow(NOW, { mode: 'solo', trial_ends_at: '2026-08-01T00:00:00Z' }),
+      NOW
+    )
+    render(<PlanSection entitlement={paused} usage={USAGE} brandCount={1} />)
+    expect(screen.getByText('1 business')).toBeInTheDocument()
+  })
+
+  it('in the trial’s grace names the day it pauses and says the banner’s sentence', () => {
+    const NOW = new Date('2026-09-26T12:00:00Z')
+    const grace = entitlementFor(trialRow(NOW, { trial_ends_at: '2026-09-24T12:00:00Z' }), NOW)
+    render(<PlanSection entitlement={grace} usage={USAGE} brandCount={2} />)
+    expect(screen.getByText('Workspace pauses on')).toBeInTheDocument()
+    expect(screen.getByText('1 October 2026')).toBeInTheDocument()
+    expect(screen.getByText(/^Your trial ended on 24 September 2026\./)).toBeInTheDocument()
+    expect(screen.queryByText(/ of 0$/)).not.toBeInTheDocument()
   })
 })

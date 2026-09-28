@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { toast } from '@/components/ui/toast'
@@ -18,12 +17,14 @@ interface PlanEndControlProps {
 /**
  * The plan's end, from inside the app: "Cancel plan" behind a confirm that says when it ends and
  * what happens then, or "Keep plan" when it is already ending — one click, nothing to confirm,
- * since keeping costs nothing. Both refresh the page afterwards: the row was written by the
- * action, so the shell banner, the plan panel and the danger zone all show the new state at once.
- * Rendered by the plan panel alone: the danger zone's refusal names it rather than repeating it.
+ * since keeping costs nothing. A plan whose renewal failed ends at once rather than with its
+ * period (`setPlanEndingAction`), and the toast says which happened. No refresh is asked for: the
+ * action's row write busts the agency cache with `{ expire: 0 }` (`applySubscriptionSnapshot`),
+ * which makes the action's own response carry the re-rendered page, so the shell banner, the plan
+ * panel and the danger zone show the new state with it. Rendered by the plan panel alone: the
+ * danger zone's refusal names it rather than repeating it.
  */
 export function PlanEndControl({ ending, consequence, className }: PlanEndControlProps) {
-  const router = useRouter()
   const [confirming, setConfirming] = useState(false)
   const [busy, setBusy] = useState(false)
 
@@ -36,8 +37,13 @@ export function PlanEndControl({ ending, consequence, className }: PlanEndContro
       return
     }
     setConfirming(false)
-    toast.success(nextEnding ? 'Your plan is set to end.' : 'Your plan continues.')
-    router.refresh()
+    toast.success(
+      result.data.endedNow
+        ? 'Your plan has ended.'
+        : nextEnding
+          ? 'Your plan is set to end.'
+          : 'Your plan continues.'
+    )
   }
 
   if (ending) {

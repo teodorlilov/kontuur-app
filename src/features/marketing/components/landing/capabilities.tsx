@@ -13,6 +13,7 @@ import type { Icon as Glyph } from '@solar-icons/react/lib/types'
 import { Icon } from '@/components/ui/icon'
 import { useAuthDialog } from '@/features/auth/components/auth-dialog-provider'
 import { cn } from '@/utils/cn'
+import { TRIAL_DAYS } from '@/lib/billing/plans'
 import { Reveal } from './reveal'
 import { Section, SectionHead } from './section'
 
@@ -211,7 +212,7 @@ export function Capabilities() {
             </span>
             <span className="text-title text-ink-inv">Your week, back</span>
             <span className="flex-1 text-caption text-ink-inv/75">
-              Start free — 14 days, no card. Set up your first client in minutes.
+              Start free — {TRIAL_DAYS} days, no card. Set up your first client in minutes.
             </span>
             <span aria-hidden className="flex min-h-6 items-end">
               {/* Lime as a figure: legible only because the ground is Pine Deep. */}

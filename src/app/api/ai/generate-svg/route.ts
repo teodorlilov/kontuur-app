@@ -20,7 +20,11 @@ export const maxDuration = 60
 /** Recraft occasionally omits dimensions; a square default keeps element sizing sane. */
 const FALLBACK_SVG_SIZE = { width: 512, height: 512 }
 
-/** A generated vector the safety gate refused — thrown inside the metered callback so the image it reserved is given back, answered as a 502 rather than a failure of ours. */
+/**
+ * A generated vector the safety gate refused — thrown inside the metered callback so the image it
+ * reserved is given back, and answered with a 502 that asks for a different prompt, the gate's
+ * reason going to the log only.
+ */
 class RejectedVector extends Error {}
 
 /**
@@ -88,6 +92,6 @@ export async function POST(request: Request) {
         { status: 502 }
       )
     }
-    return spendFailureResponse(err, 'generate-svg', 'Vector generation failed', 500)
+    return spendFailureResponse(err, 'generate-svg', 'Vector generation failed')
   }
 }

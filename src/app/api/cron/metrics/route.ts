@@ -17,6 +17,11 @@ const TIME_BUDGET_MS = 240_000
 /**
  * Cron endpoint — nightly Instagram and Facebook metrics capture for every connected client whose
  * workspace may still publish, resolved once per tick and shared by both networks' syncs.
+ *
+ * Facebook runs on whatever budget Instagram left. Its sync costs at most six Graph calls per
+ * client (src/features/analytics/lib/facebook/sync-facebook-metrics.ts:31), so a long Instagram
+ * night still leaves it room; with under five seconds left it waits for the next night rather
+ * than risk a mid-client kill. Each network's tag is busted only when that network synced.
  */
 export async function GET(request: NextRequest) {
   const unauthorized = unauthorizedCron(request)
@@ -31,13 +36,9 @@ export async function GET(request: NextRequest) {
       entitledClientIds,
     })
     if (result.synced > 0) {
-      // Fresh rows exist — the analytics document and its narrative re-read them.
       revalidateTag(IG_METRICS_TAG, 'max')
     }
 
-    // Facebook runs on whatever budget Instagram left. It is cheap by construction — at most
-    // six Graph calls per client — so even a long Instagram night leaves it room; a fully
-    // spent budget defers it to tomorrow rather than risking a mid-client kill.
     const facebookBudgetMs = TIME_BUDGET_MS - (Date.now() - startedAt)
     const facebook =
       facebookBudgetMs > 5_000

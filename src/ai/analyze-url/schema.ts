@@ -4,16 +4,16 @@ import type { UrlAnalysisResponse } from '@/types/api'
 /**
  * The shape a website read is allowed to hand to the rest of the app.
  *
- * The response is a model's JSON, not an API contract, so it was previously cast to
- * `UrlAnalysisResponse` and trusted. `buildDraftFromAnalysis` reads `.length` off two of these
- * arrays: one missing key threw inside a fire-and-forget handler, which surfaced as the "Read the
- * site" button finishing its spinner and then doing nothing at all.
+ * The response is a model's JSON, not an API contract, so it is parsed rather than trusted:
+ * `buildDraftFromAnalysis` (src/features/onboarding/lib/build-draft.ts:50) reads `.length` off two
+ * of these arrays, and a missing key would throw there.
  *
  * Every field carries `.catch()` rather than failing the parse, because a field the model could
  * not fill already has a meaning downstream: the draft leaves it empty and the sheet asks about it.
  * That is the flow's whole promise, and it is a better answer than rejecting a response that is
- * ninety percent usable. Only a response that is not an object fails — and that lands in the
- * route's catch, which falls back to the blank form.
+ * ninety percent usable. So any object parses, and `analyzeUrl` (src/utils/ai.ts:95) always hands
+ * it one — a reply with no JSON object arrives as `{}` (`parseJsonResponse`) — which means an
+ * unparseable reply reads as an empty profile; only the model call itself failing throws.
  */
 export const urlAnalysisResponseSchema = z.object({
   detected_business_name: z.string().nullable().catch(null),

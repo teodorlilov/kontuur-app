@@ -53,6 +53,9 @@ function postRow(overrides: Partial<PlatformPostMetricColumns>): PlatformPostMet
   return postMetricRow({ media_type: 'IMAGE', media_product_type: 'FEED', ...overrides })
 }
 
+/** WHY as: a deliberately malformed breakdown map, so a case can prove the zod guard drops it. */
+const MALFORMED_BREAKDOWN = 'garbage' as unknown as null
+
 function build(input: Partial<BuildReportInput>): ReturnType<typeof buildAnalyticsReport> {
   return buildAnalyticsReport({
     period: PERIOD,
@@ -69,11 +72,7 @@ function build(input: Partial<BuildReportInput>): ReturnType<typeof buildAnalyti
 }
 
 describe('sumOrNull', () => {
-  /**
-   * The rule every capture is written to: NULL is "the API had nothing", 0 is "the API said 0".
-   * Collapsing them is the Graph API's silent-empty-200 failure mode.
-   */
-  it('is null only when every input was null', () => {
+  it('is null only when every input was null: null means the API had nothing, 0 means it said zero', () => {
     expect(sumOrNull([])).toBeNull()
     expect(sumOrNull([null, null])).toBeNull()
     expect(sumOrNull([null, 2, 3])).toBe(5)
@@ -99,11 +98,7 @@ describe('humanizeDimension', () => {
 })
 
 describe('buildAnalyticsReport', () => {
-  /**
-   * Pairs align by INDEX, not by date — day 1 of now against day 1 of then — and `thenDate`
-   * carries the day the comparison value came from, because the axis and the day card print it.
-   */
-  it('sums both periods, keeps day alignment, and leaves missing days null', () => {
+  it('sums both periods, pairs day N with the previous period’s day N (thenDate names it), and leaves missing days null', () => {
     const report = build({
       accountRows: [
         accountRow({ metric_date: '2026-08-11', reach: 100, views: 200 }),
@@ -138,8 +133,7 @@ describe('buildAnalyticsReport', () => {
     })
   })
 
-  /** The third row has no timestamp, so there is no day to pin it to — the table still lists it. */
-  it('pins each publication onto its calendar day, strongest reach first', () => {
+  it('pins each publication onto its calendar day, strongest reach first; one with no timestamp is only in the table', () => {
     const report = build({
       postRows: [
         postRow({
@@ -168,11 +162,6 @@ describe('buildAnalyticsReport', () => {
     expect(report.posts).toHaveLength(3)
   })
 
-  /**
-   * 11 Aug is the previous-period day 15 Aug is measured against, and its post is reachable only
-   * through `thenPosts` — so the dashed line can be explained without the table claiming a post
-   * from outside its own window.
-   */
   it('files the comparison window’s posts on the comparison line, never in the table', () => {
     const report = build({
       postRows: [
@@ -192,12 +181,7 @@ describe('buildAnalyticsReport', () => {
     expect(report.reachByDay[1]!.thenPosts).toEqual([])
   })
 
-  /**
-   * The three ledger cases: published well before the last sync yet absent from metrics
-   * (removed), published after that sync (metrics merely pending), and one already synced under
-   * the same media id, where the metrics row wins and the pin defers.
-   */
-  it("pins Kontuur's own published posts the sync cannot see, marked honestly", () => {
+  it("pins Kontuur's own posts a later sync missed as removed, ones since the last sync as pending, and defers to synced rows", () => {
     const report = build({
       postRows: [
         postRow({ external_post_id: 'm-live', posted_at: '2026-08-15T10:00:00+00:00', reach: 300 }),
@@ -231,13 +215,7 @@ describe('buildAnalyticsReport', () => {
     expect(report.reachByDay[3]!.posts[0]!.missing).toBe('pending')
   })
 
-  /**
-   * Sofia is UTC+3, so 22:30Z on the 14th is 01:30 on the 15th locally — the window's opening
-   * day, and its first column rather than off the left edge. Slicing the UTC prefix instead of
-   * bucketing through the agency timezone drops this row out of the window, and the ledger arm
-   * then re-adds it as a pin marked "removed": a live post reported as deleted from Instagram.
-   */
-  it('buckets posts by the agency calendar day, not the UTC one', () => {
+  it('buckets posts by the agency calendar day, not the UTC one, so a live opening-day post is not reported removed', () => {
     const report = build({
       timezone: 'Europe/Sofia',
       postRows: [
@@ -265,8 +243,7 @@ describe('buildAnalyticsReport', () => {
     expect(report.reachByDay[0]!.thenPosts).toEqual([])
   })
 
-  /** The other edge: 21:00Z on the 16th is already 00:00 on the 17th in Sofia. */
-  it('keeps a late-evening post on its own local day', () => {
+  it('keeps a late-evening UTC post on its own local day, which in Sofia is already the next one', () => {
     const report = build({
       timezone: 'Europe/Sofia',
       postRows: [
@@ -278,12 +255,7 @@ describe('buildAnalyticsReport', () => {
     expect(report.reachByDay[2]!.posts.map((post) => post.externalPostId)).toEqual(['late'])
   })
 
-  /**
-   * A day card lists its top few posts, so their order decides which. Attribution is Instagram's
-   * own per-media figure, where a null-follows post contributes nothing rather than a zero. The
-   * churn base is the walked start: 830 minus that day's net +3 = 827, of which 2 were lost.
-   */
-  it('builds the follower flow timeline with pins, attribution and churn', () => {
+  it('builds the follower flow timeline with pins, per-post follow attribution, and churn on the starting total', () => {
     const report = build({
       accountRows: [
         accountRow({
@@ -316,12 +288,7 @@ describe('buildAnalyticsReport', () => {
     expect(report.followers.churnPct).toBeCloseTo((2 / 827) * 100)
   })
 
-  /**
-   * Link taps and the separate `website_clicks` column sum into one stage, and the follows rate
-   * divides by profile views, NEVER per tap: most follows never touch a link, so a per-tap
-   * denominator would invent a conversion the account did not have.
-   */
-  it('builds the conversion funnel with rates on honest denominators', () => {
+  it('builds the funnel with link taps and website clicks as one stage, and follows rated per profile visit, not per tap', () => {
     const report = build({
       accountRows: [
         accountRow({
@@ -355,13 +322,7 @@ describe('buildAnalyticsReport', () => {
     expect(follows!.per100).toBeCloseTo(22.5)
   })
 
-  /**
-   * Carousels bridge from `media_type`, not `media_product_type`. Reels sit at 400 reached,
-   * under the 1,000 RATE_BASE_FLOOR, so the count prints and the rate does not. Ads have no
-   * media rows of ours at all, and the SECTION is where that is explained — the row itself
-   * carries only facts about the account, never an apology for our data source.
-   */
-  it('enriches formats with published counts and ER only on a solid base', () => {
+  it('enriches formats with published counts, carousels matched by media_type, and a rate only at 1,000+ reached', () => {
     const report = build({
       accountRows: [
         accountRow({
@@ -399,14 +360,7 @@ describe('buildAnalyticsReport', () => {
     expect(report.formats.find((row) => row.key === 'AD')!.meta).toBe('0.5% engagement rate')
   })
 
-  /**
-   * Instagram omits CAROUSEL_CONTAINER from its breakdown, and its POST figures divide to an
-   * impossible 127% (356 over 279) — the two counted on different bases. So carousels are rated
-   * from our own rows, 220 interactions over 1,600 reached; and POST, which also has media rows,
-   * never falls back to that 127%: our own sample is under the floor, and no rate is the honest
-   * answer.
-   */
-  it('does its own arithmetic for the formats Instagram itemises', () => {
+  it('does its own arithmetic for itemised formats: carousels rated from their posts, POST’s impossible 127% withheld', () => {
     const report = build({
       accountRows: [
         accountRow({
@@ -440,13 +394,7 @@ describe('buildAnalyticsReport', () => {
     expect(report.formats.find((row) => row.key === 'POST')!.meta).toBeUndefined()
   })
 
-  /**
-   * Day two captured reach but not interactions — the consolidation lag a naive window-total ÷
-   * window-total would divide straight through. Reach still totals the whole window, while the
-   * rate divides 20 by the 4,000 measured beside it (0.5%), never by 6,000 (0.3%), which no day
-   * ever observed.
-   */
-  it('rates a format on the days that measured both halves, not the window total', () => {
+  it('rates a format on the days that measured both halves, while its reach still totals the whole window', () => {
     const report = build({
       accountRows: [
         accountRow({
@@ -462,12 +410,7 @@ describe('buildAnalyticsReport', () => {
     expect(ad.meta).toBe('0.5% engagement rate')
   })
 
-  /**
-   * One rated day (5,000) against a 32,000 window is 16% coverage, under the 50%
-   * PAIRED_COVERAGE_FLOOR, so the rate cannot stand for the period. The reach still totals and
-   * renders; only the rate is withheld.
-   */
-  it('withholds the rate when the paired days are a corner of the period', () => {
+  it('withholds the rate, keeping the reach, when the paired days hold under half the format’s reach for the period', () => {
     const report = build({
       accountRows: [
         accountRow({
@@ -482,11 +425,7 @@ describe('buildAnalyticsReport', () => {
     expect(report.formats.find((row) => row.key === 'AD')!.meta).toBeUndefined()
   })
 
-  /**
-   * 15 over 32,340 is 0.046%: `toFixed(1)` would print "0.0% ER" and read as "the ads earned
-   * nothing", which is a different claim. A measured zero may say so — in words, not as "0.0%".
-   */
-  it('never rounds a real engagement rate down to a measured zero', () => {
+  it('never rounds a real engagement rate down to 0.0%, and says a measured zero in words', () => {
     const report = build({
       accountRows: [
         accountRow({
@@ -500,8 +439,7 @@ describe('buildAnalyticsReport', () => {
     expect(report.formats.find((row) => row.key === 'STORY')!.meta).toBe('no interactions')
   })
 
-  /** A measured zero keeps its row; "0% of interactions" would be noise, so it gets no share. */
-  it('sorts interaction kinds by size and carries their share of interactions', () => {
+  it('sorts interaction kinds by size with their share of interactions; a measured zero keeps its row but no share', () => {
     const report = build({
       accountRows: [
         accountRow({
@@ -532,13 +470,7 @@ describe('buildAnalyticsReport', () => {
     expect(comments.meta).toBeUndefined()
   })
 
-  /**
-   * The stored hour keys are Pacific-anchored (build-report.ts records the probe). 2026-08-15 is
-   * a Saturday, and hour 14 in PDT (UTC-7) is 21:00 UTC the same day — hence grid[5][21]. The
-   * maps ride the ordinary account rows, so the previous window counts as evidence too, which is
-   * what carries this fixture over MIN_ONLINE_DAYS.
-   */
-  it('converts Pacific-anchored online hours into the agency clock, gated on sample size', () => {
+  it('converts Pacific-anchored online hours into the agency clock, gated on sampled days from both windows', () => {
     const day = (date: string) =>
       accountRow({ metric_date: date, online_followers_by_hour: { '14': 100 } })
     const fiveDays = ['2026-08-11', '2026-08-12', '2026-08-13', '2026-08-14', '2026-08-15'].map(day)
@@ -554,11 +486,7 @@ describe('buildAnalyticsReport', () => {
     expect(online.peaks[0]).toMatchObject({ hour: 21, avg: 100 })
   })
 
-  /**
-   * A post whose reach is unknown contributes to no bucket. The overall median across the four
-   * measured posts is 250 and morning's own is 200, so morning reads 0.8×.
-   */
-  it('buckets publish windows by agency-local hour with medians, skipping unsynced posts', () => {
+  it('buckets publish windows by agency-local hour, each median against the overall one, skipping posts of unknown reach', () => {
     const report = build({
       postRows: [
         postRow({ external_post_id: 'a', posted_at: '2026-08-15T07:00:00+00:00', reach: 100 }),
@@ -586,7 +514,6 @@ describe('buildAnalyticsReport', () => {
     expect(report.views.deltaPct).toBeNull()
   })
 
-  /** The total is the latest one captured in the window, not the period's first. */
   it('builds the follower story: gained, lost, net, latest total', () => {
     const report = build({
       accountRows: [
@@ -614,11 +541,7 @@ describe('buildAnalyticsReport', () => {
     expect(report.engagementRate.deltaPt).toBeCloseTo(0.4)
   })
 
-  /**
-   * WHY as: the third row's jsonb is deliberately malformed, to prove the zod guard drops it —
-   * a corrupted map must neither poison the sum nor throw.
-   */
-  it('aggregates format reach from the stored breakdown maps and skips bad json', () => {
+  it('aggregates format reach from the stored breakdown maps, skipping a malformed one rather than throwing', () => {
     const report = build({
       accountRows: [
         accountRow({
@@ -631,7 +554,7 @@ describe('buildAnalyticsReport', () => {
         }),
         accountRow({
           metric_date: '2026-08-17',
-          reach_by_media_product_type: 'garbage' as unknown as null,
+          reach_by_media_product_type: MALFORMED_BREAKDOWN,
         }),
         accountRow({
           metric_date: '2026-08-11',
@@ -673,11 +596,7 @@ describe('buildAnalyticsReport', () => {
     })
   })
 
-  /**
-   * The engaged index is a ratio of shares: 44% of engagement from 20% of followers is 2.2× that
-   * band's share of the audience. Localized "City, Province" strings keep only the city, top 3.
-   */
-  it('turns demographics counts into shares with previous-period ticks', () => {
+  it('turns demographics counts into shares with previous-period ticks, an engaged index, and the top three city names', () => {
     const report = build({
       currentSnapshot: {
         snapshot_date: '2026-08-17',
@@ -739,8 +658,7 @@ describe('buildAnalyticsReport', () => {
 })
 
 describe('tap buttons', () => {
-  /** The previous window carried no taps map at all, so CALL's `then` is null rather than zero. */
-  it('merges bio website clicks into the funnel when the breakdown lacks them', () => {
+  it('merges bio website clicks into the tap buttons when the breakdown lacks them; no taps map in a window means null, not zero', () => {
     const report = build({
       accountRows: [
         accountRow({
@@ -773,11 +691,7 @@ describe('tap buttons', () => {
 })
 
 describe('deriveFollowerCurve', () => {
-  /**
-   * Each point is the total at that day's END, walked back from the single captured total:
-   * 832 − 5 = 827, 827 − (0−2) = 829, 829 − 2 = 827.
-   */
-  it('walks backwards from the one captured total using daily net change', () => {
+  it('walks each day’s closing total back from the one captured total using daily net change', () => {
     const report = build({
       accountRows: [
         accountRow({ metric_date: '2026-08-15', follows: 4, unfollows: 1 }),

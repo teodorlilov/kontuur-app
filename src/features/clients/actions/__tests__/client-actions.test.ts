@@ -1,25 +1,12 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 
 /**
- * The first executable test of a server action in this repo, for the most
- * destructive one: `deleteClient` removes ~18 tables' worth of rows and two
- * storage prefixes, with no undo.
- *
- * It had no coverage at all. `delete-client-dialog.test.tsx` mocks the action
- * away to test a component, and `action-validation.test.ts` is a text scan —
- * neither has ever executed this function. What that left unguarded is the
- * `agency_id` predicate: the delete runs on the ADMIN client, which bypasses
- * RLS, so that one `.eq` is the only thing standing between the statement and
- * another agency's client. Nothing would have failed if it were dropped.
- *
- * The other three assertions pin decisions that read as arbitrary and are not:
- * the 23503 branch exists because a database missing migration 20260820 is
- * indistinguishable from a transient fault without it; the storage sweep runs
- * AFTER the rows because sweeping first would strip a live client's images if
- * the delete then failed; and the cache busts go through the shared
- * `revalidateClientData`, whose tag list (the analytics tag included — deleteClient
- * is a writer of those tables via the cascade, and was the one writer that never
- * busted it) is pinned on the helper's own test.
+ * `deleteClient` and `createClient`, executed. The delete runs on the admin client, which bypasses
+ * RLS, so the caller's agency handed to `unprovisionClient` (whose predicates its own test pins) is
+ * all that keeps it off another agency's client. The 23503 branch exists because a database
+ * missing migration 20260820 looks like a transient fault without it; the storage sweep runs only
+ * after the rows are gone; the cache busts go through `revalidateClientData`, whose tag list is
+ * pinned in src/lib/queries/__tests__/revalidate-client-data.test.ts.
  */
 
 const CLIENT_ID = '3f2504e0-4f89-11d3-9a0c-0305e82c3301'
@@ -35,6 +22,8 @@ const { mocks } = vi.hoisted(() => ({
     revalidateTag: vi.fn(),
     revalidatePath: vi.fn(),
     provisionClient: vi.fn(),
+    unprovisionClient: vi.fn(),
+    takeBackClient: vi.fn(),
   },
 }))
 
@@ -51,12 +40,21 @@ vi.mock('@/lib/clients/sweep-client-storage', () => ({
 }))
 vi.mock('@/features/clients/lib/provision-client', () => ({
   provisionClient: mocks.provisionClient,
+  unprovisionClient: mocks.unprovisionClient,
+  takeBackClient: mocks.takeBackClient,
 }))
 const requireEntitledAction = vi.fn(async () => null as { ok: false; error: string } | null)
 const getCachedEntitlement = vi.fn()
-const getCachedAgency = vi.fn(async () => ({ stripe_subscription_id: null as string | null }))
+const getCachedAgency = vi.fn(
+  async (): Promise<{
+    stripe_subscription_id: string | null
+    current_period_start?: string | null
+  }> => ({ stripe_subscription_id: null })
+)
 const countClientsByAgency = vi.fn(async () => 0)
-const syncSubscriptionQuantity = vi.fn(async () => undefined)
+const syncSubscriptionQuantity = vi.fn(async (..._args: unknown[]) => undefined)
+/** The sync's refusal class, so the action's `instanceof` sees the same one the tests throw. */
+class QuantityChargeError extends Error {}
 vi.mock('@/lib/billing/require-entitled', () => ({
   requireEntitledAction: (...args: unknown[]) => requireEntitledAction(...(args as [])),
 }))
@@ -66,23 +64,24 @@ vi.mock('@/lib/queries/cache', () => ({
   getCachedAgency: (...args: unknown[]) => getCachedAgency(...(args as [])),
   revalidateClientData: () => revalidateClientData(),
 }))
-vi.mock('@/lib/billing/quantity-sync', () => ({
-  // The real rule, so the tests exercise "paid and live" rather than a stub of it.
-  billedSubscriptionId: (
-    entitlement: { plan: string; state: string },
-    agency: { stripe_subscription_id: string | null } | null
-  ) =>
-    entitlement.plan === 'pro' &&
-    (entitlement.state === 'active' || entitlement.state === 'past_due')
-      ? (agency?.stripe_subscription_id ?? null)
-      : null,
-  syncSubscriptionQuantity: (...args: unknown[]) => syncSubscriptionQuantity(...(args as [])),
-}))
+/**
+ * The sync is a stand-in; the two subscription rules are the real ones, so the tests exercise
+ * "paid and live" (an increase) and "open" (a decrease) rather than stubs of them.
+ */
+vi.mock('@/lib/billing/quantity-sync', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/billing/quantity-sync')>()
+  return {
+    billedSubscriptionId: actual.billedSubscriptionId,
+    openSubscriptionId: actual.openSubscriptionId,
+    syncSubscriptionQuantity: (...args: unknown[]) => syncSubscriptionQuantity(...args),
+    QuantityChargeError,
+  }
+})
 vi.mock('@/lib/queries/db', () => ({
   countClientsByAgency: (...args: unknown[]) => countClientsByAgency(...(args as [])),
 }))
-// unstable_cache is required, not incidental: the module imports IG_METRICS_TAG
-// from report-data.ts, which calls unstable_cache at module scope — without it
+// unstable_cache is required, not incidental: the real quantity-sync (importOriginal above)
+// imports src/lib/billing/stripe.ts, which calls unstable_cache at module scope — without it
 // the file throws on import and every test here fails before it runs.
 vi.mock('next/cache', () => ({
   revalidateTag: mocks.revalidateTag,
@@ -90,24 +89,10 @@ vi.mock('next/cache', () => ({
   unstable_cache: (fn: unknown) => fn,
 }))
 
-/** Records the predicates the delete applies, and the order of the calls. */
-function recordingAdmin(error: { code?: string; message: string } | null = null) {
-  const predicates: Record<string, string> = {}
-  const order: string[] = []
-  const chain = {
-    delete: () => {
-      order.push('delete')
-      return chain
-    },
-    eq: (column: string, value: string) => {
-      predicates[column] = value
-      return chain
-    },
-    then: (resolve: (r: { error: typeof error }) => unknown) => resolve({ error }),
-  }
-  return { client: { from: () => chain } as never, predicates, order }
-}
+/** The admin client the action hands to `unprovisionClient` and the sync; it is never read here. */
+const ADMIN = { admin: true }
 
+/** Each case starts on a trial workspace, where a delete tells Stripe nothing. */
 describe('deleteClient', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -116,31 +101,29 @@ describe('deleteClient', () => {
       supabase: {} as never,
       agencyId: AGENCY_ID,
       userId: 'user-1',
+      role: 'admin',
     })
     mocks.fetchClientWithOwnership.mockResolvedValue({ id: CLIENT_ID, name: 'Dr Kamberova' })
     mocks.sweepClientStorage.mockResolvedValue({ images: 0, files: 0 })
-    // A trial workspace: the delete tells Stripe nothing.
-    getCachedEntitlement.mockResolvedValue({ plan: 'trial', state: 'trial' })
+    mocks.createAdminSupabaseClient.mockReturnValue(ADMIN)
+    mocks.unprovisionClient.mockResolvedValue(null)
+    getCachedEntitlement.mockResolvedValue({
+      plan: 'trial',
+      state: 'trial',
+      subscriptionOpen: false,
+    })
     getCachedAgency.mockResolvedValue({ stripe_subscription_id: null })
   })
 
-  it('scopes the delete by agency, not by client id alone', async () => {
-    const admin = recordingAdmin()
-    mocks.createAdminSupabaseClient.mockReturnValue(admin.client)
-
+  it('removes the row through the one client delete, scoped to the caller’s agency', async () => {
     const { deleteClient } = await import('../client-actions')
     const result = await deleteClient(CLIENT_ID)
 
     expect(result).toEqual({ ok: true, data: undefined })
-    // Both, always. The admin client bypasses RLS, so dropping agency_id would
-    // let a forged id reach another agency's row.
-    expect(admin.predicates.id).toBe(CLIENT_ID)
-    expect(admin.predicates.agency_id).toBe(AGENCY_ID)
+    expect(mocks.unprovisionClient).toHaveBeenCalledWith(ADMIN, CLIENT_ID, AGENCY_ID)
   })
 
   it('rejects a non-uuid before touching the database', async () => {
-    mocks.createAdminSupabaseClient.mockReturnValue(recordingAdmin().client)
-
     const { deleteClient } = await import('../client-actions')
     const result = await deleteClient('client-1')
 
@@ -149,10 +132,10 @@ describe('deleteClient', () => {
   })
 
   it('names the missing migration when a foreign key still blocks the delete', async () => {
-    mocks.createAdminSupabaseClient.mockReturnValue(
-      recordingAdmin({ code: '23503', message: 'violates foreign key constraint' }).client
-    )
-
+    mocks.unprovisionClient.mockResolvedValue({
+      code: '23503',
+      message: 'violates foreign key constraint',
+    })
     const { deleteClient } = await import('../client-actions')
     const result = await deleteClient(CLIENT_ID)
 
@@ -162,29 +145,46 @@ describe('deleteClient', () => {
     })
   })
 
-  it('leaves stored files alone when the row delete fails', async () => {
-    mocks.createAdminSupabaseClient.mockReturnValue(
-      recordingAdmin({ message: 'connection reset' }).client
-    )
-
+  it('leaves stored files alone when the row delete fails, so a live client keeps its images', async () => {
+    mocks.unprovisionClient.mockResolvedValue({ message: 'connection reset' })
     const { deleteClient } = await import('../client-actions')
     const result = await deleteClient(CLIENT_ID)
 
     expect(result.ok).toBe(false)
-    // Sweeping before the rows are gone would strip a live client's images.
     expect(mocks.sweepClientStorage).not.toHaveBeenCalled()
   })
 
-  it('sweeps the storage and busts every client-fed cache after the rows are gone', async () => {
-    mocks.createAdminSupabaseClient.mockReturnValue(recordingAdmin().client)
-
+  it('sweeps the storage and busts every client-fed cache through revalidateClientData after the rows are gone', async () => {
     const { deleteClient } = await import('../client-actions')
     await deleteClient(CLIENT_ID)
 
     expect(mocks.sweepClientStorage).toHaveBeenCalledWith(CLIENT_ID)
-    // Which tags that is — the roster, the post stats, the ideas badge, the analytics report —
-    // is pinned once, on the helper (src/lib/queries/__tests__/revalidate-client-data.test.ts).
     expect(revalidateClientData).toHaveBeenCalledTimes(1)
+  })
+
+  it('tells Stripe nothing on a trial', async () => {
+    const { deleteClient } = await import('../client-actions')
+    await deleteClient(CLIENT_ID)
+    expect(syncSubscriptionQuantity).not.toHaveBeenCalled()
+  })
+
+  it('refuses a member before the client is read or anything is deleted, since a delete cannot be undone', async () => {
+    mocks.resolveActionAuth.mockResolvedValue({
+      ok: true,
+      supabase: {} as never,
+      agencyId: AGENCY_ID,
+      userId: 'user-2',
+      role: 'member',
+    })
+    const { deleteClient } = await import('../client-actions')
+    const result = await deleteClient(CLIENT_ID)
+
+    expect(result).toEqual({ ok: false, error: 'Only admins can add or delete clients.' })
+    expect(mocks.fetchClientWithOwnership).not.toHaveBeenCalled()
+    expect(mocks.createAdminSupabaseClient).not.toHaveBeenCalled()
+    expect(mocks.unprovisionClient).not.toHaveBeenCalled()
+    expect(mocks.sweepClientStorage).not.toHaveBeenCalled()
+    expect(syncSubscriptionQuantity).not.toHaveBeenCalled()
   })
 })
 
@@ -196,8 +196,11 @@ describe('createClient', () => {
       supabase: {} as never,
       agencyId: AGENCY_ID,
       userId: 'user-1',
+      role: 'admin',
     })
     mocks.provisionClient.mockResolvedValue({ ok: true, clientId: CLIENT_ID })
+    mocks.createAdminSupabaseClient.mockReturnValue(ADMIN)
+    mocks.unprovisionClient.mockResolvedValue(null)
     requireEntitledAction.mockResolvedValue(null)
     getCachedEntitlement.mockResolvedValue({
       plan: 'trial',
@@ -228,7 +231,7 @@ describe('createClient', () => {
     expect(mocks.provisionClient).not.toHaveBeenCalled()
   })
 
-  it('provisions through the one client writer and busts the roster immediately', async () => {
+  it('provisions through the one client writer and busts the roster immediately, since the next page’s first-run gate reads it', async () => {
     const { createClient } = await import('../client-actions')
     const result = await createClient({ name: 'Acme', niche: 'Branding' })
 
@@ -237,8 +240,6 @@ describe('createClient', () => {
       expect.anything(),
       expect.objectContaining({ agencyId: AGENCY_ID, name: 'Acme', niche: 'Branding' })
     )
-    // { expire: 0 }, not 'max': the caller navigates straight to a page whose first-run gate
-    // reads the roster, and 'max' would serve the cached empty list once more.
     expect(mocks.revalidateTag).toHaveBeenCalledWith('agency-clients', { expire: 0 })
   })
 
@@ -252,8 +253,71 @@ describe('createClient', () => {
     expect(mocks.provisionClient).not.toHaveBeenCalled()
   })
 
+  it.each([
+    ['a trial below its cap', { plan: 'trial', state: 'trial', brandsUnlimited: false }],
+    ['a paid plan, which counts no cap', { plan: 'pro', state: 'active', brandsUnlimited: true }],
+  ])('refuses a member on %s before anything is provisioned', async (_label, plan) => {
+    mocks.resolveActionAuth.mockResolvedValue({
+      ok: true,
+      supabase: {} as never,
+      agencyId: AGENCY_ID,
+      userId: 'user-2',
+      role: 'member',
+    })
+    getCachedEntitlement.mockResolvedValue({ ...plan, mode: 'agency', canCreate: true, brands: 3 })
+    getCachedAgency.mockResolvedValue({ stripe_subscription_id: 'sub_1' })
+    const { createClient } = await import('../client-actions')
+    const result = await createClient({ name: 'Acme', niche: 'Branding' })
+
+    expect(result).toEqual({ ok: false, error: 'Only admins can add or delete clients.' })
+    expect(mocks.createAdminSupabaseClient).not.toHaveBeenCalled()
+    expect(mocks.provisionClient).not.toHaveBeenCalled()
+    expect(syncSubscriptionQuantity).not.toHaveBeenCalled()
+  })
+
+  it('re-counts after the insert and gives back a client two racing creates took past the cap', async () => {
+    countClientsByAgency.mockResolvedValueOnce(2).mockResolvedValueOnce(4)
+    const { createClient } = await import('../client-actions')
+    const result = await createClient({ name: 'Acme', niche: 'Branding' })
+
+    expect(result).toEqual({
+      ok: false,
+      error: 'Trial includes 3 clients. Choose a plan to add more.',
+    })
+    expect(mocks.takeBackClient).toHaveBeenCalledWith(expect.anything(), CLIENT_ID, AGENCY_ID)
+    expect(mocks.revalidateTag).not.toHaveBeenCalled()
+  })
+
+  it('keeps a client that brings the workspace exactly to its cap', async () => {
+    countClientsByAgency.mockResolvedValueOnce(2).mockResolvedValueOnce(3)
+    const { createClient } = await import('../client-actions')
+    expect(await createClient({ name: 'Acme', niche: 'Branding' })).toEqual({
+      ok: true,
+      data: CLIENT_ID,
+    })
+    expect(mocks.takeBackClient).not.toHaveBeenCalled()
+  })
+
+  it('keeps the client, logged, when the re-count after the insert fails', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    countClientsByAgency
+      .mockResolvedValueOnce(2)
+      .mockRejectedValueOnce(new Error('countClientsByAgency failed'))
+    const { createClient } = await import('../client-actions')
+    expect(await createClient({ name: 'Acme', niche: 'Branding' })).toEqual({
+      ok: true,
+      data: CLIENT_ID,
+    })
+    expect(mocks.takeBackClient).not.toHaveBeenCalled()
+    expect(console.error).toHaveBeenCalledWith(
+      `[clients:create] cap re-count failed for ${AGENCY_ID}; client kept:`,
+      expect.any(Error)
+    )
+  })
+
   describe('on a paid workspace', () => {
     beforeEach(() => {
+      vi.spyOn(console, 'error').mockImplementation(() => undefined)
       getCachedEntitlement.mockResolvedValue({
         plan: 'pro',
         state: 'active',
@@ -262,12 +326,15 @@ describe('createClient', () => {
         brands: 3,
         brandsUnlimited: true,
       })
-      getCachedAgency.mockResolvedValue({ stripe_subscription_id: 'sub_1' })
-      countClientsByAgency.mockResolvedValue(3)
+      getCachedAgency.mockResolvedValue({
+        stripe_subscription_id: 'sub_1',
+        current_period_start: '2026-09-01T00:00:00+00:00',
+      })
       syncSubscriptionQuantity.mockReset().mockResolvedValue(undefined)
+      mocks.unprovisionClient.mockResolvedValue(null)
     })
 
-    it('charges Stripe for the new count before the row exists', async () => {
+    it('makes the client, then charges only above the clients already paid for', async () => {
       const order: string[] = []
       syncSubscriptionQuantity.mockImplementation(async () => {
         order.push('stripe')
@@ -281,26 +348,53 @@ describe('createClient', () => {
       const result = await createClient({ name: 'Acme', niche: 'Branding' })
 
       expect(result).toEqual({ ok: true, data: CLIENT_ID })
-      expect(syncSubscriptionQuantity).toHaveBeenCalledWith('sub_1', 4, 'charge')
-      expect(order).toEqual(['stripe', 'provision'])
+      expect(syncSubscriptionQuantity).toHaveBeenCalledWith(expect.anything(), AGENCY_ID, 'sub_1', {
+        direction: 'increase',
+        paid: 3,
+        paidFor: '2026-09-01T00:00:00+00:00',
+      })
+      expect(order).toEqual(['provision', 'stripe'])
     })
 
-    it('adds no client when the card is declined, and says why', async () => {
-      syncSubscriptionQuantity.mockRejectedValue(new Error('The card on file was declined: …'))
+    it.each([
+      [
+        'a declined card',
+        'The card on file was declined: … Update it in Plan & billing and try again.',
+      ],
+      ['a claim still busy', 'Another change to your plan is in progress. Try again in a moment.'],
+    ])('undoes the client on %s, lowers Stripe back, and says why', async (_label, sentence) => {
+      syncSubscriptionQuantity.mockRejectedValueOnce(new QuantityChargeError(sentence))
       const { createClient } = await import('../client-actions')
       const result = await createClient({ name: 'Acme', niche: 'Branding' })
 
-      expect(result).toEqual({ ok: false, error: 'The card on file was declined: …' })
-      expect(mocks.provisionClient).not.toHaveBeenCalled()
+      expect(result).toEqual({ ok: false, error: sentence })
+      expect(mocks.takeBackClient).toHaveBeenCalledWith(expect.anything(), CLIENT_ID, AGENCY_ID)
+      expect(syncSubscriptionQuantity).toHaveBeenLastCalledWith(
+        expect.anything(),
+        AGENCY_ID,
+        'sub_1',
+        { direction: 'decrease' }
+      )
     })
 
-    it('credits the charge back when the row cannot be made', async () => {
+    it('keeps the client, with no SDK text, when the sync fails any other way', async () => {
+      syncSubscriptionQuantity.mockRejectedValueOnce(new Error('quantity claim failed: timeout'))
+      const { createClient } = await import('../client-actions')
+      expect(await createClient({ name: 'Acme', niche: 'Branding' })).toEqual({
+        ok: true,
+        data: CLIENT_ID,
+      })
+      expect(mocks.takeBackClient).not.toHaveBeenCalled()
+      expect(console.error).toHaveBeenCalled()
+    })
+
+    it('asks Stripe for nothing when the client cannot be made', async () => {
       mocks.provisionClient.mockResolvedValue({ ok: false, error: 'insert failed' })
       const { createClient } = await import('../client-actions')
       const result = await createClient({ name: 'Acme', niche: 'Branding' })
 
       expect(result).toEqual({ ok: false, error: 'insert failed' })
-      expect(syncSubscriptionQuantity).toHaveBeenLastCalledWith('sub_1', 3, 'credit')
+      expect(syncSubscriptionQuantity).not.toHaveBeenCalled()
     })
 
     it('never asks Stripe for anything on a trial', async () => {
@@ -327,20 +421,54 @@ describe('deleteClient on a paid workspace', () => {
       supabase: {} as never,
       agencyId: AGENCY_ID,
       userId: 'user-1',
+      role: 'admin',
     })
     mocks.fetchClientWithOwnership.mockResolvedValue({ id: CLIENT_ID, name: 'Dr Kamberova' })
     mocks.sweepClientStorage.mockResolvedValue({ images: 0, files: 0 })
-    mocks.createAdminSupabaseClient.mockReturnValue(recordingAdmin().client)
-    getCachedEntitlement.mockResolvedValue({ plan: 'pro', state: 'active' })
+    mocks.createAdminSupabaseClient.mockReturnValue(ADMIN)
+    mocks.unprovisionClient.mockResolvedValue(null)
+    getCachedEntitlement.mockResolvedValue({
+      plan: 'pro',
+      state: 'active',
+      brands: 3,
+      subscriptionOpen: true,
+    })
     getCachedAgency.mockResolvedValue({ stripe_subscription_id: 'sub_1' })
-    countClientsByAgency.mockResolvedValue(2)
     syncSubscriptionQuantity.mockReset().mockResolvedValue(undefined)
   })
 
-  it('tells Stripe the remaining count, uncharged, after the row is gone', async () => {
+  it('lowers Stripe’s count, uncharged, after the row is gone', async () => {
     const { deleteClient } = await import('../client-actions')
     expect(await deleteClient(CLIENT_ID)).toEqual({ ok: true, data: undefined })
-    expect(syncSubscriptionQuantity).toHaveBeenCalledWith('sub_1', 2, 'none')
+    expect(syncSubscriptionQuantity).toHaveBeenCalledWith(ADMIN, AGENCY_ID, 'sub_1', {
+      direction: 'decrease',
+    })
+  })
+
+  it('lowers the count of a locked workspace whose subscription is still open, since a decrease never charges', async () => {
+    getCachedEntitlement.mockResolvedValue({
+      plan: 'pro',
+      state: 'locked',
+      brands: 0,
+      subscriptionOpen: true,
+    })
+    const { deleteClient } = await import('../client-actions')
+    expect(await deleteClient(CLIENT_ID)).toEqual({ ok: true, data: undefined })
+    expect(syncSubscriptionQuantity).toHaveBeenCalledWith(ADMIN, AGENCY_ID, 'sub_1', {
+      direction: 'decrease',
+    })
+  })
+
+  it('leaves an ended subscription alone', async () => {
+    getCachedEntitlement.mockResolvedValue({
+      plan: 'pro',
+      state: 'locked',
+      brands: 0,
+      subscriptionOpen: false,
+    })
+    const { deleteClient } = await import('../client-actions')
+    expect(await deleteClient(CLIENT_ID)).toEqual({ ok: true, data: undefined })
+    expect(syncSubscriptionQuantity).not.toHaveBeenCalled()
   })
 
   it('logs a Stripe failure there rather than failing a delete that already happened', async () => {

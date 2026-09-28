@@ -2,19 +2,18 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { requestApprovalEmail, requestApprovalLink } from '../request-approval'
 
 /**
- * The one client-side approval request, previously written four times.
- *
- * Worth testing because the four copies disagreed about failure, and each disagreement
- * was invisible until the server actually failed: one read the response body before
- * checking `res.ok`, so a reply without JSON threw a SyntaxError instead of reporting
- * the error; one had no fallback message at all.
+ * The one client-side approval request, pinned on failure: a reply without JSON rejects with the
+ * channel's own fallback, never a SyntaxError.
  */
+
 /** Only the two members `request-approval` reads. */
 type FakeResponse = { ok: boolean; json: () => Promise<unknown> }
 
+/**
+ * Stub the global `fetch` with one response. The signature is declared on `vi.fn`, not as unused
+ * parameters on the implementation: without it `mock.calls` is an empty tuple the cases cannot index.
+ */
 function mockFetch(response: { ok: boolean; body?: unknown; throws?: boolean }) {
-  // The signature is declared on `vi.fn`, not as unused parameters on the implementation:
-  // without it `mock.calls` is an empty tuple and the assertions below cannot index it.
   const fetchMock = vi.fn<(url: string, init: RequestInit) => Promise<FakeResponse>>(async () => ({
     ok: response.ok,
     json: async () => {
@@ -47,8 +46,7 @@ describe('requestApprovalLink', () => {
     })
   })
 
-  it('takes an explicit post selection just as well as a week', async () => {
-    // The body is `weekStart` XOR `postIds`, and the review queue sends the second form.
+  it('takes an explicit post selection in place of a week, the form the review queue sends', async () => {
     const fetchMock = mockFetch({ ok: true, body: { url: 'u', postCount: 1 } })
     await requestApprovalLink({ clientId: 'c1', postIds: ['p1'] })
 
@@ -73,9 +71,15 @@ describe('requestApprovalLink', () => {
     )
   })
 
-  it('survives a failure with no JSON body at all', async () => {
-    // A 502 from the edge. One of the four copies parsed the body first and turned this
-    // into a SyntaxError, which read to the user as an unrelated generic failure.
+  it('throws the fallback when a success does not carry the link', async () => {
+    mockFetch({ ok: true, body: { success: true } })
+
+    await expect(requestApprovalLink({ clientId: 'c1', weekStart: '2026-08-03' })).rejects.toThrow(
+      'Failed to generate approval link'
+    )
+  })
+
+  it('throws the fallback, not a SyntaxError, for a failure with no JSON body, such as a 502 from the edge', async () => {
     mockFetch({ ok: false, throws: true })
 
     await expect(requestApprovalLink({ clientId: 'c1', weekStart: '2026-08-03' })).rejects.toThrow(

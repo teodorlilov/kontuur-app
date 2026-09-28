@@ -7,44 +7,19 @@ import {
   TRIAL_BRANDS,
   UNMETERED,
   type Allowance,
-  type AllowanceKind,
   type PlanId,
 } from './plans'
 
 /**
  * What a workspace may do right now, derived from its agencies row and the clock — the ONLY
- * interpretation of `plan`, `subscription_status`, `trial_ends_at` and the Stripe period columns.
- *
- * Nothing stores this state twice and no cron flips a status column: a webhook writes the row,
- * a cron or a request reads it here. The states:
- *   trial        no Stripe subscription and the trial has not ended — or a Stripe subscription
- *                still 'trialing' (an early converter with a deferred first charge), which keeps
- *                trial limits until the first paid invoice makes it 'active';
- *   trial_grace  the trial ended less than GRACE_DAYS ago: nothing spends, scheduled posts still
- *                publish and syncs continue until `graceEndsAt`;
- *   active       a paid subscription;
- *   past_due     a renewal failed less than GRACE_DAYS ago — full access until `graceEndsAt`, so a
- *                card hiccup does not stop a paying agency's autopilot; the grace counts from
- *                `past_due_since`, never from the period columns;
+ * interpretation of `plan`, `subscription_status`, `trial_ends_at` and the Stripe period columns;
+ * nothing stores it and no cron flips a status column. The states:
+ *   trial        no subscription, or one still 'trialing', and `trial_ends_at` not yet passed;
+ *   trial_grace  the trial ended under GRACE_DAYS ago: nothing spends, scheduled posts publish;
+ *   active       a paid subscription, and always a 'house' workspace (plans.ts), unmetered;
+ *   past_due     a renewal failed under GRACE_DAYS ago, counted from `past_due_since` and never
+ *                from the period columns: full access until `graceEndsAt`;
  *   locked       everything else: read-only.
- * A 'house' workspace (plans.ts) is always `active` with an unmetered allowance and no cap.
- *
- * `periodKey` is the usage bucket: 'trial' for the trial's one allowance; the ISO date the Stripe
- * period started for a paid plan, so a customer who subscribes on the 20th does not get two
- * allowances for one payment — and a paid row with no period start is locked rather than let
- * into the trial's bucket; the UTC calendar month ('YYYY-MM') for a house workspace, whose usage
- * is counted and never refused. The period columns must advance only on a paid invoice
- * (docs/plans/BILLING.md step 9): a failed renewal that moved them would hand the grace days a
- * fresh allowance. `limits` are all zero whenever the workspace cannot spend, so a roster that
- * slips past a gate still cannot consume anything.
- *
- * Every date on the entitlement is read in `timezone`, the agency's own — the row carries it so
- * a sentence built anywhere (a 402, a bell, the shell) names the day the customer will see.
- *
- * `canDelete` is false while a Stripe subscription is open and not set to end — any status but
- * `canceled` / `incomplete_expired` with `cancel_at_period_end` false — so a workspace whose data
- * is gone can never renew. Computed from the row, not the state: a `'trialing'` subscription
- * takes the trial branch below and still bills at its trial's end.
  */
 export type EntitlementState = 'trial' | 'trial_grace' | 'active' | 'past_due' | 'locked'
 
@@ -64,26 +39,58 @@ export interface Entitlement {
   brands: number
   /** Whether more brands may be created at all — the paid plan has no ceiling, only a price. */
   brandsUnlimited: boolean
+  /** All zero whenever the workspace cannot spend: whatever slips past a gate consumes nothing. */
   limits: Allowance
+  /**
+   * The usage bucket: 'trial' for the trial's one allowance and on every entitlement that cannot
+   * spend (its `limits` are zero); for a paid plan the date its Stripe period started (set by a new
+   * subscription's first fill and moved by a paid invoice, `applySubscriptionSnapshot`), so
+   * subscribing on the 20th buys one allowance, not two, and a paid row with no period start is
+   * locked; the UTC month ('YYYY-MM') on house.
+   */
   periodKey: string
   trialEndsAt: Date | null
-  /** When the paid allowance resets — the period end. Null on the trial, whose one allowance never resets, and on house. */
+  /**
+   * When the paid allowance resets — the period end. Null on the trial, whose one allowance never
+   * resets; on house; and while a renewal has failed, since the period moves only once it is paid.
+   */
   resetsOn: Date | null
   /**
    * When a grace runs out, or ran out: publishing stops (trial_grace), the workspace pauses
    * (past_due), or the day a trial's grace ended (locked). Null for a paid subscription that ended.
    */
   graceEndsAt: Date | null
-  /** The day a cancelled subscription ends — the period end while `cancel_at_period_end`; null otherwise. */
+  /** The day a paid plan set to end ends — the period end while `planEnding`; null otherwise, and on house, whose workspace never ends. */
   endsOn: Date | null
-  /** Whether the workspace may be deleted now — false while a subscription is open and not set to end. */
+  /**
+   * Whether the workspace may be deleted now — false while a subscription is open and not set to
+   * end (`planEnding`), so a workspace whose data is gone can never renew.
+   */
   canDelete: boolean
+  /**
+   * Whether a Stripe subscription is open: on the row and not ended (`hasSubscriptionEnded`) —
+   * whatever the state, since a 'trialing' one still bills and a failed one stays open once locked.
+   */
+  subscriptionOpen: boolean
+  /**
+   * Whether that open subscription's renewal failed (`past_due` or `unpaid`) — inside the grace and
+   * after it, when the workspace is locked. Every "the renewal failed" decision reads this, never
+   * the state, which says `locked` once the grace is over.
+   */
+  paymentFailed: boolean
+  /**
+   * Whether the open subscription is set to end at its period end — a cancel already made. Never
+   * while its renewal has failed: such a plan counts as running until `setPlanEnding` cancels it
+   * at once.
+   */
+  planEnding: boolean
 }
 
 /**
  * Whether the workspace is on the paid plan and Stripe is billing it — active, or inside the
- * grace after a failed renewal. The one reading of "paying": the plan panel's buttons, the
- * checkout return and the quantity sync all ask it.
+ * grace after a failed renewal. Asked by the Checkout return card (whether the plan it waits for
+ * is live) and by `billedSubscriptionId` (src/lib/billing/quantity-sync.ts); what the plan panel
+ * offers is decided by `subscriptionOpen` instead, which a locked workspace can still have.
  */
 export function isPaying(entitlement: Pick<Entitlement, 'plan' | 'state'>): boolean {
   return (
@@ -101,18 +108,44 @@ export function allows(entitlement: Entitlement, need: EntitlementNeed): boolean
       : entitlement.canCreate
 }
 
-function isPlanId(value: string): value is PlanId {
-  return value === 'trial' || value === 'pro' || value === 'house'
+/**
+ * Whether a subscription status is final — Stripe ends a subscription as `canceled`, or as
+ * `incomplete_expired` when its first payment never went through. Every other status can still
+ * bill. The one reading of "ended" for the entitlement, the Stripe snapshot
+ * (src/lib/billing/subscription-store.ts), Checkout (`createCheckoutSession`,
+ * src/lib/billing/checkout.ts) and the webhook's quantity reconcile (`reconcileQuantity`,
+ * src/lib/billing/stripe-events.ts).
+ */
+export function hasSubscriptionEnded(status: string | null): boolean {
+  return status === 'canceled' || status === 'incomplete_expired'
+}
+
+/**
+ * Whether a subscription status means its renewal failed and is still owed — `past_due` while
+ * Stripe retries the card, `unpaid` once it has stopped. The one reading for the entitlement and
+ * for ending a plan (`setPlanEnding`, src/lib/billing/subscription-store.ts).
+ */
+export function hasPaymentFailed(status: string | null): boolean {
+  return status === 'past_due' || status === 'unpaid'
+}
+
+/** 'house' only when set by hand; otherwise the subscription id decides, not the `plan` column. */
+function planOf(row: AgencyBillingColumns): PlanId {
+  if (row.plan === 'house') return 'house'
+  return row.stripe_subscription_id ? 'pro' : 'trial'
 }
 
 function zeroAllowance(): Allowance {
   return { draft: 0, image: 0, rewrite: 0 }
 }
 
+/** The paid pool: each kind's per-brand allowance times the brands paid for. */
 function scaled(perBrand: Allowance, brands: number): Allowance {
-  const out = zeroAllowance()
-  for (const kind of Object.keys(perBrand) as AllowanceKind[]) out[kind] = perBrand[kind] * brands
-  return out
+  return {
+    draft: perBrand.draft * brands,
+    image: perBrand.image * brands,
+    rewrite: perBrand.rewrite * brands,
+  }
 }
 
 function dateOf(value: string | null): Date | null {
@@ -123,9 +156,11 @@ function plusGrace(from: Date): Date {
   return new Date(from.getTime() + GRACE_DAYS * MS_PER_DAY)
 }
 
+/**
+ * The trial's brand cap and allowance. The cap on clients scales with the mode; the allowance does
+ * not — it is the workspace's one trial, not three brands' worth (plans.ts, TRIAL_ALLOWANCE).
+ */
 function trialLimits(mode: 'agency' | 'solo'): { brands: number; limits: Allowance } {
-  // The cap on clients scales with the mode; the allowance does not — it is the workspace's one
-  // trial, not three brands' worth (plans.ts, TRIAL_ALLOWANCE).
   return { brands: TRIAL_BRANDS[mode], limits: TRIAL_ALLOWANCE }
 }
 
@@ -148,21 +183,28 @@ export function noEntitlement(): Entitlement {
     graceEndsAt: null,
     endsOn: null,
     canDelete: false,
+    subscriptionOpen: false,
+    paymentFailed: false,
+    planEnding: false,
   }
 }
 
 /** The entitlement for one agencies row at instant `now`. Pure. */
 export function entitlementFor(row: AgencyBillingColumns, now: Date): Entitlement {
   const mode: 'agency' | 'solo' = row.mode === 'solo' ? 'solo' : 'agency'
-  const plan: PlanId = isPlanId(row.plan) ? row.plan : 'trial'
+  const plan = planOf(row)
   const timezone = row.timezone
   const trialEndsAt = dateOf(row.trial_ends_at)
   const status = row.subscription_status
-  const canDelete =
-    !row.stripe_subscription_id ||
-    status === 'canceled' ||
-    status === 'incomplete_expired' ||
-    row.cancel_at_period_end
+  const subscriptionOpen = row.stripe_subscription_id !== null && !hasSubscriptionEnded(status)
+  const paymentFailed = subscriptionOpen && hasPaymentFailed(status)
+  const planEnding = subscriptionOpen && row.cancel_at_period_end && !paymentFailed
+  const standing = {
+    subscriptionOpen,
+    paymentFailed,
+    planEnding,
+    canDelete: !subscriptionOpen || planEnding,
+  }
 
   const locked = (state: EntitlementState, graceEndsAt: Date | null): Entitlement => ({
     state,
@@ -180,7 +222,7 @@ export function entitlementFor(row: AgencyBillingColumns, now: Date): Entitlemen
     resetsOn: null,
     graceEndsAt,
     endsOn: null,
-    canDelete,
+    ...standing,
   })
 
   const onTrial = (): Entitlement => {
@@ -201,7 +243,7 @@ export function entitlementFor(row: AgencyBillingColumns, now: Date): Entitlemen
       resetsOn: null,
       graceEndsAt: null,
       endsOn: null,
-      canDelete,
+      ...standing,
     }
   }
 
@@ -222,7 +264,7 @@ export function entitlementFor(row: AgencyBillingColumns, now: Date): Entitlemen
       resetsOn: null,
       graceEndsAt: null,
       endsOn: null,
-      canDelete: true,
+      ...standing,
     }
   }
 
@@ -243,7 +285,7 @@ export function entitlementFor(row: AgencyBillingColumns, now: Date): Entitlemen
   if (state === 'locked') return locked('locked', null)
 
   const periodStart = row.current_period_start?.slice(0, 10)
-  if (plan === 'trial' || !periodStart) return locked('locked', null)
+  if (!periodStart) return locked('locked', null)
   const brands = Math.max(1, row.subscription_quantity ?? 1)
   const periodEnd = dateOf(row.current_period_end)
 
@@ -260,9 +302,9 @@ export function entitlementFor(row: AgencyBillingColumns, now: Date): Entitlemen
     limits: scaled(PRO_PLAN.perBrand, brands),
     periodKey: periodStart,
     trialEndsAt,
-    resetsOn: periodEnd,
+    resetsOn: state === 'past_due' ? null : periodEnd,
     graceEndsAt: state === 'past_due' && pastDueSince ? plusGrace(pastDueSince) : null,
-    endsOn: row.cancel_at_period_end ? periodEnd : null,
-    canDelete,
+    endsOn: planEnding ? periodEnd : null,
+    ...standing,
   }
 }

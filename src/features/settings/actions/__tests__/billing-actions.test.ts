@@ -30,6 +30,8 @@ vi.mock('@/lib/billing/checkout', () => ({
   createPortalSession: mocks.createPortalSession,
 }))
 
+import type { AgencyBillingColumns } from '@/lib/queries/select-columns'
+import { paidRow as billingPaidRow } from '@/lib/billing/__tests__/fixtures'
 import { openBillingPortal, setPlanEndingAction, startCheckout } from '../billing-actions'
 
 const AGENCY = { id: 'a1', name: 'Acme', stripe_customer_id: null, stripe_subscription_id: null }
@@ -46,7 +48,12 @@ describe('the billing actions', () => {
       role: 'admin',
     })
     mocks.getCachedAgency.mockResolvedValue(AGENCY)
-    mocks.getCachedEntitlement.mockResolvedValue({ plan: 'trial', state: 'trial', mode: 'agency' })
+    mocks.getCachedEntitlement.mockResolvedValue({
+      plan: 'trial',
+      state: 'trial',
+      mode: 'agency',
+      subscriptionOpen: false,
+    })
     mocks.countClientsByAgency.mockResolvedValue(3)
     mocks.ensureStripeCustomer.mockResolvedValue('cus_1')
     mocks.createCheckoutSession.mockResolvedValue('https://checkout.stripe.com/c/1')
@@ -89,10 +96,11 @@ describe('the billing actions', () => {
   })
 
   it.each([
-    ['an active plan', { plan: 'pro', state: 'active' }],
-    ['a failed renewal', { plan: 'pro', state: 'past_due' }],
-    ['a house workspace', { plan: 'house', state: 'active' }],
-  ])('refuses a second Checkout for %s — the portal is the way', async (_label, entitlement) => {
+    ['an active plan', { plan: 'pro', state: 'active', subscriptionOpen: true }],
+    ['a failed renewal in its grace', { plan: 'pro', state: 'past_due', subscriptionOpen: true }],
+    ['a failed renewal past its grace', { plan: 'pro', state: 'locked', subscriptionOpen: true }],
+    ['a house workspace', { plan: 'house', state: 'active', subscriptionOpen: false }],
+  ])('refuses a second Checkout for %s — it would charge twice', async (_label, entitlement) => {
     mocks.getCachedEntitlement.mockResolvedValue(entitlement)
     const result = await startCheckout()
     expect(result).toEqual({
@@ -100,6 +108,24 @@ describe('the billing actions', () => {
       error: 'This workspace already has a plan. Manage it in Plan & billing.',
     })
     expect(mocks.createCheckoutSession).not.toHaveBeenCalled()
+  })
+
+  it('offers Checkout again once a plan has ended', async () => {
+    mocks.getCachedEntitlement.mockResolvedValue({
+      plan: 'pro',
+      state: 'locked',
+      mode: 'agency',
+      subscriptionOpen: false,
+    })
+    expect((await startCheckout()).ok).toBe(true)
+  })
+
+  it('says the plan is on its way when Stripe already holds a subscription the row does not show', async () => {
+    mocks.createCheckoutSession.mockResolvedValue(null)
+    expect(await startCheckout()).toEqual({
+      ok: false,
+      error: 'Your plan is being activated — it appears here in a few seconds.',
+    })
   })
 
   it('keeps Stripe’s words in the log and gives the person one sentence', async () => {
@@ -126,26 +152,14 @@ describe('the billing actions', () => {
   })
 })
 
-describe('setPlanEndingAction', () => {
-  /** A paid row as the uncached settings read returns it; the override makes it ending. */
-  const paidRow = (overrides: Record<string, unknown> = {}) => ({
-    id: 'a1',
-    name: 'Acme',
-    plan: 'pro',
-    mode: 'agency',
-    timezone: 'Europe/Sofia',
-    stripe_customer_id: 'cus_1',
-    stripe_subscription_id: 'sub_1',
-    subscription_status: 'active',
-    subscription_quantity: 2,
-    trial_ends_at: null,
-    current_period_start: '2026-09-01T00:00:00Z',
-    current_period_end: '2026-10-01T00:00:00Z',
-    cancel_at_period_end: false,
-    past_due_since: null,
-    ...overrides,
-  })
+/** A paid row as the uncached settings read returns it: identity plus the billing columns. */
+const paidRow = (overrides: Partial<AgencyBillingColumns> = {}) => ({
+  id: 'a1',
+  name: 'Acme',
+  ...billingPaidRow(new Date(), { subscription_quantity: 2, ...overrides }),
+})
 
+describe('setPlanEndingAction', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     vi.spyOn(console, 'error').mockImplementation(() => undefined)
@@ -157,18 +171,34 @@ describe('setPlanEndingAction', () => {
       role: 'admin',
     })
     mocks.fetchAgencyById.mockResolvedValue(paidRow())
-    mocks.setPlanEnding.mockResolvedValue(undefined)
+    mocks.setPlanEnding.mockResolvedValue({ endedNow: false })
   })
 
-  it('ends a running plan through the store, on the admin client', async () => {
-    expect(await setPlanEndingAction(true)).toEqual({ ok: true, data: undefined })
+  it('ends a running plan through the store, on the admin client, and says how it ended', async () => {
+    expect(await setPlanEndingAction(true)).toEqual({ ok: true, data: { endedNow: false } })
     expect(mocks.setPlanEnding).toHaveBeenCalledWith({}, 'sub_1', true)
+    mocks.setPlanEnding.mockResolvedValue({ endedNow: true })
+    expect(await setPlanEndingAction(true)).toEqual({ ok: true, data: { endedNow: true } })
   })
 
   it('keeps a plan that is set to end', async () => {
     mocks.fetchAgencyById.mockResolvedValue(paidRow({ cancel_at_period_end: true }))
-    expect(await setPlanEndingAction(false)).toEqual({ ok: true, data: undefined })
+    expect(await setPlanEndingAction(false)).toEqual({ ok: true, data: { endedNow: false } })
     expect(mocks.setPlanEnding).toHaveBeenCalledWith({}, 'sub_1', false)
+  })
+
+  it('lets a plan whose renewal failed be cancelled even when set to end — that renewal is still collected, so the store ends it at once', async () => {
+    const failed = new Date(Date.now() - 9 * 86_400_000).toISOString()
+    mocks.fetchAgencyById.mockResolvedValue(
+      paidRow({
+        subscription_status: 'past_due',
+        past_due_since: failed,
+        cancel_at_period_end: true,
+      })
+    )
+    mocks.setPlanEnding.mockResolvedValue({ endedNow: true })
+    expect(await setPlanEndingAction(true)).toEqual({ ok: true, data: { endedNow: true } })
+    expect(mocks.setPlanEnding).toHaveBeenCalledWith({}, 'sub_1', true)
   })
 
   it('refuses to cancel what is not running, and to keep what is not ending', async () => {

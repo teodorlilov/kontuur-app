@@ -146,14 +146,21 @@ interface ClientSettingsFormProps {
   ideaUsedCount: number
   ideaTotalCount: number
   recentIdeas: ClientIdea[]
+  /** Why this person may not delete the client (`clientRosterRefusal`), or null for an admin. */
+  deleteRefusal: string | null
+  /** What the delete does to the bill, or null when there is nothing to say (`deleteClientNotice`). */
+  deleteNotice: string | null
 }
 
 /**
- * Top-level client settings form. Owns the header, because it owns the tab state.
+ * Top-level client settings form; owns the header because it owns the tab state. With `isSolo` it
+ * is the solo business page and drops the Clients crumb, back link, danger rail and idea link tab.
  *
- * Also the solo workspace's business page: with `isSolo` the same form speaks to the owner and
- * drops what only makes sense with a roster behind it (the Clients crumb, the back link, the
- * danger rail and the idea link tab). Agency rendering is unchanged.
+ * All edits share one draft measured against `baseline` (a ref, so moving it never renders), so
+ * the save bar sits on every tab, read-only ones included, and its unload guard never unmounts
+ * with a panel. Brand re-read suggestions derive from the live draft, which stays editable through
+ * a read of most of a minute. The delete dialog and the re-read rail get the stored name and
+ * website: the typed name must match what is saved, and the route reads the saved site.
  */
 export function ClientSettingsForm(props: ClientSettingsFormProps) {
   const {
@@ -176,6 +183,8 @@ export function ClientSettingsForm(props: ClientSettingsFormProps) {
     ideaUsedCount,
     ideaTotalCount,
     recentIdeas,
+    deleteRefusal,
+    deleteNotice,
   } = props
 
   const router = useRouter()
@@ -188,8 +197,6 @@ export function ClientSettingsForm(props: ClientSettingsFormProps) {
   const [brandAnalysis, setBrandAnalysis] = useState<UrlAnalysisResponse | null>(null)
   const [isConfirmingDelete, setIsConfirmingDelete] = useState(false)
 
-  // The values the form loaded with. Everything dirty is measured against this, and Discard
-  // restores it. A ref, not state: changing the baseline must never itself trigger a render.
   const initial = useMemo(
     () => buildDrafts(client, profile, schedule, props.visualIdentity),
     [client, profile, schedule, props.visualIdentity]
@@ -197,8 +204,6 @@ export function ClientSettingsForm(props: ClientSettingsFormProps) {
   const baseline = useRef<ClientDrafts>(initial)
   const [drafts, setDrafts] = useState<ClientDrafts>(initial)
 
-  // Recomputed only when a group's object identity changes — i.e. on an actual edit, not on
-  // every render.
   const dirty: DirtyGroups = useMemo(
     () => ({
       client: !isEqual(drafts.client, baseline.current.client),
@@ -210,9 +215,6 @@ export function ClientSettingsForm(props: ClientSettingsFormProps) {
   )
   const isDirty = dirty.client || dirty.brand || dirty.schedule || dirty.identity
 
-  // Derived from the read, not frozen at the moment it landed: the website read takes the best part
-  // of a minute and the form stays editable throughout, so a suggestion list built at fetch time
-  // would compare against — and overwrite — values the user has since changed.
   const brandSuggestions = useMemo(
     () =>
       brandAnalysis
@@ -240,18 +242,14 @@ export function ClientSettingsForm(props: ClientSettingsFormProps) {
     []
   )
 
-  // ── OAuth redirect ──
   useEffect(() => {
     const connected = searchParams.get('meta_connected')
     const error = searchParams.get('meta_error')
     if (!connected && !error) return
 
     if (connected) {
-      // The callback only ever redirects with meta_connected=instagram.
       toast.success('Instagram account connected successfully')
     } else {
-      // The callback puts the real reason in meta_error_detail — a generic message makes OAuth
-      // failures undebuggable.
       const detail = searchParams.get('meta_error_detail')
       toast.error(
         detail
@@ -279,10 +277,6 @@ export function ClientSettingsForm(props: ClientSettingsFormProps) {
     }
   }
 
-  /**
-   * Re-reads the website and offers what it found. Nothing is written here or by the route: the
-   * accepted rows land in the open drafts, so the save bar reports them and Discard undoes them.
-   */
   async function handleRereadBrand() {
     setRereadingBrand(true)
     try {
@@ -328,8 +322,6 @@ export function ClientSettingsForm(props: ClientSettingsFormProps) {
       buildUpdatePayload(drafts, dirty, profile?.weekly_mix_json)
     )
     if (result.ok) {
-      // Re-baseline so the bar retracts, and stay on the tab: saving a setting is not a reason
-      // to lose your place in the form.
       baseline.current = drafts
       setDrafts({ ...drafts })
       toast.success(isSolo ? 'Profile updated' : 'Client updated')
@@ -387,7 +379,6 @@ export function ClientSettingsForm(props: ClientSettingsFormProps) {
                 ? `Queue refreshed ${formatRelativeTime(parseTimestamp(lastGeneratedAt))}`
                 : 'Queue not yet refreshed'}
             </span>
-            {/* Kept from the deleted status card: the only route to the sources screen. */}
             <a href={`/clients/${clientId}/sources`} className={cn(TOOL_ROW, 'text-caption')}>
               {sourceCount} source{sourceCount === 1 ? '' : 's'} &rarr;
             </a>
@@ -419,9 +410,6 @@ export function ClientSettingsForm(props: ClientSettingsFormProps) {
           description={panel.description}
           rail={renderRail()}
           saveBar={
-            // Rendered on every tab, including the read-only ones: edits live in one shared
-            // draft, so unsaved brand changes must stay saveable while you are looking at
-            // Insights — and the unload guard inside must not unmount with the panel.
             <SaveBar
               dirty={isDirty}
               label={dirtyLabel}
@@ -447,8 +435,6 @@ export function ClientSettingsForm(props: ClientSettingsFormProps) {
         open={isConfirmingDelete}
         onClose={() => setIsConfirmingDelete(false)}
         clientId={clientId}
-        // The stored name, not drafts.client.name: an unsaved rename would leave the reader
-        // typing a name the confirm gate cannot match.
         clientName={client.name}
         counts={{
           publishedCount,
@@ -458,6 +444,7 @@ export function ClientSettingsForm(props: ClientSettingsFormProps) {
           connectionCount,
           ideaCount: ideaTotalCount,
         }}
+        notice={deleteNotice}
       />
     </div>
   )
@@ -517,7 +504,6 @@ export function ClientSettingsForm(props: ClientSettingsFormProps) {
         return (
           <IdeaFormTab
             clientId={clientId}
-            // Live draft, not the server value: a rename should show here before save.
             clientName={drafts.client.name || client.name}
             token={ideaToken}
             totalCount={ideaTotalCount}
@@ -541,15 +527,18 @@ export function ClientSettingsForm(props: ClientSettingsFormProps) {
               onConnectClick={goToAccounts}
               isSolo={isSolo}
             />
-            {!isSolo && <ClientDangerRail onDelete={() => setIsConfirmingDelete(true)} />}
+            {!isSolo && (
+              <ClientDangerRail
+                refusal={deleteRefusal}
+                onDelete={() => setIsConfirmingDelete(true)}
+              />
+            )}
           </>
         )
       case 'brand':
         return (
           <BrandProfileRail
             pillarCount={drafts.brand.contentPillars.length}
-            // The stored URL, not the draft: the route reads what is saved, so enabling this on a
-            // freshly typed address would read the old site and label the result with the new one.
             savedWebsite={client.website_url}
             websiteEdited={(client.website_url ?? '') !== drafts.client.websiteUrl}
             onReread={handleRereadBrand}

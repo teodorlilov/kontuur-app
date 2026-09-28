@@ -5,10 +5,13 @@ import { PLAN_AND_BILLING_PATH } from '@/utils/constants'
 import { AuthProvider } from '@/components/providers/auth-provider'
 
 /**
- * Onboarding creates a brand, so it checks the workspace may create one before it renders; a
- * paused workspace lands on Plan & billing instead of a form that would be refused at the end.
- * The (dashboard) layout that renders Plan & billing knows not to send it back here
- * (features/onboarding/lib/require-business-setup.ts).
+ * Onboarding creates a brand, so a paused workspace lands on Plan & billing rather than on a form
+ * `createClient` would refuse at the end. The plan's cap is NOT checked here: a save re-renders
+ * this layout into the action's response (the `{ expire: 0 }` bust in `createClient`), so a cap
+ * check would redirect the flow away the moment its new client reached the cap, before the
+ * sources stepper. Every "Add client" control is refused at the cap instead (`addBrandGate`,
+ * src/lib/billing/copy.ts), and `createClient` refuses one reached by URL. The ground is the
+ * shell's — OnboardingShell owns the paper background and the page column.
  */
 export default async function OnboardingLayout({ children }: { children: React.ReactNode }) {
   const userId = await requireAuthUserId()
@@ -16,7 +19,5 @@ export default async function OnboardingLayout({ children }: { children: React.R
   const entitlement = record ? await getCachedEntitlement(record.agency_id) : null
   if (!entitlement?.canCreate) redirect(PLAN_AND_BILLING_PATH)
 
-  // The ground is the shell's, not the layout's — OnboardingShell already owns the paper
-  // background and the page column, so a second wrapper here only added a stray inline style.
   return <AuthProvider>{children}</AuthProvider>
 }

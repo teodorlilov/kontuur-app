@@ -58,12 +58,7 @@ describe('runSyncPhases', () => {
 })
 
 describe('consolidationWindow', () => {
-  /**
-   * Yesterday belongs to `syncAccountDay`, which wrote it in full minutes ago; re-asking it here
-   * would spend six extra calls to overwrite fresh values. The reach series is asked across the
-   * same span, so `oldest` has to reach the oldest day the totals pass touched — not one short.
-   */
-  it('re-asks days 2..7 back, newest first, and never yesterday', () => {
+  it('re-asks days 2..7 back, newest first, never the yesterday syncAccountDay just wrote, and oldest is the last of them', () => {
     const { dayKeys, oldest } = consolidationWindow('2026-08-19')
     expect(dayKeys).toEqual([
       '2026-08-18',

@@ -9,6 +9,7 @@ import type { Icon as Glyph } from '@solar-icons/react/lib/types'
 import { Icon } from '@/components/ui/icon'
 import { IconChip } from '@/components/ui/icon-chip'
 import { cn } from '@/utils/cn'
+import type { AddBrandGate } from '@/lib/billing/copy'
 
 const CARD_CLASS =
   'flex items-center gap-3 rounded-panel border border-ink/[0.05] bg-surface px-3.5 py-3.5 no-underline transition-[transform,border-color] duration-150 ease-contour'
@@ -30,18 +31,22 @@ interface QuickActionsStripProps {
   isSolo: boolean
   /** Why this workspace cannot generate right now, or null. */
   generateRefusal: string | null
+  /** What "Add client" says: its refusal, or what a client costs (`addBrandGate`). */
+  addClient: AddBrandGate
 }
 
 /**
  * The routes worth one click from the dashboard; a solo workspace drops "Add client".
  *
- * A card the plan would refuse is not a link: it keeps its place and says why, rather than
- * spending a click to arrive at a wizard that can only refuse.
+ * A card the plan would refuse is not a link: it keeps its place and its words and says why,
+ * rather than spending a click to arrive at a wizard that can only refuse — and the strip does not
+ * reflow around a missing tile. A paid workspace's "Add client" says what a new client costs.
  */
 export function QuickActionsStrip({
   pendingCount,
   isSolo,
   generateRefusal,
+  addClient,
 }: QuickActionsStripProps) {
   const actions: Array<QuickAction | false> = [
     {
@@ -55,7 +60,8 @@ export function QuickActionsStrip({
       href: '/clients/new',
       icon: UserPlusRoundedIcon,
       title: 'Add client',
-      subtitle: 'Start onboarding',
+      subtitle: addClient.refusal ?? addClient.note ?? 'Start onboarding',
+      refusal: addClient.refusal,
     },
     {
       href: '/review',
@@ -94,8 +100,6 @@ export function QuickActionsStrip({
               </span>
             </>
           )
-          // One card, two states: the refused one keeps its place and its words and simply does
-          // not lead anywhere, so the strip does not reflow around a missing tile.
           return action.refusal ? (
             <div
               key={action.href}

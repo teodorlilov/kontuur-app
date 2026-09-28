@@ -84,14 +84,12 @@ function hoverDay(container: HTMLElement, index: number): SVGSVGElement {
 }
 
 describe('ReachTrend', () => {
-  /** With no hover and no best day, the single circle can only be the one publish pin. */
-  it('pins publish days on the baseline', () => {
+  it('pins publish days on the baseline, the one circle drawn with no hover and no best day', () => {
     const { container } = render(<ReachTrend days={DAYS} bestDay={null} />)
     expect(container.querySelectorAll('circle')).toHaveLength(1)
   })
 
-  /** The day publishes four posts and `DAY_CARD_POSTS` is 3: the fourth defers to the table. */
-  it('raises the day card on hover: the pair, views, and the publications', () => {
+  it('raises the day card on hover: the pair, views, and the first three of four posts (DAY_CARD_POSTS, day-card.tsx), the fourth left to the table', () => {
     const { container } = render(<ReachTrend days={DAYS} bestDay={null} />)
     hoverDay(container, 2)
 
@@ -105,12 +103,7 @@ describe('ReachTrend', () => {
     expect(screen.getByText('+1 more in the posts table below')).toBeInTheDocument()
   })
 
-  /**
-   * Facebook's shape: no per-post reach exists for Pages and the post list carries no media
-   * type, so both arrive null forever. "metrics after the next sync" would be a promise no sync
-   * can keep, and a type chip here would be a guess.
-   */
-  it('names the network a post was removed from, and speaks the measure that network has', () => {
+  it('names the network a post was removed from, and on Facebook’s null reach speaks interactions, not a sync promise', () => {
     const days = [...DAYS]
     days[2] = day('2026-08-13', {
       now: 1840,
@@ -144,11 +137,7 @@ describe('ReachTrend', () => {
     expect(screen.queryByText(/metrics after the next sync/)).not.toBeInTheDocument()
   })
 
-  /**
-   * The axis names the comparison window's dates before anyone hovers, and the hovered card
-   * files the previous value under 6 Aug — the day it actually came from.
-   */
-  it('files each window under its own date, so the comparison cannot be misread', () => {
+  it('files each window under its own date, on the axis and in the hovered card, so the comparison cannot be misread', () => {
     const days = [...DAYS]
     days[2] = day('2026-08-13', {
       now: 1840,
@@ -177,8 +166,7 @@ describe('ReachTrend', () => {
     expect(screen.getByText('Last week’s winner')).toBeInTheDocument()
   })
 
-  /** Two circles: one pin for this period's posts, one for the previous period's. */
-  it('pins the previous window’s posts on their own row', () => {
+  it('pins the previous window’s posts on their own row, beneath this period’s pins', () => {
     const days = DAYS.map((entry) =>
       entry.date === '2026-08-15'
         ? {

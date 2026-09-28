@@ -35,21 +35,13 @@ function cellOpacities(container: HTMLElement): number[] {
 }
 
 describe('WhenToPost', () => {
-  /**
-   * Every plateau hour sits above 0.75 of the max, so a value/max ramp would bunch them all in
-   * the top quarter of the scale. Rank shading has to spread them out.
-   */
-  it('spends the ramp on the plateau instead of flattening it', () => {
+  it('spends the ramp on the plateau by rank instead of flattening it into the top quarter', () => {
     const { container } = render(<WhenToPost online={ONLINE} windows={[]} />)
     const plateau = cellOpacities(container).filter((opacity) => opacity > 0.4)
     expect(Math.max(...plateau) - Math.min(...plateau)).toBeGreaterThan(0.35)
   })
 
-  /**
-   * Both endpoints are the grid's real counts, so the reader can see how wide — or narrow — the
-   * range the shading spends itself on actually is.
-   */
-  it('prints both ends of its own scale, so a flat week reads as flat', () => {
+  it('prints both ends of its own scale as real counts, so a flat week reads as flat', () => {
     const flat = ONLINE.grid.flat()
     render(<WhenToPost online={ONLINE} windows={[]} />)
     expect(screen.getByText(`~${Math.min(...flat)}`)).toBeInTheDocument()
@@ -57,8 +49,7 @@ describe('WhenToPost', () => {
     expect(screen.getByText(/averaged over 12 days/)).toBeInTheDocument()
   })
 
-  /** Before any hover, the panel names the busiest hours rather than standing empty. */
-  it('reads out the hovered hour against the weekly average, without covering the grid', () => {
+  it('names the busiest hours until a hover, then reads out that hour against the weekly average, without covering the grid', () => {
     const { container } = render(<WhenToPost online={ONLINE} windows={[]} />)
     expect(screen.getByText(/Tue 18:00/)).toBeInTheDocument()
 

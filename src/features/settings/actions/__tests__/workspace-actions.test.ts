@@ -3,9 +3,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 /**
  * The most destructive action in the product, executed rather than text-scanned. What is pinned:
  * the agency is the caller's own and the delete is scoped to it; every refusal (member, open
- * subscription, wrong name) happens before anything is read or deleted; the 23503 branch names
- * its migration; and after the one row delete the identities, the sweep and the busts follow —
- * with `'max'` only and no `revalidatePath`, the constraint the action's doc explains.
+ * subscription, wrong name) happens before anything is read or deleted; the pending invites are
+ * deleted immediately before the workspace row, and a failure there refuses; the 23503 branch
+ * names its migration; and after the workspace delete the identities (members', then the
+ * invitees' that delete returned), the sweep and the busts follow — with `'max'` only and no
+ * `revalidatePath`, the constraint the action's doc explains.
  */
 
 const AGENCY_ID = '6ba7b810-9dad-11d1-80b4-00c04fd430c8'
@@ -82,25 +84,75 @@ const PAID = {
   current_period_end: '2026-10-01T00:00:00Z',
 }
 
-/** Records the one delete's predicates. */
-function recordingAdmin(error: { code?: string; message: string } | null = null) {
-  const predicates: Record<string, string> = {}
-  const tables: string[] = []
-  const chain = {
-    delete: () => chain,
-    eq: (column: string, value: string) => {
-      predicates[column] = value
-      return chain
-    },
-    then: (resolve: (r: { error: typeof error }) => unknown) => resolve({ error }),
-  }
+/** One chain the action built: its table, whether it deletes, its filters and what it returns. */
+type RecordedChain = {
+  table: string
+  isDelete: boolean
+  eq: Record<string, string>
+  is: Record<string, null>
+  select?: string
+}
+
+/**
+ * Records every chain in the order the action builds it, answers the agencies delete with
+ * `error`, and the pending-invites delete with `invites` (or `inviteError`). WHY as: only the
+ * chains the action builds exist.
+ */
+function recordingAdmin(
+  error: { code?: string; message: string } | null = null,
+  invites: Array<{ auth_user_id: string }> = [{ auth_user_id: 'invitee-1' }],
+  inviteError: { message: string } | null = null
+) {
+  const chains: RecordedChain[] = []
   const client = {
     from: (table: string) => {
-      tables.push(table)
+      const recorded: RecordedChain = { table, isDelete: false, eq: {}, is: {} }
+      chains.push(recorded)
+      const chain = {
+        select: (columns: string) => {
+          recorded.select = columns
+          return chain
+        },
+        delete: () => {
+          recorded.isDelete = true
+          return chain
+        },
+        is: (column: string, value: null) => {
+          recorded.is[column] = value
+          return chain
+        },
+        eq: (column: string, value: string) => {
+          recorded.eq[column] = value
+          return chain
+        },
+        then: (resolve: (r: unknown) => unknown) =>
+          resolve(
+            table === 'team_invites'
+              ? { data: inviteError ? null : invites, error: inviteError }
+              : { error }
+          ),
+      }
       return chain
     },
   }
-  return { client: client as never, predicates, tables }
+  return { client: client as never, chains }
+}
+
+/** The pending-invites delete the action must build, scoped to the caller's agency. */
+const INVITES_DELETE: RecordedChain = {
+  table: 'team_invites',
+  isDelete: true,
+  eq: { agency_id: AGENCY_ID },
+  is: { accepted_at: null },
+  select: 'auth_user_id',
+}
+
+/** The one workspace delete, scoped to the caller's agency. */
+const AGENCY_DELETE: RecordedChain = {
+  table: 'agencies',
+  isDelete: true,
+  eq: { id: AGENCY_ID },
+  is: {},
 }
 
 describe('deleteWorkspace', () => {
@@ -161,15 +213,15 @@ describe('deleteWorkspace', () => {
     expect(await deleteWorkspace('  about  social media ')).toEqual({ ok: true, data: undefined })
   })
 
-  it('deletes the one row, scoped to the caller’s agency, then the identities, the storage and the caches', async () => {
+  it('deletes the pending invites, then the workspace row, both scoped to the caller’s agency, then every login — pending invitees’ and members’ — the storage and the caches', async () => {
     const admin = recordingAdmin()
     mocks.createAdminSupabaseClient.mockReturnValue(admin.client)
 
     expect(await deleteWorkspace('About Social Media')).toEqual({ ok: true, data: undefined })
 
-    expect(admin.tables).toEqual(['agencies'])
-    expect(admin.predicates).toEqual({ id: AGENCY_ID })
+    expect(admin.chains).toEqual([INVITES_DELETE, AGENCY_DELETE])
     expect(mocks.deleteAuthIdentity.mock.calls).toEqual([
+      [admin.client, 'invitee-1', 'workspace:delete'],
       [admin.client, 'user-1', 'workspace:delete'],
       [admin.client, 'user-2', 'workspace:delete'],
     ])
@@ -183,31 +235,64 @@ describe('deleteWorkspace', () => {
   })
 
   it('names the missing migration when a foreign key still blocks the delete, and sweeps nothing', async () => {
-    mocks.createAdminSupabaseClient.mockReturnValue(
-      recordingAdmin({ code: '23503', message: 'violates foreign key constraint' }).client
-    )
+    const admin = recordingAdmin({ code: '23503', message: 'violates foreign key constraint' })
+    mocks.createAdminSupabaseClient.mockReturnValue(admin.client)
     expect(await deleteWorkspace('About Social Media')).toEqual({
       ok: false,
       error: 'Cannot delete: the database is missing migration 20260856.',
     })
-    expect(mocks.deleteAuthIdentity).not.toHaveBeenCalled()
+    expect(mocks.deleteAuthIdentity.mock.calls).toEqual([
+      [admin.client, 'invitee-1', 'workspace:delete'],
+    ])
     expect(mocks.sweepClientStorage).not.toHaveBeenCalled()
     expect(mocks.revalidateTag).not.toHaveBeenCalled()
   })
 
-  it('reports any other database failure plainly', async () => {
-    mocks.createAdminSupabaseClient.mockReturnValue(
-      recordingAdmin({ message: 'connection reset' }).client
-    )
+  it('reports any other database failure plainly, and still deletes the logins whose invites it deleted', async () => {
+    const admin = recordingAdmin({ message: 'connection reset' })
+    mocks.createAdminSupabaseClient.mockReturnValue(admin.client)
     expect(await deleteWorkspace('About Social Media')).toEqual({
       ok: false,
       error: 'Could not delete the workspace. Please try again.',
     })
+    expect(mocks.deleteAuthIdentity.mock.calls).toEqual([
+      [admin.client, 'invitee-1', 'workspace:delete'],
+    ])
   })
 
   it('still answers ok when an identity survives — the rows are gone either way', async () => {
     mocks.deleteAuthIdentity.mockResolvedValueOnce(false)
     expect(await deleteWorkspace('About Social Media')).toEqual({ ok: true, data: undefined })
-    expect(mocks.deleteAuthIdentity).toHaveBeenCalledTimes(2)
+    expect(mocks.deleteAuthIdentity).toHaveBeenCalledTimes(3)
+  })
+
+  it('deletes every login the invite delete returned, before the members’', async () => {
+    const admin = recordingAdmin(null, [
+      { auth_user_id: 'invitee-1' },
+      { auth_user_id: 'invitee-2' },
+    ])
+    mocks.createAdminSupabaseClient.mockReturnValue(admin.client)
+
+    expect(await deleteWorkspace('About Social Media')).toEqual({ ok: true, data: undefined })
+
+    expect(mocks.deleteAuthIdentity.mock.calls.map(([, id]) => id)).toEqual([
+      'invitee-1',
+      'invitee-2',
+      'user-1',
+      'user-2',
+    ])
+  })
+
+  it('refuses, deleting nothing else, when the pending invites cannot be deleted', async () => {
+    const admin = recordingAdmin(null, [], { message: 'timeout' })
+    mocks.createAdminSupabaseClient.mockReturnValue(admin.client)
+    expect(await deleteWorkspace('About Social Media')).toEqual({
+      ok: false,
+      error: 'Could not delete the workspace. Please try again.',
+    })
+    expect(admin.chains).toEqual([INVITES_DELETE])
+    expect(mocks.deleteAuthIdentity).not.toHaveBeenCalled()
+    expect(mocks.sweepClientStorage).not.toHaveBeenCalled()
+    expect(mocks.revalidateTag).not.toHaveBeenCalled()
   })
 })

@@ -18,11 +18,16 @@ interface IntegrationsTabProps {
   members: CanvaTeamMember[]
 }
 
-/** Third-party connections. Each manager links their own account. */
+/**
+ * Third-party connections. Each manager links their own account.
+ *
+ * A disconnect clears its row at once, but `members` from the server page stays the source of
+ * truth: the local set only masks connection ids until the refresh lands. Only the viewer's own
+ * connection offers Disconnect, and `disconnectCanvaConnection` refuses anyone else's.
+ */
 export function IntegrationsTab({ currentUserId, members }: IntegrationsTabProps) {
   const router = useRouter()
   const [disconnecting, setDisconnecting] = useState<string | null>(null)
-  // Optimistic only — derived from props so a refresh is always the source of truth.
   const [disconnectedIds, setDisconnectedIds] = useState<Set<string>>(new Set())
 
   const visible = members.map((m) =>
@@ -97,7 +102,6 @@ export function IntegrationsTab({ currentUserId, members }: IntegrationsTabProps
                 <StatusPill tone="bad">Not connected</StatusPill>
               )}
 
-              {/* Only your own connection is yours to sever. */}
               {member.id === currentUserId && member.connectionId && (
                 <Button
                   variant="ghost"

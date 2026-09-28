@@ -5,12 +5,7 @@ import { SyncLine } from '../components/document/sync-line'
 const NOW = new Date().toISOString()
 
 describe('SyncLine', () => {
-  /**
-   * The exact string `syncClientMetrics` throws, five phases and all. The stamp is current
-   * because `recordSyncHealth` runs on success AND failure, so freshness alone cannot say
-   * whether the run finished — only `syncError` can.
-   */
-  it('says the run did not finish and names the phases — even when the stamp looks fresh', () => {
+  it('says the run did not finish and names the phases — a failed run stamps last_sync_at fresh too, so only syncError can tell', () => {
     render(
       <SyncLine
         lastSyncAt={NOW}
@@ -43,12 +38,7 @@ describe('SyncLine', () => {
     expect(screen.getByText(/Synced nightly/)).toBeInTheDocument()
   })
 
-  /**
-   * Reachable only because `lastSyncAt` comes from `social_connections.last_sync_at`. Dated from
-   * the day rows instead, any on-demand refill would re-stamp it and a cron that had not fired
-   * for a week would still read "Synced nightly".
-   */
-  it('calls a clean-but-old run stale', () => {
+  it('calls a clean-but-old run stale — the stamp is last_sync_at, which only a sync run writes, not the on-demand refill', () => {
     const threeNightsAgo = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString()
     render(
       <SyncLine

@@ -4,33 +4,34 @@ import { resolveAuth } from '@/lib/auth/resolve-auth'
 import { fetchClientData } from '@/lib/clients/fetch-client-data'
 import { aiRateLimitResponse } from '@/lib/auth/rate-limit'
 import { requireEntitledRoute } from '@/lib/billing/require-entitled'
-import { allowanceResponse, reserveUsage, runMetered } from '@/lib/billing/usage'
+import { reserveUsage, runMetered, spendFailureResponse } from '@/lib/billing/usage'
 import { performRewrite } from '@/ai/rewrite/rewrite-post'
 import { MAX_CAROUSEL_SLIDES } from '@/utils/constants'
 
 /**
- * Every field here is spent on a model call, so each carries a ceiling.
- *
- * `postType` and `rewriteReason` are enums rather than strings because both steer which
- * validations run downstream — `postType` picks the carousel path, `rewriteReason` picks
- * the checks. They were typed as unions and never checked, so an unexpected value chose
- * a branch by falling through it.
- *
- * The caption cap is generous against Instagram's 2200 limit: rewrite is also offered on
- * drafts a judge has already flagged as overlong, and rejecting those at the boundary
- * would block the one action that fixes them.
+ * The caption cap is generous against Instagram's 2200 limit (`CAPTION_MAX_CHARS`,
+ * src/lib/meta/networks/instagram-caption.ts): rewrite is also offered on drafts a judge has
+ * already flagged as overlong, and rejecting those at the boundary would block the one action
+ * that fixes them.
  */
 const MAX_CAPTION_CHARS = 5000
 const MAX_SLIDE_FIELD_CHARS = 2000
 const MAX_EVIDENCE_ITEMS = 50
 
+/**
+ * Every field here is spent on a model call, so each carries a ceiling. `postType` and
+ * `rewriteReason` are enums rather than strings because both steer which validations run
+ * downstream: `postType` picks the carousel path, `rewriteReason` picks the checks, and an
+ * unchecked value would choose a branch by falling through it. A slide keeps its other fields
+ * (`slide_number`, `slide_role`), since the rewritten text is merged back onto it and saved whole.
+ */
 const rewriteSchema = z.object({
   clientId: z.uuid(),
   caption: z.string().min(1).max(MAX_CAPTION_CHARS),
   postType: z.enum(['single', 'carousel']),
   slidesJson: z
     .array(
-      z.object({
+      z.looseObject({
         headline: z.string().max(MAX_SLIDE_FIELD_CHARS),
         body: z.string().max(MAX_SLIDE_FIELD_CHARS),
       })
@@ -45,11 +46,16 @@ const rewriteSchema = z.object({
   rewriteReason: z.enum(['quality', 'language', 'source_grounding', 'manual']).optional(),
 })
 
+/** What the person reads when a rewrite fails without a reason of its own. */
+const REWRITE_FAILED = 'Failed to rewrite post. Please try again.'
+
 /**
  * Rewrite one post's copy against its validation evidence and return the fresh draft. One rewrite
  * is reserved from the allowance before the model runs and counted only once the model has
  * answered — `runMetered` gives it back if the call throws, so only a rewrite that exists is on
- * the meter.
+ * the meter. The route's work is a model call, so a failed spend answers 502 in the error's own
+ * words, or 402 when the allowance refused it (`spendFailureResponse`); a throw before the spend
+ * is ours, a 500.
  */
 export async function POST(request: Request) {
   try {
@@ -90,15 +96,10 @@ export async function POST(request: Request) {
       })
       return NextResponse.json(result)
     } catch (err) {
-      const refusal = allowanceResponse(err)
-      if (refusal) return refusal
-      throw err
+      return spendFailureResponse(err, 'rewrite', REWRITE_FAILED)
     }
   } catch (error) {
     console.error('[rewrite] Unhandled error:', error)
-    return NextResponse.json(
-      { error: 'Failed to rewrite post. Please try again.' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: REWRITE_FAILED }, { status: 500 })
   }
 }

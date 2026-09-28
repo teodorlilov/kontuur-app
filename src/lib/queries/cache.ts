@@ -31,30 +31,44 @@ import {
 } from '@/lib/queries/week-coverage'
 import { publishStateOf, toPublicationSummary } from '@/lib/posts/publish-state'
 
-type Agency = Database['public']['Tables']['agencies']['Row']
 type Client = Database['public']['Tables']['clients']['Row']
 
 /**
- * Returns the full agency row for the given agencyId.
- * - unstable_cache: persists in Next.js Data Cache across requests (60s TTL, 'agencies' tag)
+ * The agency row's columns every render reads (`AGENCY_COLUMNS`), or null when there is no row.
+ * - unstable_cache: persists in Next.js Data Cache across requests (60s TTL, 'agencies' tag). A
+ *   failed read throws inside it, so an error is never stored as "no row" for a minute.
  * - React cache(): deduplicates within a single SSR request so layout + page share one result
  * Call revalidateTag('agencies') after any agency mutation to clear stale entries immediately.
  */
 const _fetchAgency = unstable_cache(
-  async (agencyId: string): Promise<Agency | null> => {
-    const supabase = createAdminSupabaseClient()
-    const { data } = await supabase
+  async (agencyId: string) => {
+    const { data, error } = await createAdminSupabaseClient()
       .from('agencies')
       .select(AGENCY_COLUMNS)
       .eq('id', agencyId)
-      .single()
-    return data as Agency | null
+      .maybeSingle()
+    if (error) throw new Error(`agency read failed: ${error.message}`)
+    return data
   },
   ['agency'],
   { revalidate: 60, tags: ['agencies'] }
 )
 
-export const getCachedAgency = cache(_fetchAgency)
+/**
+ * The cached agency row, or null — for a missing row, and for a failed read, which degrades as a
+ * missing row always has for its callers (a locked entitlement, the shell's defaults, UTC where a
+ * timezone is needed) for this one request and is never cached. It is logged here because the
+ * read is its callers' only view of the failure: a throw would fail every page that renders the
+ * shell.
+ */
+export const getCachedAgency = cache(async (agencyId: string) => {
+  try {
+    return await _fetchAgency(agencyId)
+  } catch (err) {
+    console.error(`[cache] agency read failed for ${agencyId}:`, err)
+    return null
+  }
+})
 
 /**
  * What the workspace may do, derived from the same cached agency read every dashboard render

@@ -87,7 +87,7 @@ describe('insertDraftPosts', () => {
     })
   })
 
-  it("keeps the AI's own words when the caller carries them, and falls back when it does not", async () => {
+  it("keeps the AI's own words a duplicate carries, which distill-style-memo.ts diffs edits against, else uses the caption", async () => {
     const { supabase, inserted } = makeSupabase({ data: [{ id: 'p1' }], error: null })
 
     await insertDraftPosts(
@@ -99,24 +99,19 @@ describe('insertDraftPosts', () => {
       'pending_review'
     )
 
-    // A duplicate of an edited post: the baseline is the ORIGINAL's, or the edit-diff the style
-    // memo reads would file the reviewer's own wording as the model's.
     expect(inserted[0]?.[0]).toMatchObject({
       caption: 'The reviewer rewrote this',
       generated_caption: 'What the AI wrote',
     })
-    // A freshly generated draft has no baseline yet — it IS the baseline.
     expect(inserted[0]?.[1]).toMatchObject({ caption: 'Hello', generated_caption: 'Hello' })
   })
 
-  it("writes nothing to the client's topic history — a draft is not a topic the client has had", async () => {
+  it("writes nothing to the client's topic history — a topic joins it only once a reviewer keeps the post (post-actions.ts)", async () => {
     const { supabase } = makeSupabase({ data: [{ id: 'p1' }, { id: 'p2' }], error: null })
 
     await insertDraftPosts(supabase, [DRAFT, { ...DRAFT, topic_summary: 'Avatars' }], 'draft')
     await insertDraftPosts(supabase, [DRAFT], 'pending_review')
 
-    // The history is the "do not suggest this again" list. A discarded draft must leave it
-    // untouched, so the topic joins it when a reviewer keeps the post (`recordKeptTopics`).
     expect(recordPostTopics).not.toHaveBeenCalled()
   })
 
@@ -150,13 +145,13 @@ describe('persistStreamedDraft', () => {
     resolveScheme.mockReset().mockResolvedValue({ ground: '#111111', accent: '#eeeeee' })
   })
 
-  it('picks the pair against the run and inserts the draft wearing it, under its own id', async () => {
+  it('picks the pair against the run and inserts the draft wearing it, under its own id, with its run, idea and date', async () => {
     const { supabase, inserted } = makeSupabase({ data: [{ id: 'p9' }], error: null })
 
     await persistStreamedDraft(supabase, {
       post: STREAMED,
       identity: { palette: {}, style: 'editorial' } as never,
-      run: { id: 'run-1', index: 2, clientId: 'c1' },
+      run: { id: 'run-1', index: 2 },
       clientIdeaId: 'idea-7',
     })
 
@@ -170,25 +165,10 @@ describe('persistStreamedDraft', () => {
       priority: true,
       visual_ground: '#111111',
       visual_accent: '#eeeeee',
-      // What the draft must still know once the browser is gone.
       generation_run_id: 'run-1',
       client_idea_id: 'idea-7',
       target_date: '2026-09-25',
     })
-  })
-
-  it('falls back to the client for the pair when no run could be opened', async () => {
-    const { supabase, inserted } = makeSupabase({ data: [{ id: 'p9' }], error: null })
-
-    await persistStreamedDraft(supabase, {
-      post: STREAMED,
-      identity: { palette: {}, style: 'editorial' } as never,
-      run: { id: null, index: 1, clientId: 'c1' },
-      clientIdeaId: null,
-    })
-
-    expect(resolveScheme).toHaveBeenCalledWith(expect.objectContaining({ base: 'c1', offset: 1 }))
-    expect(inserted[0]?.[0]).toMatchObject({ generation_run_id: null, client_idea_id: null })
   })
 
   it('a run whose kit could not be read inserts without a pair rather than not at all', async () => {
@@ -197,7 +177,7 @@ describe('persistStreamedDraft', () => {
     await persistStreamedDraft(supabase, {
       post: STREAMED,
       identity: null,
-      run: { id: 'run-1', index: 0, clientId: 'c1' },
+      run: { id: 'run-1', index: 0 },
       clientIdeaId: null,
     })
 

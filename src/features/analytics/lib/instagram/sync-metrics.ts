@@ -22,7 +22,7 @@ import {
   type SyncPhase,
 } from '../shared/sync-shared'
 import { fetchPostIdsByMediaId } from '@/lib/queries/posts-by-media-id'
-import type { SyncableConnection } from '@/lib/queries/select-columns'
+import type { ClientSyncableConnection } from '@/lib/queries/select-columns'
 import { MS_PER_DAY, SECONDS_PER_DAY } from '@/utils/constants'
 import { dayKeyToUnixSeconds, shiftDateKey } from '@/utils/date-helpers'
 import { backfillOnlineFollowers, ONLINE_FOLLOWERS_BACKFILL_DAYS } from './online-followers'
@@ -52,10 +52,8 @@ const MEDIA_LOOKBACK_DAYS = 30
 const CONSOLIDATION_DAYS = 7
 
 /**
- * Every client with a live Instagram connection, one at a time. Per-client
- * failures are contained: dead tokens notify the agency and move on, one
- * rate-limit answer stops the whole run (tomorrow retries), anything else
- * skips just that client.
+ * Every client with a live Instagram connection, one at a time, through `syncRoster`
+ * (../shared/sync-shared.ts) — its doc is the failure ladder this run answers to.
  */
 export async function syncAllClientMetrics(
   admin: SupabaseClient,
@@ -89,7 +87,7 @@ export async function syncAllClientMetrics(
  */
 async function syncClientMetrics(
   admin: SupabaseClient,
-  connection: SyncableConnection & { client_id: string }
+  connection: ClientSyncableConnection
 ): Promise<void> {
   const { client_id: clientId, account_id: accountId, access_token: accessToken } = connection
   const hadHistory = await hasAccountHistory(admin, clientId, accountId)

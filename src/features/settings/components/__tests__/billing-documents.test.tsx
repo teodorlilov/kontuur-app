@@ -13,6 +13,7 @@ describe('BillingDocuments', () => {
             kind: 'invoice',
             issued_at: '2025-10-01T18:30:05.000Z',
             gross_cents: 6840,
+            storage_path: 'a1/1000000001.pdf',
             url: 'https://signed/1',
           },
           {
@@ -21,6 +22,7 @@ describe('BillingDocuments', () => {
             kind: 'credit_note',
             issued_at: '2025-10-05T07:00:00.000Z',
             gross_cents: 2261,
+            storage_path: null,
             url: null,
           },
         ]}
@@ -41,5 +43,36 @@ describe('BillingDocuments', () => {
   it('says so when there is nothing yet', () => {
     render(<BillingDocuments documents={[]} />)
     expect(screen.getByText(/No documents yet/)).toBeInTheDocument()
+  })
+
+  it('says a stored document with no link is unavailable and asks for a reload, while one still being made is still being made', () => {
+    render(
+      <BillingDocuments
+        documents={[
+          {
+            id: 'doc_1',
+            number: 1_000_000_001,
+            kind: 'invoice',
+            issued_at: '2025-10-01T18:30:05.000Z',
+            gross_cents: 6840,
+            storage_path: 'a1/1000000001.pdf',
+            url: null,
+          },
+          {
+            id: 'doc_2',
+            number: 1_000_000_002,
+            kind: 'invoice',
+            issued_at: '2025-10-02T18:30:05.000Z',
+            gross_cents: 6840,
+            storage_path: null,
+            url: null,
+          },
+        ]}
+      />
+    )
+    expect(screen.getByText('Unavailable')).toBeInTheDocument()
+    expect(screen.getByText('Preparing…')).toBeInTheDocument()
+    expect(screen.getByText(/Reload the page to try again/)).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Download' })).not.toBeInTheDocument()
   })
 })

@@ -4,7 +4,6 @@ import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import { POST_IMAGE_COLUMNS } from '@/lib/queries/select-columns'
 import { mapImageRow } from '@/lib/posts/map-image-row'
 import type { PostImage } from '@/types/api'
-import type { PostImageRow } from '@/types/index'
 
 /**
  * The bulk read of a post's images.
@@ -42,26 +41,41 @@ export async function fetchCanvasDocPositions(postIds: string[]): Promise<Map<st
 }
 
 /**
- * Fetch images for a set of posts, grouped by post id and ordered by position. Uses the admin client
+ * How many posts' images one request asks for. PostgREST answers at most 1000 rows and cuts the
+ * rest without an error; at `MAX_CAROUSEL_SLIDES` (10) images a post, 50 posts stay well inside it.
+ */
+const IMAGE_READ_CHUNK = 50
+
+/**
+ * Fetch images for a set of posts, grouped by post id and ordered by position — read in chunks of
+ * `IMAGE_READ_CHUNK` posts, so a large set is never silently cut short. Uses the admin client
  * because `post_images` has RLS that blocks the user-scoped client — callers must only pass ids of
- * posts they have already authorized.
+ * posts they have already authorized. Throws on a failed read: a dropped error would render as
+ * posts with no art.
  */
 export async function fetchImagesByPost(postIds: string[]): Promise<Map<string, PostImage[]>> {
   const imagesByPost = new Map<string, PostImage[]>()
   if (postIds.length === 0) return imagesByPost
 
   const admin = createAdminSupabaseClient()
-  const { data: imageRows, error } = await admin
-    .from('post_images')
-    .select(POST_IMAGE_COLUMNS)
-    .in('post_id', postIds)
-    .order('position', { ascending: true })
-  // A dropped error here renders as posts with no art, which is what the empty
-  // calendar looked like when this failed silently before.
-  if (error) throw new Error(`post image query failed: ${error.message}`)
+  const chunks: string[][] = []
+  for (let start = 0; start < postIds.length; start += IMAGE_READ_CHUNK) {
+    chunks.push(postIds.slice(start, start + IMAGE_READ_CHUNK))
+  }
+  const reads = await Promise.all(
+    chunks.map((ids) =>
+      admin
+        .from('post_images')
+        .select(POST_IMAGE_COLUMNS)
+        .in('post_id', ids)
+        .order('position', { ascending: true })
+    )
+  )
+  const failed = reads.find((read) => read.error)
+  if (failed?.error) throw new Error(`post image query failed: ${failed.error.message}`)
+  const imageRows = reads.flatMap((read) => read.data ?? [])
 
-  // as: explicit column projection — Supabase types from the table, not the select
-  for (const row of (imageRows as PostImageRow[] | null) ?? []) {
+  for (const row of imageRows) {
     const list = imagesByPost.get(row.post_id) ?? []
     list.push(mapImageRow(row))
     imagesByPost.set(row.post_id, list)

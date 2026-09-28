@@ -10,7 +10,7 @@ const schedule = (day: string, time: string | null) => ({
   auto_generate_time: time,
 })
 
-/** 2026-08-04 is a Tuesday. */
+/** 2026-08-04 is a Tuesday, when Europe/Sofia runs at UTC+3. */
 const TUE_17_30_UTC = new Date('2026-08-04T17:30:00Z')
 
 describe('getScheduleDue', () => {
@@ -30,7 +30,6 @@ describe('getScheduleDue', () => {
   })
 
   it('evaluates day and hour in the agency zone, not UTC', () => {
-    // 14:05 UTC is 17:05 in Sofia (UTC+3 in summer) — due there, not in UTC.
     const afternoon = new Date('2026-08-04T14:05:00Z')
     expect(getScheduleDue(schedule('tuesday', '17:00'), 'Europe/Sofia', afternoon).due).toBe(true)
     expect(getScheduleDue(schedule('tuesday', '17:00'), 'UTC', afternoon).due).toBe(false)
@@ -44,13 +43,11 @@ describe('getScheduleDue', () => {
       'Europe/Sofia',
       new Date('2026-08-04T15:45:00Z')
     )
-    // Sofia's 17:00 slot is 14:00 UTC.
     expect(sofia.scheduledAt.toISOString()).toBe('2026-08-04T14:00:00.000Z')
   })
 
   it('reports the local hour, for scarce-retry-first ordering', () => {
     expect(getScheduleDue(schedule('tuesday', '17:00'), 'UTC', TUE_17_30_UTC).localHour).toBe(17)
-    // 15:45 UTC is 18:45 in Sofia (UTC+3 in summer).
     expect(
       getScheduleDue(schedule('tuesday', '17:00'), 'Europe/Sofia', new Date('2026-08-04T15:45:00Z'))
         .localHour

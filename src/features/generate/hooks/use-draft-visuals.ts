@@ -64,9 +64,7 @@ export function useDraftVisuals({ canPaint }: { canPaint: boolean }) {
       tracked.current.add(post.id)
       setImagesByPost((current) => ({ ...current, [post.id]: images }))
       visuals.noteInFlight(post, generatingPositions)
-      const owed = missingPositions(post, images).filter(
-        (position) => !generatingPositions.includes(position)
-      )
+      const owed = missingPositions(post, images, generatingPositions)
       if (canPaint && owed.length > 0) void visuals.generate(post, owed)
       const clean = unbakedImages(images, composedPositions)
       if (clean.length > 0) void visuals.composeMissing(post, clean)

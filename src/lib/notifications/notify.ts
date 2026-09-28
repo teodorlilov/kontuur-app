@@ -2,20 +2,17 @@ import 'server-only'
 
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { NotificationType } from '@/types/api'
+import type { Database } from '@/types/database'
 import { MS_PER_DAY } from '@/utils/constants'
 
 /**
- * The one writer of `notifications`.
- *
- * There were five. This module held two of them behind a shared cooldown; the other three inserted
- * straight into the table — the approval-response notifier, and the two approval routes, which
- * built the same agency_id-only row and the same sentence a few files apart. Between them they set
- * no `type`, which `types/api.ts` declares as a closed set and the notification bell keys its
- * feedback badge off, and no `client_id`, while naming the client inside the message string. Those
- * rows cannot be linked back to a client at all.
- *
- * `message` is the dedup key, so a caller whose wording varies with an error re-notifies on every
- * tick. Keep the sentence phrase-stable for a given condition.
+ * The one insert into `notifications` (shell-context.tsx only marks rows read), with two ways to
+ * land once. An EVENT (a trial ending on a
+ * date, a period's allowance crossing a line) passes `dedupKey`: the unique
+ * `(agency_id, dedup_key)` index (migration 20260861) makes a repeat write nothing, even from two
+ * invocations at once. A CONDITION that persists (a publish failing, a connection retired) is held
+ * back by `cooldownDays` on the sentence instead, so `message` is its dedup key: keep it
+ * phrase-stable for a given condition, or it re-notifies on every tick.
  */
 
 /** Suppress duplicate notifications with the same message for this long. */
@@ -48,29 +45,64 @@ interface NotifyInput {
   reviewToken?: string
   /** Days to suppress an identical message. `NOTIFY_EVERY_TIME` for user-caused events. */
   cooldownDays?: number
+  /**
+   * The event's identity, for an event that must land once however often it is reported. With a
+   * key the cooldown is not read: the unique index is the dedup.
+   */
+  dedupKey?: string
 }
 
-/** What `notify` did: wrote the row, held it back under the cooldown, or could not write it. */
+/**
+ * What `notify` did: wrote the row, held it back (a repeat key, the cooldown, or no agency to
+ * notify), or could not write it.
+ */
 type NotifyOutcome = 'written' | 'suppressed' | 'failed'
 
 /**
- * Insert an agency notification, at most once per cooldown for the same message, and say which
- * of the three things happened — the billing cron (src/lib/billing/reminders.ts) mails only
- * behind 'written', so a redelivered tick never mails twice, and reports a 'failed'.
+ * Insert an agency notification — once per `dedupKey`, or at most once per cooldown for the same
+ * message — and say what happened: the billing cron (src/lib/billing/reminders.ts) mails only
+ * behind 'written', so a redelivered tick never mails twice. A keyed upsert returns only a row it
+ * inserted, so an empty answer is a repeat.
  *
- * Never throws on a failed insert — every caller reaches this after the thing it is reporting has
- * already happened, so failing here would report a completed action as broken. A cooldown-check
- * failure is different and does throw: reading it as "none sent" would re-notify on every tick,
- * which is the outcome the cooldown exists to prevent.
+ * Never throws on a failed insert: the thing being reported has already happened, and a throw
+ * would report it as broken. A failed cooldown check does throw — read as "none sent", it would
+ * re-notify on every tick.
  */
-export async function notify(admin: SupabaseClient, input: NotifyInput): Promise<NotifyOutcome> {
+export async function notify(
+  admin: SupabaseClient<Database>,
+  input: NotifyInput
+): Promise<NotifyOutcome> {
   const { agencyId, clientName } = await resolveTarget(admin, input)
   if (!agencyId) return 'suppressed'
 
   const message =
     typeof input.message === 'function' ? input.message(clientName ?? '') : input.message
-  const cooldownDays = input.cooldownDays ?? NOTIFY_COOLDOWN_DAYS
+  const row = {
+    agency_id: agencyId,
+    client_id: input.clientId ?? null,
+    message,
+    type: input.type ?? null,
+    post_id: input.postId ?? null,
+    feedback_text: input.feedbackText ?? null,
+    review_token: input.reviewToken ?? null,
+  }
 
+  if (input.dedupKey) {
+    const { data, error } = await admin
+      .from('notifications')
+      .upsert(
+        { ...row, dedup_key: input.dedupKey },
+        { onConflict: 'agency_id,dedup_key', ignoreDuplicates: true }
+      )
+      .select('id')
+    if (error) {
+      console.error('[notify] insert failed:', error.message)
+      return 'failed'
+    }
+    return data.length > 0 ? 'written' : 'suppressed'
+  }
+
+  const cooldownDays = input.cooldownDays ?? NOTIFY_COOLDOWN_DAYS
   if (cooldownDays > 0) {
     const since = new Date(Date.now() - cooldownDays * MS_PER_DAY).toISOString()
     const { data: existing, error } = await admin
@@ -84,15 +116,7 @@ export async function notify(admin: SupabaseClient, input: NotifyInput): Promise
     if (existing && existing.length > 0) return 'suppressed'
   }
 
-  const { error } = await admin.from('notifications').insert({
-    agency_id: agencyId,
-    client_id: input.clientId ?? null,
-    message,
-    type: input.type ?? null,
-    post_id: input.postId ?? null,
-    feedback_text: input.feedbackText ?? null,
-    review_token: input.reviewToken ?? null,
-  })
+  const { error } = await admin.from('notifications').insert(row)
   if (error) {
     console.error('[notify] insert failed:', error.message)
     return 'failed'
@@ -107,7 +131,7 @@ export async function notify(admin: SupabaseClient, input: NotifyInput): Promise
  * row again for its `agency_id`.
  */
 async function resolveTarget(
-  admin: SupabaseClient,
+  admin: SupabaseClient<Database>,
   input: NotifyInput
 ): Promise<{ agencyId: string | null; clientName: string | null }> {
   if (!input.clientId) return { agencyId: input.agencyId ?? null, clientName: null }
@@ -118,6 +142,5 @@ async function resolveTarget(
     .eq('id', input.clientId)
     .maybeSingle()
   if (error) throw new Error(`client lookup failed: ${error.message}`)
-  const row = data as { agency_id: string | null; name: string } | null
-  return { agencyId: input.agencyId ?? row?.agency_id ?? null, clientName: row?.name ?? null }
+  return { agencyId: input.agencyId ?? data?.agency_id ?? null, clientName: data?.name ?? null }
 }

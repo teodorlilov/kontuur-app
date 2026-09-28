@@ -1,6 +1,5 @@
 import type Anthropic from '@anthropic-ai/sdk'
-import { anthropic, DEFAULT_MODEL } from '@/utils/ai-client'
-import { anthropicUsageOf, recordAiUsage } from '@/lib/billing/telemetry'
+import { attributedClaudeCall, DEFAULT_MODEL } from '@/utils/ai-client'
 import { sanitizeAndParseJson } from '@/utils/ai'
 import { briefingItemSchema, type BriefingItem } from './schema'
 
@@ -96,44 +95,30 @@ function searchedPageKeys(content: Anthropic.ContentBlock[]): Set<string> {
 }
 
 /**
- * This week's platform changes, each backed by a page the search returned.
- *
- * The raw client rather than `callAnthropic`, which has no `tools` option. Two 5-series
- * decisions live here: `thinking` is omitted so Sonnet 5 runs adaptive thinking on its own, and
- * `max_tokens` is sized for that — thinking tokens count against it, and the old 2048 budget was
- * what made a searched-and-reasoned answer arrive truncated. `effort: 'low'` keeps the searches
- * consolidated; check `usage.server_tool_use.web_search_requests` before raising it.
- *
- * Verification is the whole point of the module: an item survives only if its `source_url`
- * names a page among the search results, compared by `pageKey`. The count of items that did not
- * survive is returned, not logged — the cron is the boundary, and it is the one that logs.
- *
- * Throws on any API failure, and on a response with no JSON array in it: `sanitizeAndParseJson`
- * hands back its fallback on a parse failure, and an `[]` fallback would have turned a broken
- * answer into a quiet "nothing changed" week. An honest `[]` from the model is a legitimate
- * week, not an error.
+ * This week's platform changes, each kept only if its `source_url` is a page the search returned
+ * (`pageKey`). Goes through `attributedClaudeCall` because `callAnthropic` has no `tools` option.
+ * `thinking` is left out so Sonnet 5 thinks adaptively; those tokens count against `max_tokens`,
+ * and a 2048 budget truncated the answer. `effort: 'low'` keeps the searches consolidated — check
+ * `usage.server_tool_use.web_search_requests` before raising it. Throws on an API failure or a
+ * reply with no JSON array: only the model's own `[]` may read as a quiet week.
  */
 export async function generateBriefing(window: BriefingWindow): Promise<BriefingRun> {
-  const response = await anthropic.messages.create({
-    model: DEFAULT_MODEL,
-    max_tokens: 16000,
-    output_config: { effort: 'low' },
-    tools: [
-      {
-        type: 'web_search_20260209',
-        name: 'web_search',
-        max_uses: MAX_SEARCHES,
-        allowed_domains: BRIEFING_SOURCE_DOMAINS,
-      },
-    ],
-    messages: [{ role: 'user', content: buildPrompt(window) }],
-  })
-
-  void recordAiUsage({
-    provider: 'anthropic',
-    model: DEFAULT_MODEL,
-    usage: anthropicUsageOf(response),
-  })
+  const response = await attributedClaudeCall(DEFAULT_MODEL, (client) =>
+    client.messages.create({
+      model: DEFAULT_MODEL,
+      max_tokens: 16000,
+      output_config: { effort: 'low' },
+      tools: [
+        {
+          type: 'web_search_20260209',
+          name: 'web_search',
+          max_uses: MAX_SEARCHES,
+          allowed_domains: BRIEFING_SOURCE_DOMAINS,
+        },
+      ],
+      messages: [{ role: 'user', content: buildPrompt(window) }],
+    })
+  )
 
   const text = stripCiteTags(
     response.content

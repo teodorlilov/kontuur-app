@@ -9,7 +9,7 @@ import {
   type SupabaseServerClient,
 } from '@/lib/auth/helpers'
 import { parseActionId } from '@/lib/actions/parse-input'
-import { createAdminSupabaseClient } from '@/lib/supabase/admin'
+import { createAdminSupabaseClient, type AdminClient } from '@/lib/supabase/admin'
 import { sweepClientStorage } from '@/lib/clients/sweep-client-storage'
 import { parsePillars } from '@/lib/clients/content-pillars'
 import { removeDeletedPillarIds } from '@/lib/clients/sync-source-pillars'
@@ -23,41 +23,37 @@ import {
   type ScheduleInput,
   type UpdateClientInput,
 } from '@/features/clients/schemas'
-import { provisionClient } from '@/features/clients/lib/provision-client'
+import {
+  provisionClient,
+  takeBackClient,
+  unprovisionClient,
+} from '@/features/clients/lib/provision-client'
 import { countClientsByAgency } from '@/lib/queries/db'
 import { getCachedAgency, getCachedEntitlement, revalidateClientData } from '@/lib/queries/cache'
 import { requireEntitledAction } from '@/lib/billing/require-entitled'
-import { addBrandRefusal } from '@/lib/billing/copy'
-import { billedSubscriptionId, syncSubscriptionQuantity } from '@/lib/billing/quantity-sync'
+import { addBrandRefusal, clientRosterRefusal } from '@/lib/billing/copy'
+import {
+  QuantityChargeError,
+  billedSubscriptionId,
+  openSubscriptionId,
+  syncSubscriptionQuantity,
+} from '@/lib/billing/quantity-sync'
+import type { Entitlement } from '@/lib/billing/entitlement'
 import type { ActionResult } from '@/lib/actions/types'
 
 /**
  * Create a client with its brand profile, posting schedule and visual identity — the one place a
- * client is created, in both modes.
- *
- * Replaces `POST /api/clients`, which was this app's last create-by-route-handler — docs/CLAUDE.md
- * puts mutations behind server actions, and `updateClient` below was already one. Both paths
- * still share `createClientSchema`/`updateClientSchema`, so the write shape is declared once.
- *
- * Busts the roster with `{ expire: 0 }`, not `'max'`: the caller navigates straight to
- * `/generate?client=<id>`, whose first-run gate reads `getCachedAgencyClients`, and `'max'` is
- * stale-while-revalidate — it would serve the cached empty list once and send a solo workspace
- * back to setup (the same reason as src/lib/meta/connection-store.ts `retireConnection`).
- *
- * The brand cap is judged here and nowhere else. The tenant role cannot insert into `clients`
- * since migration 20260854, so the admin client below is the only way a brand comes into
- * existence and this count is the only door past the cap.
- *
- * On a paid workspace Stripe is told BEFORE the row exists: the new count is charged pro rata,
- * and a declined card means no brand and the card's sentence. If the row then cannot be made,
- * the count is put back with a credit, so nobody pays for a client that does not exist.
+ * client is created, in both modes, and the only door past the brand cap: the tenant role cannot
+ * insert into `clients` since migration 20260854. Auth runs before validation, so an
+ * unauthenticated caller cannot fill the log with parse issues. After the insert the plan has its
+ * say in `settleNewClient`. The roster busts with `{ expire: 0 }`, not `'max'`: the caller goes
+ * straight to `/generate?client=<id>`, whose first-run gate would get the cached empty list and
+ * send a solo workspace back to setup (`retireConnection`, src/lib/meta/connection-store.ts).
  */
 export async function createClient(input: CreateClientInput): Promise<ActionResult<string>> {
-  // Auth before validation, for the same reason updateClient does it: parsing first lets an
-  // unauthenticated caller fill the log with issues from input we never intended to act on.
   const auth = await resolveActionAuth()
   if (!auth.ok) return { ok: false, error: auth.error }
-  const { supabase, agencyId } = auth
+  const { supabase, agencyId, role } = auth
   const refused = await requireEntitledAction(agencyId, 'create')
   if (refused) return refused
 
@@ -72,24 +68,12 @@ export async function createClient(input: CreateClientInput): Promise<ActionResu
     getCachedEntitlement(agencyId),
     getCachedAgency(agencyId),
   ])
-  const subscriptionId = billedSubscriptionId(entitlement, agency)
-  const brands =
-    entitlement.brandsUnlimited && !subscriptionId
-      ? 0
-      : await countClientsByAgency(supabase, agencyId)
-  const capped = addBrandRefusal(entitlement, brands)
+  const brands = entitlement.brandsUnlimited ? 0 : await countClientsByAgency(supabase, agencyId)
+  const capped = addBrandRefusal(entitlement, brands, role)
   if (capped) return { ok: false, error: capped }
 
-  if (subscriptionId) {
-    try {
-      await syncSubscriptionQuantity(subscriptionId, brands + 1, 'charge')
-    } catch (err) {
-      console.error(`[clients:create] quantity charge failed for ${agencyId}:`, err)
-      return { ok: false, error: err instanceof Error ? err.message : 'Could not add the client' }
-    }
-  }
-
-  const result = await provisionClient(createAdminSupabaseClient(), {
+  const admin = createAdminSupabaseClient()
+  const result = await provisionClient(admin, {
     agencyId,
     name: data.name,
     niche: data.niche,
@@ -102,14 +86,10 @@ export async function createClient(input: CreateClientInput): Promise<ActionResu
     identity: data.visual_identity,
     identitySource: data.visual_identity_source,
   })
-  if (!result.ok) {
-    if (subscriptionId) {
-      await syncSubscriptionQuantity(subscriptionId, brands, 'credit').catch((err: unknown) =>
-        console.error(`[clients:create] quantity credit failed for ${agencyId}:`, err)
-      )
-    }
-    return { ok: false, error: result.error }
-  }
+  if (!result.ok) return { ok: false, error: result.error }
+
+  const refusal = await settleNewClient(admin, entitlement, agency, agencyId, result.clientId, role)
+  if (refusal) return { ok: false, error: refusal }
 
   revalidateTag('agency-clients', { expire: 0 })
   return { ok: true, data: result.clientId }
@@ -157,51 +137,32 @@ export async function updateClient(
 }
 
 /**
- * Permanently delete a client, every row that belongs to it, and its stored files.
- *
- * Rows go by database cascade (20260820) rather than by a delete-per-table here: the FK graph
- * reaches ~18 tables and any list maintained in TypeScript would drift from it silently. The
- * storage sweep and the cache busts are the shared `sweepClientStorage` and
- * `revalidateClientData`, which `deleteWorkspace` (features/settings) runs per client too.
- *
- * KNOWN LIMITATION, deliberate: a post already in `publishing` holds an open Instagram Graph
- * call and still reaches the account after this returns. The publish run's follow-up write then
- * updates zero rows, which Supabase does not report as an error, so nothing surfaces. Guarding
- * it would mean refusing the delete for up to one cron tick; that trade was declined.
- *
- * On a paid workspace the count reaches Stripe after the row is gone, uncharged (the price drops
- * from the next renewal). A Stripe failure there is logged, not surfaced: the client is already
- * gone, and the next count written heals it.
+ * Permanently delete a client, its rows (the 20260820 cascade, via `unprovisionClient`) and its
+ * stored files; the warn line is the only record it existed. Admins only, and ownership is checked
+ * on the user-scoped client before the delete runs on the admin client, which the cascade needs
+ * for tables with RLS on and no policies. While a subscription is open (`openSubscriptionId`) the
+ * lower count reaches Stripe after the row is gone, uncharged; a failure there is logged, not
+ * surfaced (`syncSubscriptionQuantity` says what heals it). Deliberate gap: a post already
+ * `publishing` still reaches the account, and its run's follow-up write silently matches no row;
+ * guarding that would refuse the delete for up to one cron tick.
  */
 export async function deleteClient(clientId: string): Promise<ActionResult> {
-  // Auth before validation, matching createClient and updateClient above.
   const auth = await resolveActionAuth()
   if (!auth.ok) return { ok: false, error: auth.error }
-  const { supabase, agencyId } = auth
+  const { supabase, agencyId, role } = auth
+  const notAllowed = clientRosterRefusal(role)
+  if (notAllowed) return { ok: false, error: notAllowed }
 
   const parsed = parseActionId(clientId, 'clientId')
   if (!parsed.ok) return parsed.result
 
-  // Ownership on the user-scoped client, and it returns the name in the same round trip —
-  // the audit line below is the only record this client ever existed.
   const client = await fetchClientWithOwnership(supabase, parsed.id, agencyId)
   if (!client) return { ok: false, error: 'Not found' }
 
-  // Admin because the cascade reaches tables with RLS on and no policies (post_images,
-  // discarded_drafts, client_ideas, idea_form_tokens, brand_visual_identity,
-  // client_style_memos). The agency_id predicate stays precisely because admin bypasses
-  // RLS: it is the last check standing between this statement and another agency's client.
   const admin = createAdminSupabaseClient()
-  const { error } = await admin
-    .from('clients')
-    .delete()
-    .eq('id', parsed.id)
-    .eq('agency_id', agencyId)
-
+  const error = await unprovisionClient(admin, parsed.id, agencyId)
   if (error) {
     console.error(`[clients:delete] failed for ${parsed.id}:`, error.message)
-    // 23503 means a child FK is still NO ACTION — i.e. 20260820 has not reached this
-    // database. The generic message makes that indistinguishable from a transient fault.
     if (error.code === '23503') {
       return { ok: false, error: 'Cannot delete: the database is missing migration 20260820.' }
     }
@@ -209,9 +170,6 @@ export async function deleteClient(clientId: string): Promise<ActionResult> {
   }
 
   const swept = await sweepClientStorage(parsed.id)
-
-  // warn, not error: nothing failed. An irreversible action needs a trace, and this codebase
-  // has no info level.
   console.warn(
     `[clients:delete] removed "${client.name}" (${parsed.id}) — ` +
       `${swept.images} images, ${swept.files} files`
@@ -221,10 +179,11 @@ export async function deleteClient(clientId: string): Promise<ActionResult> {
     getCachedEntitlement(agencyId),
     getCachedAgency(agencyId),
   ])
-  const subscriptionId = billedSubscriptionId(entitlement, agency)
+  const subscriptionId = openSubscriptionId(entitlement, agency)
   if (subscriptionId) {
-    const remaining = await countClientsByAgency(supabase, agencyId)
-    await syncSubscriptionQuantity(subscriptionId, remaining, 'none').catch((err: unknown) =>
+    await syncSubscriptionQuantity(admin, agencyId, subscriptionId, {
+      direction: 'decrease',
+    }).catch((err: unknown) =>
       console.error(`[clients:delete] quantity decrease failed for ${agencyId}:`, err)
     )
   }
@@ -236,6 +195,57 @@ export async function deleteClient(clientId: string): Promise<ActionResult> {
 }
 
 // ── Internal helpers ──
+
+/**
+ * What the plan says about a client `createClient` just provisioned: null when it stays, or the
+ * refusal once it has been taken back. A capped plan re-judges the cap after the insert with the
+ * same rule and `role`, so two creates racing past it both give way instead of both keeping one; a
+ * re-count that fails keeps the client, since the check before the insert passed. A billed plan
+ * charges through `syncSubscriptionQuantity`; only its `QuantityChargeError` undoes the client,
+ * then a decrease lowers any uncharged restore that increase made. Any other failure keeps the
+ * client, logged, and the under-count heals on the next add, so no SDK message reaches the form.
+ */
+async function settleNewClient(
+  admin: AdminClient,
+  entitlement: Entitlement,
+  agency: { stripe_subscription_id: string | null; current_period_start: string | null } | null,
+  agencyId: string,
+  clientId: string,
+  role: string
+): Promise<string | null> {
+  if (!entitlement.brandsUnlimited) {
+    const count = await countClientsByAgency(admin, agencyId).catch((err: unknown) => {
+      console.error(`[clients:create] cap re-count failed for ${agencyId}; client kept:`, err)
+      return null
+    })
+    const refusal = count === null ? null : addBrandRefusal(entitlement, count - 1, role)
+    if (refusal) await takeBackClient(admin, clientId, agencyId)
+    return refusal
+  }
+  const subscriptionId = billedSubscriptionId(entitlement, agency)
+  if (!subscriptionId) return null
+  try {
+    await syncSubscriptionQuantity(admin, agencyId, subscriptionId, {
+      direction: 'increase',
+      paid: entitlement.brands,
+      paidFor: agency?.current_period_start ?? null,
+    })
+    return null
+  } catch (err) {
+    console.error(`[clients:create] quantity sync failed for ${agencyId}:`, err)
+    if (!(err instanceof QuantityChargeError)) return null
+    await takeBackClient(admin, clientId, agencyId)
+    await syncSubscriptionQuantity(admin, agencyId, subscriptionId, {
+      direction: 'decrease',
+    }).catch((decreaseErr: unknown) =>
+      console.error(
+        `[clients:create] quantity decrease after undo failed for ${agencyId}:`,
+        decreaseErr
+      )
+    )
+    return err.message
+  }
+}
 
 /**
  * Log the database's reason at the boundary and hand the user a plain one.

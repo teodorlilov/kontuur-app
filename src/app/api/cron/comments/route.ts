@@ -13,11 +13,14 @@ export const maxDuration = 300
 const TIME_BUDGET_MS = 240_000
 
 /**
- * Cron endpoint — Instagram comment capture for every connected client.
+ * Cron endpoint — comment capture on every commentable network (`COMMENTABLE_PLATFORMS`,
+ * src/lib/meta/networks/index.ts) for each client whose workspace may still publish
+ * (`fetchEntitledClients`); the others are counted as skipped.
  *
  * Runs every 30 minutes, which it can afford because the sync only fetches posts
  * whose comment count disagrees with what is already stored. A quiet half hour
- * costs one Graph call per client.
+ * costs one Graph call per connected account. The comment-queue tag is busted only when a run fetched
+ * something, so a quiet tick keeps the cached queue warm.
  */
 export async function GET(request: NextRequest) {
   const unauthorized = unauthorizedCron(request)
@@ -31,8 +34,6 @@ export async function GET(request: NextRequest) {
       timeBudgetMs: TIME_BUDGET_MS,
       entitledClientIds,
     })
-    // Only when something actually moved. The common case is a run that fetched
-    // nothing, and busting the tag then would throw away a warm queue for no reason.
     if (result.fetched > 0) revalidateTag(PLATFORM_COMMENTS_TAG, 'max')
     const elapsedS = Math.round((Date.now() - startedAt) / 1000)
     if (result.errors.length > 0) {

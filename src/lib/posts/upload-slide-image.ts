@@ -1,7 +1,6 @@
 import { validateImageFile } from '@/features/assets/lib/validate-image-file'
-import { mapImageRow } from '@/lib/posts/map-image-row'
+import { readImageResponse } from '@/lib/posts/map-image-row'
 import type { PostImage } from '@/types/api'
-import type { PostImageRow } from '@/types/index'
 
 /**
  * Replace the image at a slide position with a file the user picked.
@@ -29,8 +28,5 @@ export async function uploadSlideImage(
   form.append('position', String(position))
 
   const res = await fetch(`/api/posts/${postId}/images`, { method: 'POST', body: form })
-  const data = await res.json()
-  if (!res.ok) throw new Error(data.error ?? 'Upload failed')
-
-  return mapImageRow(data.image as PostImageRow)
+  return readImageResponse(res, 'Upload failed')
 }

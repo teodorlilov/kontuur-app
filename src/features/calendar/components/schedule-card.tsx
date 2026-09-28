@@ -1,6 +1,7 @@
 'use client'
 
 import { memo, useState, useEffect, useCallback, useMemo } from 'react'
+import { z } from 'zod'
 import {
   AltArrowLeftIcon,
   AltArrowRightIcon,
@@ -11,6 +12,7 @@ import {
 import { Icon } from '@/components/ui/icon'
 import { cn } from '@/utils/cn'
 import { toast } from '@/components/ui/toast'
+import { readErrorMessage } from '@/utils/read-error-message'
 import { watchPublishOutcome } from '@/features/publishing/lib/watch-publish'
 import { fetchLiveLinks, type LiveLink } from '@/features/publishing/lib/live-links'
 import { duplicatePostAsDraft } from '@/lib/actions/post-actions'
@@ -29,7 +31,7 @@ import type { EditorSlide } from '@/features/canvas-editor/types'
 import { ImageSlot } from '@/components/posts/image-slot'
 import { useCanvaStatus } from '@/hooks/use-canva-status'
 import { useGenerateVisuals } from '@/components/posts/use-generate-visuals'
-import { missingImagePositions } from '@/lib/posts/image-list'
+import { missingPositions, totalVisualSlots } from '@/lib/visual/visual-backlog'
 import { extractAllFlaggedSlides } from '@/utils/extract-flagged-slides'
 import type { CalendarPost, CarouselSlide, PostImage, ValidationData } from '@/types/api'
 import {
@@ -84,6 +86,12 @@ const SECTION_LABEL_BARE = 'text-label font-semibold uppercase text-text2'
 /** The caption block's frame — Body role (which already carries 1.6) on an ink wash. */
 const CAPTION_CONTAINER =
   'rounded-md border border-line bg-ink/[0.025] px-3.5 py-3 text-body text-ink'
+
+/**
+ * The publish route's success body, as far as the card reads it: the networks the press reached
+ * (src/app/api/posts/[id]/publish/route.ts). A missing or malformed list reads as none.
+ */
+const publishAnswerSchema = z.object({ platforms: z.array(z.string()).catch([]) })
 
 /** Footer buttons shown when the modal is in edit mode. */
 function EditModeFooter({
@@ -281,10 +289,9 @@ export const ScheduleCard = memo(function ScheduleCard({
     ? (currentPost.slides_json as CarouselSlide[])
     : []
   const isCarousel = currentPost.post_type === 'carousel'
-  const totalImageSlots = isCarousel ? slides.length : 1
-  const missingPositions = missingImagePositions(images, totalImageSlots, generatingPositions)
+  const totalImageSlots = totalVisualSlots(currentPost)
+  const missingSlots = missingPositions(currentPost, images, generatingPositions)
   const slotsWithoutImage = totalImageSlots - images.length
-  // No point generating visuals for content that is already (or currently being) published.
   const canGenerateVisuals = !isPublished && displayState !== 'publishing'
   const pillarColor = currentPost.pillar ? getPillarColor(currentPost.pillar) : null
   const score = currentPost.quality_score_avg
@@ -325,37 +332,34 @@ export const ScheduleCard = memo(function ScheduleCard({
     toast.success('Copied to clipboard')
   }
 
+  /**
+   * Publish this post now. The spinner resets in `finally` because `onClose()` does not unmount
+   * this card in the review deck, so a spinner left true would carry to the next post. Messages
+   * and `onPublished` use the networks the route reached (`platforms`): a post published from the
+   * tray has no publications in this copy of the state. A 202 is deferred — the card closes at
+   * once and `watchPublishOutcome` reports each destination as it lands, refreshing the card for
+   * any that went out even when a sibling failed ('partly').
+   */
   async function handlePublishNow() {
     setPublishing(true)
     setPublishError(null)
     try {
       const res = await fetch(`/api/posts/${currentPost.id}/publish`, { method: 'POST' })
-      const data = (await res.json()) as { error?: string; platforms?: string[] }
-      // The networks the route reached. A post published from the tray has no publications in
-      // this copy of the state, so without them the card cannot mark itself published.
-      const platforms = data.platforms ?? []
+      if (!res.ok) {
+        setPublishError((await readErrorMessage(res)) ?? 'Publish failed')
+        return
+      }
+      const { platforms } = publishAnswerSchema.parse(await res.json())
       if (res.status === 202) {
-        // Deferred publish: the container exists and the server finishes out of
-        // band. Close now, and let the watcher report the real outcome — even
-        // after this dialog is gone.
         const postId = currentPost.id
-        // Every one of these named Instagram outright, so a post going to a Facebook Page was
-        // announced as published to Instagram. The route already says where it went.
-        const going = namePlatforms(platforms)
-        toast.info(`Publishing to ${going}…`)
+        toast.info(`Publishing to ${namePlatforms(platforms)}…`)
         watchPublishOutcome(postId, {
-          // Each destination as it lands, rather than nothing until the slowest finishes: a
-          // Facebook Page is live in about seven seconds where an Instagram carousel takes
-          // half a minute, and every one of these messages used to say "Instagram" regardless.
           onSettled: (platform, outcome, reason) => {
             const name = namePlatforms([platform])
             if (outcome === 'published') toast.success(`Published to ${name}`)
             else toast.error(`${name} publish failed: ${reason}`, { duration: 12_000 })
           },
           onDone: ({ published }) => {
-            // Refresh the card for anything that went out. A post live on one network and
-            // failed on another is 'partly', which the card renders from its publications —
-            // so it is told about the successes even when a sibling destination failed.
             if (published.length > 0) onPublished?.(postId, published)
           },
           onStillProcessing: (stillGoing) => {
@@ -364,19 +368,13 @@ export const ScheduleCard = memo(function ScheduleCard({
             )
           },
         })
-        onClose()
-      } else if (res.ok) {
-        onPublished?.(currentPost.id, platforms)
-        onClose()
       } else {
-        setPublishError(data.error ?? 'Publish failed')
+        onPublished?.(currentPost.id, platforms)
       }
+      onClose()
     } catch {
-      // A thrown fetch (network drop) must not strand the spinner.
       setPublishError('Publish failed — check your connection and try again')
     } finally {
-      // Always reset: onClose() does not unmount this card in the review deck,
-      // so a spinner left true here would carry to the next post.
       setPublishing(false)
     }
   }
@@ -632,17 +630,15 @@ export const ScheduleCard = memo(function ScheduleCard({
                     <button
                       className={cn(
                         'border-none bg-transparent p-0 text-label font-medium tracking-normal text-spring-text',
-                        missingPositions.length === 0
-                          ? 'cursor-default opacity-60'
-                          : 'cursor-pointer'
+                        missingSlots.length === 0 ? 'cursor-default opacity-60' : 'cursor-pointer'
                       )}
                       type="button"
                       onClick={() => {
-                        void generate(missingPositions)
+                        void generate(missingSlots)
                       }}
-                      disabled={missingPositions.length === 0}
+                      disabled={missingSlots.length === 0}
                     >
-                      {missingPositions.length === 0
+                      {missingSlots.length === 0
                         ? '✨ Generating visuals…'
                         : `✨ Generate visuals (${slotsWithoutImage})`}
                     </button>

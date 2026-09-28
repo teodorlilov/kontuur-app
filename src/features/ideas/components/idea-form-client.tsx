@@ -8,6 +8,7 @@ import {
   FOCUS_RING,
 } from '@/components/ui/form/control-classes'
 import { cn } from '@/utils/cn'
+import { readErrorMessage } from '@/utils/read-error-message'
 import {
   EXTRA_NOTES_MAX,
   IDEA_TEXT_MAX,
@@ -57,6 +58,12 @@ export function IdeaFormClient({ token, clientName, agencyName }: IdeaFormClient
     setBriefs((prev) => prev.filter((b) => b.id !== id))
   }
 
+  /**
+   * Send the filled briefs. A refusal shows the route's own sentence, not one generic string: a
+   * client whose link was deleted must learn to ask for a new one, and one over the hourly cap to
+   * wait, where "try again" can never work. Only a request that never completed — offline, DNS, a
+   * dropped connection — is told to retry, since retrying is genuinely the fix for those.
+   */
   async function handleSubmit() {
     const valid = briefs.filter((b) => b.ideaText.trim())
     if (valid.length === 0) {
@@ -77,15 +84,8 @@ export function IdeaFormClient({ token, clientName, agencyName }: IdeaFormClient
         setSubmitted(true)
         return
       }
-      // The route's own message, not one generic string for every failure. A client
-      // whose link was deleted was told to "try again", which can never work — they
-      // need to know to ask for a new link. Same for the hourly cap, where the fix
-      // is to wait rather than to retry immediately.
-      const body = (await res.json().catch(() => null)) as { error?: string } | null
-      setError(body?.error ?? 'Something went wrong. Please try again.')
+      setError((await readErrorMessage(res)) ?? 'Something went wrong. Please try again.')
     } catch {
-      // Reaching here means the request never completed — offline, DNS, a dropped
-      // connection. Retrying is genuinely the right advice for those.
       setError('Could not reach us just now. Please check your connection and try again.')
     } finally {
       setSubmitting(false)

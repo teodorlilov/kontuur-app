@@ -4,17 +4,16 @@ import userEvent from '@testing-library/user-event'
 
 /**
  * Cancelling never leaves the app and never happens on one click: the consequence is read and
- * confirmed first. Keeping is one click. Both refresh, since the action already wrote the row.
+ * confirmed first. Keeping is one click. Neither asks the router for a refresh: the action's own
+ * response carries the page re-rendered from the row it wrote.
  */
 const mocks = vi.hoisted(() => ({
   setPlanEndingAction: vi.fn(),
-  refresh: vi.fn(),
   toast: Object.assign(vi.fn(), { success: vi.fn(), error: vi.fn() }),
 }))
 vi.mock('@/features/settings/actions/billing-actions', () => ({
   setPlanEndingAction: (ending: boolean) => mocks.setPlanEndingAction(ending),
 }))
-vi.mock('next/navigation', () => ({ useRouter: () => ({ refresh: mocks.refresh }) }))
 vi.mock('@/components/ui/toast', () => ({ toast: mocks.toast }))
 
 import { PlanEndControl } from '../plan-end-control'
@@ -24,10 +23,10 @@ const CONSEQUENCE = 'Your plan ends on 1 October and nothing more is charged.'
 describe('PlanEndControl', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mocks.setPlanEndingAction.mockResolvedValue({ ok: true })
+    mocks.setPlanEndingAction.mockResolvedValue({ ok: true, data: { endedNow: false } })
   })
 
-  it('cancels only after the consequence is read and confirmed, then refreshes', async () => {
+  it('cancels only after the consequence is read and confirmed', async () => {
     const user = userEvent.setup()
     render(<PlanEndControl ending={false} consequence={CONSEQUENCE} />)
     await user.click(screen.getByRole('button', { name: 'Cancel plan' }))
@@ -41,8 +40,20 @@ describe('PlanEndControl', () => {
       within(screen.getByRole('dialog')).getByRole('button', { name: 'Cancel plan' })
     )
     await waitFor(() => expect(mocks.setPlanEndingAction).toHaveBeenCalledWith(true))
-    await waitFor(() => expect(mocks.refresh).toHaveBeenCalledTimes(1))
-    expect(mocks.toast.success).toHaveBeenCalledWith('Your plan is set to end.')
+    await waitFor(() =>
+      expect(mocks.toast.success).toHaveBeenCalledWith('Your plan is set to end.')
+    )
+  })
+
+  it('says the plan has ended when the action ended it at once', async () => {
+    mocks.setPlanEndingAction.mockResolvedValue({ ok: true, data: { endedNow: true } })
+    const user = userEvent.setup()
+    render(<PlanEndControl ending={false} consequence={CONSEQUENCE} />)
+    await user.click(screen.getByRole('button', { name: 'Cancel plan' }))
+    await user.click(
+      within(screen.getByRole('dialog')).getByRole('button', { name: 'Cancel plan' })
+    )
+    await waitFor(() => expect(mocks.toast.success).toHaveBeenCalledWith('Your plan has ended.'))
   })
 
   it('keeps an ending plan on one click', async () => {
@@ -50,10 +61,10 @@ describe('PlanEndControl', () => {
     render(<PlanEndControl ending consequence={CONSEQUENCE} />)
     await user.click(screen.getByRole('button', { name: 'Keep plan' }))
     await waitFor(() => expect(mocks.setPlanEndingAction).toHaveBeenCalledWith(false))
-    await waitFor(() => expect(mocks.refresh).toHaveBeenCalledTimes(1))
+    await waitFor(() => expect(mocks.toast.success).toHaveBeenCalledWith('Your plan continues.'))
   })
 
-  it('shows a refusal as a toast and refreshes nothing', async () => {
+  it('shows a refusal as a toast and nothing else', async () => {
     mocks.setPlanEndingAction.mockResolvedValue({
       ok: false,
       error: 'Your plan is not set to end.',
@@ -64,6 +75,6 @@ describe('PlanEndControl', () => {
     await waitFor(() =>
       expect(mocks.toast.error).toHaveBeenCalledWith('Your plan is not set to end.')
     )
-    expect(mocks.refresh).not.toHaveBeenCalled()
+    expect(mocks.toast.success).not.toHaveBeenCalled()
   })
 })

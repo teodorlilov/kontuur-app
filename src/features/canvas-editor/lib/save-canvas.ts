@@ -1,7 +1,6 @@
-import { mapImageRow } from '@/lib/posts/map-image-row'
+import { readImageResponse } from '@/lib/posts/map-image-row'
 import type { CanvasDoc } from '@/types/canvas'
 import type { PostImage } from '@/types/api'
-import type { PostImageRow } from '@/types/index'
 
 function flattenedFile(blob: Blob, position: number): File {
   return new File([blob], `slide-${position + 1}.jpg`, { type: 'image/jpeg' })
@@ -29,8 +28,6 @@ export async function savePostCanvas(
   formData.set('doc', JSON.stringify(doc))
   formData.set('baseImagePath', baseImagePath)
   const res = await fetch(`/api/posts/${postId}/canvas`, { method: 'PUT', body: formData })
-  const body = (await res.json()) as { image?: PostImageRow; error?: string }
   if (res.status === 409) throw new StaleImageError()
-  if (!res.ok || !body.image) throw new Error(body.error ?? 'Saving the design failed')
-  return mapImageRow(body.image)
+  return readImageResponse(res, 'Saving the design failed')
 }

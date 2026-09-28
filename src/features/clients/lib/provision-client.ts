@@ -1,6 +1,7 @@
 import 'server-only'
 
-import type { SupabaseClient } from '@supabase/supabase-js'
+import type { PostgrestError } from '@supabase/supabase-js'
+import type { AdminClient } from '@/lib/supabase/admin'
 import { webResearchSourceRow } from '@/lib/sources/web-research-source'
 import { upsertVisualIdentity } from '@/lib/visual/queries'
 import { buildDefaultIdentity } from '@/lib/visual/identity'
@@ -24,23 +25,17 @@ interface ProvisionClientInput {
 type ProvisionClientResult = { ok: true; clientId: string } | { ok: false; error: string }
 
 /**
- * Create a client and everything a client must have to work. The ONE way that happens, and
- * `createClient` (features/clients/actions/client-actions.ts) is its one caller in both modes.
- *
- * The contract every client relies on, in one place so it cannot drift:
- *  - always a `brand_visual_identity` row, so the first generation runs against
- *    `buildDefaultIdentity()` rather than whatever the read path falls back to;
- *  - always the web-research row, because `shouldSearchWeb` is `!!tavilyRow` and a client without
- *    one silently never researches (migration 20260814 backfilled the ones that predate this);
- *  - rollback on a failed child insert, so a retry does not add a second client of the same name.
- *
- * Everything past the `clients` row is defaulted, so a caller that knows nothing but a name gets a
- * complete, working client. The onboarding form passes what the user typed.
- *
- * Takes the Supabase client rather than creating one: the caller runs user-scoped under RLS.
+ * Create a client and everything a client must have to work — the one way that happens, called
+ * only by `createClient` (features/clients/actions/client-actions.ts); past `agencyId` and `name`,
+ * all is defaulted. Always writes the web-research row (`shouldSearchWeb` is `!!tavilyRow`, so a
+ * client without it silently never searches the web; migration 20260814 backfilled older clients)
+ * and tries a visual identity, the one non-fatal step, so a hiccup there cannot lose a client just
+ * filled in by hand. A failed child insert rolls the client back, so a retry adds no second
+ * client of the same name. Takes the admin client (the tenant role cannot insert into `clients`,
+ * migration 20260854) and the agency `resolveActionAuth` returned, never one from the form.
  */
 export async function provisionClient(
-  supabase: SupabaseClient,
+  supabase: AdminClient,
   input: ProvisionClientInput
 ): Promise<ProvisionClientResult> {
   const { data: created, error: clientError } = await supabase
@@ -62,7 +57,7 @@ export async function provisionClient(
     return { ok: false, error: 'Failed to create client' }
   }
 
-  const clientId = (created as { id: string }).id
+  const clientId = created.id
   const bp = input.brandProfile
   const ps = input.postingSchedule
 
@@ -91,9 +86,6 @@ export async function provisionClient(
         auto_generate_day: ps?.auto_generate_day,
         auto_generate_time: ps?.auto_generate_time,
       }),
-      // Web research is a per-client capability, not a source someone adds, so it has no "add"
-      // button and needs a creation moment of its own. Created here so absence is impossible and
-      // the toggle always has a row to bind to.
       supabase.from('client_sources').insert(webResearchSourceRow(clientId)),
     ])
 
@@ -102,18 +94,7 @@ export async function provisionClient(
       '[clients:provision] child insert failed:',
       profileError ?? scheduleError ?? webResearchError
     )
-    // Roll the client back rather than leave a half-built row behind: the user's retry would
-    // otherwise add a second client with the same name. This deletes the client row alone and lets
-    // the cascade take whichever children did land — which is only true as of 20260820. Before it,
-    // every child FK was NO ACTION, so this rollback raised 23503 in exactly the case it exists for.
-    const { error: rollbackError } = await supabase.from('clients').delete().eq('id', clientId)
-    if (rollbackError) {
-      console.error(
-        '[clients:provision] rollback failed, client is orphaned:',
-        clientId,
-        rollbackError
-      )
-    }
+    await takeBackClient(supabase, clientId, input.agencyId)
     return {
       ok: false,
       error: profileError
@@ -124,8 +105,6 @@ export async function provisionClient(
     }
   }
 
-  // Non-fatal: a visuals hiccup must not lose a client the user just filled in by hand. It is still
-  // attempted for every caller — a client with no identity row is the drift this function removes.
   const identity = input.identity ?? buildDefaultIdentity()
   const identitySource: SourceKind = input.identity ? (input.identitySource ?? 'manual') : 'default'
   const { error: identityError } = await upsertVisualIdentity(clientId, identity, identitySource)
@@ -134,4 +113,41 @@ export async function provisionClient(
   }
 
   return { ok: true, clientId }
+}
+
+/**
+ * Delete one client row — the one delete of a client, behind `deleteClient`'s admin check and
+ * `takeBackClient`. The row alone: the cascade (migration 20260820) takes every child row with it,
+ * so no table list is kept here to drift. The `agency_id` predicate is the last check between this
+ * admin-client statement and another agency's client. The error is handed back, not thrown.
+ */
+export async function unprovisionClient(
+  admin: AdminClient,
+  clientId: string,
+  agencyId: string
+): Promise<PostgrestError | null> {
+  const { error } = await admin
+    .from('clients')
+    .delete()
+    .eq('id', clientId)
+    .eq('agency_id', agencyId)
+  return error
+}
+
+/**
+ * Remove a client made moments ago that must not stay — a failed provision, or a create the plan
+ * then refused (`createClient`). One that cannot be removed is logged as orphaned; nothing else can
+ * be done for it here.
+ */
+export async function takeBackClient(
+  admin: AdminClient,
+  clientId: string,
+  agencyId: string
+): Promise<void> {
+  const error = await unprovisionClient(admin, clientId, agencyId)
+  if (error)
+    console.error(
+      `[clients:create] client ${clientId} could not be removed and is orphaned:`,
+      error
+    )
 }

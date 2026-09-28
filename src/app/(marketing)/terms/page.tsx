@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { Footer } from '@/features/marketing/components/footer'
+import { COMPANY } from '@/utils/constants'
 import {
   proseBackLink,
   proseContainer,
@@ -27,12 +28,12 @@ export default function TermsPage() {
           <Link className={proseBackLink} href="/">
             ← Back
           </Link>
-          <p className={proseEyebrow}>Last updated: July 29, 2026</p>
+          <p className={proseEyebrow}>Last updated: September 27, 2026</p>
           <h1 className={proseH1}>Terms of Service</h1>
           <p className={proseLead}>
             These Terms of Service (&quot;Terms&quot;) govern your access to and use of Kontuur,
-            operated by Chelling Ltd (&quot;we&quot;, &quot;us&quot;, &quot;our&quot;). By creating
-            an account or using the platform, you agree to these Terms.
+            operated by {COMPANY.legalName} (&quot;we&quot;, &quot;us&quot;, &quot;our&quot;). By
+            creating an account or using the platform, you agree to these Terms.
           </p>
 
           <div className={proseDivider} />
@@ -61,7 +62,9 @@ export default function TermsPage() {
           <ul className={proseList}>
             <li>Keeping your login credentials confidential.</li>
             <li>All activity that occurs under your account.</li>
-            <li>Notifying us immediately at support@kontuur.io of any unauthorised access.</li>
+            <li>
+              Notifying us immediately at support@{COMPANY.domain} of any unauthorised access.
+            </li>
           </ul>
           <p className={proseP}>
             You must not share your account with others or create multiple accounts to circumvent
@@ -129,12 +132,18 @@ export default function TermsPage() {
           {/* 6. Subscription and billing */}
           <h2 className={proseH2}>6. Subscription and Billing</h2>
           <p className={proseP}>
-            Kontuur is offered on a monthly or annual subscription basis. Fees are charged at the
-            start of each billing period and are non-refundable except where required by law.
+            Kontuur is offered on a monthly subscription basis. Fees are charged monthly in advance
+            and are non-refundable except where required by law. A client added beyond those already
+            paid for in the current period is charged pro rata, normally at once, or on the next
+            invoice when that amount is below the payment provider&apos;s minimum charge. Removing a
+            client refunds nothing, and re-adding one within the number already paid for costs
+            nothing until renewal.
           </p>
           <p className={proseP}>
             You may cancel your subscription at any time from the Settings page. Cancellation takes
-            effect at the end of the current billing period; you retain access until then.
+            effect at the end of the paid billing period, and you keep access until then. If a
+            renewal payment has failed, cancelling ends the plan immediately and the unpaid renewal
+            is not collected.
           </p>
           <p className={proseP}>
             We reserve the right to change pricing with 30 days&apos; notice. Continued use after
@@ -149,9 +158,9 @@ export default function TermsPage() {
             service.
           </p>
           <p className={proseP}>
-            The Kontuur platform, including its software, design, and trademarks, is owned by
-            Chelling Ltd. You may not copy, modify, or distribute any part of the platform without
-            our written consent.
+            The Kontuur platform, including its software, design, and trademarks, is owned by{' '}
+            {COMPANY.legalName}. You may not copy, modify, or distribute any part of the platform
+            without our written consent.
           </p>
 
           {/* 8. Disclaimer */}
@@ -166,7 +175,7 @@ export default function TermsPage() {
           {/* 9. Limitation of liability */}
           <h2 className={proseH2}>9. Limitation of Liability</h2>
           <p className={proseP}>
-            To the maximum extent permitted by law, Chelling Ltd shall not be liable for any
+            To the maximum extent permitted by law, {COMPANY.legalName} shall not be liable for any
             indirect, incidental, special, consequential, or punitive damages arising from your use
             of Kontuur, including but not limited to lost profits, lost data, or social media
             account actions taken on your behalf.
@@ -180,9 +189,10 @@ export default function TermsPage() {
           <h2 className={proseH2}>10. Termination</h2>
           <p className={proseP}>
             We may suspend or terminate your account if you breach these Terms, fail to pay, or if
-            we are required to do so by law. You may delete your account at any time from the
-            Settings page. Upon termination, your data will be deleted in accordance with our
-            Privacy Policy.
+            we are required to do so by law. A workspace&apos;s admin may delete the whole workspace
+            from the Settings page, once any running plan is set to end. When a plan ends or an
+            account is suspended, the workspace is paused and its data kept until an admin deletes
+            it, as described in our Privacy Policy (§5).
           </p>
 
           {/* 11. Governing law */}
@@ -204,13 +214,13 @@ export default function TermsPage() {
           <h2 className={proseH2}>13. Contact</h2>
           <p className={proseP}>Questions about these Terms? Contact us at:</p>
           <p className={proseP}>
-            <strong>Chelling Ltd</strong>
+            <strong>{COMPANY.legalName}</strong>
             <br />
-            UIC 206770508, Sofia, Bulgaria
+            UIC {COMPANY.uic}, {COMPANY.address}
             <br />
             Email:{' '}
-            <a href="mailto:legal@kontuur.io" className="text-spring">
-              legal@kontuur.io
+            <a href={`mailto:legal@${COMPANY.domain}`} className="text-spring">
+              legal@{COMPANY.domain}
             </a>
           </p>
         </div>

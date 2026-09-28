@@ -3,27 +3,12 @@ import path from 'path'
 import { describe, expect, it } from 'vitest'
 
 /**
- * A PostgREST logic tree may only name columns of the table being queried.
- *
- * `or=(...)` and `and=(...)` are parsed before any join is resolved, so a condition naming an
- * embedded resource — `post_publications.published_at.gte.X` — is not a filter that returns
- * nothing. It is a syntax error, and it fails the WHOLE query:
- *
- *   failed to parse logic tree ((and(scheduled_at.gte.…,scheduled_at.lt.…),
- *   post_publications.published_at.gte.…)) (line 1, column 110)
- *
- * Two of these shipped together when the publish path was re-rooted from `posts` onto
- * `post_publications`: a filter that read as a parent column on the old table became an embedded
- * reference on the new one. One blanked the dashboard's coverage grid for every client; the other
- * was in the cron's due-publications query, where it would have thrown on every tick and published
- * nothing at all. Typecheck, lint, knip and 1,837 tests were green through both.
- *
- * Filtering the parent by an embedded column is spelled as a SEPARATE filter beside `!inner`
- * (`.eq('post_publications.status', 'published')` with `post_publications!inner(...)`), which is
- * legal precisely because it is not inside a logic tree.
- *
- * The walker is local, as it is in the eight other guard suites. Extracting one shared crawler is
- * worth doing and is not this fix's job.
+ * A PostgREST logic tree may only name columns of the table being queried. `or=(...)` and
+ * `and=(...)` are parsed before any join is resolved, so a condition naming an embedded resource
+ * (`post_publications.published_at.gte.X`) is a parse error that fails the WHOLE query, not a
+ * filter that returns nothing — and nothing else in `npm run check` sees it. Filter the parent by
+ * an embedded column as a SEPARATE filter beside `!inner` (`.eq('post_publications.status',
+ * 'published')` with `post_publications!inner(...)`), which is legal outside a logic tree.
  */
 
 const SRC = path.resolve(__dirname, '../../..')
@@ -119,11 +104,8 @@ describe('the detector', () => {
     ).toEqual(['posts.scheduled_at.lt'])
   })
 
-  it('passes the legal filters the repo actually writes', () => {
-    // A negated parent filter. `not` sits where a column would, which is the case that makes a
-    // naive two-dots-then-operator rule cry wolf.
+  it('passes the legal filters the repo actually writes: a negated parent filter, dotted values, nested parent trees', () => {
     expect(embeddedReferencesIn('and(status.eq.publishing,publish_ref.not.is.null)')).toEqual([])
-    // Dotted VALUES. A millisecond timestamp is three dots of pure noise.
     expect(
       embeddedReferencesIn(
         'visuals_attempted_at.is.null,visuals_attempted_at.lt.2026-09-01T10:30:00.000Z'
@@ -131,7 +113,6 @@ describe('the detector', () => {
     ).toEqual([])
     expect(embeddedReferencesIn('visual_ground.is.null,visual_accent.is.null')).toEqual([])
     expect(embeddedReferencesIn('quality_score_avg.is.null,quality_score_avg.gte.6')).toEqual([])
-    // Nested trees of parent columns.
     expect(
       embeddedReferencesIn(
         'and(status.eq.scheduled,or(publish_claimed_at.is.null,publish_claimed_at.lt.2026-09-01T10:00:00.000Z))'
@@ -141,18 +122,16 @@ describe('the detector', () => {
 })
 
 describe('no logic tree names an embedded resource', () => {
-  it('found the queries it means to be guarding', () => {
-    // A path typo, or a walker that quietly returns nothing, makes the sweep below pass by
-    // scanning an empty tree. Both files named here really do call `.or()`.
+  it('found the queries it means to be guarding, so a mistyped path or empty walk cannot pass the sweep', () => {
     const sources = walkSources()
     expect(sources.length).toBeGreaterThan(400)
 
     const withLogicTrees = sources.filter(({ body }) => body.includes('.or(')).map((s) => s.file)
     expect(withLogicTrees).toContain(path.join('features', 'publishing', 'lib', 'scheduler.ts'))
-    expect(withLogicTrees).toContain(path.join('app', 'api', 'cron', 'visuals', 'route.ts'))
+    expect(withLogicTrees).toContain(path.join('lib', 'visual', 'post-visuals.ts'))
   })
 
-  it('holds across every .or() in the tree', () => {
+  it('holds across every .or() in the tree, skipping comment lines: prose may describe the bug, code may not', () => {
     const offenders: string[] = []
 
     for (const { file, body } of walkSources()) {
@@ -160,7 +139,6 @@ describe('no logic tree names an embedded resource', () => {
 
       body.split('\n').forEach((line, index) => {
         const trimmed = line.trim()
-        // Prose may describe the bug; code may not reproduce it.
         if (trimmed.startsWith('//') || trimmed.startsWith('*')) return
         for (const reference of embeddedReferencesIn(line)) {
           offenders.push(`src/${file}:${index + 1} — ${reference}`)

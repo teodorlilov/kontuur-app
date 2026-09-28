@@ -31,7 +31,12 @@ export function anthropicUsageOf(message: Message): AnthropicUsage {
   }
 }
 
-/** Adds one call to today's row for the current spender. */
+/**
+ * Adds one call to today's row for the current spender. WHY as: the generated type of
+ * `p_agency_id` is `string`, but `add_ai_usage` takes NULL for a call that belongs to no agency
+ * (the global brief) and its unique index coalesces it (migration 20260852); a sentinel uuid
+ * would fail the foreign key instead.
+ */
 export async function recordAiUsage(call: Recorded): Promise<void> {
   const spender = currentSpender()
   const usage: AnthropicUsage =
@@ -51,9 +56,6 @@ export async function recordAiUsage(call: Recorded): Promise<void> {
         ? falCostCents(call.model)
         : tavilyCostCents()
   try {
-    // WHY as: the generated arg type is `string`, but the SQL accepts NULL for the one call that
-    // belongs to nobody (the global brief) and the unique index coalesces it; a sentinel uuid would
-    // fail the foreign key instead.
     const agencyId = (spender?.agencyId ?? null) as unknown as string
     const { error } = await createAdminSupabaseClient().rpc('add_ai_usage', {
       p_agency_id: agencyId,

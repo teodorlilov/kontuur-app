@@ -1,30 +1,33 @@
 import 'server-only'
 
-import type { SupabaseClient } from '@supabase/supabase-js'
-import type { Database } from '@/types/database'
+import type { AdminClient } from '@/lib/supabase/admin'
 
 /**
- * Delete one person's Supabase auth identity, after their `users` row is gone — `users.id`
- * references `auth.users` with no cascade (migration 00000000_baseline:991), so the row must go
- * first. The mirror of `createUserRecord` (create-user-record.ts).
+ * The code GoTrue answers a delete of a login that no longer exists with: 404 `user_not_found`
+ * from `loadUser` (supabase/auth, internal/api/admin.go), carried as `AuthApiError.code`
+ * (node_modules/@supabase/auth-js/src/lib/fetch.ts `handleError`). Matched by code, never by
+ * status: a malformed id is a 404 too, with `validation_failed`.
+ */
+const USER_NOT_FOUND = 'user_not_found'
+
+/**
+ * Delete one Supabase auth identity; the mirror of `createUserRecord`
+ * (src/lib/auth/create-user-record.ts). A login with a `users` row cannot go first: `users.id`
+ * references `auth.users` with no cascade (migration 00000000_baseline:991), so the caller deletes
+ * that row before this runs.
  *
- * Never throws and never fails the caller: by the time this runs, access is already gone, and a
- * failure leaves an orphaned identity that belongs to no workspace — logged under `context` so
- * the log line names who was removing whom. What that orphan costs is why the log matters: the
- * dashboard layout re-provisions a workspace for any signed-in identity that has no `users` row
- * (src/app/(dashboard)/layout.tsx:69-82), so a survivor of a workspace delete would get a fresh,
- * empty one on their next visit. Returns whether the identity is gone.
+ * A login already gone counts as deleted (`USER_NOT_FOUND`). Never throws: any other failure is
+ * logged under `context` and answered false, so the caller can say the login survived — a
+ * surviving invitee can join nothing, while a surviving original signup gets a fresh, empty
+ * workspace on their next visit (`provisionUserRecord`, src/lib/auth/provision-user-record.ts).
  */
 export async function deleteAuthIdentity(
-  admin: SupabaseClient<Database>,
+  admin: AdminClient,
   userId: string,
   context: string
 ): Promise<boolean> {
   const { error } = await admin.auth.admin.deleteUser(userId)
-  if (!error) return true
-  console.error(
-    `[${context}] user row deleted but auth account remains for ${userId}:`,
-    error.message
-  )
+  if (!error || error.code === USER_NOT_FOUND) return true
+  console.error(`[${context}] could not delete the auth account ${userId}:`, error.message)
   return false
 }

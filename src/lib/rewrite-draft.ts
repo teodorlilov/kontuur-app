@@ -1,6 +1,8 @@
 import { persistRewrite } from '@/lib/actions/post-actions'
+import type { performRewrite } from '@/ai/rewrite/rewrite-post'
 import type { PostData } from '@/types/post'
 import type { ValidationData } from '@/types/api'
+import { readErrorMessage } from '@/utils/read-error-message'
 
 interface RewriteDraftInput {
   post: PostData
@@ -18,17 +20,11 @@ interface RewriteOutcome {
 
 type RewriteResult = ({ ok: true } & RewriteOutcome) | { ok: false; error: string }
 
-/** What POST /api/ai/rewrite answers with. */
-interface Rewritten {
-  caption: string
-  slides_json: unknown
-  quality_score_avg: number | null
-  language: ValidationData['language']
-  slop: ValidationData['slop']
-  sourceGrounding: ValidationData['sourceGrounding'] | null
-  criteria: ValidationData['criteria']
-  scores: ValidationData['scores']
-}
+/**
+ * What POST /api/ai/rewrite answers with: `performRewrite`'s result, which the route returns whole
+ * (src/app/api/ai/rewrite/route.ts:96).
+ */
+type Rewritten = Awaited<ReturnType<typeof performRewrite>>
 
 const REWRITE_FAILED = 'Failed to rewrite post'
 const PERSIST_FAILED = 'Failed to save the rewrite'
@@ -41,6 +37,9 @@ const PERSIST_FAILED = 'Failed to save the rewrite'
  * workspace — comes back with the route's own sentence so the caller can show it; a transport
  * failure gets the generic one; a rewrite that landed but could not be kept says that, not that
  * the rewrite failed — its allowance was spent. The caller owns toasts and state.
+ *
+ * WHY as: the body is this app's own route answering with `performRewrite`'s result, so its type
+ * is derived from that function rather than restated, and a change there fails the build here.
  */
 export async function rewriteDraft({
   post,
@@ -65,13 +64,8 @@ export async function rewriteDraft({
         sourceUrl: post.source_url ?? null,
       }),
     })
-    if (!res.ok) {
-      const body = (await res.json().catch(() => null)) as { error?: string } | null
-      return { ok: false, error: body?.error ?? REWRITE_FAILED }
-    }
-
-    const data = (await res.json()) as Rewritten
-    rewritten = data
+    if (!res.ok) return { ok: false, error: (await readErrorMessage(res)) ?? REWRITE_FAILED }
+    rewritten = (await res.json()) as Rewritten
   } catch {
     return { ok: false, error: REWRITE_FAILED }
   }

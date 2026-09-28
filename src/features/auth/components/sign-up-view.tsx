@@ -6,7 +6,9 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { createBrowserSupabaseClient } from '@/lib/supabase/client'
 import { validateEmail, validatePassword } from '@/lib/validation'
+import { readErrorMessage } from '@/utils/read-error-message'
 import { cn } from '@/utils/cn'
+import { TRIAL_DAYS } from '@/lib/billing/plans'
 import { useAuthDialog } from './auth-dialog-provider'
 import { AuthFormError, AuthLink, AuthPanel, FIELD_SURFACE } from './auth-panel'
 import { SignUpBenefitsPanel } from './sign-up-benefits-panel'
@@ -67,6 +69,13 @@ function ModeSelector({ mode, onChange }: ModeSelectorProps) {
   )
 }
 
+/**
+ * The sign-up form: creates the account, then provisions it. No session back from the sign-up
+ * means the Supabase project has email confirmation on, so the account exists but is provisioned
+ * only once the link is clicked. The provisioning call sends no body — the route provisions from
+ * `user_metadata`, which the sign-up already carries, so the business name and mode arrive by one
+ * route only and cannot disagree.
+ */
 export function SignUpView() {
   const router = useRouter()
   const { open } = useAuthDialog()
@@ -116,21 +125,15 @@ export function SignUpView() {
       return
     }
 
-    // No session means the Supabase project has email confirmation on, so the
-    // account exists but cannot be provisioned until they click the link.
     if (!data.session) {
       router.push(`/signup/check-email?email=${encodeURIComponent(email)}`)
       return
     }
 
-    // No body: the route provisions from `user_metadata`, which the signUp above already carries.
-    // It used to take businessName and mode here too, so the same two values arrived by two routes
-    // and whichever landed first decided the account.
     const response = await fetch('/api/auth/signup', { method: 'POST' })
 
     if (!response.ok) {
-      const body = (await response.json()) as { error?: string }
-      rejectWith(body.error ?? 'Failed to set up account')
+      rejectWith((await readErrorMessage(response)) ?? 'Failed to set up account')
       return
     }
 
@@ -144,7 +147,7 @@ export function SignUpView() {
         <AuthPanel
           asDialog
           title="Create your free account"
-          description="14-day trial · no card required"
+          description={`${TRIAL_DAYS}-day trial · no card required`}
         >
           <form ref={formRef} onSubmit={handleSubmit} className="flex flex-col gap-4">
             {formError && <AuthFormError>{formError}</AuthFormError>}

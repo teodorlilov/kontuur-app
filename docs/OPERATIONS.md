@@ -39,6 +39,7 @@ true.
 | Clear a deleted pillar off every source | `removeDeletedPillarIds` | [lib/clients/sync-source-pillars.ts](../src/lib/clients/sync-source-pillars.ts) |
 | Create a client and its five required rows | `provisionClient` | [features/clients/lib/provision-client.ts](../src/features/clients/lib/provision-client.ts) |
 | Delete a client and everything it owns | `deleteClient` | [features/clients/actions/client-actions.ts](../src/features/clients/actions/client-actions.ts) |
+| Remove a client row — only behind `deleteClient`'s admin check, or `takeBackClient` for a client just made that must not stay (a failed provision, a create the plan refused) | `unprovisionClient` | [features/clients/lib/provision-client.ts](../src/features/clients/lib/provision-client.ts) |
 | Refresh what the engine learned from this client's edits (style memo) | `distillStyleMemo` | [ai/learning/distill-style-memo.ts](../src/ai/learning/distill-style-memo.ts) |
 | Save a client's settings | `updateClient` | [features/clients/actions/client-actions.ts](../src/features/clients/actions/client-actions.ts) |
 
@@ -47,14 +48,16 @@ true.
 | Operation | Function | File |
 | --- | --- | --- |
 | Edit workspace name and timezone | `PUT` | [app/api/settings/account/route.ts](../src/app/api/settings/account/route.ts) |
-| Provision an account on sign-up | `createUserRecord` | [lib/auth/create-user-record.ts](../src/lib/auth/create-user-record.ts) |
-| Remove a teammate | `removeTeamMember` | [features/settings/actions/team-actions.ts](../src/features/settings/actions/team-actions.ts) |
+| Invite a teammate — record a pending row for the login, then send the invite, or re-send one | `inviteMember` | [features/settings/lib/invite-member.ts](../src/features/settings/lib/invite-member.ts) |
+| Provision an account on sign-up, or join an invitee through their pending invite (and mark it accepted) | `createUserRecord` | [lib/auth/create-user-record.ts](../src/lib/auth/create-user-record.ts) |
+| Remove a teammate — their connections, their invites, their row and their login | `removeTeamMember` | [features/settings/actions/team-actions.ts](../src/features/settings/actions/team-actions.ts) |
 | Delete a workspace and everything it owns | `deleteWorkspace` | [features/settings/actions/workspace-actions.ts](../src/features/settings/actions/workspace-actions.ts) |
 | Create the Stripe customer for a workspace, once | `ensureStripeCustomer` | [lib/billing/subscription-store.ts](../src/lib/billing/subscription-store.ts) |
 | Write what a Stripe subscription says onto the agency row | `applySubscriptionSnapshot` | [lib/billing/subscription-store.ts](../src/lib/billing/subscription-store.ts) |
-| Keep the paid quantity equal to the client count | `syncSubscriptionQuantity` | [lib/billing/quantity-sync.ts](../src/lib/billing/quantity-sync.ts) |
-| End the plan at its period end, or keep it — from inside the app | `setPlanEnding` | [lib/billing/subscription-store.ts](../src/lib/billing/subscription-store.ts) |
-| Record a Stripe event, then stamp it done or failed | `POST` | [app/api/billing/webhook/route.ts](../src/app/api/billing/webhook/route.ts) |
+| Keep the paid quantity equal to the client count, under the workspace's quantity claim (`agencies.quantity_sync_at`, taken and released only here) | `syncSubscriptionQuantity` | [lib/billing/quantity-sync.ts](../src/lib/billing/quantity-sync.ts) |
+| End the plan (at its period end, or at once when its renewal failed), or keep it — from inside the app | `setPlanEnding` | [lib/billing/subscription-store.ts](../src/lib/billing/subscription-store.ts) |
+| Record a Stripe event before any work, and say whether it was already handled | `recordBillingEvent` | [lib/billing/stripe-events.ts](../src/lib/billing/stripe-events.ts) |
+| Stamp a recorded Stripe event with its outcome — done, the workspace it concerned, or the error | `finishBillingEvent` | [lib/billing/stripe-events.ts](../src/lib/billing/stripe-events.ts) |
 
 ### Invoices
 
@@ -63,7 +66,7 @@ true.
 | Deliver a document — PDF to the private bucket, email to the payer, once | `deliverSaleDocument` | [lib/billing/documents.ts](../src/lib/billing/documents.ts) |
 | Issue a credit note for a Stripe credit note that refunded money | `issueCreditNote` | [lib/billing/documents.ts](../src/lib/billing/documents.ts) |
 | Issue the invoice for a paid Stripe invoice — also the Н-18 sale document | `issueSaleDocument` | [lib/billing/documents.ts](../src/lib/billing/documents.ts) |
-| Retry every document nobody has received (daily cron) | `retryUndeliveredDocuments` | [lib/billing/documents.ts](../src/lib/billing/documents.ts) |
+| Retry the documents nobody has received — every stale one, oldest first, until the billing cron's deadline (daily cron) | `retryUndeliveredDocuments` | [lib/billing/documents.ts](../src/lib/billing/documents.ts) |
 
 ### Sources
 
@@ -125,13 +128,14 @@ Meta's data-deletion callback that erases third parties.
 | Operation | Function | File |
 | --- | --- | --- |
 | Close a generation run — its status, its settled reservation and the pillars it could not cover | `finishGenerationRun` | [lib/generation/runs.ts](../src/lib/generation/runs.ts) |
-| Generate a client's batch of drafts when its slot comes due | `GET` | [app/api/cron/generate/route.ts](../src/app/api/cron/generate/route.ts) |
+| Close the runs a killed invocation left running, counting the drafts that landed | `closeAbandonedRuns` | [lib/generation/runs.ts](../src/lib/generation/runs.ts) |
+| Generate a client's batch of drafts when its slot comes due | `runScheduledBatch` | [lib/generation/scheduled-run.ts](../src/lib/generation/scheduled-run.ts) |
 | Insert generated drafts into `posts` — the cron's batch, the wizard stream's rows, a duplicate | `insertDraftPosts` | [lib/generation/draft-posts.ts](../src/lib/generation/draft-posts.ts) |
 | Log a discarded draft | `recordDiscardedDraft` | [lib/queries/discarded-drafts.ts](../src/lib/queries/discarded-drafts.ts) |
 | Open a generation run (and reserve its drafts from the allowance) | `startGenerationRun` | [lib/generation/runs.ts](../src/lib/generation/runs.ts) |
 | Record a theme a run produced | `trackGenerationTheme` | [lib/generation/runs.ts](../src/lib/generation/runs.ts) |
 | Reserve allowance units — drafts, images, rewrites — against a period's cap (in flight, not yet counted) | `consumeUsage` | [lib/billing/usage.ts](../src/lib/billing/usage.ts) |
-| Settle a reservation — count what landed, give back the rest | `settleUsage` | [lib/billing/usage.ts](../src/lib/billing/usage.ts) |
+| Settle a reservation — count what landed, and release it unless the daily reset may already have (the abandoned-run closer) | `settleUsage` | [lib/billing/usage.ts](../src/lib/billing/usage.ts) |
 | Release the reservations a killed invocation never settled (daily cron) | `clearStaleReservations` | [lib/billing/usage.ts](../src/lib/billing/usage.ts) |
 | Add a provider call's tokens and cost to the day's telemetry row | `recordAiUsage` | [lib/billing/telemetry.ts](../src/lib/billing/telemetry.ts) |
 | Record the topics of the posts a reviewer just kept | `recordPostTopics` | [lib/queries/post-history.ts](../src/lib/queries/post-history.ts) |
@@ -192,7 +196,7 @@ operation below is about a destination, not about a post — which is why none o
 | Take a slide position while its picture is being made | `claimVisualJob` | [lib/visual/visual-jobs.ts](../src/lib/visual/visual-jobs.ts) |
 | Give the position back when it is done | `releaseVisualJob` | [lib/visual/visual-jobs.ts](../src/lib/visual/visual-jobs.ts) |
 | Release the claims a killed invocation never gave back (hourly cron) | `clearStaleVisualJobs` | [lib/visual/visual-jobs.ts](../src/lib/visual/visual-jobs.ts) |
-| Paint missing visuals for pending drafts (cron) | `GET` | [app/api/cron/visuals/route.ts](../src/app/api/cron/visuals/route.ts) |
+| Paint the missing visuals of review-queue posts, whole, and count a failed attempt (cron) | `paintBacklog` | [lib/visual/paint-backlog.ts](../src/lib/visual/paint-backlog.ts) |
 | Put an image at a slide position | `putPostImage` | [features/assets/lib/storage.ts](../src/features/assets/lib/storage.ts) |
 | Remove a slide image | `DELETE` | [app/api/posts/[id]/images/route.ts](../src/app/api/posts/[id]/images/route.ts) |
 | Store a client's visual identity | `upsertVisualIdentity` | [lib/visual/queries.ts](../src/lib/visual/queries.ts) |
@@ -205,7 +209,7 @@ operation below is about a destination, not about a post — which is why none o
 | Operation | Function | File |
 | --- | --- | --- |
 | Mark bell notifications read (one, or all unread) | `markAllRead` | [components/layout/shell-context.tsx](../src/components/layout/shell-context.tsx) |
-| Raise an agency notification | `notify` | [lib/notifications/notify.ts](../src/lib/notifications/notify.ts) |
+| Raise an agency notification — once per event key (`dedupKey`, one atomic upsert), or once per cooldown for a condition | `notify` | [lib/notifications/notify.ts](../src/lib/notifications/notify.ts) |
 | Remind a trial workspace by bell and email — trial ending, ended, paused (daily cron) | `remindTrialWorkspaces` | [lib/billing/reminders.ts](../src/lib/billing/reminders.ts) |
 | Send one email through Resend | `sendEmail` | [lib/email/resend.ts](../src/lib/email/resend.ts) |
 
@@ -263,8 +267,9 @@ nobody "fixes" them:
   (24 of 31 tables); `purgeAccountAnalytics` deliberately reimplements it, because no client row is
   being deleted in either of its two cases. `deleteWorkspace` is the same shape one level up: one
   `agencies` delete, and migration 20260856 cascades the members, the clients and their trees; only
-  the auth identities and the storage sweep are code, shared with `removeTeamMember` and
-  `deleteClient` (`deleteAuthIdentity`, `sweepClientStorage`).
+  the pending invites (deleted first, for their logins), the auth identities and the storage sweep
+  are code, the last two shared with `removeTeamMember` and `deleteClient` (`deleteAuthIdentity`,
+  `sweepClientStorage`).
 
 ## Keeping it true
 

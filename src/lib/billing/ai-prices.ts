@@ -50,8 +50,13 @@ const TAVILY_USD_PER_QUERY = 0.008
 /** Approximate as of 2026-09; replace from the first real bank conversion. */
 const EUR_PER_USD = 0.86
 
+/**
+ * Euro cents, kept fractional: most calls cost a fraction of a cent, so rounding each one to a
+ * whole cent before summing miscounted the day — the column is numeric for this (migration
+ * 20260861).
+ */
 function toEurCents(usd: number): number {
-  return Math.round(usd * EUR_PER_USD * 100)
+  return usd * EUR_PER_USD * 100
 }
 
 export interface AnthropicUsage {

@@ -7,29 +7,31 @@ import {
   PUBLISHABLE_POST_COLUMNS,
   publishOnePublication,
   resumePendingPublication,
-  type PublishablePost,
 } from '@/features/publishing/lib/publish-post'
 import { assignDestinations } from '@/features/publishing/lib/destinations'
 import { isClaimLive } from '@/features/publishing/lib/scheduler'
 import { fetchConnection } from '@/lib/queries/db'
 import { resolveNetwork } from '@/lib/meta/networks'
 import { statusForSlot } from '@/lib/posts/status-for-slot'
-import type { PostType } from '@/types/api'
-
-/**
- * Publish a post now. Thin over publishOnePublication — the cron scheduler runs the same
- * implementation, so the claim and the retry ladder cannot diverge between the two entry
- * points.
- *
- * Deferred by design: the response goes out as soon as the network has accepted the content
- * and its reference is persisted (~1–2s), and the wait continues after the response via
- * after(). The client watches the post's status for the outcome; the cron's resume arm is
- * the backstop if this invocation dies.
- */
+import { toPostType } from '@/lib/visual/visual-backlog'
 
 // The after() continuation waits for up to ~40s past the response.
 export const maxDuration = 60
 
+/**
+ * Publish a post now through `publishOnePublication`, the cron's own path, so the claim and retry
+ * ladder cannot diverge. The reply goes once each network has accepted the content and its
+ * reference is persisted; EVERY destination left pending is resumed in `after()` on a bounded
+ * poll, with the cron's resume arm as the backstop. Each destination uses its OWN credentials and claim, and one inside a
+ * live claim window is skipped, or the network gets the post twice (`isClaimLive`,
+ * src/features/publishing/lib/scheduler.ts). A never-scheduled post gets its slot AND its
+ * `statusForSlot` status: the cron's due query only sees posts with a slot, and the calendar splits
+ * on the pair (src/features/calendar/hooks/use-calendar.ts); a failed stamp is only logged, and a
+ * pending publish without a slot has no backstop. The reply leads with a pending outcome, then a
+ * published one, then a failure, so the button says "publishing…" while any destination is
+ * mid-send. `platforms` never names a failed network: the card marks each one it lists as
+ * published.
+ */
 export async function POST(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id: postId } = await params
   const auth = await resolveAuth()
@@ -43,20 +45,15 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
   const admin = createAdminSupabaseClient()
 
   try {
-    const { data, error } = await admin
+    const { data: post, error } = await admin
       .from('posts')
       .select(`${PUBLISHABLE_POST_COLUMNS}, scheduled_at`)
       .eq('id', postId)
       .maybeSingle()
     if (error) throw new Error(`post lookup failed: ${error.message}`)
-    // WHY as: the joined post_images shape does not infer through the shared client.
-    const post = data as unknown as (PublishablePost & { scheduled_at: string | null }) | null
     if (!post) return NextResponse.json({ error: 'Post not found' }, { status: 404 })
 
-    const postType = (post.post_type ?? 'single') as PostType
-    // Publishing now is the moment destinations come into existence for a post that was never
-    // scheduled — the same operation scheduling performs, so it goes through the same function.
-    // Idempotent, so pressing the button twice cannot create duplicates.
+    const postType = toPostType(post.post_type)
     const publications = await assignDestinations(admin, postId, post.client_id, postType, 'all')
     if (publications.length === 0) {
       return NextResponse.json(
@@ -68,34 +65,11 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
     if (pending.length === 0)
       return NextResponse.json({ error: 'Already published' }, { status: 400 })
 
-    /**
-     * Rows inside a live claim window belong to another run — the cron mid-publish, or a
-     * second press from another tab. Feeding one back into publishOnePublication would
-     * re-claim it (the fresh-claim CAS compares against the state just read, so it admits
-     * a claim that already exists) and the network would get the same post twice. The
-     * cron's due query enforces this in SQL; `isClaimLive` is the same policy for the
-     * path that reads first.
-     */
     const claimCheckAt = new Date()
     const actionable = pending.filter((publication) => !isClaimLive(publication, claimCheckAt))
     if (actionable.length === 0)
       return NextResponse.json({ error: 'Post is already being published' }, { status: 409 })
 
-    /**
-     * Every destination at once.
-     *
-     * Each still resolves its OWN credentials — a client publishing to two networks must never
-     * send one network's post with the other's token — and each claims its own publication row,
-     * so nothing is shared but the admin client. Running them in sequence bought none of that
-     * and cost the whole of one network's round trip: measured, Facebook takes ~7.5s to publish
-     * while Instagram takes 26-43s, so whichever happened to go first delayed the other by its
-     * entire duration. The person is waiting on the slowest network, not on their sum.
-     *
-     * `allSettled`, not `all`: one destination throwing must not discard the outcome of a
-     * destination that already succeeded. A rejection here is a bug rather than a publish
-     * failure — `publishOnePublication` reports those as outcomes — so it is logged and the
-     * remaining destinations still answer.
-     */
     const settled = await Promise.allSettled(
       actionable.map(async (publication) => {
         const adapter = resolveNetwork(publication.platform)
@@ -116,12 +90,6 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
       return entry.value ? [entry.value] : []
     })
 
-    /**
-     * One answer for the whole press, in the order a person cares about: anything still in
-     * flight is the headline, then anything live, then the failure. Aggregating this way
-     * means the button says "publishing…" while one destination is mid-send even if another
-     * has already landed.
-     */
     const first =
       outcomes.find((o) => o.outcome.kind === 'pending') ??
       outcomes.find((o) => o.outcome.kind === 'published') ??
@@ -129,54 +97,19 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
     if (!first) throw new Error(`no destination was attempted for post ${postId}`)
     const { adapter, outcome } = first
 
-    /**
-     * A never-scheduled post gets its slot stamped as soon as the publish is underway — the
-     * cron's backstop window only sees rows with a scheduled_at.
-     *
-     * The status moves with it, through the same helper every other slot write uses. Stamping
-     * the instant alone left `status: 'approved'` beside a non-null `scheduled_at`, and the
-     * calendar splits its list on exactly that pair: the unscheduled tray takes
-     * `approved && !scheduled_at` and the grid takes `scheduled && scheduled_at`. A post
-     * publishing from the tray matched neither and disappeared from the calendar entirely,
-     * while being live on Instagram.
-     */
     const publishedNow = new Date().toISOString()
     if (!post.scheduled_at && (outcome.kind === 'published' || outcome.kind === 'pending')) {
       const { error: slotError } = await admin
         .from('posts')
         .update({ scheduled_at: publishedNow, status: statusForSlot(publishedNow) })
         .eq('id', postId)
-      // The one write here whose failure was discarded. It matters most in the `pending` case:
-      // without a slot the cron's backstop window cannot see the row, so a deferred publish
-      // whose worker then dies has nothing left to finish it.
       if (slotError) console.error(`[publish] slot stamp failed for ${postId}:`, slotError.message)
     }
 
-    // The networks this press reached — published or still in flight, never a failure: the
-    // card marks these published in its local copy, and a failed sibling listed here would
-    // render as live. A post published from the unscheduled tray has no publications in the
-    // browser's copy — they were created by this request — so the card has nothing to mark
-    // as published without being told.
     const platforms = outcomes
       .filter((o) => o.outcome.kind !== 'failed')
       .map((o) => o.publication.platform)
 
-    /**
-     * EVERY destination still in flight is finished after the response, not just the one the
-     * reply describes.
-     *
-     * Both adapters return `pending` under `skipPoll`, so a post going to two networks leaves
-     * two publications mid-flight — and this resumed only `first`. The other waited for the
-     * cron's resume arm, which needs a 90s claim grace on a five-minute tick, while the
-     * browser stops watching after 60s: the second network reported "still processing" on
-     * essentially every two-destination publish. Worse, when the pending one was not `first`
-     * — a destination that published outright sorts ahead of it — nothing was scheduled at
-     * all. For Facebook that means a post created with `published:false` and never flipped
-     * live until the cron noticed.
-     *
-     * `resumePendingPublication` no-ops on a row that is not `publishing` with a reference, so
-     * scheduling one per destination cannot double-publish.
-     */
     for (const pending of outcomes) {
       if (pending.outcome.kind !== 'pending') continue
       const id = pending.publication.id
@@ -189,7 +122,6 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
         return NextResponse.json({ ok: true, externalPostId: outcome.externalPostId, platforms })
       }
       case 'pending':
-        // Scheduled above, for every destination. The client watches the post's status.
         return NextResponse.json(
           { ok: true, pending: true, message: `Publishing to ${adapter.label}…`, platforms },
           { status: 202 }

@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { Footer } from '@/features/marketing/components/footer'
+import { COMPANY } from '@/utils/constants'
 import {
   proseBackLink,
   proseContainer,
@@ -51,8 +52,8 @@ export default async function DataDeletionPage({ searchParams }: PageProps) {
               </p>
               <p className={proseP}>
                 If you have further questions, contact us at{' '}
-                <a href="mailto:privacy@kontuur.io" className="text-spring">
-                  privacy@kontuur.io
+                <a href={`mailto:privacy@${COMPANY.domain}`} className="text-spring">
+                  privacy@{COMPANY.domain}
                 </a>{' '}
                 and include this confirmation code.
               </p>
@@ -61,7 +62,9 @@ export default async function DataDeletionPage({ searchParams }: PageProps) {
             <>
               <h1 className={proseH1}>Data Deletion Instructions</h1>
               <p className={proseLead}>
-                You can request deletion of all data Kontuur holds about you at any time.
+                You can request deletion of your data from Kontuur at any time. Invoices, credit
+                notes and the payment records behind them are kept for the ten years Bulgarian law
+                requires, as our Privacy Policy explains.
               </p>
 
               <div className={proseDivider} />
@@ -89,8 +92,8 @@ export default async function DataDeletionPage({ searchParams }: PageProps) {
               <h2 className={proseH2}>Option 2 — Contact Us Directly</h2>
               <p className={proseP}>
                 Email us at{' '}
-                <a href="mailto:privacy@kontuur.io" className="text-spring">
-                  privacy@kontuur.io
+                <a href={`mailto:privacy@${COMPANY.domain}`} className="text-spring">
+                  privacy@{COMPANY.domain}
                 </a>{' '}
                 with the subject line <strong>&quot;Data Deletion Request&quot;</strong> and include
                 the email address associated with your account. We will process your request within

@@ -34,22 +34,24 @@ export type DraftColumnSource = Pick<
     >
   >
 
+/**
+ * One draft's `posts` columns, as `DraftColumnSource` describes them. `generated_caption` is the
+ * AI's own text, the baseline the learning loop diffs edits against; it falls back to the caption
+ * only when absent, so a duplicate of an edited post does not file the reviewer's edit as the
+ * AI's. `target_date` is what the brief asked for; `scheduled_at` is the decision and is not
+ * written here.
+ *
+ * WHY as: the read side types the slide and validation columns `unknown` so each surface parses
+ * its own shape (`PostData`, src/types/post.ts), while the write needs `Json` — narrowed here per
+ * column rather than as a cast on the whole row.
+ */
 export function draftColumns(post: DraftColumnSource) {
   return {
     client_id: post.client_id,
     caption: post.caption,
     post_type: post.post_type,
-    // WHY as: the read side types both columns `unknown` on purpose — each surface
-    // parses them into its own shape rather than trusting the column — but a write
-    // needs the column's actual type. This is the one place a draft becomes a write,
-    // so the narrowing happens once here instead of at every caller. It replaces a
-    // blanket `as posts['Insert']` on the whole row, which suppressed type checking
-    // for every column rather than these two.
     slides_json: (post.slides_json ?? null) as Json,
     validation_json: (post.validation_json ?? null) as Json,
-    // The AI's own text, kept for the edit-diff the learning loop reads. Coalesced so a
-    // duplicate of an edited post keeps the ORIGINAL's baseline rather than restating the
-    // reviewer's edit as the AI's — the divergence being captured would vanish.
     generated_caption: post.generated_caption ?? post.caption,
     generated_slides_json: (post.generated_slides_json ?? post.slides_json ?? null) as Json,
     quality_score_avg: post.quality_score_avg,
@@ -60,8 +62,6 @@ export function draftColumns(post: DraftColumnSource) {
     source_excerpt: post.source_excerpt ?? null,
     client_source_id: post.client_source_id ?? null,
     pillar: post.pillar ?? null,
-    // What the brief asked for, not what anyone decided: `scheduled_at` is the decision, and this
-    // is what the schedule dialog offers first when the draft is read back days later.
     target_date: post.target_date ?? null,
   }
 }

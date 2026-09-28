@@ -10,7 +10,7 @@ import {
 import { Icon } from '@/components/ui/icon'
 import { formatRelativeTime, parseTimestamp } from '@/utils/format'
 import { cn } from '@/utils/cn'
-import { BILLING_NOTIFICATION_TITLES } from '@/lib/billing/copy'
+import { BILLING_NOTIFICATION_TITLES, OPEN_PLAN_AND_BILLING } from '@/lib/billing/copy'
 import type { EnrichedNotification } from '@/types/api'
 
 /** Whether a notification is about the plan — the bell sends these to Plan & billing. */
@@ -61,7 +61,7 @@ function bodyForNotification(n: EnrichedNotification): string {
 
 /** The row's call to action, matching where `handleNavigate` sends it. */
 function linkLabelForNotification(n: EnrichedNotification): string {
-  if (isBillingNotification(n)) return 'Open plan & billing →'
+  if (isBillingNotification(n)) return OPEN_PLAN_AND_BILLING
   return n.type === 'connection_retired' ? 'Open connected accounts →' : 'Open in calendar →'
 }
 

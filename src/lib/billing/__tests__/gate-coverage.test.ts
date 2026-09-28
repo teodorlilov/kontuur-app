@@ -30,6 +30,7 @@ const GATED: Record<string, 'spend' | 'publish' | 'create'> = {
   'app/api/extract/start/route.ts': 'create',
   'app/api/posts/[id]/visuals/route.ts': 'spend',
   'app/api/posts/[id]/publish/route.ts': 'publish',
+  'features/calendar/actions/post-recovery.ts': 'publish',
   'features/clients/actions/style-memo-actions.ts': 'spend',
   'features/clients/actions/client-actions.ts': 'create',
   'lib/actions/post-actions.ts': 'publish',
@@ -45,16 +46,20 @@ function sourceFiles(dir: string, out: string[] = []): string[] {
   return out
 }
 
-/** Spenders whose gate is not a human's: the crons filter by entitlement before they loop, and the two narratives run only after their page or action checked `canSpend`. */
+/**
+ * Spenders whose gate is not a route's or action's: the crons filter by entitlement before they
+ * loop, and the two narratives are refused inside `guardNarrative`
+ * (features/analytics/lib/shared/narrative-shared.ts), which checks `canSpend` before the cache or
+ * the model. The crons' own spends live under lib/ (the scheduled batch, the paint loop), outside
+ * this sweep; that every cron route reaches the entitlement gate is cron-invariants.test.ts's check.
+ */
 const EXEMPT: Record<string, string> = {
   'app/api/cron/generate/route.ts':
     'a cron — gated per agency by the entitlements its roster read derives (cron-invariants.test.ts)',
-  'app/api/cron/visuals/route.ts':
-    'a cron — gated by fetchEntitledClients ahead of its LIMIT (cron-invariants.test.ts)',
   'features/analytics/lib/instagram/narrative.ts':
-    'called only after the analytics page or report action checked canSpend; the spender is declared inside the cache callback',
+    'gated by guardNarrative (narrative-shared.ts), which returns null when canSpend is false before the cache or the model; the spender is declared inside the cache callback',
   'features/analytics/lib/facebook/facebook-narrative.ts':
-    'the Facebook sibling of the Instagram narrative, under the same check',
+    'the Facebook sibling of the Instagram narrative, gated by the same guardNarrative canSpend check',
 }
 
 describe('every human spend, publish and create site carries its gate', () => {

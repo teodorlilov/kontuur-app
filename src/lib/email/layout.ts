@@ -74,7 +74,8 @@ export interface EmailContent {
    * `escapeHtml()` first. Literal copy written here is author-controlled.
    */
   paragraphs: readonly string[]
-  cta: { label: string; url: string }
+  /** The one button, and its URL repeated under the hairline for clients that drop buttons; left out, neither is drawn. */
+  cta?: { label: string; url: string }
   /** Small print under the hairline. Trusted markup, as above. */
   footnote: string
   /** Centred line outside the card. */
@@ -84,6 +85,15 @@ export interface EmailContent {
 /** Render one email to a complete HTML document. */
 export function renderEmail(content: EmailContent): string {
   const { subject, preview, label, headline, paragraphs, cta, footnote, signoff } = content
+  const button = cta
+    ? `<table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
+<td style="border-radius:8px;background:${FOREST};"><a href="${cta.url}" style="display:inline-block;padding:14px 24px;font-family:${SANS};font-size:14px;font-weight:500;line-height:1;color:${SURFACE};text-decoration:none;border-radius:8px;">${escapeHtml(cta.label)}</a></td>
+</tr></table>
+`
+    : ''
+  const link = cta
+    ? `<br><span style="color:${FOREST};word-break:break-all;">${cta.url}</span>`
+    : ''
 
   const [lead, ...rest] = paragraphs
   const leadHtml = lead
@@ -122,10 +132,7 @@ export function renderEmail(content: EmailContent): string {
 <tr><td style="background:${SURFACE};border:1px solid ${HAIRLINE};border-top:none;border-radius:0 0 14px 14px;padding:36px;font-family:${SANS};">
 <h1 style="margin:0 0 18px;font-size:28px;font-weight:600;line-height:1.15;letter-spacing:-0.02em;color:${INK};">${escapeHtml(headline.lead)} <span style="font-family:${SERIF};font-style:italic;font-weight:400;color:${FOREST};letter-spacing:-0.01em;">${escapeHtml(headline.accent)}</span></h1>
 ${leadHtml}${restHtml}
-<table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
-<td style="border-radius:8px;background:${FOREST};"><a href="${cta.url}" style="display:inline-block;padding:14px 24px;font-family:${SANS};font-size:14px;font-weight:500;line-height:1;color:${SURFACE};text-decoration:none;border-radius:8px;">${escapeHtml(cta.label)}</a></td>
-</tr></table>
-<p style="margin:28px 0 0;padding-top:20px;border-top:1px solid ${HAIRLINE};font-size:12px;line-height:1.6;color:${INK_3};">${footnote}<br><span style="color:${FOREST};word-break:break-all;">${cta.url}</span></p>
+${button}<p style="margin:28px 0 0;padding-top:20px;border-top:1px solid ${HAIRLINE};font-size:12px;line-height:1.6;color:${INK_3};">${footnote}${link}</p>
 </td></tr>
 
 <tr><td align="center" style="padding:22px 36px 0;font-family:${SANS};font-size:12px;line-height:1.6;color:${INK_3};">${signoff}</td></tr>

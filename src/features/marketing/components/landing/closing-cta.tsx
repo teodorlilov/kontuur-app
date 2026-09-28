@@ -2,6 +2,7 @@
 
 import { Button } from '@/components/ui/button'
 import { useAuthDialog } from '@/features/auth/components/auth-dialog-provider'
+import { TRIAL_DAYS } from '@/lib/billing/plans'
 import { Reveal } from './reveal'
 
 /**
@@ -44,7 +45,9 @@ export function ClosingCta() {
           </Button>
         </div>
 
-        <p className="mt-4 text-caption text-text3">14-day free trial · no card required</p>
+        <p className="mt-4 text-caption text-text3">
+          {TRIAL_DAYS}-day free trial · no card required
+        </p>
       </Reveal>
     </section>
   )

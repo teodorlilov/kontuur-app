@@ -6,7 +6,8 @@ import { Icon } from '@/components/ui/icon'
 import { cn } from '@/utils/cn'
 import { Modal } from '@/components/ui/modal'
 import { Spinner } from '@/components/ui/spinner'
-import { mapImageRow } from '@/lib/posts/map-image-row'
+import { readImageResponse } from '@/lib/posts/map-image-row'
+import { readErrorMessage } from '@/utils/read-error-message'
 import type { PostImage } from '@/types/api'
 
 interface CanvaDesign {
@@ -53,9 +54,8 @@ export function CanvaDesignPicker({
       if (cont) params.set('continuation', cont)
 
       const res = await fetch(`/api/canva/designs?${params}`)
+      if (!res.ok) throw new Error((await readErrorMessage(res)) ?? 'Failed to load designs')
       const data = await res.json()
-
-      if (!res.ok) throw new Error(data.error ?? 'Failed to load designs')
 
       if (cont) {
         setDesigns((prev) => [...prev, ...data.designs])
@@ -95,9 +95,7 @@ export function CanvaDesignPicker({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ postId, position }),
       })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error ?? 'Import failed')
-      onImported(mapImageRow(data.image))
+      onImported(await readImageResponse(res, 'Import failed'))
       onClose()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Import failed')

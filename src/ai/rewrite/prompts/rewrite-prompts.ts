@@ -6,6 +6,13 @@ import { formatHistory } from '@/ai/utils/prompt-helpers'
 import { stripMarkdownArtifacts } from '@/ai/utils/sanitize'
 import type { RewriteCaptionInput, RewriteCarouselInput, RewriteCarouselResult } from '../types'
 
+/**
+ * Rewrite a single-image caption so it reads as written by someone who knows the business: same
+ * topic, facts and message, a different structure, every listed AI tell and quality issue fixed.
+ * Throws on a reply with no text, because the rewrite is a metered spend and a throw is what gives
+ * it back (`runMetered`, src/lib/billing/usage.ts); handing the original caption back as if
+ * rewritten would count a rewrite that never happened.
+ */
 export async function rewriteCaption(input: RewriteCaptionInput): Promise<string> {
   const { client } = input
   const lc = client.languageConfig
@@ -41,8 +48,9 @@ SELF-CHECK before returning:
 Return ONLY the rewritten post text. No explanations, no commentary.`,
   })
 
-  const text = extractTextFromMessage(message)
-  return text ? stripMarkdownArtifacts(text.trim()) : input.caption
+  const text = stripMarkdownArtifacts(extractTextFromMessage(message).trim())
+  if (!text) throw new Error('The rewrite came back empty. Please try again.')
+  return text
 }
 
 /**
@@ -70,6 +78,14 @@ function buildRewriteOutputSchema(slideCount: number) {
   }
 }
 
+/**
+ * Rewrite a carousel's caption and every slide's headline and body against the listed AI tells and
+ * quality issues, keeping the topic, facts and slide count. The output schema asks for that count
+ * but is not enforced: a truncated tool call can omit the caption or the slides, or leave the
+ * caption empty, and each throws — which, like `rewriteCaption`'s throw, gives the metered
+ * rewrite back and never saves an empty caption over the draft. A slide missing a headline or body
+ * comes back with that field empty.
+ */
 export async function rewriteCarousel(input: RewriteCarouselInput): Promise<RewriteCarouselResult> {
   const slidesText = input.slides
     .map((s, i) => `Slide ${i + 1}:\nHeadline: ${s.headline}\nBody: ${s.body}`)
@@ -115,14 +131,13 @@ SELF-CHECK before returning:
   })
 
   const raw = extractToolInput<Partial<RewriteCarouselResult>>(message, outputSchema)
-  // Same unenforced-schema guard the carousel generator carries: a truncated tool
-  // call can omit either field, and mapping over the missing one threw a TypeError
-  // that surfaced to the reviewer as a bare "rewrite failed".
-  if (typeof raw.main_caption !== 'string' || !Array.isArray(raw.slides)) {
+  const caption =
+    typeof raw.main_caption === 'string' ? stripMarkdownArtifacts(raw.main_caption) : ''
+  if (!caption.trim() || !Array.isArray(raw.slides)) {
     throw new Error('rewriteCarousel: model returned an incomplete carousel')
   }
   return {
-    main_caption: stripMarkdownArtifacts(raw.main_caption),
+    main_caption: caption,
     slides: raw.slides.map((s) => ({
       headline: stripMarkdownArtifacts(s.headline ?? ''),
       body: stripMarkdownArtifacts(s.body ?? ''),

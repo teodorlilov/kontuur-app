@@ -99,8 +99,9 @@ const _fetchFacebookNarrative = unstable_cache(
 )
 
 /**
- * The Facebook narrative for one client and period, cached until the next nightly sync. The
- * agency is declared as the spender INSIDE the cached function — see `getNarrative`.
+ * The Facebook narrative for one client and period, cached until the next nightly sync, or null
+ * for a workspace that cannot spend. The spend gate and the spender declaration work as they do
+ * for `getNarrative` (instagram/narrative.ts).
  */
 export async function getFacebookNarrative(
   agencyId: string,
@@ -110,7 +111,7 @@ export async function getFacebookNarrative(
   timezone: string,
   lastSyncAt: string | null
 ): Promise<NarrativeResult | null> {
-  return guardNarrative(clientId, PLATFORM_NAMES.facebook, () =>
+  return guardNarrative(agencyId, clientId, PLATFORM_NAMES.facebook, () =>
     _fetchFacebookNarrative(
       { clientId, clientName, period, timezone },
       lastSyncAt?.slice(0, 10) ?? 'never',

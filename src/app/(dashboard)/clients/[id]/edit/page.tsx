@@ -1,7 +1,8 @@
 import { notFound } from 'next/navigation'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { requireSessionUser } from '@/lib/auth/session'
-import { getCachedAgency } from '@/lib/queries/cache'
+import { getCachedAgency, getCachedAgencyClients, getCachedEntitlement } from '@/lib/queries/cache'
+import { clientRosterRefusal, deleteClientNotice } from '@/lib/billing/copy'
 import { ClientSettingsForm } from '@/features/clients/components/settings/client-settings-form'
 import { buildInsights, type PillarRow, type ScoreRow } from '@/features/clients/lib/insights'
 import { fetchClientPostStats } from '@/features/clients/lib/post-stats'
@@ -29,6 +30,17 @@ const SCORE_SAMPLE_SIZE = 20
 /** How many recent ideas the Idea link tab previews. */
 const IDEA_PREVIEW_LIMIT = 3
 
+/**
+ * A client's settings, or a solo workspace's own business page; the form renders the page header,
+ * since its tab rail and panel share one tab state. Facebook consent lists Pages instead of naming
+ * one, so the callback returns with `?choose_page=1` and the Pages load here; the result is passed
+ * through, not its list, since a failure collapsed to `[]` would read as "you administer no Pages".
+ * Past the client lookup (the 404 gate), every other read is one parallel wave. `overrideTypes` on
+ * the scores states what `.not(…, 'is', null)` guarantees, since the filter narrows the rows but
+ * not the generated column type. The scoped sources' pillar ids, resolved against the live
+ * pillars (`summariseSourceScoping`), go to the form because only the browser knows which pillars a
+ * brand re-read proposes, and it must say how many sources a replaced set would free.
+ */
 export default async function EditClientPage({
   params,
   searchParams,
@@ -38,24 +50,12 @@ export default async function EditClientPage({
 }) {
   const { id } = await params
   const { choose_page: choosePage } = await searchParams
-  const { agencyId } = await requireSessionUser()
+  const { agencyId, role } = await requireSessionUser()
   const supabase = await createServerSupabaseClient()
 
   const client = await fetchClientById(supabase, id, agencyId)
   if (!client) notFound()
 
-  /**
-   * The Pages to choose from, loaded here rather than in the tab.
-   *
-   * Facebook consent yields a token that LISTS Pages instead of naming one, so the callback
-   * sends the user back with `?choose_page=1` and the choice happens on this screen. Fetched in
-   * the server component because that is where data is fetched — an effect in the modal would be
-   * a client-side waterfall for something this page can resolve before it renders.
-   *
-   * The RESULT is passed through, not the list inside it. Collapsing a failure to `[]` makes a
-   * dead token read as "you administer no Pages", which is the wrong thing to go and fix. A
-   * failure does not take the page down either — this is one step of a flow the user can restart.
-   */
   const facebookPages = choosePage === '1' ? await listFacebookPages() : null
 
   const [
@@ -73,10 +73,10 @@ export default async function EditClientPage({
     recentIdeas,
     sourceSummaries,
     styleMemo,
+    entitlement,
+    agencyClients,
   ] = await Promise.all([
     getCachedAgency(agencyId),
-    // In the parallel block, not awaited above it: nothing below depends on the identity, so
-    // awaiting it first would cost a serial round trip before any of these started.
     fetchVisualIdentity(id),
     fetchBrandProfileByClient(supabase, id),
     fetchPostingScheduleByClient(supabase, id),
@@ -92,8 +92,6 @@ export default async function EditClientPage({
       .not('quality_score_avg', 'is', null)
       .order('created_at', { ascending: false })
       .limit(SCORE_SAMPLE_SIZE)
-      // `.not(col, 'is', null)` narrows rows but not the generated column type, which stays
-      // nullable. The filter is the guarantee; this tells the compiler about it.
       .overrideTypes<ScoreRow[]>(),
     supabase
       .from('posts')
@@ -102,17 +100,15 @@ export default async function EditClientPage({
       .not('pillar', 'is', null)
       .limit(PILLAR_SAMPLE_SIZE)
       .overrideTypes<PillarRow[]>(),
-    // One aggregate rather than five status-filtered counts plus a last-generated lookup: they
-    // all read the same index, so the cost was six round trips for six numbers.
     fetchClientPostStats(supabase, id),
-    // Resolved server-side: the header's connection pill must not flicker, and the accounts tab
-    // reads the same rows instead of re-fetching them over HTTP.
     fetchConnectionsByClient(supabase, id),
     fetchTokenByClient(id),
     fetchIdeaCounts(id),
     fetchIdeasForAgency(agencyId, { clientId: id, limit: IDEA_PREVIEW_LIMIT }),
     fetchClientSourceSummaries(supabase, id),
     fetchStyleMemoDisplay(id),
+    getCachedEntitlement(agencyId),
+    getCachedAgencyClients(agencyId),
   ])
 
   const insights = buildInsights(recentPostsRes.data ?? [], pillarPostsRes.data ?? [])
@@ -121,8 +117,6 @@ export default async function EditClientPage({
     parsePillars(profile?.content_pillars ?? null)
   )
 
-  // The form renders the page header itself: the tab rail and the panel below
-  // read the same activeTab state.
   return (
     <ClientSettingsForm
       clientId={id}
@@ -147,10 +141,9 @@ export default async function EditClientPage({
       ideaTotalCount={ideaCounts.totalCount}
       recentIdeas={recentIdeas}
       unrestrictedSourceCount={sourceScoping.unrestrictedCount}
-      // The scoped sources' own pillar ids: the brand re-read has to say how many of them a
-      // replaced pillar set would release back to feeding everything, and only the browser knows
-      // which pillars are being proposed.
       restrictedSourcePillarIds={sourceScoping.restrictedPillarIds}
+      deleteRefusal={clientRosterRefusal(role)}
+      deleteNotice={deleteClientNotice(entitlement, agencyClients.length)}
     />
   )
 }

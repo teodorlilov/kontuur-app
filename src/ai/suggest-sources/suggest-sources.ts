@@ -1,3 +1,4 @@
+import { z } from 'zod'
 import { callAnthropic, LIGHT_MODEL } from '@/utils/ai-client'
 import { parseJsonResponse } from '@/utils/ai'
 import { discoverFeedUrl } from '@/lib/sources/discover-feed-url'
@@ -18,9 +19,38 @@ interface SuggestedSource {
   reason: string
 }
 
-type TavilyResult = TavilyHit
-
 const QUERY_COUNT = 4
+
+/**
+ * What the model's query list must be before a query reaches Tavily: strings, trimmed, never
+ * empty, and at most `QUERY_COUNT` — each is a paid search, so the model's reply is not trusted to
+ * say how many.
+ */
+const searchQueriesSchema = z.array(z.unknown()).transform((items) =>
+  items
+    .filter((item): item is string => typeof item === 'string')
+    .map((item) => item.trim())
+    .filter((item) => item.length > 0)
+    .slice(0, QUERY_COUNT)
+)
+/** One entry of the model's ranking: which candidate, whether to keep it, and why. */
+const rankedCandidateSchema = z.object({
+  index: z.number().int(),
+  keep: z.boolean(),
+  reason: z.string().optional(),
+})
+
+/**
+ * The model's ranking reply, with every entry that is not `rankedCandidateSchema`'s shape dropped,
+ * so a malformed one can neither keep a feed the model meant to drop nor throw away the ranking.
+ */
+const rankingSchema = z.array(z.unknown()).transform((items) =>
+  items.flatMap((item) => {
+    const parsed = rankedCandidateSchema.safeParse(item)
+    return parsed.success ? [parsed.data] : []
+  })
+)
+
 const RESULTS_PER_QUERY = 6
 const MIN_TAVILY_SCORE = 0.2
 const MAX_CANDIDATE_SITES = 12
@@ -28,8 +58,10 @@ const MAX_SUGGESTIONS = 8
 const CACHE_TTL_MS = 10 * 60_000
 
 /**
- * Generate publisher-targeted search queries (blogs, magazines, news sites)
- * using the client's niche, audience, and content pillars.
+ * Generate publisher-targeted search queries (blogs, magazines, news sites) using the client's
+ * niche, audience, and content pillars — at most `QUERY_COUNT`, parsed by `searchQueriesSchema`.
+ * A failed call or an empty list falls back to two generic queries, logged, since a quiet fallback
+ * would read as the model's answer.
  */
 async function generateSearchQueries(input: SuggestSourcesInput): Promise<string[]> {
   const pillarsText =
@@ -58,9 +90,14 @@ Return JSON only: ["query1", "query2", "query3", "query4"]`,
       assistantPrefill: '[',
       cacheSystemPrompt: false,
     })
-    const queries = parseJsonResponse<string[]>(message, 'array', '[')
-    return queries.length > 0 ? queries : fallbackQueries(input.niche)
-  } catch {
+    const queries = searchQueriesSchema.parse(parseJsonResponse<unknown[]>(message, 'array', '['))
+    if (queries.length > 0) return queries
+    console.warn(
+      '[suggest-sources] the model returned no usable queries; using the fallback queries'
+    )
+    return fallbackQueries(input.niche)
+  } catch (err) {
+    console.error('[suggest-sources] query generation failed; using the fallback queries:', err)
     return fallbackQueries(input.niche)
   }
 }
@@ -72,15 +109,15 @@ function fallbackQueries(niche: string): string[] {
 /**
  * Search Tavily for websites matching a query.
  */
-async function searchTavily(query: string, maxResults: number): Promise<TavilyResult[]> {
+async function searchTavily(query: string, maxResults: number): Promise<TavilyHit[]> {
   return queryTavily(query, { maxResults })
 }
 
 /**
  * Deduplicate Tavily results by domain, keeping the highest-scored entry per domain.
  */
-function deduplicateByDomain(results: TavilyResult[]): TavilyResult[] {
-  const byDomain = new Map<string, TavilyResult>()
+function deduplicateByDomain(results: TavilyHit[]): TavilyHit[] {
+  const byDomain = new Map<string, TavilyHit>()
   for (const r of results) {
     let domain: string
     try {
@@ -99,7 +136,7 @@ function deduplicateByDomain(results: TavilyResult[]): TavilyResult[] {
 /**
  * Re-rank discovered feeds by relevance to the business and rewrite each
  * reason as one plain-language sentence. Falls back to the input order on
- * any model or parse failure.
+ * any model or parse failure, logged.
  */
 async function rerankSuggestions(
   input: SuggestSourcesInput,
@@ -136,11 +173,7 @@ Return JSON only: [{ "index": 1, "keep": true, "reason": "..." }]`,
       cacheSystemPrompt: false,
     })
 
-    const ranked = parseJsonResponse<Array<{ index: number; keep: boolean; reason?: string }>>(
-      message,
-      'array',
-      '['
-    )
+    const ranked = rankingSchema.parse(parseJsonResponse<unknown[]>(message, 'array', '['))
     if (ranked.length === 0) return candidates
 
     const result: SuggestedSource[] = []
@@ -150,7 +183,8 @@ Return JSON only: [{ "index": 1, "keep": true, "reason": "..." }]`,
       result.push({ ...candidate, reason: item.reason?.trim() || candidate.reason })
     }
     return result.length > 0 ? result : candidates
-  } catch {
+  } catch (err) {
+    console.error('[suggest-sources] re-ranking failed; returning the feeds unranked:', err)
     return candidates
   }
 }
@@ -166,7 +200,7 @@ export async function suggestSources(input: SuggestSourcesInput): Promise<Sugges
     queries.map((q) => searchTavily(q, RESULTS_PER_QUERY))
   )
 
-  const allResults: TavilyResult[] = []
+  const allResults: TavilyHit[] = []
   for (const result of searchResults) {
     if (result.status === 'fulfilled') {
       allResults.push(...result.value)

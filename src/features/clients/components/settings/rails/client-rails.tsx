@@ -263,17 +263,31 @@ export function IdeasRail({ newCount, usedCount }: { newCount: number; usedCount
   )
 }
 
-/** Opens the delete confirmation. The dialog owns the decision — and its own loading state. */
-export function ClientDangerRail({ onDelete }: { onDelete: () => void }) {
+/**
+ * Opens the delete confirmation, or — for a member — says in its place why they cannot
+ * (`refusal`, from `clientRosterRefusal`; `deleteClient` refuses them too). The dialog owns the
+ * decision — and its own loading state.
+ */
+export function ClientDangerRail({
+  refusal,
+  onDelete,
+}: {
+  refusal: string | null
+  onDelete: () => void
+}) {
   return (
     <RailBox title="Danger zone">
       <RailText>
         Deleting this client removes every post, source, connected account and stored image, along
         with its whole Instagram history and saved reports.
       </RailText>
-      <Button variant="danger" size="sm" className="mt-3 w-full" onClick={onDelete}>
-        Delete client
-      </Button>
+      {refusal ? (
+        <RailText>{refusal}</RailText>
+      ) : (
+        <Button variant="danger" size="sm" className="mt-3 w-full" onClick={onDelete}>
+          Delete client
+        </Button>
+      )}
     </RailBox>
   )
 }

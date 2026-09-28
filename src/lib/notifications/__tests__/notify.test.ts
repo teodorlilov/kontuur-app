@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { SupabaseClient } from '@supabase/supabase-js'
+import type { Database } from '@/types/database'
 import { notify, NOTIFY_EVERY_TIME } from '../notify'
 
 interface Answers {
@@ -9,6 +10,8 @@ interface Answers {
   insertError: { message: string } | null
   /** The client row a `clientId` resolves to. */
   client: { agency_id: string | null; name: string } | null
+  /** What a keyed upsert returns: the rows it inserted, or its error. */
+  keyed?: { data: unknown[] | null; error: { message: string } | null }
 }
 
 /**
@@ -20,6 +23,7 @@ interface Answers {
 function makeAdmin(answers: Answers) {
   const reads: string[] = []
   const inserted: Array<Record<string, unknown>> = []
+  const upserts: Array<{ row: Record<string, unknown>; options: unknown }> = []
   const admin = {
     from(table: string) {
       const query = {
@@ -31,6 +35,10 @@ function makeAdmin(answers: Answers) {
         insert: (row: Record<string, unknown>) => {
           inserted.push(row)
           return Promise.resolve({ error: answers.insertError })
+        },
+        upsert: (row: Record<string, unknown>, options: unknown) => {
+          upserts.push({ row, options })
+          return { select: () => Promise.resolve(answers.keyed) }
         },
         then(
           resolve: (value: { data: unknown[] | null; error: { message: string } | null }) => void
@@ -46,7 +54,7 @@ function makeAdmin(answers: Answers) {
       return query
     },
   }
-  return { admin: admin as unknown as SupabaseClient, reads, inserted }
+  return { admin: admin as unknown as SupabaseClient<Database>, reads, inserted, upserts }
 }
 
 const BASE: Answers = { existing: [], insertError: null, client: null }
@@ -122,6 +130,32 @@ describe('notify', () => {
       client_id: 'c1',
       message: '3 posts ready to review for Acme',
     })
+  })
+
+  it('writes a keyed event once in one upsert, reading no cooldown, so two invocations at once cannot both write it', async () => {
+    const first = makeAdmin({ ...BASE, keyed: { data: [{ id: 'n1' }], error: null } })
+    const input = {
+      agencyId: 'a1',
+      type: 'trial_ending' as const,
+      message: 'Your trial ends on 27 September.',
+      dedupKey: 'trial_ending:2026-09-27',
+    }
+    expect(await notify(first.admin, input)).toBe('written')
+    expect(first.reads).toEqual([])
+    expect(first.inserted).toEqual([])
+    expect(first.upserts).toEqual([
+      {
+        row: expect.objectContaining({ agency_id: 'a1', dedup_key: 'trial_ending:2026-09-27' }),
+        options: { onConflict: 'agency_id,dedup_key', ignoreDuplicates: true },
+      },
+    ])
+
+    const repeat = makeAdmin({ ...BASE, keyed: { data: [], error: null } })
+    expect(await notify(repeat.admin, input)).toBe('suppressed')
+
+    const broken = makeAdmin({ ...BASE, keyed: { data: null, error: { message: 'timeout' } } })
+    expect(await notify(broken.admin, input)).toBe('failed')
+    expect(console.error).toHaveBeenCalledWith('[notify] insert failed:', 'timeout')
   })
 
   it('writes nothing for a client that resolves to no agency', async () => {

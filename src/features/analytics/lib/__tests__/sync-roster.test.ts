@@ -22,28 +22,37 @@ function graphError(code: number, message: string): GraphApiError {
   })
 }
 
-/** One live Instagram connection; every health stamp is recorded so the test can read it. */
-function fakeAdmin() {
+const LIVE_CONNECTION = {
+  client_id: 'c1',
+  platform: 'instagram',
+  account_id: 'acct',
+  access_token: 'tok',
+}
+
+/**
+ * A roster read that answers `roster`, or `readError` when given one. The platform filter and
+ * every health stamp are recorded for the test.
+ */
+function fakeAdmin(
+  roster: Array<{ client_id: string | null }> = [LIVE_CONNECTION],
+  readError: { message: string } | null = null
+) {
   const health: Array<Record<string, unknown>> = []
-  const select = vi.fn(() => ({
-    eq: () => ({
-      not: () => ({
-        not: () =>
-          Promise.resolve({
-            data: [
-              { client_id: 'c1', platform: 'instagram', account_id: 'acct', access_token: 'tok' },
-            ],
-            error: null,
-          }),
-      }),
+  const platformFilter = vi.fn((_column: string, _values: readonly string[]) => ({
+    not: () => ({
+      not: () =>
+        Promise.resolve(
+          readError ? { data: null, error: readError } : { data: roster, error: null }
+        ),
     }),
   }))
+  const select = vi.fn(() => ({ in: platformFilter }))
   const update = vi.fn((values: Record<string, unknown>) => {
     health.push(values)
     return { eq: () => ({ eq: () => Promise.resolve({ error: null }) }) }
   })
   const client = { from: vi.fn(() => ({ select, update })) } as unknown as SupabaseClient
-  return { client, health }
+  return { client, health, platformFilter }
 }
 
 const OPTIONS = {
@@ -115,6 +124,36 @@ describe('syncRoster and the entitled set', () => {
     expect(syncOne).not.toHaveBeenCalled()
     expect(outcome.skipped).toBe(1)
     expect(outcome.synced).toBe(0)
+    expect(health).toHaveLength(0)
+  })
+
+  it('skips a connection with no client, counting it with the entitlement skips, not as a failure', async () => {
+    const { client } = fakeAdmin([{ ...LIVE_CONNECTION, client_id: null }, LIVE_CONNECTION])
+    const syncOne = vi.fn(() => Promise.resolve())
+    const outcome = await syncRoster(client, { ...OPTIONS, syncOne })
+
+    expect(syncOne).toHaveBeenCalledTimes(1)
+    expect(syncOne).toHaveBeenCalledWith(LIVE_CONNECTION)
+    expect(outcome).toMatchObject({ synced: 1, skipped: 1, failed: 0, errors: [] })
+  })
+})
+
+describe('syncRoster reading its roster', () => {
+  it('reads only the network it was given', async () => {
+    const { client, platformFilter } = fakeAdmin()
+    await syncRoster(client, { ...OPTIONS, syncOne: () => Promise.resolve() })
+
+    expect(platformFilter).toHaveBeenCalledWith('platform', ['instagram'])
+  })
+
+  it('throws naming the network when the roster cannot be read, rather than reporting an empty run', async () => {
+    const { client, health } = fakeAdmin([], { message: 'statement timeout' })
+    const syncOne = vi.fn(() => Promise.resolve())
+
+    await expect(syncRoster(client, { ...OPTIONS, syncOne })).rejects.toThrow(
+      'instagram connection roster query failed: statement timeout'
+    )
+    expect(syncOne).not.toHaveBeenCalled()
     expect(health).toHaveLength(0)
   })
 })

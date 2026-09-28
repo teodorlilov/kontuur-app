@@ -52,6 +52,7 @@ export type Database = {
           name: string
           past_due_since: string | null
           plan: string
+          quantity_sync_at: string | null
           stripe_customer_id: string | null
           stripe_subscription_id: string | null
           subscription_quantity: number | null
@@ -71,6 +72,7 @@ export type Database = {
           name: string
           past_due_since?: string | null
           plan?: string
+          quantity_sync_at?: string | null
           stripe_customer_id?: string | null
           stripe_subscription_id?: string | null
           subscription_quantity?: number | null
@@ -90,6 +92,7 @@ export type Database = {
           name?: string
           past_due_since?: string | null
           plan?: string
+          quantity_sync_at?: string | null
           stripe_customer_id?: string | null
           stripe_subscription_id?: string | null
           subscription_quantity?: number | null
@@ -754,6 +757,7 @@ export type Database = {
           created_at: string | null
           id: string
           kind: string
+          period_key: string | null
           skipped_pillars: Json | null
           slot_key: string | null
           status: string
@@ -765,6 +769,7 @@ export type Database = {
           created_at?: string | null
           id?: string
           kind?: string
+          period_key?: string | null
           skipped_pillars?: Json | null
           slot_key?: string | null
           status?: string
@@ -776,6 +781,7 @@ export type Database = {
           created_at?: string | null
           id?: string
           kind?: string
+          period_key?: string | null
           skipped_pillars?: Json | null
           slot_key?: string | null
           status?: string
@@ -1066,6 +1072,7 @@ export type Database = {
           agency_id: string
           client_id: string | null
           created_at: string
+          dedup_key: string | null
           feedback_text: string | null
           id: string
           is_read: boolean
@@ -1078,6 +1085,7 @@ export type Database = {
           agency_id: string
           client_id?: string | null
           created_at?: string
+          dedup_key?: string | null
           feedback_text?: string | null
           id?: string
           is_read?: boolean
@@ -1090,6 +1098,7 @@ export type Database = {
           agency_id?: string
           client_id?: string | null
           created_at?: string
+          dedup_key?: string | null
           feedback_text?: string | null
           id?: string
           is_read?: boolean
@@ -1701,6 +1710,7 @@ export type Database = {
           stripe_credit_note_id: string | null
           stripe_invoice_id: string | null
           stripe_refund_id: string | null
+          tax_event_at: string | null
           vat_basis: string
           vat_cents: number
           vat_rate: number
@@ -1724,6 +1734,7 @@ export type Database = {
           stripe_credit_note_id?: string | null
           stripe_invoice_id?: string | null
           stripe_refund_id?: string | null
+          tax_event_at?: string | null
           vat_basis: string
           vat_cents: number
           vat_rate: number
@@ -1747,6 +1758,7 @@ export type Database = {
           stripe_credit_note_id?: string | null
           stripe_invoice_id?: string | null
           stripe_refund_id?: string | null
+          tax_event_at?: string | null
           vat_basis?: string
           vat_cents?: number
           vat_rate?: number
@@ -1828,6 +1840,51 @@ export type Database = {
           {
             foreignKeyName: "social_connections_user_id_fkey"
             columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      team_invites: {
+        Row: {
+          accepted_at: string | null
+          agency_id: string
+          auth_user_id: string
+          created_at: string
+          id: string
+          invited_by: string | null
+          role: string
+        }
+        Insert: {
+          accepted_at?: string | null
+          agency_id: string
+          auth_user_id: string
+          created_at?: string
+          id?: string
+          invited_by?: string | null
+          role: string
+        }
+        Update: {
+          accepted_at?: string | null
+          agency_id?: string
+          auth_user_id?: string
+          created_at?: string
+          id?: string
+          invited_by?: string | null
+          role?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_invites_agency_id_fkey"
+            columns: ["agency_id"]
+            isOneToOne: false
+            referencedRelation: "agencies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "team_invites_invited_by_fkey"
+            columns: ["invited_by"]
             isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
@@ -1966,6 +2023,7 @@ export type Database = {
           stripe_credit_note_id: string | null
           stripe_invoice_id: string | null
           stripe_refund_id: string | null
+          tax_event_at: string | null
           vat_basis: string
           vat_cents: number
           vat_rate: number
@@ -1975,6 +2033,24 @@ export type Database = {
           to: "sale_documents"
           isOneToOne: true
           isSetofReturn: false
+        }
+      }
+      pending_invite_for_email: {
+        Args: { p_email: string }
+        Returns: {
+          accepted_at: string | null
+          agency_id: string
+          auth_user_id: string
+          created_at: string
+          id: string
+          invited_by: string | null
+          role: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "team_invites"
+          isOneToOne: false
+          isSetofReturn: true
         }
       }
       settle_usage: {

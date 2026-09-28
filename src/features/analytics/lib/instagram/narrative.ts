@@ -130,9 +130,10 @@ const _fetchNarrative = unstable_cache(
 )
 
 /**
- * The narrative for one client and period, cached until the next nightly sync. The agency is
- * declared as the spender INSIDE the cached function, so the Haiku call is attributed whether or
- * not the request's async context survives `unstable_cache`.
+ * The narrative for one client and period, cached until the next nightly sync, or null for a
+ * workspace that cannot spend — `guardNarrative` refuses it before the cache is read. The agency
+ * is declared as the spender INSIDE the cached function, so the Haiku call is attributed whether
+ * or not the request's async context survives `unstable_cache`.
  */
 export async function getNarrative(
   agencyId: string,
@@ -142,7 +143,7 @@ export async function getNarrative(
   timezone: string,
   lastSyncAt: string | null
 ): Promise<NarrativeResult | null> {
-  return guardNarrative(clientId, PLATFORM_NAMES.instagram, () =>
+  return guardNarrative(agencyId, clientId, PLATFORM_NAMES.instagram, () =>
     _fetchNarrative(
       { clientId, clientName, period, timezone },
       lastSyncAt?.slice(0, 10) ?? 'never',

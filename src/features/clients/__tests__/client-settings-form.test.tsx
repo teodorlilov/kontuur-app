@@ -67,7 +67,7 @@ const CLIENT: Omit<ClientRow, 'agency_id'> = {
   contact_email: null,
 }
 
-function setup(isSolo: boolean) {
+function setup(isSolo: boolean, deleteRefusal: string | null = null) {
   render(
     <ClientSettingsForm
       clientId="c1"
@@ -93,6 +93,8 @@ function setup(isSolo: boolean) {
       ideaUsedCount={0}
       ideaTotalCount={0}
       recentIdeas={[]}
+      deleteRefusal={deleteRefusal}
+      deleteNotice={null}
     />
   )
   return userEvent.setup()
@@ -116,6 +118,14 @@ describe('ClientSettingsForm — agency', () => {
     expect(screen.getByRole('textbox', { name: /Client name/ })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Delete client' })).toBeInTheDocument()
     expect(screen.getByText('Client status')).toBeInTheDocument()
+  })
+
+  it('shows a member why they may not delete, in place of the Delete client button', () => {
+    setup(false, 'Only admins can add or delete clients.')
+
+    expect(screen.queryByRole('button', { name: 'Delete client' })).not.toBeInTheDocument()
+    expect(screen.getByText('Only admins can add or delete clients.')).toBeInTheDocument()
+    expect(screen.getByText('Danger zone')).toBeInTheDocument()
   })
 
   it('saves a client', async () => {

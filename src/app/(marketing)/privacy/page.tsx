@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { Footer } from '@/features/marketing/components/footer'
+import { COMPANY } from '@/utils/constants'
 import {
   proseBackLink,
   proseContainer,
@@ -28,12 +29,12 @@ export default function PrivacyPage() {
           <Link className={proseBackLink} href="/">
             ← Back
           </Link>
-          <p className={proseEyebrow}>Last updated: July 29, 2026</p>
+          <p className={proseEyebrow}>Last updated: September 27, 2026</p>
           <h1 className={proseH1}>Privacy Policy</h1>
           <p className={proseLead}>
-            This Privacy Policy explains how Kontuur, operated by Chelling Ltd (&quot;we&quot;,
-            &quot;us&quot;, &quot;our&quot;), collects, uses, and protects your information when you
-            use our platform at kontuur.io.
+            This Privacy Policy explains how Kontuur, operated by {COMPANY.legalName}{' '}
+            (&quot;we&quot;, &quot;us&quot;, &quot;our&quot;), collects, uses, and protects your
+            information when you use our platform at {COMPANY.domain}.
           </p>
 
           <div className={proseDivider} />
@@ -51,9 +52,10 @@ export default function PrivacyPage() {
               briefs you enter into the platform.
             </li>
             <li>
-              <strong>Social media access tokens:</strong> OAuth tokens issued by Meta (Facebook /
-              Instagram) when you connect accounts to Kontuur. These are used solely to publish,
-              schedule, and retrieve analytics for content you manage through the platform.
+              <strong>Connected-account access tokens:</strong> OAuth tokens issued by Meta
+              (Facebook / Instagram) when you connect accounts to Kontuur, used solely to publish,
+              schedule, and retrieve analytics for content you manage through the platform; and, if
+              you connect Canva, Canva&apos;s token, used to list and import the designs you choose.
             </li>
             <li>
               <strong>Generated content:</strong> captions, images, and post data created or managed
@@ -62,6 +64,10 @@ export default function PrivacyPage() {
             <li>
               <strong>Usage data:</strong> pages visited, features used, browser type, IP address,
               and timestamps, collected automatically via server logs.
+            </li>
+            <li>
+              <strong>Billing details:</strong> the name, address, email and VAT number you give at
+              checkout.
             </li>
           </ul>
 
@@ -138,19 +144,39 @@ export default function PrivacyPage() {
               <strong>Meta Platforms</strong> — the Instagram Graph API and Facebook Marketing API
               used to publish and retrieve data for connected accounts.
             </li>
+            <li>
+              <strong>Stripe</strong> — payments; it collects the card and billing details at
+              checkout.
+            </li>
+            <li>
+              <strong>fal.ai</strong> — image generation and editing; it receives the image prompts
+              built from your content, and the images you ask it to edit or cut out.
+            </li>
+            <li>
+              <strong>Tavily</strong> — web search for research; it receives search queries.
+            </li>
+            <li>
+              <strong>Canva</strong> — design import, if you connect it; Kontuur lists and exports
+              the designs you choose.
+            </li>
+            <li>
+              <strong>Jina AI</strong> — reads a client&apos;s public Instagram profile page when
+              you give one while setting up a brand; it receives that profile&apos;s address.
+            </li>
           </ul>
 
           {/* 5. Data retention */}
           <h2 className={proseH2}>5. Data Retention</h2>
           <p className={proseP}>
-            We retain your account data for as long as your account is active. Generated posts and
-            analytics are retained for the duration of your subscription plus a 30-day grace period
-            after cancellation.
+            When a plan ends the workspace is paused, not deleted: everything stays until an admin
+            deletes it in Settings. Invoices and credit notes, with the billing details on them, and
+            the payment records Stripe sends us about them are kept for at least ten years, as
+            Bulgarian law requires, even after the workspace is deleted.
           </p>
           <p className={proseP}>
-            You can delete your workspace yourself from Settings, which removes everything at once,
-            or request deletion by contacting us at the address below; we process requests within 30
-            days.
+            You can delete your workspace yourself from Settings, which removes everything in it at
+            once except the invoices, credit notes and payment records described above, or request
+            deletion by contacting us at the address below; we process requests within 30 days.
           </p>
 
           {/* 6. Data security */}
@@ -189,8 +215,8 @@ export default function PrivacyPage() {
           </ul>
           <p className={proseP}>
             To exercise any of these rights, contact us at{' '}
-            <a href="mailto:privacy@kontuur.io" className="text-spring">
-              privacy@kontuur.io
+            <a href={`mailto:privacy@${COMPANY.domain}`} className="text-spring">
+              privacy@{COMPANY.domain}
             </a>
             .
           </p>
@@ -215,13 +241,13 @@ export default function PrivacyPage() {
           <h2 className={proseH2}>10. Contact</h2>
           <p className={proseP}>For privacy-related questions or requests, please contact:</p>
           <p className={proseP}>
-            <strong>Chelling Ltd</strong>
+            <strong>{COMPANY.legalName}</strong>
             <br />
-            UIC 206770508, Sofia, Bulgaria
+            UIC {COMPANY.uic}, {COMPANY.address}
             <br />
             Email:{' '}
-            <a href="mailto:privacy@kontuur.io" className="text-spring">
-              privacy@kontuur.io
+            <a href={`mailto:privacy@${COMPANY.domain}`} className="text-spring">
+              privacy@{COMPANY.domain}
             </a>
           </p>
         </div>

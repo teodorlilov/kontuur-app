@@ -2,6 +2,7 @@ import { formatDocumentNumber, formatLongDate, formatMoney, pluralise } from '@/
 import { REMINDER_COPY } from '@/lib/billing/copy'
 import type { BillingReminderType } from '@/types/api'
 import type { SaleDocumentColumns } from '@/lib/queries/select-columns'
+import { DOCUMENT_TIMEZONE } from '@/utils/constants'
 import { escapeHtml, type EmailContent, strong } from './layout'
 
 /**
@@ -18,7 +19,11 @@ import { escapeHtml, type EmailContent, strong } from './layout'
  * expires also say when, and what to do if it was not you.
  */
 
-/** Sent from the app when a batch is ready for the client to look at. */
+/**
+ * Sent from the app when a batch is ready for the client to look at. The signoff invites no reply:
+ * hello@kontuur.app is a real mailbox, but nobody has confirmed it is watched, and an unanswered
+ * invitation to reply is worse than none.
+ */
 export function approvalEmail(params: {
   clientName: string
   approvalUrl: string
@@ -39,9 +44,6 @@ export function approvalEmail(params: {
     cta: { label: 'Review & approve', url: approvalUrl },
     footnote:
       'This link expires in 48 hours. If the button does not work, paste this into your browser:',
-    // No "reply and we'll answer" — hello@kontuur.app is a real mailbox, but
-    // nobody has confirmed it is watched, and an unanswered invitation to reply
-    // is worse than none.
     signoff: 'Sent by Kontuur on behalf of your agency.',
   }
 }
@@ -75,29 +77,39 @@ export function reminderEmail(
 /**
  * The invoice or credit note, sent to the payer at the moment of payment with the PDF attached
  * — the document Наредба Н-18 asks to be handed over electronically (чл. 52о ал. 5). The date is
- * written in Sofia time, the document's own.
+ * written in Sofia time, the document's own. `planUrl` is null for a document of a deleted
+ * workspace: there is no Plan & billing to point at, so the email carries no button and asks the
+ * payer to keep the attachment.
  */
 export function documentEmail(
   document: Pick<SaleDocumentColumns, 'kind' | 'number' | 'gross_cents' | 'issued_at'>,
-  planUrl: string
+  planUrl: string | null
 ): EmailContent {
   const invoice = document.kind === 'invoice'
   const noun = invoice ? 'invoice' : 'credit note'
   const number = formatDocumentNumber(document.number)
   const amount = formatMoney(document.gross_cents)
-  const date = formatLongDate(new Date(document.issued_at), 'Europe/Sofia')
+  const date = formatLongDate(new Date(document.issued_at), DOCUMENT_TIMEZONE)
+  const attached = `${strong(`${invoice ? 'Invoice' : 'Credit note'} No. ${number}`)} for ${strong(amount)}, dated ${date}, is attached as a PDF.`
   return {
     subject: invoice ? 'Your invoice from Kontuur' : 'Your credit note from Kontuur',
     preview: `${invoice ? 'Invoice' : 'Credit note'} ${number} for ${amount} is attached.`,
     label: invoice ? 'Invoice' : 'Credit note',
     headline: { lead: `Your ${noun} is`, accent: 'attached' },
-    paragraphs: [
-      `${strong(`${invoice ? 'Invoice' : 'Credit note'} No. ${number}`)} for ${strong(amount)}, dated ${date}, is attached as a PDF.`,
-      'It is also listed under Plan & billing, where every document stays available to download.',
-    ],
-    cta: { label: 'Open Plan & billing', url: planUrl },
-    footnote: PASTE,
     signoff: SIGNOFF,
+    ...(planUrl
+      ? {
+          paragraphs: [
+            attached,
+            'It is also listed under Plan & billing, where every document stays available to download.',
+          ],
+          cta: { label: 'Open Plan & billing', url: planUrl },
+          footnote: PASTE,
+        }
+      : {
+          paragraphs: [attached],
+          footnote: `Keep this email: the attached PDF is the original ${noun}.`,
+        }),
   }
 }
 
@@ -134,7 +146,8 @@ export const resetPasswordEmail: EmailContent = {
 /**
  * Supabase → Authentication → Email Templates → Invite user.
  *
- * `{{ .Data.agency_name }}` is the metadata the invite route passes. Supabase
+ * `{{ .Data.agency_name }}` is the metadata `inviteMember` passes
+ * (src/features/settings/lib/invite-member.ts). Supabase
  * renders this template at invite time, not at accept time, so there is no
  * older invite that could reach a reader without the name set.
  */

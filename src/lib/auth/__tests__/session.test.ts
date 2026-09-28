@@ -9,7 +9,10 @@ const mocks = vi.hoisted(() => ({
 vi.mock('next/navigation', () => ({ redirect: mocks.redirect }))
 vi.mock('next/headers', () => ({ headers: async () => mocks.headers }))
 vi.mock('@/lib/supabase/server', () => ({ createServerSupabaseClient: vi.fn() }))
-vi.mock('@/lib/auth/helpers', () => ({ getCachedUserRecord: vi.fn() }))
+vi.mock('@/lib/auth/helpers', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/auth/helpers')>()),
+  getCachedUserRecord: vi.fn(),
+}))
 
 import { requireAuthUserId } from '../session'
 

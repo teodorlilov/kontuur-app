@@ -33,26 +33,35 @@ describe('PlanActions', () => {
     Object.defineProperty(window, 'location', { value: { assign: mocks.assign }, writable: true })
   })
 
-  it('offers Checkout with the billing sentence while the workspace does not pay', async () => {
+  it('offers Checkout with the billing sentence while no subscription is open', async () => {
     mocks.startCheckout.mockResolvedValue({
       ok: true,
       data: { url: 'https://checkout.stripe.com/c/1' },
     })
-    render(<PlanActions state="trial" plan="trial" summary={SUMMARY} {...END} />)
+    render(<PlanActions plan="trial" subscriptionOpen={false} summary={SUMMARY} {...END} />)
     expect(screen.getByText(SUMMARY)).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Choose plan' }))
     await act(async () => {})
     expect(mocks.assign).toHaveBeenCalledWith('https://checkout.stripe.com/c/1')
   })
 
-  it('offers the plan’s end and the portal to a paying workspace, and nothing to a house one', () => {
-    const { unmount } = render(<PlanActions state="active" plan="pro" summary={SUMMARY} {...END} />)
+  it('offers the plan’s end and the portal while a subscription is open, and never Checkout', () => {
+    render(<PlanActions plan="pro" subscriptionOpen summary={SUMMARY} {...END} />)
     expect(screen.getByRole('button', { name: 'Cancel plan' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Manage billing' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Choose plan' })).not.toBeInTheDocument()
     expect(screen.queryByText(SUMMARY)).not.toBeInTheDocument()
+  })
+
+  it('offers a house workspace the end of an open subscription, and nothing without one', () => {
+    const { unmount } = render(
+      <PlanActions plan="house" subscriptionOpen summary={SUMMARY} {...END} />
+    )
+    expect(screen.getByRole('button', { name: 'Cancel plan' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Manage billing' })).toBeInTheDocument()
     unmount()
     const { container } = render(
-      <PlanActions state="active" plan="house" summary={SUMMARY} {...END} />
+      <PlanActions plan="house" subscriptionOpen={false} summary={SUMMARY} {...END} />
     )
     expect(container).toBeEmptyDOMElement()
   })
@@ -62,7 +71,7 @@ describe('PlanActions', () => {
       ok: false,
       error: 'Only admins can manage the plan.',
     })
-    render(<PlanActions state="past_due" plan="pro" summary={SUMMARY} {...END} />)
+    render(<PlanActions plan="pro" subscriptionOpen summary={SUMMARY} {...END} />)
     fireEvent.click(screen.getByRole('button', { name: 'Manage billing' }))
     await act(async () => {})
     expect(mocks.toast.error).toHaveBeenCalledWith('Only admins can manage the plan.')

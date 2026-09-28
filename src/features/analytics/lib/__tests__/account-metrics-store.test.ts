@@ -15,11 +15,7 @@ function fakeAdmin(error: { message: string } | null = null) {
 }
 
 describe('upsertAccountMetricDays', () => {
-  /**
-   * Per-column batching only works if partial rows land on the SAME row. A different conflict
-   * target creates a second row per pass instead, and every read silently halves.
-   */
-  it('resolves every write against the same day key', async () => {
+  it('resolves every write against the same day key, so partial rows from separate passes land on one row', async () => {
     const { client, upsert } = fakeAdmin()
 
     await upsertAccountMetricDays(
@@ -34,11 +30,7 @@ describe('upsertAccountMetricDays', () => {
     })
   })
 
-  /**
-   * Without it the 30-day seed runs in replace mode and overwrites a day another pass already
-   * captured in full, with the one measure history still serves — reach.
-   */
-  it('passes ignoreDuplicates through for the first-sync backfill', async () => {
+  it('passes ignoreDuplicates through, so the first-sync backfill never overwrites a day another pass captured in full', async () => {
     const { client, upsert } = fakeAdmin()
 
     await upsertAccountMetricDays(
@@ -76,8 +68,7 @@ describe('upsertAccountMetricDays', () => {
 })
 
 describe('toReachRows', () => {
-  /** The window refill fetches whole chunks, but must not write past the period it refreshed. */
-  it('drops days past the span end', async () => {
+  it('drops days past the span end, since the window refill fetches whole chunks but must not write past its period', async () => {
     const rows = toReachRows(
       'c',
       'a',
@@ -100,11 +91,7 @@ describe('toReachRows', () => {
     ])
   })
 
-  /**
-   * A reach row carrying `followers_count: null` would erase the nightly snapshot on every
-   * window refill. The key set IS the contract.
-   */
-  it('writes only reach, so a pass cannot null a column it does not own', () => {
+  it('writes only reach, so a pass cannot null a column it does not own, such as the nightly followers_count', () => {
     const [row] = toReachRows('c', 'a', [{ date: '2026-08-01', reach: 0 }])
 
     expect(Object.keys(row!).sort()).toEqual(['client_id', 'ig_account_id', 'metric_date', 'reach'])

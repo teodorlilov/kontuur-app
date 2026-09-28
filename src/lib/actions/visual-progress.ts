@@ -4,8 +4,7 @@ import 'server-only'
 import { z } from 'zod'
 import { resolveActionAuth, verifyPostsOwnership } from '@/lib/auth/helpers'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
-import { fetchImagesByPost } from '@/lib/posts/fetch-post-images'
-import { fetchVisualJobs } from '@/lib/visual/visual-jobs'
+import { fetchPostVisuals } from '@/lib/visual/post-visuals'
 import type { ActionResult } from '@/lib/actions/types'
 import type { PostImage } from '@/types/api'
 
@@ -24,10 +23,10 @@ interface VisualProgress {
  *
  * A picture takes about a minute and leaves no trace until it lands, so a reviewer who returns to a
  * run mid-generation sees slides marked as being made by something they cannot hear from. This is
- * what the poll behind those slides asks, and it stops as soon as they are done. It composes the
- * two reads the page load already uses (`fetchImagesByPost`, `fetchVisualJobs`) rather than adding
- * a third way to ask; the ids are narrowed to the caller's own agency first, because both of those
- * run as the service role.
+ * what the poll behind those slides asks, and it stops as soon as they are done. It asks through
+ * the read the page load already uses (`fetchPostVisuals`) rather than adding another way to ask;
+ * the ids are narrowed to the caller's own agency first, because that read runs as the service
+ * role.
  */
 export async function fetchVisualProgress(
   postIds: string[]
@@ -43,16 +42,16 @@ export async function fetchVisualProgress(
   if (ids.length === 0) return { ok: true, data: [] }
 
   try {
-    const [imagesByPost, jobsByPost] = await Promise.all([
-      fetchImagesByPost(ids),
-      fetchVisualJobs(createAdminSupabaseClient(), ids),
-    ])
+    const { imagesByPost, generatingByPost } = await fetchPostVisuals(
+      createAdminSupabaseClient(),
+      ids
+    )
     return {
       ok: true,
       data: ids.map((postId) => ({
         postId,
         images: imagesByPost.get(postId) ?? [],
-        generatingPositions: jobsByPost.get(postId) ?? [],
+        generatingPositions: generatingByPost.get(postId) ?? [],
       })),
     }
   } catch (err) {

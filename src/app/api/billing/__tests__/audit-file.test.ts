@@ -2,7 +2,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { NextRequest } from 'next/server'
 
 const mocks = vi.hoisted(() => ({ fetchSaleDocumentsBetween: vi.fn() }))
-vi.mock('@/lib/queries/db', () => ({
+const ADMIN = { admin: true }
+vi.mock('@/lib/supabase/admin', () => ({ createAdminSupabaseClient: () => ADMIN }))
+vi.mock('@/lib/billing/documents', () => ({
   fetchSaleDocumentsBetween: mocks.fetchSaleDocumentsBetween,
 }))
 
@@ -20,6 +22,8 @@ describe('GET /api/billing/audit-file', () => {
     vi.stubEnv('NRA_ESHOP_NUMBER', 'RF0000123')
     vi.stubEnv('STRIPE_ACCOUNT_ID', 'acct_1')
     mocks.fetchSaleDocumentsBetween.mockReset().mockResolvedValue([])
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+    vi.spyOn(console, 'error').mockImplementation(() => undefined)
   })
   afterEach(() => vi.unstubAllEnvs())
 
@@ -34,6 +38,7 @@ describe('GET /api/billing/audit-file', () => {
     const response = await GET(request('2026-10'))
     expect(response.status).toBe(204)
     expect(mocks.fetchSaleDocumentsBetween).toHaveBeenCalledWith(
+      ADMIN,
       '2026-09-30T00:00:00.000Z',
       '2026-11-02T00:00:00.000Z'
     )
@@ -52,6 +57,7 @@ describe('GET /api/billing/audit-file', () => {
         stripe_refund_id: null,
         refunds: null,
         issued_at: '2026-10-03T10:00:00.000Z',
+        tax_event_at: '2026-10-03T09:59:55.000Z',
         customer: { name: 'A', email: null, address: null, taxIds: [] },
         lines: [
           {
@@ -83,5 +89,33 @@ describe('GET /api/billing/audit-file', () => {
     const xml = await response.text()
     expect(xml).toContain('<doc_n>1000000001</doc_n>')
     expect(xml).toContain('<pos_n>acct_1</pos_n>')
+  })
+
+  it('answers 409 with the question for the accountant when the month holds refunds and no sale, which the schema cannot carry', async () => {
+    mocks.fetchSaleDocumentsBetween.mockResolvedValue([
+      {
+        id: 'doc_3',
+        number: 1_000_000_003,
+        kind: 'credit_note',
+        stripe_invoice_id: 'in_1',
+        issued_at: '2026-10-20T15:00:00.000Z',
+        tax_event_at: '2026-10-20T15:00:00.000Z',
+        gross_cents: 2280,
+      },
+    ])
+    const response = await GET(request('2026-10'))
+    expect(response.status).toBe(409)
+    expect((await response.json()).error).toMatch(/^2026-10 holds credit notes but no sale/)
+  })
+
+  it('logs any other failure at the boundary and answers 500', async () => {
+    mocks.fetchSaleDocumentsBetween.mockRejectedValue(new Error('fetchSaleDocumentsBetween failed'))
+    const response = await GET(request('2026-10'))
+    expect(response.status).toBe(500)
+    expect(await response.json()).toEqual({ error: 'The audit file could not be built.' })
+    expect(console.error).toHaveBeenCalledWith(
+      '[billing:audit-file] 2026-10 failed:',
+      expect.any(Error)
+    )
   })
 })

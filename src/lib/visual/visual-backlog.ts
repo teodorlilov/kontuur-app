@@ -1,6 +1,10 @@
 import { parseSlides } from '@/lib/posts/parse-slides'
-import type { PostImage } from '@/types/api'
+import { QUALITY_FLOOR } from '@/utils/constants'
+import type { PostImage, PostType } from '@/types/api'
 import type { PostRow } from '@/types'
+
+/** How many failed attempts a post gets at its pictures before the visuals cron leaves it. */
+export const MAX_VISUAL_ATTEMPTS = 3
 
 /**
  * What one post of this format costs in pictures: a slide each, or one for a single image.
@@ -12,6 +16,15 @@ import type { PostRow } from '@/types'
  */
 export function visualSlots(postType: string, slideCount: number): number {
   return postType === 'carousel' ? slideCount : 1
+}
+
+/**
+ * A stored post type as the app's `PostType`: 'carousel' is a carousel, and anything else — a null
+ * brand default, a value this bundle does not know — is a single, the reading `visualSlots` gives
+ * it when costing a post. The one conversion from a stored value to the union.
+ */
+export function toPostType(value: string | null | undefined): PostType {
+  return value === 'carousel' ? 'carousel' : 'single'
 }
 
 /**
@@ -47,12 +60,17 @@ export function unbakedImages(images: PostImage[], composedPositions: number[]):
   return images.filter((image) => isUnbakedArt(image) && !composed.has(image.position))
 }
 
-/** The slide positions a post still owes a picture for, in slide order. */
+/**
+ * The slide positions a post still owes a picture for, in slide order. A position held by a live
+ * claim (`generatingPositions`, lib/visual/visual-jobs.ts) is owed by nobody: its picture is being
+ * made, and its image is already reserved.
+ */
 export function missingPositions(
   post: { post_type: string; slides_json: unknown },
-  images: PostImage[]
+  images: PostImage[],
+  generatingPositions: number[] = []
 ): number[] {
-  const covered = new Set(images.map((image) => image.position))
+  const covered = new Set([...images.map((image) => image.position), ...generatingPositions])
   const positions: number[] = []
   for (let position = 0; position < totalVisualSlots(post); position++) {
     if (!covered.has(position)) positions.push(position)
@@ -64,6 +82,7 @@ export type BacklogPost = Pick<
   PostRow,
   | 'id'
   | 'client_id'
+  | 'status'
   | 'post_type'
   | 'quality_score_avg'
   | 'visuals_attempts'
@@ -73,36 +92,54 @@ export type BacklogPost = Pick<
   slides_json: unknown
 }
 
-interface VisualJob {
+/**
+ * Whether a post in the review queue will still be painted: at or above the quality floor
+ * (likely discards get no art spend) and with attempts left. A post never judged passes the floor
+ * — the judge failing is not the post failing — as does the backlog read's matching `.or(...)`
+ * (`readPostVisualPages`, src/lib/visual/post-visuals.ts).
+ * The one rule for what the cron will paint and what the owed-images count expects it to
+ * (lib/visual/owed-images.ts).
+ */
+export function isStillPaintable(
+  post: Pick<BacklogPost, 'quality_score_avg' | 'visuals_attempts'>
+): boolean {
+  const score = post.quality_score_avg
+  if (score !== null && score < QUALITY_FLOOR) return false
+  return post.visuals_attempts < MAX_VISUAL_ATTEMPTS
+}
+
+/** A post the visuals cron will paint, and the positions it still owes. */
+export interface VisualJob {
   postId: string
   clientId: string
   positions: number[]
 }
 
 /**
- * The visuals cron's work order: which missing slide images to paint this
- * run. Oldest posts first (the queue drains), gated by the quality floor
- * (likely-discards get no art spend) and a per-post attempt cap so a post
- * whose generations keep failing cannot eat every run. The image budget is a
- * hard per-run ceiling; the cron's time budget cuts on top of it.
- *
- * `retrySpacingMs` is what makes the attempt cap mean "this post cannot be
- * painted" rather than "the provider was down for three ticks": without a gap
- * between attempts, an outage shorter than a morning exhausts the whole backlog's
- * budget and excludes those posts from auto-visuals permanently.
+ * The visuals cron's work order, oldest first: each `isStillPaintable` post picked WHOLE (every
+ * position `missingPositions` says it owes) or not at all, though the time budget may stop it
+ * partway for the next tick. A post over the run's image budget is passed over for a smaller one
+ * behind it; one over its workspace's pool (`imagesLeft` via `agencyOf`, absent meaning nothing
+ * left) is `refused`. An unparseable attempt stamp reads as past `retrySpacingMs`, which the
+ * attempt cap still bounds. The time budget, the count and bell for `refused`, and why attempts
+ * are spaced: `paintBacklog`, `selectPaintableBacklog` with `ringImagesWaiting`, and
+ * `RETRY_SPACING_MS` (src/lib/visual/paint-backlog.ts).
  */
 export function pickVisualBacklog(
   posts: BacklogPost[],
   imagesByPost: Map<string, PostImage[]>,
   options: {
-    qualityFloor: number
-    maxAttempts: number
     maxImagesPerRun: number
     retrySpacingMs: number
+    agencyOf: ReadonlyMap<string, string>
+    imagesLeft: ReadonlyMap<string, number>
+    generatingByPost: ReadonlyMap<string, number[]>
   },
   now: Date = new Date()
-): VisualJob[] {
+): { jobs: VisualJob[]; refused: BacklogPost[] } {
   const jobs: VisualJob[] = []
+  const refused: BacklogPost[] = []
+  const left = new Map(options.imagesLeft)
   let budget = options.maxImagesPerRun
   const retryCutoff = now.getTime() - options.retrySpacingMs
 
@@ -110,24 +147,27 @@ export function pickVisualBacklog(
     (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
   )
   for (const post of ordered) {
-    if (budget <= 0) break
-    // Unjudged posts pass the floor — see the cron's matching `.or(...)`. `?? 0`
-    // would put them below every floor, conflating "not measured" with "measured
-    // terrible".
-    if (post.quality_score_avg !== null && post.quality_score_avg < options.qualityFloor) continue
-    if (post.visuals_attempts >= options.maxAttempts) continue
-    // A never-attempted post has no gap to wait out. An unparseable stamp yields NaN,
-    // and NaN > x is false, so it reads as "long enough ago" — the safe direction here,
-    // since the attempt cap still bounds it.
+    if (!isStillPaintable(post)) continue
     if (post.visuals_attempted_at !== null) {
       if (new Date(post.visuals_attempted_at).getTime() > retryCutoff) continue
     }
-
-    const positions = missingPositions(post, imagesByPost.get(post.id) ?? []).slice(0, budget)
+    const positions = missingPositions(
+      post,
+      imagesByPost.get(post.id) ?? [],
+      options.generatingByPost.get(post.id) ?? []
+    )
     if (positions.length === 0) continue
 
+    const agencyId = options.agencyOf.get(post.client_id)
+    const pool = agencyId === undefined ? 0 : (left.get(agencyId) ?? 0)
+    if (positions.length > pool) {
+      refused.push(post)
+      continue
+    }
+    if (positions.length > budget) continue
     budget -= positions.length
+    if (agencyId !== undefined) left.set(agencyId, pool - positions.length)
     jobs.push({ postId: post.id, clientId: post.client_id, positions })
   }
-  return jobs
+  return { jobs, refused }
 }

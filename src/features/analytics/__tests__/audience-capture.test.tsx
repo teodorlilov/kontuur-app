@@ -26,8 +26,7 @@ const PERIOD: AnalyticsPeriod = {
 beforeEach(() => vi.clearAllMocks())
 
 describe('AudienceCapture', () => {
-  /** The rerender is the assertion: a second mount must never re-spend the eight breakdown calls. */
-  it('asks for the snapshot once and refreshes when it lands', async () => {
+  it('asks for the snapshot once, so a re-render never re-spends the breakdown calls, and refreshes when it lands', async () => {
     ensureAudienceSnapshot.mockResolvedValue({ ok: true, data: { captured: true } })
     const { rerender } = render(<AudienceCapture clientId="c1" period={PERIOD} />)
 

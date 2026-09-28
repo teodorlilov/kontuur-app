@@ -18,8 +18,7 @@ describe('archiveReportInputSchema', () => {
     ).toBe(true)
   })
 
-  /** A whole calendar year: 365 inclusive days in 2026, inside the 366-day cap. */
-  it('accepts exactly the clamp, inclusive', () => {
+  it('accepts a whole calendar year: 365 inclusive days in 2026, inside the 366-day clamp', () => {
     expect(
       archiveReportInputSchema.safeParse({ ...BASE, start: '2026-01-01', end: '2026-12-31' })
         .success

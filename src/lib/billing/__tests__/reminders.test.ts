@@ -6,7 +6,6 @@ const mocks = vi.hoisted(() => ({
   notify: vi.fn(),
   sendEmail: vi.fn(),
   fetchAgencyById: vi.fn(),
-  fetchTeamMembersByAgency: vi.fn(),
 }))
 vi.mock('@/lib/notifications/notify', () => ({
   notify: (...args: unknown[]) => mocks.notify(...args),
@@ -16,7 +15,6 @@ vi.mock('@/lib/email/resend', () => ({
 }))
 vi.mock('@/lib/queries/db', () => ({
   fetchAgencyById: (...args: unknown[]) => mocks.fetchAgencyById(...args),
-  fetchTeamMembersByAgency: (...args: unknown[]) => mocks.fetchTeamMembersByAgency(...args),
 }))
 
 import {
@@ -26,28 +24,14 @@ import {
   remindWorkspace,
 } from '../reminders'
 import { entitlementFor } from '../entitlement'
-import { GRACE_DAYS } from '../plans'
+import { GRACE_DAYS, TRIAL_NOTICE_DAYS } from '../plans'
+import { trialRow } from './fixtures'
 
 const NOW = new Date('2026-09-14T08:00:00Z')
 const day = (offset: number) => new Date(NOW.getTime() + offset * 86_400_000).toISOString()
 
 function row(overrides: Partial<AgencyBillingColumns & { id: string }> = {}) {
-  return {
-    id: 'a1',
-    plan: 'trial',
-    mode: 'agency',
-    timezone: 'Europe/Sofia',
-    stripe_customer_id: null,
-    stripe_subscription_id: null,
-    subscription_status: null,
-    subscription_quantity: null,
-    trial_ends_at: day(7),
-    current_period_start: null,
-    current_period_end: null,
-    cancel_at_period_end: false,
-    past_due_since: null,
-    ...overrides,
-  }
+  return { id: 'a1', ...trialRow(NOW), ...overrides }
 }
 
 describe('pickReminder — which moment a trial workspace is at', () => {
@@ -55,14 +39,16 @@ describe('pickReminder — which moment a trial workspace is at', () => {
     expect(pickReminder(entitlementFor(row(), NOW), NOW)).toBeNull()
     expect(pickReminder(entitlementFor(row({ trial_ends_at: day(2) }), NOW), NOW)).toEqual({
       type: 'trial_ending',
-      message: 'Your trial ends on 16 September — choose a plan to keep generating.',
+      message: 'Your trial ends on 16 September 2026 — choose a plan to keep generating.',
+      dedupKey: 'trial_ending:2026-09-16',
     })
   })
 
   it('names the grace once the trial has ended', () => {
     const reminder = pickReminder(entitlementFor(row({ trial_ends_at: day(-1) }), NOW), NOW)
     expect(reminder?.type).toBe('trial_ended')
-    expect(reminder?.message).toMatch(/ended on 13 September.*until 20 September/)
+    expect(reminder?.message).toMatch(/ended on 13 September 2026.*until 20 September/)
+    expect(reminder?.dedupKey).toBe('trial_ended:2026-09-13')
   })
 
   it('says a workspace was paused for a week after its grace ran out, then falls silent', () => {
@@ -70,7 +56,8 @@ describe('pickReminder — which moment a trial workspace is at', () => {
     expect(pickReminder(justPaused, NOW)).toEqual({
       type: 'workspace_paused',
       message:
-        'Your workspace was paused on 12 September. Choose a plan to generate, schedule and publish again.',
+        'Your workspace was paused on 12 September 2026. Choose a plan to generate, schedule and publish again.',
+      dedupKey: 'workspace_paused:2026-09-05',
     })
     const longAgo = entitlementFor(row({ trial_ends_at: day(-(GRACE_DAYS + 30)) }), NOW)
     expect(pickReminder(longAgo, NOW)).toBeNull()
@@ -98,8 +85,8 @@ type Filter = [method: string, column: string, value: unknown]
 /**
  * A recorder in place of the admin client: agencies and admins come from the fixtures, and every
  * filter a query applied is kept so the roster rules can be asserted. Cast through `unknown`
- * because only `from/select/is/eq/in` exist — the five the runner calls; a new query method fails
- * at runtime, which is the intent. A read can be made to fail by table.
+ * because only the query methods the runner calls exist; a new one fails at runtime, which is the
+ * intent. A read can be made to fail by table.
  */
 function makeAdmin(
   agencies: ReturnType<typeof row>[],
@@ -125,6 +112,14 @@ function makeAdmin(
           record.filters.push(['in', column, values])
           return query
         },
+        gte: (column: string, value: unknown) => {
+          record.filters.push(['gte', column, value])
+          return query
+        },
+        lte: (column: string, value: unknown) => {
+          record.filters.push(['lte', column, value])
+          return query
+        },
         then(
           resolve: (value: { data: unknown[] | null; error: { message: string } | null }) => void
         ) {
@@ -147,7 +142,7 @@ describe('remindTrialWorkspaces', () => {
     mocks.sendEmail.mockReset().mockResolvedValue(undefined)
   })
 
-  it('reads the unsubscribed agencies and their admins once, then writes one row and one email per due workspace', async () => {
+  it('reads the unsubscribed agencies in their window and their admins once, then writes one row and one email per due workspace', async () => {
     const { admin, reads } = makeAdmin(
       [row({ id: 'ending', trial_ends_at: day(2) }), row({ id: 'fine', trial_ends_at: day(10) })],
       [
@@ -158,7 +153,11 @@ describe('remindTrialWorkspaces', () => {
     const outcome = await remindTrialWorkspaces(admin, NOW)
 
     expect(reads.map((r) => r.table)).toEqual(['agencies', 'users'])
-    expect(reads[0]?.filters).toEqual([['is', 'stripe_subscription_id', null]])
+    expect(reads[0]?.filters).toEqual([
+      ['is', 'stripe_subscription_id', null],
+      ['gte', 'trial_ends_at', day(-(GRACE_DAYS + 7))],
+      ['lte', 'trial_ends_at', day(TRIAL_NOTICE_DAYS)],
+    ])
     expect(reads[1]?.filters).toEqual([
       ['in', 'agency_id', ['ending']],
       ['eq', 'role', 'admin'],
@@ -173,7 +172,11 @@ describe('remindTrialWorkspaces', () => {
     expect(mocks.notify).toHaveBeenCalledTimes(1)
     expect(mocks.notify).toHaveBeenCalledWith(
       admin,
-      expect.objectContaining({ agencyId: 'ending', type: 'trial_ending', cooldownDays: 31 })
+      expect.objectContaining({
+        agencyId: 'ending',
+        type: 'trial_ending',
+        dedupKey: `trial_ending:${day(2).slice(0, 10)}`,
+      })
     )
     expect(mocks.sendEmail).toHaveBeenCalledTimes(1)
     expect(mocks.sendEmail).toHaveBeenCalledWith({
@@ -234,20 +237,22 @@ describe('remindWorkspace — the one sender', () => {
     mocks.sendEmail.mockReset().mockResolvedValue(undefined)
   })
 
-  it('writes the bell first and mails only behind a written row, with the cooldown that dedups a retry', async () => {
+  it('writes the bell first and mails only behind a written row, keyed so a retry is silent', async () => {
     const { admin } = makeAdmin([], [])
     const result = await remindWorkspace(admin, {
       agencyId: 'a1',
       type: 'payment_failed',
       message:
-        'Your last payment failed. Update your card by 18 September to keep your workspace running.',
+        'Your last payment failed. Update your card by 18 September 2026 to keep your workspace running.',
+      dedupKey: 'payment_failed:2026-09-11',
       to: ['owner@a1.test'],
     })
     expect(result).toEqual({ outcome: 'emailed' })
     expect(mocks.notify).toHaveBeenCalledWith(
       admin,
-      expect.objectContaining({ type: 'payment_failed', cooldownDays: 31 })
+      expect.objectContaining({ type: 'payment_failed', dedupKey: 'payment_failed:2026-09-11' })
     )
+    expect(mocks.notify.mock.calls[0]?.[1]).not.toHaveProperty('cooldownDays')
     expect(mocks.sendEmail).toHaveBeenCalledWith({
       to: ['owner@a1.test'],
       content: expect.objectContaining({
@@ -259,7 +264,13 @@ describe('remindWorkspace — the one sender', () => {
 
   it('names each way it can come to nothing, without throwing for a refused send', async () => {
     const { admin } = makeAdmin([], [])
-    const input = { agencyId: 'a1', type: 'trial_ending' as const, message: 'x', to: ['o@a.test'] }
+    const input = {
+      agencyId: 'a1',
+      type: 'trial_ending' as const,
+      message: 'x',
+      dedupKey: 'trial_ending:2026-09-16',
+      to: ['o@a.test'],
+    }
     mocks.notify.mockResolvedValueOnce('suppressed')
     expect(await remindWorkspace(admin, input)).toEqual({ outcome: 'suppressed' })
     mocks.notify.mockResolvedValueOnce('failed')
@@ -291,14 +302,10 @@ describe('remindPaymentFailed — the webhook’s reminder', () => {
     mocks.notify.mockReset().mockResolvedValue('written')
     mocks.sendEmail.mockReset().mockResolvedValue(undefined)
     mocks.fetchAgencyById.mockReset().mockResolvedValue(pastDue)
-    mocks.fetchTeamMembersByAgency.mockReset().mockResolvedValue([
-      { id: 'u1', email: 'owner@a1.test', role: 'admin', created_at: null },
-      { id: 'u2', email: 'member@a1.test', role: 'member', created_at: null },
-    ])
   })
 
-  it('tells the admins by when the card is due, in the workspace’s own words', async () => {
-    const { admin } = makeAdmin([], [])
+  it('tells the admins by when the card is due, in the workspace’s own words, keyed by the first failure so an episode rings once', async () => {
+    const { admin, reads } = makeAdmin([], [{ agency_id: 'a1', email: 'owner@a1.test' }])
     expect(await remindPaymentFailed(admin, 'a1', NOW)).toEqual({ outcome: 'emailed' })
     expect(mocks.notify).toHaveBeenCalledWith(
       admin,
@@ -306,9 +313,15 @@ describe('remindPaymentFailed — the webhook’s reminder', () => {
         agencyId: 'a1',
         type: 'payment_failed',
         message:
-          'Your last payment failed. Update your card by 20 September to keep your workspace running.',
+          'Your last payment failed. Update your card by 20 September 2026 to keep your workspace running.',
+        dedupKey: 'payment_failed:2026-09-13',
       })
     )
+    expect(reads.map((r) => r.table)).toEqual(['users'])
+    expect(reads[0]?.filters).toEqual([
+      ['in', 'agency_id', ['a1']],
+      ['eq', 'role', 'admin'],
+    ])
     expect(mocks.sendEmail).toHaveBeenCalledWith(expect.objectContaining({ to: ['owner@a1.test'] }))
   })
 

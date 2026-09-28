@@ -57,7 +57,17 @@ interface SettingsViewProps {
   notice?: ReactNode
 }
 
-/** Settings page orchestrator. Owns the header: the tab rail is its state. */
+/**
+ * Settings page orchestrator. Owns the header: the tab rail is its state.
+ *
+ * Solo workspaces have no team, so one predicate both hides the Team tab and refuses it from the
+ * URL. The Canva OAuth callback (src/app/api/canva/callback/route.ts) returns here:
+ * `canva_connected` / `canva_error` open Integrations with a toast, and both are cleared from the
+ * URL together with the `canva_error_detail` the callback appends to a failed exchange.
+ * It renders no scroll container of its own: the header compresses only once StickyShell's
+ * sentinel scrolls out of view (src/components/layout/page-header/sticky-shell.tsx), so
+ * `main.app-content` (`DashboardLayout`, src/app/(dashboard)/layout.tsx) must stay the page's one scroller.
+ */
 export function SettingsView({
   agencyName,
   planLabel,
@@ -69,7 +79,6 @@ export function SettingsView({
 }: SettingsViewProps) {
   const searchParams = useSearchParams()
 
-  // Solo workspaces have no team to manage — the same rule hides the tab and rejects it from the URL.
   const isTabAvailable = (tab: SettingsTab) => !(tab === 'team' && agencyMode === 'solo')
 
   const tabs: Array<TabItem<SettingsTab>> = TAB_LABELS.filter((tab) => isTabAvailable(tab.id))
@@ -80,7 +89,6 @@ export function SettingsView({
     isTabAvailable
   )
 
-  // Canva OAuth redirect lands here.
   useEffect(() => {
     const connected = searchParams.get('canva_connected')
     const error = searchParams.get('canva_error')
@@ -89,15 +97,11 @@ export function SettingsView({
     selectTab('integrations')
     if (connected) toast.success('Canva account connected successfully')
     else toast.error('Failed to connect Canva. Please try again.')
-    clearQueryParams(['canva_connected', 'canva_error'])
+    clearQueryParams(['canva_connected', 'canva_error', 'canva_error_detail'])
   }, [searchParams, selectTab])
 
   const panel = PANEL_COPY[activeTab]
 
-  // No scroll container of its own: StickyShell's sentinel has to leave the
-  // intersection of the page's real scroller for the header to compress, and an
-  // `overflow-hidden` flex root with a scrolling child made that impossible — the
-  // header stayed at full height forever. `main.app-content` is the scroller.
   return (
     <>
       <PageHeader

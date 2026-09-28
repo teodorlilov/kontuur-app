@@ -13,8 +13,10 @@ import {
   getCachedEntitlement,
 } from '@/lib/queries/cache'
 import { readUsage } from '@/lib/billing/usage'
-import { canMakeAPost, postsAffordable } from '@/lib/billing/post-allowance'
-import { postsLeft } from '@/lib/billing/copy'
+import { generationGate } from '@/lib/billing/post-allowance'
+import { createAdminSupabaseClient } from '@/lib/supabase/admin'
+import { fetchWorkspaceOwed } from '@/lib/visual/owed-images'
+import { addBrandGate } from '@/lib/billing/copy'
 import { getMondayISO, getWeekdayIndex } from '@/utils/date-helpers'
 import { formatRelativeTime, parseTimestamp } from '@/utils/format'
 import { fetchDashboardData } from '@/features/dashboard/queries/dashboard-data'
@@ -41,18 +43,20 @@ import { NextUpCard } from '@/features/dashboard/components/next-up-card'
 import { ChangeRequestCard } from '@/features/dashboard/components/change-request-card'
 
 /**
- * One page, two compositions. The header, stat row, brief bar and quick actions are the same for
- * an agency and a solo user; only the third stat and the band under the stats differ — a solo
- * user gets the account's Followers tile and My week where an agency gets its client count and
- * the coverage roster. `business` is the solo user's one client: the layout's
- * `requireBusinessSetup` sends a solo agency with no client to /clients/new before this renders,
- * so whenever `isSolo` holds, `clients[0]` does. "Today" is decided once, here, so MiniWeek and
- * My week can never disagree on which column it is.
+ * One page, two compositions: a solo user gets the Followers tile and My week where an agency gets
+ * its client count and coverage roster. The layout's `requireBusinessSetup` sends a clientless solo
+ * workspace to /clients/new only while it can create, so a locked one may have no client: keep the
+ * `business ?` checks. "Today" is
+ * decided once, in the agency's timezone, so MiniWeek and My week agree on it and it stays inside
+ * the fetched week. Every Generate call to action is checked first (`generationGate`,
+ * lib/billing/post-allowance.ts). The owed-pictures read is uncached, beside the fresh usage read,
+ * so both are of one moment and no picture is set aside twice; a failed read passes null, unknown
+ * rather than zero. The lower band uses container queries because the sidebar collapses, and
+ * `minmax(0,…)` so a long client name cannot resize its tracks.
  */
 export default async function DashboardPage() {
-  const { agencyId } = await requireSessionUser()
+  const { agencyId, role } = await requireSessionUser()
 
-  // Both calls hit React cache() populated by the dashboard layout — zero extra DB queries
   const [agency, clients, entitlement] = await Promise.all([
     getCachedAgency(agencyId),
     getCachedAgencyClients(agencyId),
@@ -62,25 +66,26 @@ export default async function DashboardPage() {
   const isSolo = agency?.mode === 'solo'
   const business = isSolo ? clients[0] : undefined
   const timezone = agency?.timezone ?? 'UTC'
-  // The week is the agency's, not the server's — otherwise the "today" marker
-  // can point at a day outside the week the data was fetched for.
   const weekStartISO = getMondayISO(new Date(), timezone)
   const todayIndex = getWeekdayIndex(new Date(), timezone)
 
-  const [data, coverage, briefing, usage] = await Promise.all([
+  const [data, coverage, briefing, usage, owed] = await Promise.all([
     fetchDashboardData(agencyId, clients, weekStartISO, timezone),
     getCachedClientWeekCoverage(agencyId, weekStartISO, timezone),
     getCachedBriefing(),
     readUsage(agencyId, entitlement.periodKey),
+    fetchWorkspaceOwed(
+      createAdminSupabaseClient(),
+      clients.map((client) => client.id)
+    ).catch((err: unknown) => {
+      console.error(`[dashboard] owed images read failed for ${agencyId}:`, err)
+      return null
+    }),
   ])
 
-  // What the three "generate" calls to action promise, checked before they are offered: the
-  // cheapest post there is needs one draft and one picture, and a workspace without both is
-  // walked into a wizard that can only refuse (`postsAffordable`, lib/billing/post-allowance.ts).
-  const generateRefusal = canMakeAPost(entitlement.limits, usage.committed)
-    ? null
-    : postsLeft(0, postsAffordable(entitlement.limits, usage.committed, 1).limiting)
+  const generate = generationGate(entitlement, usage.committed, owed)
 
+  const addClient = addBrandGate(entitlement, clients.length, role)
   const { metrics } = data
   const filledPerDay = countFilledPerDay(coverage)
   const coveredDays = filledPerDay.filter((count) => count > 0).length
@@ -95,7 +100,8 @@ export default async function DashboardPage() {
         pendingCount={metrics.pendingCount}
         oldestPendingAt={metrics.oldestPendingAt}
         failedCount={data.failedPublishes.length}
-        generateRefusal={generateRefusal}
+        generate={generate}
+        addClient={addClient}
       />
 
       <div className={cn(PAGE_SHELL, '@container pb-12 pt-6')}>
@@ -162,7 +168,7 @@ export default async function DashboardPage() {
               connectedClientCount={metrics.connectedClientCount}
               clientCount={clients.length}
               timezone={timezone}
-              generateRefusal={generateRefusal}
+              generateRefusal={generate.refusal}
             />
           </div>
         </div>
@@ -185,9 +191,6 @@ export default async function DashboardPage() {
           </section>
         )}
 
-        {/* Container queries, not viewport ones: the sidebar collapses, so how much
-          room these two sections actually have is not a function of window width.
-          minmax(0,…) keeps a long client name from resizing the tracks per page. */}
         <div
           className={cn(
             'mt-4 grid grid-cols-1 items-start gap-4',
@@ -210,6 +213,8 @@ export default async function DashboardPage() {
                 clients={clients}
                 coverage={coverage}
                 clientPendingMap={metrics.clientPendingMap}
+                addClientRefusal={addClient.refusal}
+                generateRefusal={generate.refusal}
               />
             )}
           </div>
@@ -226,7 +231,8 @@ export default async function DashboardPage() {
           <QuickActionsStrip
             pendingCount={metrics.pendingCount}
             isSolo={isSolo}
-            generateRefusal={generateRefusal}
+            generateRefusal={generate.refusal}
+            addClient={addClient}
           />
         </div>
       </div>

@@ -12,21 +12,21 @@ import type { SlopDetection } from '@/types/api'
  * Caps the text one scoring request may carry.
  *
  * Generous against real use — a caption plus every slide of a carousel — while stopping
- * an arbitrarily large body from being forwarded to the model at our expense. The route
- * previously read `body.text` with a `?.trim()` check and no ceiling of any kind.
+ * an arbitrarily large body from being forwarded to the model at our expense.
  */
 const detectSlopSchema = z.object({
   text: z.string().trim().min(1).max(20_000),
 })
 
-/** Score one draft for AI-sounding copy — the queue's authenticity read, derived from the quality validator. */
+/**
+ * Score one draft for AI-sounding copy — the queue's authenticity read, derived from the quality
+ * validator. Every request is a paid model call, so it stays rate-limited. A judge that answers
+ * without a score is a 502, never a null-filled body a caller would read as a measurement.
+ */
 export async function POST(request: Request) {
   const auth = await resolveAuth()
   if (!auth.ok) return auth.response
 
-  // A live model call, so it consumes the same per-minute budget as every other one.
-  // It had none: the route was authenticated but otherwise unmetered, which made it the
-  // cheapest way to spend the account's tokens in a loop.
   const limited = aiRateLimitResponse('detect-slop', auth.userId)
   if (limited) return limited
   const refused = await requireEntitledRoute(auth.agencyId, 'spend')
@@ -42,8 +42,6 @@ export async function POST(request: Request) {
       validateQuality({ caption: parsed.data.text })
     )
     if (raw.human_score === null) {
-      // The judge answered without judging. Returning a null-filled body would look
-      // like a measurement to a caller whose whole purpose is to obtain one.
       return NextResponse.json({ error: 'Slop detection returned no score' }, { status: 502 })
     }
     const result: SlopDetection = deriveSlopFromQuality({
@@ -53,8 +51,6 @@ export async function POST(request: Request) {
     })
     return NextResponse.json(result)
   } catch (err) {
-    // Logged, not swallowed: this is the boundary, and the previous bare `catch {}`
-    // turned every provider outage, timeout and parse failure into one opaque 500.
     console.error('[detect-slop] scoring failed:', err)
     return NextResponse.json({ error: 'Slop detection failed' }, { status: 500 })
   }

@@ -15,28 +15,21 @@ import { normalizeForCompare } from '@/utils/format'
 import type { ActionResult } from '@/lib/actions/types'
 
 /**
- * Permanently delete the caller's workspace: every client and everything under it, every
- * member and their account, the storage they used. One row is deleted here — `agencies` — and
- * migration 20260856 cascades the rest in the same transaction, so there is no half-deleted
- * workspace and no table list to keep in step. What survives, by design: `sale_documents` and
- * `billing_events` with no owner (the Н-18 records), and the billing-documents bucket.
+ * Permanently delete the caller's workspace, every login in it and its storage: `agencies`
+ * cascades the rows (migration 20260856), leaving the Н-18 records (`sale_documents`,
+ * `billing_events`) and the billing-documents bucket. The workspace is never an argument, the
+ * admin check is a fresh read, an open plan not yet set to end refuses (`deleteWorkspaceRefusal`)
+ * — one set to end runs out afterwards, the webhook recording its last events with no owner — and
+ * the typed name is re-checked, so the dialog is not the only gate.
  *
- * The workspace is the caller's own, never an argument; the admin check is the fresh read, not
- * the cached role, for the most destructive action in the product. A live subscription refuses
- * (`deleteWorkspaceRefusal`) — the plan is ended in Stripe's portal first, and the subscription
- * then runs out on its own; the webhook records its last events with no owner. The typed name is
- * re-checked here so the dialog's gate is not the only one.
- *
- * Order after the row: the auth identities (the actor's included — `fetchTeamMembersByAgency`
- * lists everyone), then the storage sweep, then the caches, and every bust with `'max'`. This
- * action must never sign out, write a cookie, call `revalidatePath` or bust with `{ expire: 0 }`:
- * any of those marks the response "revalidated" and the router re-renders `/settings` for a
- * workspace that no longer exists, racing the dialog's own navigation to `GOODBYE_PATH`. The
- * session ends on that page instead (features/auth/components/goodbye-sign-out.tsx).
- *
- * Invitees who never accepted are not reached — they exist only as auth users with
- * `invited_agency_id` metadata and nothing here lists auth users; their first visit fails at
- * `createUserRecord`'s invited branch.
+ * Pending invites are deleted, returning their logins, right before the workspace, never read
+ * ahead of it: an invite recorded after a read would cascade away and leave its login. One
+ * `inviteMember` records between the two deletes still cascades and keeps its login, unless its
+ * re-read after the send (`isClaimStanding`, src/features/settings/lib/invite-member.ts) finds the
+ * row gone first. The deleted invites' logins go even if
+ * the workspace delete fails, their rows being gone. Never sign out, write a cookie, call
+ * `revalidatePath` or bust with `{ expire: 0 }`: `/settings` would re-render for a deleted
+ * workspace, racing the dialog's navigation to `GOODBYE_PATH`.
  */
 export async function deleteWorkspace(confirmName: string): Promise<ActionResult> {
   const auth = await resolveActionAuth()
@@ -67,7 +60,24 @@ export async function deleteWorkspace(confirmName: string): Promise<ActionResult
   )
 
   const admin = createAdminSupabaseClient()
+  const invites = await admin
+    .from('team_invites')
+    .delete()
+    .eq('agency_id', agencyId)
+    .is('accepted_at', null)
+    .select('auth_user_id')
+  if (invites.error) {
+    console.error(
+      `[workspace:delete] pending invites delete failed for ${agencyId}:`,
+      invites.error.message
+    )
+    return { ok: false, error: 'Could not delete the workspace. Please try again.' }
+  }
+
   const { error } = await admin.from('agencies').delete().eq('id', agencyId)
+  for (const invite of invites.data ?? []) {
+    await deleteAuthIdentity(admin, invite.auth_user_id, 'workspace:delete')
+  }
   if (error) {
     console.error(`[workspace:delete] failed for ${agencyId}:`, error.message)
     if (error.code === '23503') {

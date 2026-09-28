@@ -4,7 +4,7 @@ import { ContourField } from '@/components/layout/contour-field'
 import { buttonClasses } from '@/components/ui/button'
 import { GoodbyeSignOut } from '@/features/auth/components/goodbye-sign-out'
 import { Footer } from '@/features/marketing/components/footer'
-import { SIGN_UP_PATH } from '@/utils/constants'
+import { COMPANY, SIGN_UP_PATH } from '@/utils/constants'
 import {
   proseContainer,
   proseDivider,
@@ -44,9 +44,11 @@ export default function GoodbyePage() {
           <div className={proseDivider} />
 
           <p className={proseP}>
-            Invoices already issued are kept for ten years, as Bulgarian law requires. Each one was
-            emailed to you with its PDF attached at the time it was paid. Nothing else about the
-            workspace is retained.
+            Invoices and credit notes are emailed to the billing address given at checkout; one not
+            yet delivered is retried daily — if one did not reach you, write to support@
+            {COMPANY.domain}. They, with the billing details on them, and the payment records Stripe
+            sends us about them are kept for at least ten years, as Bulgarian law requires. Nothing
+            else of the workspace remains.
           </p>
           <p className={proseP}>Want to start again? A new workspace begins with a fresh trial.</p>
           <div className="mt-2 flex flex-wrap gap-3">
@@ -54,7 +56,7 @@ export default function GoodbyePage() {
               Create a new workspace
             </Link>
             <Link href="/" className={buttonClasses({ variant: 'secondary', size: 'md' })}>
-              Back to kontuur.app
+              Back to {COMPANY.domain}
             </Link>
           </div>
         </div>

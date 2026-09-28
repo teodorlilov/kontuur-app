@@ -30,9 +30,10 @@ interface InpaintFields {
   height: number
 }
 
+/** Read the multipart fields, answering the first problem as the 400 message. */
 function parseInpaintFields(formData: FormData): InpaintFields | string {
-  const mask = formData.get('mask') as File | null // FormData.get() returns File | string | null
-  if (!mask || mask.type !== 'image/png') return 'A PNG mask is required'
+  const mask = formData.get('mask')
+  if (!(mask instanceof File) || mask.type !== 'image/png') return 'A PNG mask is required'
 
   const prompt = formData.get('prompt')
   if (typeof prompt !== 'string' || !prompt.trim()) return 'prompt is required'
@@ -97,6 +98,6 @@ export async function POST(request: Request) {
     })
     return NextResponse.json({ publicUrl: stored.publicUrl, storagePath: stored.storagePath })
   } catch (err) {
-    return spendFailureResponse(err, 'inpaint', 'Inpainting failed', 500)
+    return spendFailureResponse(err, 'inpaint', 'Inpainting failed')
   }
 }

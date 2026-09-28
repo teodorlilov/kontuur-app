@@ -63,11 +63,7 @@ beforeEach(() => {
 })
 
 describe('MastheadControls', () => {
-  /**
-   * With Facebook active a period click must not silently bounce the reader to Instagram — and
-   * Instagram is the default vocabulary, so its own links carry no network param at all.
-   */
-  it('offers the network switch only when Facebook is connected, and keeps the network on navigation', async () => {
+  it('offers the switch with Facebook connected, keeps Facebook on a range click, gives Instagram (the default) no network param', async () => {
     const user = userEvent.setup()
     renderControls({ hasFacebook: true, network: 'facebook' })
 

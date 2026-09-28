@@ -10,6 +10,7 @@ import type { FacebookReportData } from '../facebook/build-facebook-report'
 vi.mock('next/cache', () => ({ unstable_cache: (fn: unknown) => fn }))
 vi.mock('@/lib/supabase/admin', () => ({ createAdminSupabaseClient: vi.fn() }))
 vi.mock('@/lib/queries/db', () => ({ fetchConnectionSyncState: vi.fn() }))
+vi.mock(import('@/lib/queries/cache'), () => ({ getCachedEntitlement: vi.fn() }))
 vi.mock('@/ai/analytics/generate-summary', () => ({ generateAnalyticsSummary: vi.fn() }))
 // The import() form, not a bare string: a vi.mock path that stops resolving is a SILENT no-op, and
 // this one would fail green — the real module loads cleanly under the mocks above and the two pure

@@ -114,6 +114,11 @@ export function minDateKey(a: string, b: string): string {
   return a <= b ? a : b
 }
 
+/** A Unix timestamp in seconds — how Stripe gives every date — as an ISO instant. */
+export function isoFromUnixSeconds(seconds: number): string {
+  return new Date(seconds * 1000).toISOString()
+}
+
 /**
  * A 'YYYY-MM-DD' key as unix SECONDS at its UTC midnight — the unit Meta's insights windows
  * take for `since` and `until`.

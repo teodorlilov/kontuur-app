@@ -3,6 +3,7 @@ import 'server-only'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import { fetchConnectionSyncState } from '@/lib/queries/db'
+import { getCachedEntitlement } from '@/lib/queries/cache'
 import { generateAnalyticsSummary } from '@/ai/analytics/generate-summary'
 import { formatCount } from '../compute/format'
 import type { AnalyticsPeriod } from '../compute/period'
@@ -10,9 +11,9 @@ import type { FollowerSummary } from '../compute/report-sections'
 
 /**
  * What the two networks' narrative modules share: the archive-then-generate sequence, the part of
- * a fact sheet that reads the same either way, the fallback one-liner and the failure guard. What
- * stays per network is what that network can honestly say about itself — its own fact sheet, and
- * its own cache identity.
+ * a fact sheet that reads the same either way, the fallback one-liner and the guard that decides
+ * whether a narrative is attempted at all. What stays per network is what that network can
+ * honestly say about itself — its own fact sheet, and its own cache identity.
  *
  * The two `unstable_cache` call sites deliberately stay in their own modules. Next builds the
  * cache key as `cb.toString()` joined with `keyParts` (next/dist/server/web/spec-extension/
@@ -182,16 +183,30 @@ export async function resolveNarrative<Report extends { hasHistory: boolean }>(
   return summary ? { text: summary, archived: false } : null
 }
 
-/** A narrative is worth having, never worth a 500. */
+/**
+ * The narrative's spend gate and failure guard: a narrative is worth having, never worth a 500.
+ *
+ * `run` is the cached read AND, on a miss, the model call, so the entitlement is checked before it:
+ * a workspace that cannot spend (`getCachedEntitlement`, src/lib/queries/cache.ts) neither reads
+ * nor fills the narrative cache, and its caller shows the written fallback. Never throws — a
+ * failed entitlement read, like a failed generation, is logged and answered null.
+ */
 export async function guardNarrative(
+  agencyId: string,
   clientId: string,
   platformName: string,
   run: () => Promise<NarrativeResult | null>
 ): Promise<NarrativeResult | null> {
   try {
+    if (!(await getCachedEntitlement(agencyId)).canSpend) return null
     return await run()
   } catch (err) {
-    console.error('[analytics] narrative generation failed', { clientId, platformName, err })
+    console.error('[analytics] narrative generation failed', {
+      agencyId,
+      clientId,
+      platformName,
+      err,
+    })
     return null
   }
 }

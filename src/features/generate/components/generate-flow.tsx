@@ -9,6 +9,7 @@ import { ActionLink } from '@/components/ui/action-link'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { EmptyState } from '@/components/layout/empty-state'
 import { readNDJSONStream } from '@/utils/stream'
+import { readErrorMessage } from '@/utils/read-error-message'
 import { formatClientName, formatRelativeTime, parseTimestamp } from '@/utils/format'
 import { DEFAULT_CAROUSEL_SLIDES } from '@/utils/constants'
 import { FlowChrome } from './flow-chrome'
@@ -21,8 +22,15 @@ import { computeRunPlan, livePublishingPlatforms } from '@/features/generate/lib
 import type { WaitingDrafts } from '@/features/generate/lib/waiting-drafts'
 import { parseSlides } from '@/lib/posts/parse-slides'
 import { useDraftVisuals } from '@/features/generate/hooks/use-draft-visuals'
-import { postsAffordable } from '@/lib/billing/post-allowance'
-import { visualSlots } from '@/lib/visual/visual-backlog'
+import {
+  committedWithOwed,
+  poolLeft,
+  postsAffordable,
+  runCeiling,
+} from '@/lib/billing/post-allowance'
+import type { OwedImages } from '@/lib/billing/copy'
+import type { GenerateGate } from '@/lib/billing/post-allowance'
+import { toPostType, visualSlots } from '@/lib/visual/visual-backlog'
 import type { Allowance } from '@/lib/billing/plans'
 import { useUnloadGuard } from '@/hooks/use-unload-guard'
 import { deletePost } from '@/lib/actions/post-actions'
@@ -50,8 +58,13 @@ interface GenerateFlowProps {
   initialConnections?: MetaConnection[]
   /** The agency zone, read on the server: this route group has no ShellProvider. */
   timeZone: string
-  /** The period's pools, read on the server — what they buy depends on the format chosen here. */
-  allowance: { limits: Allowance; committed: Allowance }
+  /**
+   * The period's pools, read on the server — what they buy depends on the format chosen here —
+   * and the pictures posts already written still owe, set aside before a new run is measured.
+   */
+  allowance: { limits: Allowance; committed: Allowance; owed: OwedImages }
+  /** Whether a run may start at all (`generationGate`) — the form gives way to its refusal. */
+  gate: GenerateGate
   /** Drafts still waiting for review, per client — rows the last runs left behind. */
   waitingDrafts?: WaitingDrafts[]
   /** The server's render instant — the rows' "2h ago" keys off it so SSR and hydration agree. */
@@ -61,33 +74,30 @@ interface GenerateFlowProps {
 /** The format a waiting group was written in — what the review header and a new run start from. */
 function formatOf(group: WaitingDrafts): { postType: PostType; slideCount: number } {
   const first = group.posts[0]?.post
-  const postType: PostType = first?.post_type === 'carousel' ? 'carousel' : 'single'
+  const postType = toPostType(first?.post_type)
   const slideCount = first ? parseSlides(first.slides_json).length : 0
   return { postType, slideCount: slideCount || DEFAULT_CAROUSEL_SLIDES }
 }
 
 /**
- * The generate flow's state owner: a four-view machine (setup → generating →
- * review → done) over one generation run. Views are compositions; every
- * decision that outlives a view — selections, the stream, approve/discard —
- * lives here.
- *
- * Every draft is a `posts` row from the moment it streams (status 'draft', written by the
- * stream route), so approve, discard, edits and visuals all address the row and leaving the
- * flow loses nothing: the drafts wait on /generate. Only a run still streaming is worth a
- * warning on the way out.
- *
- * Resume: the group of waiting drafts for the selected client opens straight in review and its
- * visuals start once, on mount; a run opened from an idea is what the user came for, so that
- * client's waiting drafts are offered as setup rows instead of opened over it. Which idea a draft
- * answers is the draft's own (`client_idea_id`, written by the stream route), so approving one
- * claims the right idea whether it streamed a minute ago or was read back days later. Where an
- * approved draft can go is the networks the browser sees a live connection for; the server narrows
- * that to what this format can reach when it schedules, as it does for the queue.
+ * The generate flow's state owner: a four-view machine (setup → generating → review → done) over
+ * one run. Every draft is a `posts` row from the moment it streams, so leaving loses nothing; the
+ * client's waiting drafts reopen in review, or as setup rows on an idea's run. The asked count is
+ * stored as asked and clamped to `runCeiling` (owed pictures set aside) on every render; briefs,
+ * the idea's locked one included, ride on top, as generate-stream's `targetCount` sums them. The
+ * run's own record (`requestedCount`, `skipped`) stays apart from that moving setup count. Pictures
+ * paint while the raw image pool has any left: the owed ones are what it is kept for. Resting
+ * pillars — covered ones the allocation gave no post, which a small run rotates and which are not
+ * a skip — are counted off the allocation, not as pillars minus the run size, since
+ * `allocateByWeight` can put two posts on one pillar. An approved draft claims the idea it carries
+ * (`client_idea_id`), never this run's `initialIdea`, so a draft read back later claims the right
+ * one; the claimed-ideas ref only stops asking twice, and the database settles which approval wins
+ * (`linkIdeaToPost` claims only an idea still `new`, src/features/ideas/lib/ideas.ts).
  */
 export function GenerateFlow({
   timeZone,
   allowance,
+  gate,
   initialClients,
   initialClientData,
   initialTargetPostCount,
@@ -108,34 +118,28 @@ export function GenerateFlow({
     waitingDrafts.filter((group) => group !== resumedGroup)
   )
 
-  // Setup selections
   const [clients] = useState<Client[]>(initialClients)
   const [clientId, setClientId] = useState(initialClient)
   const [postType, setPostType] = useState<PostType>(() =>
-    resumedGroup
-      ? formatOf(resumedGroup).postType
-      : initialClientData?.defaultPostType === 'carousel'
-        ? 'carousel'
-        : 'single'
+    resumedGroup ? formatOf(resumedGroup).postType : toPostType(initialClientData?.defaultPostType)
   )
   const [slideCount, setSlideCount] = useState(() =>
     resumedGroup
       ? formatOf(resumedGroup).slideCount
       : (initialClientData?.defaultCarouselSlides ?? DEFAULT_CAROUSEL_SLIDES)
   )
-  // What the period can still pay for AT THIS FORMAT — the one number the setup step is sized
-  // by, recomputed as the format changes because every slide is another picture.
   const affordable = postsAffordable(
     allowance.limits,
-    allowance.committed,
+    committedWithOwed(allowance.committed, allowance.owed),
     visualSlots(postType, slideCount)
   )
+  const imagesLeft = poolLeft(allowance.limits, allowance.committed, 'image')
+  const pool =
+    imagesLeft === null
+      ? undefined
+      : { left: imagesLeft, perPost: visualSlots(postType, slideCount), owed: allowance.owed }
   const [targetPostCount, setTargetPostCount] = useState(() =>
-    resumedGroup
-      ? resumedGroup.posts.length
-      : initialIdea
-        ? 0
-        : Math.min(initialTargetPostCount, affordable.posts ?? Number.POSITIVE_INFINITY)
+    resumedGroup ? resumedGroup.posts.length : initialIdea ? 0 : initialTargetPostCount
   )
   const [priorityPosts, setPriorityPosts] = useState<PriorityPost[]>(
     initialIdea
@@ -148,7 +152,6 @@ export function GenerateFlow({
         ]
       : []
   )
-  // The client's own words are not the agency's to edit or drop.
   const lockedBriefCount = initialIdea ? 1 : 0
   const [preloadedClientData, setPreloadedClientData] = useState<ClientData | null>(
     initialClientData
@@ -157,7 +160,6 @@ export function GenerateFlow({
   const [clientConnections, setClientConnections] = useState<MetaConnection[]>(initialConnections)
   const [clientLoading, setClientLoading] = useState(false)
 
-  // Stream state
   const [isGenerating, setIsGenerating] = useState(false)
   const [generatedPosts, setGeneratedPosts] = useState<ReviewDraft[]>(() =>
     resumedGroup ? resumedGroup.posts.map(toReviewDraft) : []
@@ -165,31 +167,19 @@ export function GenerateFlow({
   const [streamTotal, setStreamTotal] = useState(0)
   const [researchPhase, setResearchPhase] = useState('')
   const [loadingStage, setLoadingStage] = useState(0)
-  // What the run under review asked for and what it could not cover, as the run itself recorded
-  // both: streamed while it runs, read off the run when its drafts are opened again later. Kept
-  // apart from `targetPostCount`, which is the setup control and keeps moving after a run starts —
-  // the banner has to describe the run that actually produced these drafts.
   const [skipped, setSkipped] = useState<SkippedPillars | null>(resumedGroup?.run?.skipped ?? null)
   const [requestedCount, setRequestedCount] = useState(
     () => resumedGroup?.run?.targetCount ?? resumedGroup?.posts.length ?? 0
   )
 
-  // Review outcomes. Posts stay in generatedPosts — the review rail shows
-  // approved and discarded rows greyed rather than vanishing them.
   const [approvedIds, setApprovedIds] = useState<Set<string>>(new Set())
   const [discardedIds, setDiscardedIds] = useState<Set<string>>(new Set())
   const [confirmingNewRun, setConfirmingNewRun] = useState(false)
 
   const abortControllerRef = useRef<AbortController | null>(null)
-  // Monotonic ticket for client switches — only the latest switch may write state,
-  // so a slow response for client A cannot overwrite a faster switch to client B.
   const clientRequestRef = useRef(0)
-  // The ideas this flow has already claimed. A ref, not state: approve-all's sequential loop
-  // reads one stale render, so a state-based gate fired once per draft and every draft of the run
-  // sent its own request. Which one wins is settled in the database (`linkIdeaToPost` claims only
-  // an idea still `new`); this only keeps the flow from asking again once it knows the answer.
   const linkedIdeasRef = useRef<Set<string>>(new Set())
-  const draftVisuals = useDraftVisuals({ canPaint: affordable.posts !== 0 })
+  const draftVisuals = useDraftVisuals({ canPaint: imagesLeft !== 0 })
 
   const selectedClient = clients.find((c) => c.id === clientId)
   const clientName = formatClientName(selectedClient?.name)
@@ -228,24 +218,20 @@ export function GenerateFlow({
     [generatedPosts, draftVisuals]
   )
 
-  // The run's true size: researched posts plus briefs, the same sum the server
-  // writes (generate-stream's targetCount). The allocation preview keeps using
-  // targetPostCount alone — briefs are extra, not part of the mix. An idea is one
-  // of those briefs, so it adds to the run rather than replacing it.
-  const plannedPostCount = targetPostCount + priorityPosts.length
+  const postCount = Math.min(targetPostCount, runCeiling(affordable, priorityPosts.length))
+  const plannedPostCount = postCount + priorityPosts.length
 
   const runPlan = useMemo(
     () =>
       computeRunPlan({
         pillars: preloadedClientData?.contentPillars ?? [],
-        targetPostCount,
+        targetPostCount: postCount,
         sources: clientSources,
         connections: clientConnections,
       }),
-    [preloadedClientData, targetPostCount, clientSources, clientConnections]
+    [preloadedClientData, postCount, clientSources, clientConnections]
   )
 
-  // Abort any in-flight stream when the flow unmounts.
   useEffect(() => () => abortControllerRef.current?.abort(), [])
 
   /** Track a waiting group's visuals and finish whatever the interrupted run left undone. */
@@ -270,16 +256,20 @@ export function GenerateFlow({
     enqueueGroup(group)
   }, [enqueueGroup])
 
-  // The run closes itself: when the last live draft is settled, review becomes
-  // done. Derived here rather than in the approve/discard handlers, whose
-  // closures go stale across approve-all's sequential loop.
   useEffect(() => {
     if (step === 'review' && generatedPosts.length > 0 && liveDrafts.length === 0) {
       setStep('done')
     }
   }, [step, generatedPosts.length, liveDrafts.length])
 
-  /** Client switch: one user-event refetch replacing everything client-scoped. */
+  /**
+   * Client switch: one user-event refetch replacing everything client-scoped. Only the latest
+   * switch's ticket may write, so a slow answer cannot overwrite a faster switch.
+   *
+   * WHY as: `clientData` is this app's own route answering with `fetchClientData`'s result
+   * (src/app/api/clients/[id]/route.ts:32), which `clientRefreshSchema` leaves unparsed on purpose
+   * (src/features/generate/schemas.ts:12) while it validates the sources and connections beside it.
+   */
   async function handleClientChange(nextClientId: string) {
     if (nextClientId === clientId) return
     const requestId = ++clientRequestRef.current
@@ -293,10 +283,9 @@ export function GenerateFlow({
       const parsed = clientRefreshSchema.parse(await res.json())
       if (requestId !== clientRequestRef.current) return
       if (parsed.clientData) {
-        // Trusted from our own API, as today — the schema validates the new fields.
         const clientData = parsed.clientData as ClientData
         setPreloadedClientData(clientData)
-        setPostType(clientData.defaultPostType === 'carousel' ? 'carousel' : 'single')
+        setPostType(toPostType(clientData.defaultPostType))
         setSlideCount(clientData.defaultCarouselSlides || DEFAULT_CAROUSEL_SLIDES)
       }
       setClientSources(parsed.sources)
@@ -335,6 +324,13 @@ export function GenerateFlow({
     enqueueGroup(group)
   }
 
+  /**
+   * Run the stream into the flow's state. A result leaves the last phase on screen until the next
+   * replaces it, and is used uncast: `GenerationResult` satisfies `ReviewDraft`, so a drift fails
+   * the build. The run's idea goes on the browser's copy, as the route already wrote it on the row.
+   * The page is refreshed when the run ends unless aborted (a new run, a cancel or a departure,
+   * each navigating on its own), so the counts the server reads next are the ones shown.
+   */
   async function startGeneration() {
     abortControllerRef.current?.abort()
     const controller = new AbortController()
@@ -358,7 +354,7 @@ export function GenerateFlow({
         postType,
         slideCount,
         priorityPosts,
-        targetPostCount,
+        targetPostCount: postCount,
         preloadedClientData: preloadedClientData ?? undefined,
         ideaId: initialIdea?.id,
       }
@@ -371,8 +367,7 @@ export function GenerateFlow({
       })
 
       if (!res.ok) {
-        const err = (await res.json()) as { error?: string }
-        toast.error(err.error ?? 'Generation failed')
+        toast.error((await readErrorMessage(res)) ?? 'Generation failed')
         setStep('setup')
         return
       }
@@ -384,26 +379,14 @@ export function GenerateFlow({
           setStreamTotal(event.count)
         } else if (event.type === 'phase') {
           setResearchPhase(event.message)
-          // The server states its stage now; it used to be guessed from this same
-          // prose, and the first wrong guess stuck because of the Math.max below.
           setLoadingStage((prev) => Math.max(prev, stageIndex(event.stage)))
         } else if (event.type === 'result') {
-          // Deliberately NOT clearing researchPhase: blanking it here left the
-          // view mute between results — the last activity stays up until the
-          // next phase replaces it.
           setLoadingStage((prev) => Math.max(prev, stageIndex('writing')))
-          // No cast: GenerationResult already satisfies ReviewDraft. The double
-          // assertion that stood here defeated the one thing UnifiedStreamEvent
-          // exists for — if the two shapes ever diverge, this must fail the build
-          // rather than hand the review leaves a draft they cannot render.
-          // The idea goes on the browser's copy because the route just wrote it on the row this
-          // event describes — approve then reads one field, live or resumed.
           const generated: ReviewDraft = initialIdea
             ? { ...event.data, post: { ...event.data.post, client_idea_id: initialIdea.id } }
             : event.data
           receivedCount++
           setGeneratedPosts((prev) => [...prev, generated])
-          // Kick off visuals as each post's copy streams — images overlap the rest of the run.
           draftVisuals.enqueuePost(generated.post)
         } else if (event.type === 'skipped_pillars') {
           setSkipped(event.skipped)
@@ -413,8 +396,6 @@ export function GenerateFlow({
         }
       })
 
-      // A failed run with nothing to show returns to setup; a failure after
-      // drafts landed still gets its partial review — the toast said why.
       setStep(runFailed && receivedCount === 0 ? 'setup' : 'review')
     } catch (err) {
       if (err instanceof Error && err.name === 'AbortError') return
@@ -422,10 +403,15 @@ export function GenerateFlow({
       setStep('setup')
     } finally {
       setIsGenerating(false)
+      if (!controller.signal.aborted) router.refresh()
     }
   }
 
-  /** Mark a draft's outcome; the review→done transition is derived above. */
+  /**
+   * Mark a draft's outcome; it stays in `generatedPosts`, greyed on the rail. The review→done
+   * transition is derived in an effect above, since the approve/discard closures go stale across
+   * approve-all's sequential loop.
+   */
   function settleDraft(postId: string, kind: 'approved' | 'discarded') {
     const setOutcome = kind === 'approved' ? setApprovedIds : setDiscardedIds
     setOutcome((prev) => new Set(prev).add(postId))
@@ -499,6 +485,9 @@ export function GenerateFlow({
    * housekeeping, not as verdicts on their sources — and a run still streaming is aborted, or its
    * late results would repopulate the reset state and the stream's end would yank the user back
    * to review. A draft the delete could not remove resurfaces on the next visit to /generate.
+   * Once the deletes settle the page is refreshed; an idea's run moves to the client's plain
+   * `/generate` instead, since the page sends a generated idea back to Ideas and keys the flow on
+   * the idea (src/app/(generate)/generate/page.tsx).
    */
   function handleNewRun() {
     abortControllerRef.current?.abort()
@@ -509,6 +498,8 @@ export function GenerateFlow({
         if (results.some((result) => !result.ok)) {
           toast.error('Some waiting drafts could not be removed — they will be back next time')
         }
+        if (initialIdea) router.replace(`/generate?client=${clientId}`)
+        else router.refresh()
       }
     )
     setGeneratedPosts([])
@@ -570,8 +561,10 @@ export function GenerateFlow({
             clientLoading={clientLoading}
             postType={postType}
             slideCount={slideCount}
-            postCount={targetPostCount}
+            postCount={postCount}
             affordable={affordable}
+            pool={pool}
+            gate={gate}
             briefs={priorityPosts}
             lockedBriefCount={lockedBriefCount}
             waiting={waitingRows}
@@ -637,11 +630,6 @@ export function GenerateFlow({
             approvedCount={approvedIds.size}
             discardedCount={discardedIds.size}
             skippedPillarCount={skipped?.names.length ?? 0}
-            // Covered pillars the allocation gave no post: a small run leaves the
-            // rest unscheduled (rotation), which is not a skip and must not read
-            // like one on the tally. Counted off the allocation rather than
-            // subtracting the run size — allocateByWeight can put two posts on
-            // one pillar, so the subtraction disagreed with the setup panel.
             restingPillarCount={
               runPlan.allocation.filter((a) => a.coverage !== 'none' && a.count === 0).length
             }

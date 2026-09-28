@@ -53,14 +53,8 @@ const MAX_NON_COLUMN_FIELDS = 1
 const EXEMPT: Record<string, string> = {
   'ai/generation/types.ts:DraftPost':
     'A draft before it is a row, deliberately narrower than the columns: status is the literal "draft", post_type and source_type are unions, and caption/topic_summary/quality_score_avg are non-null because the generator guarantees them. Deriving would widen all of it back.',
-  // `UpdatePostInput` was exempted here while it was a hand-written interface. It is now
-  // `z.infer<typeof updatePostSchema>` in lib/validation/post-update-schema.ts, which
-  // this scanner does not see at all — a schema declares no field names in a shape it
-  // could read. The reason the exemption gave still holds and is recorded there.
-  // `IGDayTotals` came off this list on 2026-09-06: it is a mapped type over the metric-name
-  // arrays now, so it declares no field list this scanner could mistake for a table mirror.
-  // The reason its exemption gave still holds — it is the Graph API's response shape, which
-  // ig_account_metrics was modeled on — and is recorded beside the type.
+  // `UpdatePostInput`, cited below, is now `z.infer<typeof updatePostSchema>`
+  // (lib/validation/post-update-schema.ts), which this scanner cannot read.
   'features/sources/actions/source-actions.ts:UpdateSourceInput':
     'A write contract, all fields optional so a caller can send only what changed. Same reason as UpdatePostInput.',
 
@@ -78,25 +72,15 @@ const EXEMPT: Record<string, string> = {
 }
 
 /**
- * Pre-existing mirrors, from before this guard existed. NOT exemptions — these are
- * debt, and the list may only ever shrink.
+ * Mirrors that predate this guard: debt, not exemptions, and the list may only ever shrink.
  *
- * One left. AgencyInfo declares plan, mode, subscription_status, trial_ends_at and
- * plan_client_limit non-null over columns that permit null, and fetchAgencyById casts
- * to it. Those columns read as populated only because of table defaults — no code path
- * writes any of the four, because billing is not implemented yet. Deriving it now would
- * break `capitalize(agency.plan)` and force a UI decision about a flow that does not
- * exist. Revisit when billing lands; migration 20260813 deliberately left them alone.
- *
- * To clear one: derive it, then delete its line. The staleness check below fails if
- * you derive it and forget. Rationale per entry: docs/TECH-DEBT.md §7.3.
+ * It is empty. Every mirror the guard has surfaced is derived, `AgencyInfo` included — it is
+ * `AgencySettingsColumns` (src/types/api.ts). A new mirror is derived, or goes in EXEMPT with the
+ * reason it is not a projection; it never goes here. The array stays, empty, so that rule has a
+ * place to be read, and the staleness check below still fails on an entry that is no longer a
+ * mirror. Rationale for past entries: docs/TECH-DEBT.md §7.3.
  */
-const KNOWN_MIRRORS: string[] = [
-  // Everything the 2026-08-31 tightening surfaced has since been derived — AgencyInfo, the last
-  // one, on 2026-09-13 with the billing migration. Keep it as a list rather than deleting it: the
-  // guard's value is that a NEW mirror has to be named here on purpose, and an empty array says
-  // that more clearly than no array.
-]
+const KNOWN_MIRRORS: string[] = []
 
 function sourceFiles(): string[] {
   const out: string[] = []
@@ -200,20 +184,15 @@ function declarations(files: string[]): Declaration[] {
 }
 
 /**
- * Whether a FIELD is already covered by a derivation, rather than hand-written.
- *
- * Per field, not per declaration. The old version tested the whole body, so one `Pick<PostRow, …>`
- * anywhere inside laundered every hand-written member beside it — which is how ChangeRequestRow's
- * embedded token slipped through while declaring a nullable column non-null.
- *
- * A field is covered when it appears inside a Pick/Omit/Tables expression somewhere in the body;
- * a field spelled out as its own `name: type` line is not.
+ * The fields a derivation already covers, so they do not count as hand-written. A `Pick<…>` covers
+ * only the fields it names, so one Pick cannot launder the hand-written members beside it; any
+ * `Tables<…>` or `Omit<…>` in the body covers every field. A field spelled out as its own
+ * `name: type` line is not covered.
  */
 function derivedFields(decl: Declaration): Set<string> {
   const covered = new Set<string>()
   for (const expr of decl.body.match(/\b(?:Pick|Omit)\s*<[^>]*>|Tables<'[^']+'>/g) ?? []) {
     for (const quoted of expr.match(/'([a-zA-Z_]+)'/g) ?? []) covered.add(quoted.slice(1, -1))
-    // `Tables<'posts'>` and `Omit<PostRow, 'x'>` cover everything they do not name.
     if (/^Tables</.test(expr) || /^Omit/.test(expr)) return new Set(decl.fields)
   }
   return covered
@@ -244,8 +223,7 @@ describe('database row mirrors', () => {
   const decls = declarations(sourceFiles())
   const found = mirrors(decls, tables)
 
-  it('reads the generated table columns', () => {
-    // A parser that silently matched nothing would make every assertion below pass.
+  it('reads the generated table columns, so a parser that matched nothing cannot pass every check', () => {
     expect(tables.size).toBeGreaterThan(20)
     expect(tables.get('posts')?.size ?? 0).toBeGreaterThan(20)
   })
@@ -254,7 +232,7 @@ describe('database row mirrors', () => {
     expect(decls.length).toBeGreaterThan(100)
   })
 
-  it('has no NEW hand-written mirror of a database row', () => {
+  it('has no NEW hand-written mirror of a database row — derive it, or put it in EXEMPT with the reason it is not a projection', () => {
     const allowed = new Set([...Object.keys(EXEMPT), ...KNOWN_MIRRORS])
     const offenders = found
       .filter(({ decl }) => !allowed.has(decl.key))
@@ -263,15 +241,10 @@ describe('database row mirrors', () => {
           `${decl.file}:${decl.line} — ${decl.name} (${decl.fields.length} fields, all columns of "${table}")`
       )
 
-    // Derive it (`Pick<PostRow, …>`), or add it to EXEMPT with the reason it is not a
-    // projection. Writing the columns out again is the one option that is not
-    // available — that is what drifted for three months.
     expect(offenders).toEqual([])
   })
 
-  it('has no stale KNOWN_MIRRORS entry', () => {
-    // Fixing a mirror without deleting its line would leave the backlog looking
-    // larger than it is, and quietly re-permit the name later.
+  it('has no stale KNOWN_MIRRORS entry, which would quietly re-permit a mirror already fixed', () => {
     const stillMirrors = new Set(found.map(({ decl }) => decl.key))
     const stale = KNOWN_MIRRORS.filter((key) => !stillMirrors.has(key))
     expect(stale).toEqual([])

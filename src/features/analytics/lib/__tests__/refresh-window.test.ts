@@ -15,12 +15,7 @@ const PERIOD: AnalyticsPeriod = {
 const ASKED = '2026-08-19T03:30:00Z'
 
 describe('selectRefillDays', () => {
-  /**
-   * The three marker states, one row each: 18 Aug asked but inside REFRESH_TAIL_DAYS (3) of
-   * today, so re-asked despite its marker; 13 Aug asked and outside that tail, never re-spent on
-   * even if Meta had nothing; 16 Aug a backfill row whose totals were never asked, so refillable.
-   */
-  it('targets never-asked days across BOTH windows, newest first', () => {
+  it('targets never-asked days across BOTH windows, newest first, and asked days only inside the 3-day refresh tail', () => {
     const targets = selectRefillDays(
       [
         { metric_date: '2026-08-18', totals_synced_at: ASKED },

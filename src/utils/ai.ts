@@ -84,6 +84,14 @@ export function sanitizeAndParseJson<T>(raw: string, fallback: T, mode?: 'object
   }
 }
 
+/**
+ * Read a brand's fetched website and Instagram text with the light model into a brand profile
+ * (`analyzeBrand`, src/lib/sources/analyze-brand.ts). Parsed, not cast: everything
+ * downstream treats the fields as present, and the model is under no obligation to return them, so
+ * each missing or malformed field arrives as its empty value (`urlAnalysisResponseSchema`). A reply
+ * holding no JSON object throws, like a failed model call, so the caller reports that the site
+ * could not be read rather than an empty profile.
+ */
 export async function analyzeUrl(input: AnalyzeUrlInput): Promise<UrlAnalysisResponse> {
   const message = await callAnthropic({
     model: LIGHT_MODEL,
@@ -91,7 +99,7 @@ export async function analyzeUrl(input: AnalyzeUrlInput): Promise<UrlAnalysisRes
     userMessage: buildAnalyzeUrlPrompt(input),
   })
 
-  // Parsed, not cast: everything downstream treats these fields as guaranteed, and the model is
-  // under no obligation to return them. Throws only when the response is not an object at all.
-  return urlAnalysisResponseSchema.parse(parseJsonResponse<unknown>(message))
+  const reply = sanitizeAndParseJson<unknown>(extractTextFromMessage(message), null, 'object')
+  if (reply === null) throw new Error('analyzeUrl: the model replied with no JSON object')
+  return urlAnalysisResponseSchema.parse(reply)
 }

@@ -32,12 +32,7 @@ const ROWS: ComparisonRow[] = [
 ]
 
 describe('ComparisonRows', () => {
-  /**
-   * 3 against a 32,340 maximum is 0.008% of the 82-unit track. Floored, and floored only — the
-   * smallest bar stays visibly the smallest. Asserted on the rendered width rather than on a
-   * utility class, so a restyle that keeps the behaviour passes.
-   */
-  it('keeps a real value visible however small its share of the scale', () => {
+  it('keeps a real value visible however small its share of the scale, raising it to the floor and no further', () => {
     const { container } = render(<ComparisonRows rows={ROWS} ariaLabel="Reach by format" />)
     const bars = Array.from(container.querySelectorAll<HTMLElement>('i[style*="width"]'))
     expect(bars).toHaveLength(4)
@@ -47,8 +42,7 @@ describe('ComparisonRows', () => {
     expect(Math.max(...widths)).toBeGreaterThan(MIN_VISIBLE_PCT * 10)
   })
 
-  /** 991 is expected twice over: once as the bar's own inline value, once inside the card. */
-  it('raises a labeled card naming the reach, the posts and the rate', () => {
+  it('raises a labeled card naming the reach (also printed beside its bar), the posts and the rate', () => {
     const { container } = render(
       <ComparisonRows rows={ROWS} ariaLabel="Reach by format" unit="Reached" />
     )
@@ -68,12 +62,7 @@ describe('ComparisonRows', () => {
     expect(screen.queryByText('Posts published')).not.toBeInTheDocument()
   })
 
-  /**
-   * A measured zero earns a muted tick so its number is not left floating, and never a
-   * series-coloured bar — that would be indistinguishable from the minimum width a genuinely
-   * small value carries. A null is absence rather than zero, and earns no tick at all.
-   */
-  it('anchors a measured zero without drawing it a bar', () => {
+  it('anchors a measured zero with a tick, never a bar, and gives a null no tick at all', () => {
     const zeroed: ComparisonRow[] = [
       { key: 'AD', label: 'Ads · paid', now: 62091, then: 0 },
       { key: 'POST', label: 'Posts', now: 347, then: null },

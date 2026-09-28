@@ -1,8 +1,9 @@
 import { hasCyrillic } from '@/lib/canvas/font-library'
 import { formatRelativeTime, parseTimestamp } from '@/utils/format'
 import { cn } from '@/utils/cn'
-import { ActionLink } from '@/components/ui/action-link'
 import { GatedAction } from '@/components/ui/gated-action'
+import type { AddBrandGate } from '@/lib/billing/copy'
+import type { GenerateGate } from '@/lib/billing/post-allowance'
 import {
   HeaderMeta,
   MetaFlag,
@@ -19,8 +20,10 @@ interface DashboardHeaderProps {
   pendingCount: number
   oldestPendingAt: string | null
   failedCount: number
-  /** Why this workspace cannot generate right now, or null — the CTA carries it. */
-  generateRefusal: string | null
+  /** Whether a run may start (`generationGate`) — the CTA carries its refusal and way out. */
+  generate: GenerateGate
+  /** What "Add client" says: its refusal or what a client costs, and its way out (`addBrandGate`). */
+  addClient: AddBrandGate
 }
 
 /** Time-of-day greeting in the agency's own timezone. */
@@ -35,7 +38,14 @@ function resolveGreeting(timezone: string): string {
   return 'Good evening'
 }
 
-/** The dashboard's greeting header. */
+/**
+ * The dashboard's greeting header. The name is set in Instrument Serif, which has no Cyrillic, so a
+ * Cyrillic name stays in the sans face. The meta line leads with whatever needs the reader today —
+ * the date sits in the rail. "Add client" and "Generate posts" are refused in place, with the
+ * reason (`GatedAction`), and link to Plan & billing only when a plan is the way past the refusal
+ * (`AddBrandGate.wayOut`, src/lib/billing/copy.ts; `GenerateGate.wayOut`,
+ * src/lib/billing/post-allowance.ts) — never for a member, nor for a figure that could not be read.
+ */
 export function DashboardHeader({
   agencyName,
   clientCount,
@@ -44,7 +54,8 @@ export function DashboardHeader({
   pendingCount,
   oldestPendingAt,
   failedCount,
-  generateRefusal,
+  generate,
+  addClient,
 }: DashboardHeaderProps) {
   const name = agencyName || 'there'
 
@@ -54,7 +65,6 @@ export function DashboardHeader({
       title={
         <>
           {resolveGreeting(timezone)},{' '}
-          {/* Instrument Serif has no Cyrillic — Cyrillic names stay in the sans face. */}
           <em
             className={cn(
               'text-forest',
@@ -68,8 +78,6 @@ export function DashboardHeader({
       meta={
         <HeaderMeta
           parts={[
-            // The date moved up to the rail, so this line leads with whatever
-            // actually needs the reader today rather than restating the day.
             pendingCount > 0 && (
               <MetaFlag>
                 {pendingCount} {pendingCount === 1 ? 'draft' : 'drafts'} waiting
@@ -88,15 +96,22 @@ export function DashboardHeader({
       actions={
         <>
           {!isSolo && (
-            <ActionLink href="/clients/new" variant="secondary">
-              Add client
-            </ActionLink>
+            <GatedAction
+              href="/clients/new"
+              label="Add client"
+              refusal={addClient.refusal}
+              note={addClient.note}
+              refusalId="add-client-refusal"
+              variant="secondary"
+              wayOut={addClient.wayOut}
+            />
           )}
           <GatedAction
             href="/generate"
             label={isSolo ? 'Create content' : 'Generate posts'}
-            refusal={generateRefusal}
+            refusal={generate.refusal}
             refusalId="generate-refusal"
+            wayOut={generate.wayOut}
           />
         </>
       }

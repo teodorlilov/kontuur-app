@@ -2,12 +2,7 @@ import { redirect } from 'next/navigation'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import { requireSessionUser } from '@/lib/auth/session'
-import {
-  countClientsByAgency,
-  fetchAgencyById,
-  fetchSaleDocumentsByAgency,
-  fetchTeamMembersByAgency,
-} from '@/lib/queries/db'
+import { countClientsByAgency, fetchAgencyById, fetchTeamMembersByAgency } from '@/lib/queries/db'
 import { entitlementFor, isPaying } from '@/lib/billing/entitlement'
 import {
   cancelPlanConsequence,
@@ -19,7 +14,7 @@ import {
 import { parseDocumentCustomer } from '@/lib/billing/document-schemas'
 import { PLAN_LABELS } from '@/lib/billing/plans'
 import { readUsage } from '@/lib/billing/usage'
-import { listDocumentDownloads } from '@/lib/billing/documents'
+import { fetchSaleDocumentsByAgency, listDocumentDownloads } from '@/lib/billing/documents'
 import { fetchCanvaTeamStatus } from '@/features/settings/lib/canva-team'
 import { SettingsView } from '@/features/settings/components/settings-view'
 import { AccountRail, AccountTab } from '@/features/settings/components/account-tab'
@@ -32,13 +27,7 @@ import { ProfileRail, ProfileTab } from '@/features/settings/components/profile-
 import { TeamRail, TeamTab } from '@/features/settings/components/team-tab'
 import { SIGN_IN_PATH } from '@/utils/constants'
 
-/**
- * One uncached agency read: this page follows the account PUT and the Checkout return, so it
- * must never show a stale row — and the entitlement is derived from that same read, the one
- * place a page derives it itself rather than through `getCachedEntitlement`. The client
- * components below receive only the fields they edit or show; the billing columns stay here.
- * The `billing` param is Checkout's return flag, read here once and handed to `CheckoutReturn`.
- */
+/** The settings route's params: `billing` is Checkout's return flag. */
 interface SettingsPageProps {
   searchParams: Promise<Record<string, string | string[] | undefined>>
 }
@@ -47,6 +36,15 @@ function billingReturnOf(value: string | string[] | undefined): BillingReturn | 
   return value === 'success' || value === 'cancelled' ? value : null
 }
 
+/**
+ * One uncached agency read: this page follows the account PUT and the Checkout return, so it must
+ * never show a stale row, and the entitlement is derived from that same read rather than through
+ * `getCachedEntitlement`. The billing columns stay here; client components get only the fields
+ * they edit or show. Invoice links (admins only) are minted per render. Canva's team status is
+ * read here so the Integrations panel arrives with its rows, not a loading state after SSR. Panels
+ * are handed to the client `SettingsView` as elements because anything it imports joins the client
+ * bundle; this keeps the static ones (Profile, Plan) server components that ship no JS.
+ */
 export default async function SettingsPage({ searchParams }: SettingsPageProps) {
   const [{ userId, agencyId, role }, params] = await Promise.all([
     requireSessionUser(),
@@ -58,8 +56,6 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
     fetchAgencyById(supabase, agencyId),
     fetchTeamMembersByAgency(agencyId),
     countClientsByAgency(supabase, agencyId),
-    // Resolved here rather than fetched by the Integrations tab on mount, so the panel arrives
-    // with its rows instead of rendering a loading state after SSR has finished.
     fetchCanvaTeamStatus(agencyId),
   ])
 
@@ -71,23 +67,15 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
   const account = { name: agency.name, timezone: agency.timezone }
 
   const isAdmin = role === 'admin'
-  // Admins only, and after the row: the list is the workspace's own, the links are minted per render.
-  const documents = isAdmin
-    ? await listDocumentDownloads(
-        createAdminSupabaseClient(),
-        await fetchSaleDocumentsByAgency(agencyId)
-      )
-    : []
+  const admin = createAdminSupabaseClient()
+  const stored = isAdmin ? await fetchSaleDocumentsByAgency(admin, agencyId) : []
+  const documents = await listDocumentDownloads(admin, stored).catch((err: unknown) => {
+    console.error(`[settings] document links failed for ${agencyId}:`, err)
+    return stored.map((document) => ({ ...document, url: null }))
+  })
   const latestInvoice = documents.find((document) => document.kind === 'invoice')
   const billingReturn = billingReturnOf(params.billing)
 
-  /**
-   * Panels are rendered here and handed to the view as elements.
-   *
-   * The view is a client component because it owns the tab state, and anything it *imports* joins
-   * the client bundle whether or not it is interactive. Passing them in instead lets the static
-   * ones — Profile, Plan — stay server components and ship no JS at all.
-   */
   return (
     <SettingsView
       agencyName={agency.name}
@@ -109,10 +97,10 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
             <PlanSection entitlement={entitlement} usage={usage} brandCount={clientCount} />
             {isAdmin && (
               <PlanActions
-                state={entitlement.state}
                 plan={entitlement.plan}
+                subscriptionOpen={entitlement.subscriptionOpen}
                 summary={checkoutSummary(entitlement.mode, clientCount)}
-                ending={entitlement.endsOn !== null}
+                ending={entitlement.planEnding}
                 cancelConsequence={cancelPlanConsequence(entitlement)}
               />
             )}

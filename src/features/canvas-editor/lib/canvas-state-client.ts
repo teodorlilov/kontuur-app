@@ -2,6 +2,7 @@ import { safeParseCanvasDoc } from '@/lib/canvas/doc-schema'
 import { parseSeedIdentity } from '@/lib/visual/identity-schema'
 import type { CanvasDoc } from '@/types/canvas'
 import type { SeedIdentity } from '@/lib/canvas/seed-doc'
+import { readErrorMessage } from '@/utils/read-error-message'
 
 /**
  * Parse what the canvas route sent, rather than asserting it.
@@ -35,25 +36,26 @@ interface PositionedDoc {
   doc: CanvasDoc
 }
 
+/** What the editor says when the canvas route fails without a reason or sends no usable identity. */
+const CANVAS_LOAD_FAILED = 'Failed to load the canvas'
+
 /**
- * Every stored doc for a post, plus the identity to seed the slides that have none.
+ * Every stored doc for a post, plus the identity to seed the slides that have none. A miss throws,
+ * in the route's own words when it gave any: the editor must surface it, and `loadPostCanvas`
+ * (./auto-compose.ts) catches it for itself. A stored doc this bundle cannot parse is dropped, so
+ * its slide reseeds like one that never had a doc.
  *
- * The editor's own load: it can move between all of a post's slides, so it asks for all of them at
- * once. A miss throws rather than returning a flag — unlike the per-position read, this one has no
- * caller that can carry on without it.
+ * WHY as: each probed field is proven by `parseIdentity`, `parseDoc`, `Array.isArray` or `typeof`.
  */
 export async function fetchCanvasDocs(
   postId: string
 ): Promise<{ docs: PositionedDoc[]; identity: SeedIdentity }> {
   const res = await fetch(`/api/posts/${postId}/canvas`)
+  if (!res.ok) throw new Error((await readErrorMessage(res)) ?? CANVAS_LOAD_FAILED)
   const body: unknown = await res.json().catch(() => ({}))
-  const fields = body as { docs?: unknown; identity?: unknown; error?: unknown }
+  const fields = body as { docs?: unknown; identity?: unknown }
   const identity = parseIdentity(fields.identity)
-  if (!res.ok || !identity) {
-    throw new Error(typeof fields.error === 'string' ? fields.error : 'Failed to load the canvas')
-  }
-  // A row this bundle cannot parse drops out of the list rather than failing the open — the slide
-  // reseeds, exactly as it does for one that never had a doc.
+  if (!identity) throw new Error(CANVAS_LOAD_FAILED)
   const rows = Array.isArray(fields.docs) ? fields.docs : []
   const docs = rows.flatMap((row): PositionedDoc[] => {
     const entry = row as { position?: unknown; doc?: unknown }

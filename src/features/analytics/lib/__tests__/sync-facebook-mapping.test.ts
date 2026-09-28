@@ -9,13 +9,22 @@ import { EMPTY_PAGE_SERIES } from './fixtures'
  * insights series omitting a day means Meta served nothing for it.
  */
 
+/**
+ * A Page post without a `shares` key, as the probed post came back (docs/META-FB-PROBE.md); the id
+ * is that post's, every other value is made up.
+ */
+const post = {
+  id: '723701000827665_122167637282960180',
+  created_time: '2026-09-05T14:20:00+0000',
+  message: 'hello',
+  permalink_url: 'https://facebook.com/p',
+  full_picture: 'https://cdn/p.jpg',
+  reactions: { summary: { total_count: 5 } },
+  comments: { summary: { total_count: 2 } },
+}
+
 describe('zipPageDays', () => {
-  /**
-   * `page_follows` carries the follower LEVEL, so it lands in `followers_count`. A metric Meta
-   * did not serve for a day stays ABSENT from that row, so the partial upsert cannot null out
-   * what a fuller capture stored.
-   */
-  it('zips per-metric series into day rows, leaving unserved metrics absent', () => {
+  it('zips series into day rows, page_follows as followers_count, and leaves an unserved metric absent, never null', () => {
     const rows = zipPageDays('client-1', 'page-1', {
       ...EMPTY_PAGE_SERIES,
       page_follows: [
@@ -42,19 +51,7 @@ describe('zipPageDays', () => {
 })
 
 describe('toPostMetricRow', () => {
-  /** `shares` is absent here as it was in the probe's 200; the rest is fixture, not transcript. */
-  const post = {
-    id: '723701000827665_122167637282960180',
-    created_time: '2026-09-05T14:20:00+0000',
-    message: 'hello',
-    permalink_url: 'https://facebook.com/p',
-    full_picture: 'https://cdn/p.jpg',
-    reactions: { summary: { total_count: 5 } },
-    comments: { summary: { total_count: 2 } },
-  }
-
-  /** Reach is dead at Meta's end for Pages, so it is stored as the truth: absent, never zero. */
-  it('maps tallies honestly: absent shares is zero, the total is the computed sum', () => {
+  it('maps tallies honestly: absent shares is zero, the total is the sum, reach stays absent, never zero', () => {
     const row = toPostMetricRow('client-1', 'page-1', post, new Map([[post.id, 'post-uuid']]))
     expect(row.platform).toBe('facebook')
     expect(row.platform_account_id).toBe('page-1')
@@ -67,11 +64,7 @@ describe('toPostMetricRow', () => {
     expect(row.media_type).toBeNull()
   })
 
-  /**
-   * The two absences are opposite answers: a missing `shares` field still reads as zero, but a
-   * sum with no real inputs would claim a measurement that never happened.
-   */
-  it('keeps the total null when Meta served no tallies at all', () => {
+  it('keeps the total null when Meta served no tallies at all, while missing shares still reads as zero', () => {
     const row = toPostMetricRow(
       'client-1',
       'page-1',

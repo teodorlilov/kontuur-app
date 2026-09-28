@@ -13,6 +13,8 @@ vi.mock('node:dns/promises', () => ({
       ]
     if (host === 'v6private.attacker.com') return [{ address: 'fd12::1', family: 6 }]
     if (host === 'mapped.attacker.com') return [{ address: '::ffff:127.0.0.1', family: 6 }]
+    if (host === 'nat64.attacker.com') return [{ address: '64:ff9b::a9fe:a9fe', family: 6 }]
+    if (host === 'multicast.attacker.com') return [{ address: 'ff02::1', family: 6 }]
     if (host === 'localhost')
       return [
         { address: '127.0.0.1', family: 4 },
@@ -23,7 +25,7 @@ vi.mock('node:dns/promises', () => ({
   }),
 }))
 
-import { validateSourceUrl } from '../validate-url'
+import { arePublicAddresses, validateSourceUrl } from '../validate-url'
 
 describe('validateSourceUrl', () => {
   describe('valid URLs', () => {
@@ -53,6 +55,13 @@ describe('validateSourceUrl', () => {
 
     it('accepts public IPv6 literals', async () => {
       expect(await validateSourceUrl('http://[2606:4700::6810:84e5]')).toBe(true)
+      expect(await validateSourceUrl('http://[2606:4700::1111]')).toBe(true)
+    })
+
+    it('accepts IPv6 literals carrying a public IPv4 address', async () => {
+      expect(await validateSourceUrl('http://[64:ff9b::93.184.216.34]')).toBe(true)
+      expect(await validateSourceUrl('http://[2002:5db8:d822::1]')).toBe(true)
+      expect(await validateSourceUrl('http://[::93.184.216.34]')).toBe(true)
     })
   })
 
@@ -138,6 +147,20 @@ describe('validateSourceUrl', () => {
       expect(await validateSourceUrl('http://[::ffff:127.0.0.1]')).toBe(false)
       expect(await validateSourceUrl('http://[::ffff:10.0.0.1]')).toBe(false)
     })
+
+    it('blocks IPv6 multicast, site-local, discard-only and documentation literals', async () => {
+      expect(await validateSourceUrl('http://[ff02::1]')).toBe(false)
+      expect(await validateSourceUrl('http://[fec0::1]')).toBe(false)
+      expect(await validateSourceUrl('http://[100::1]')).toBe(false)
+      expect(await validateSourceUrl('http://[2001:db8::1]')).toBe(false)
+    })
+
+    it('blocks IPv6 literals carrying a private IPv4 address', async () => {
+      expect(await validateSourceUrl('http://[::127.0.0.1]')).toBe(false)
+      expect(await validateSourceUrl('http://[64:ff9b::7f00:1]')).toBe(false)
+      expect(await validateSourceUrl('http://[64:ff9b::169.254.169.254]')).toBe(false)
+      expect(await validateSourceUrl('http://[2002:7f00:1::1]')).toBe(false)
+    })
   })
 
   describe('SSRF protection — numeric IP encodings', () => {
@@ -157,8 +180,7 @@ describe('validateSourceUrl', () => {
       expect(await validateSourceUrl('http://127.1')).toBe(false)
     })
 
-    it('accepts decimal encoding of a public IP', async () => {
-      // 1572395042 = 93.184.216.34
+    it('accepts decimal encoding of a public IP (1572395042 = 93.184.216.34)', async () => {
       expect(await validateSourceUrl('http://1572395042')).toBe(true)
     })
   })
@@ -184,6 +206,14 @@ describe('validateSourceUrl', () => {
       expect(await validateSourceUrl('http://mapped.attacker.com')).toBe(false)
     })
 
+    it('blocks hostnames resolving to NAT64 addresses carrying a private IPv4 address', async () => {
+      expect(await validateSourceUrl('http://nat64.attacker.com')).toBe(false)
+    })
+
+    it('blocks hostnames resolving to IPv6 multicast', async () => {
+      expect(await validateSourceUrl('http://multicast.attacker.com')).toBe(false)
+    })
+
     it('rejects unresolvable hostnames', async () => {
       expect(await validateSourceUrl('http://nxdomain.example')).toBe(false)
     })
@@ -201,5 +231,74 @@ describe('validateSourceUrl', () => {
     it('rejects URL without protocol', async () => {
       expect(await validateSourceUrl('example.com')).toBe(false)
     })
+  })
+})
+
+describe('arePublicAddresses — the one address rule', () => {
+  it('passes a non-empty answer of public addresses', () => {
+    expect(arePublicAddresses(['93.184.216.34', '2606:4700::6810:84e5'])).toBe(true)
+  })
+
+  it('refuses an empty answer', () => {
+    expect(arePublicAddresses([])).toBe(false)
+  })
+
+  it('refuses when any one address is private', () => {
+    expect(arePublicAddresses(['93.184.216.34', '10.0.0.1'])).toBe(false)
+  })
+
+  it('judges upper-case IPv6 as its lower-case form', () => {
+    expect(arePublicAddresses(['FD12::1'])).toBe(false)
+    expect(arePublicAddresses(['::FFFF:127.0.0.1'])).toBe(false)
+  })
+
+  it.each([
+    ['fc00::/7', 'fc00::', 'fdff:ffff:ffff:ffff:ffff:ffff:ffff:ffff'],
+    ['fe80::/10', 'fe80::', 'febf:ffff:ffff:ffff:ffff:ffff:ffff:ffff'],
+    ['fec0::/10', 'fec0::', 'feff:ffff:ffff:ffff:ffff:ffff:ffff:ffff'],
+    ['ff00::/8', 'ff00::', 'ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff'],
+    ['100::/64', '100::', '100::ffff:ffff:ffff:ffff'],
+    ['2001:db8::/32', '2001:db8::', '2001:db8:ffff:ffff:ffff:ffff:ffff:ffff'],
+  ])('refuses %s from its first address to its last', (_block, first, last) => {
+    expect(arePublicAddresses([first])).toBe(false)
+    expect(arePublicAddresses([last])).toBe(false)
+  })
+
+  it('passes the public addresses on either side of 2001:db8::/32', () => {
+    expect(arePublicAddresses(['2001:db7:ffff:ffff:ffff:ffff:ffff:ffff'])).toBe(true)
+    expect(arePublicAddresses(['2001:db9::'])).toBe(true)
+  })
+
+  it.each([
+    ['::/96', '::7f00:1', '::5db8:d822'],
+    ['::/96, dotted', '::127.0.0.1', '::93.184.216.34'],
+    ['::ffff:0:0/96', '::ffff:a00:1', '::ffff:5db8:d822'],
+    ['64:ff9b::/96', '64:ff9b::7f00:1', '64:ff9b::5db8:d822'],
+    ['64:ff9b::/96, dotted', '64:ff9b::192.168.1.1', '64:ff9b::93.184.216.34'],
+    ['2002::/16', '2002:7f00:1::1', '2002:5db8:d822::1'],
+    ['2002::/16, cloud metadata', '2002:a9fe:a9fe::', '2002:5db8:d822:1:2:3:4:5'],
+  ])('judges a %s address by the IPv4 address it carries', (_block, privateOne, publicOne) => {
+    expect(arePublicAddresses([privateOne])).toBe(false)
+    expect(arePublicAddresses([publicOne])).toBe(true)
+  })
+
+  it('refuses the unspecified and loopback addresses, which carry 0.0.0.0 and 0.0.0.1', () => {
+    expect(arePublicAddresses(['::'])).toBe(false)
+    expect(arePublicAddresses(['::1'])).toBe(false)
+  })
+
+  it('gives every spelling of one address the same answer', () => {
+    expect(arePublicAddresses(['ff02:0:0:0:0:0:0:1'])).toBe(false)
+    expect(arePublicAddresses(['FF02::1'])).toBe(false)
+    expect(arePublicAddresses(['ff02::1%eth0'])).toBe(false)
+    expect(arePublicAddresses(['0:0:0:0:0:0:0:1'])).toBe(false)
+    expect(arePublicAddresses(['0064:ff9b:0000:0000:0000:0000:7f00:0001'])).toBe(false)
+    expect(arePublicAddresses(['0:0:0:0:0:ffff:127.0.0.1'])).toBe(false)
+  })
+
+  it('passes ordinary public IPv6 addresses', () => {
+    expect(arePublicAddresses(['2606:4700::1111'])).toBe(true)
+    expect(arePublicAddresses(['2001:4860:4860::8888'])).toBe(true)
+    expect(arePublicAddresses(['2a00:1450:4001:80b::200e'])).toBe(true)
   })
 })

@@ -4,7 +4,8 @@ import type { AdminClient } from '@/lib/supabase/admin'
 import { AGENCY_ENTITLEMENT_COLUMNS, CLIENT_OWNER_COLUMNS } from '@/lib/queries/select-columns'
 import { allows, entitlementFor, type Entitlement, type EntitlementNeed } from './entitlement'
 
-interface EntitledClient {
+/** A client a cron may act for, with its agency and the entitlement it spends against. */
+export interface EntitledClient {
   agencyId: string
   entitlement: Entitlement
 }

@@ -27,7 +27,7 @@ import { parseActionId } from './parse-input'
 import { statusForSlot } from '@/lib/posts/status-for-slot'
 import { assignDestinations } from '@/features/publishing/lib/destinations'
 import { withdrawPendingPublications } from '@/features/publishing/lib/publication-store'
-import type { PostType } from '@/types/api'
+import { toPostType } from '@/lib/visual/visual-backlog'
 import { removeStoragePrefix } from '@/lib/storage/remove-prefix'
 import type { PostImageRow } from '@/types'
 import { copyPostImageObject, postImagePrefix, putPostImages } from '@/features/assets/lib/storage'
@@ -469,24 +469,16 @@ async function recordKeptTopics(
 }
 
 /**
- * Put posts in the schedule — the ONE way `scheduled_at` and its paired `status` are written.
+ * Put posts in the schedule — how the calendar and the queues write `scheduled_at` and its paired
+ * `status` (the other slot writers, both behind the publish gate: `rearmFailedPublication`,
+ * src/features/calendar/actions/post-recovery.ts, and src/app/api/posts/[id]/publish/route.ts).
+ * Only scheduling carries the publish gate, so a paused workspace can still unschedule. The
+ * caption check runs here so a bad caption shows in the calendar, not as a burned publish attempt
+ * days later; it is Instagram's, so it covers Instagram-bound posts only.
  *
- * This was `batchSchedulePosts`, and it wrote both columns raw: a server action's argument list is
- * a public boundary, and it accepted any string as `scheduledAt` and put it straight in. That is
- * precisely the bug `post-update-schema` was written to close — its own comment calls scheduled_at
- * "the column the whole calendar reads" and records that it used to be written unchecked — and
- * this was the one writer that bypassed it. Both paths were reachable from the SAME screen: the
- * review queue schedules one post on approve and a selection through the batch bar.
- *
- * Every item now goes through the same `z.iso.datetime({offset:true})` and the same settable-status
- * check the single-post path uses. A bare `2026-08-14` — a wall-clock date with no zone — is
- * refused here as it always was there.
- *
- * The ownership check and the Instagram caption check stay: they are this function's own, and the
- * single-post caller gains both by coming through here.
- *
- * Scheduling is publishing, deferred, so it carries the publish gate; taking a post OFF the
- * calendar is not, and a paused workspace must still be able to do that.
+ * Destinations, which the publish cron reads instead of posts, are written after the posts UPDATE
+ * has committed, so each post's write is caught, never thrown. A post left with none is still
+ * scheduled: it is counted in `nowhereToGo` on a success, never answered `ok: false`.
  */
 export async function schedulePosts(
   items: Array<{
@@ -500,8 +492,6 @@ export async function schedulePosts(
     platforms: readonly string[]
   }>
 ): Promise<ActionResult<{ succeeded: number; total: number; nowhereToGo: number }>> {
-  // Validated before auth, matching the other writers here: a malformed payload is the caller's
-  // own bug and says nothing about the post, so there is nothing to leak by answering it first.
   for (const item of items) {
     const parsed = parsePostUpdate({
       scheduled_at: item.scheduledAt,
@@ -522,16 +512,6 @@ export async function schedulePosts(
   const allIds = items.map((i) => i.postId)
   const verifiedIds = await verifyPostsOwnership(supabase, allIds, agencyId)
 
-  /**
-   * Caption limits are checked at schedule time so the problem surfaces in the calendar, not as
-   * a burned publish attempt days later.
-   *
-   * Instagram-bound posts only, and that is now a real filter rather than an observation: this
-   * read "today every schedulable post is Instagram-bound", which stopped being true when
-   * Facebook joined POST_PLATFORMS. Instagram allows 2,200 caption characters and Facebook
-   * 63,206, so applying Instagram's rule to every destination would refuse a post that is
-   * perfectly valid on the only network it was actually going to.
-   */
   const instagramBound = new Set(
     items.filter((item) => item.platforms.includes('instagram')).map((item) => item.postId)
   )
@@ -539,10 +519,6 @@ export async function schedulePosts(
     .from('posts')
     .select('id, caption, client_id, post_type, status, topic_summary')
     .in('id', [...verifiedIds])
-  // The error was discarded. This one read feeds BOTH the caption gate and the client/post_type
-  // every publication is built from, so losing it silently skipped validation and then created no
-  // destinations at all — while the posts UPDATE below still ran and the action still reported
-  // success. A post scheduled with nowhere to go is invisible to the cron forever.
   if (readError) {
     console.error('[posts] schedule read failed:', readError.message)
     return { ok: false, error: 'Could not read those posts' }
@@ -552,7 +528,7 @@ export async function schedulePosts(
       row.id,
       {
         client_id: row.client_id,
-        post_type: (row.post_type ?? 'single') as PostType,
+        post_type: toPostType(row.post_type),
         status: row.status,
         topic_summary: row.topic_summary,
       },
@@ -568,8 +544,6 @@ export async function schedulePosts(
     return { ok: false, error: [...captionBlocked.values()][0]! }
   }
 
-  // Grouped by instant so one update covers every post sharing a slot. `null` groups too — it is
-  // the unschedule case, which the single-post caller uses and which used to be impossible here.
   const byTime = new Map<string | null, string[]>()
   const chosenById = new Map<string, readonly string[]>()
   for (const item of items) {
@@ -582,9 +556,6 @@ export async function schedulePosts(
 
   let succeeded = 0
   const failures: string[] = []
-  // Which rows actually moved. The destination loop below used to re-walk `byTime` regardless,
-  // so a group whose UPDATE failed still had its publications created or withdrawn — destinations
-  // written against a slot the post never took.
   const moved = new Set<string>()
   for (const [scheduledAt, ids] of byTime) {
     const { error } = await supabase
@@ -598,15 +569,6 @@ export async function schedulePosts(
     }
   }
 
-  /**
-   * Giving a post a slot is what gives it destinations — and without them the cron would
-   * never see it, because the scheduler reads publications, not posts. A post could sit in
-   * the calendar looking queued forever.
-   *
-   * Unscheduling withdraws them again, for the same reason: a destination with no slot is
-   * not waiting for anything. Only ones that have not gone out are withdrawn, so pulling a
-   * published post off the calendar cannot erase the record that it went out.
-   */
   await recordKeptTopics(
     supabase,
     [...moved].flatMap((postId) => postById.get(postId) ?? [])
@@ -618,20 +580,11 @@ export async function schedulePosts(
     for (const postId of ids) {
       const post = postById.get(postId)
       if (!post || !moved.has(postId)) continue
-      /**
-       * Caught per post. All three of these throw on a database error, and nothing caught them —
-       * the throw escaped the action AFTER the posts UPDATE had committed, so the rest of the
-       * batch was abandoned, `revalidateTag` never ran, and the caller saw a rejected promise
-       * while the rows were already scheduled.
-       */
       try {
         if (!scheduledAt) {
           await withdrawPendingPublications(admin, postId)
           continue
         }
-        // Zero destinations is not nothing to do — it is a post that can never publish. It was
-        // accepted in silence: no rows written, and the cron reads publications, so the post sat
-        // in the calendar looking queued forever.
         const created = await assignDestinations(
           admin,
           postId,
@@ -641,8 +594,6 @@ export async function schedulePosts(
         )
         if (created.length === 0) nowhereToGo.push(postId)
       } catch (err) {
-        // Same end state as resolving to nowhere — a slot with no destinations — so it is
-        // counted the same way. `failures` still carries the cause for the log.
         nowhereToGo.push(postId)
         failures.push(err instanceof Error ? err.message : `destination write failed for ${postId}`)
       }
@@ -650,28 +601,14 @@ export async function schedulePosts(
   }
 
   revalidateTag('client-post-stats', 'max')
-  // The partial count alone cannot tell the user whether the gap was an
-  // ownership check or a database failure, so the reason travels with it.
   if (failures.length > 0) {
     console.error('[posts] batch schedule partially failed:', failures.join('; '))
   }
-  // Nothing landing is a failure, not a partial success. `verifyPostsOwnership` drops unowned ids
-  // silently and a failed UPDATE only reaches `failures`, so a wholly unsuccessful run used to
-  // return `ok: true` with `succeeded: 0` — indistinguishable, to a caller, from having worked.
   if (nowhereToGo.length > 0) {
     console.error(`[posts] scheduled with no publishable destination: ${nowhereToGo.join(', ')}`)
   }
   if (succeeded === 0 && items.length > 0) {
     return { ok: false, error: failures[0] ?? 'Could not update those posts' }
   }
-  /**
-   * A post that resolved to nowhere is still SCHEDULED — the row committed several lines above.
-   *
-   * This returned `ok: false` for that case, which was a lie about a write that had already
-   * happened: every optimistic caller rolls its UI back on a falsy result, so the calendar put
-   * the card back where it was and the review queue announced the post was "back in the queue"
-   * while the database said otherwise. The count rides the success payload instead, so a caller
-   * can warn about it without being told the schedule failed.
-   */
   return { ok: true, data: { succeeded, total: items.length, nowhereToGo: nowhereToGo.length } }
 }

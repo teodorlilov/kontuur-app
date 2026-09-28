@@ -9,19 +9,22 @@ import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import { removeTeamMemberSchema } from '@/features/settings/schemas'
 import type { ActionResult } from '@/lib/actions/types'
 
+/** What a removal says when the member is gone from the workspace but their login is not. */
+const LOGIN_SURVIVED =
+  'They were removed from the workspace, but their login could not be deleted. Contact support to finish removing it.'
+
 /**
- * Removes a member from the workspace and deletes their account.
- *
- * A hard delete: the `users` row goes, then the Supabase auth identity through the shared
- * `deleteAuthIdentity`, which logs rather than fails when the identity survives — access is
- * already gone by then. Safe because `users` carries a single `agency_id`, so nobody belongs to
- * a second workspace this would break.
- *
- * Guarded four ways — caller must be an admin, the target must be in the caller's own agency,
- * an admin cannot remove themselves, and the last remaining admin cannot be removed (which would
- * leave the workspace with nobody able to manage it).
+ * Removes a member from the workspace and hard-deletes their account — safe only because `users`
+ * carries one `agency_id`. Admins only, members of the caller's agency only, never oneself or the
+ * last admin; a failed lookup answers "could not remove", never "not found". Deletes in reference
+ * order: `social_connections` by `user_id` (explicit where migration 20260856's cascade has not
+ * landed; a client's connection keys on `client_id` and stays), their invites (a pending one would
+ * join the login back), the `users` row, then the login (`deleteAuthIdentity`). The cached agency
+ * and role are busted before answering; a surviving login still answers ok, with `LOGIN_SURVIVED`.
  */
-export async function removeTeamMember(userId: string): Promise<ActionResult> {
+export async function removeTeamMember(
+  userId: string
+): Promise<ActionResult<{ notice: string | null }>> {
   const auth = await resolveActionAuth()
   if (!auth.ok) return { ok: false, error: auth.error }
   const { supabase, agencyId, userId: actorId } = auth
@@ -43,8 +46,6 @@ export async function removeTeamMember(userId: string): Promise<ActionResult> {
     .select('id, role, agency_id')
     .eq('id', userId)
     .maybeSingle()
-  // A failed lookup must not read as "not in your agency" — that turns a
-  // database blip into a misleading permission message.
   if (targetError) {
     console.error(`[team:remove] target lookup failed for ${userId}:`, targetError.message)
     return { ok: false, error: 'Could not remove the member' }
@@ -66,18 +67,6 @@ export async function removeTeamMember(userId: string): Promise<ActionResult> {
     }
   }
 
-  /**
-   * Their personal integrations go with them, and this must happen BEFORE the user row.
-   *
-   * `social_connections.user_id` was NO ACTION until migration 20260856 made it cascade, so a
-   * member holding a Canva connection made the delete below raise 23503 — surfacing as "Could not
-   * remove the member", which the admin cannot act on: a Canva connection is per-user, and only
-   * that person can disconnect their own. The explicit delete stays so the row goes wherever that
-   * migration has not landed.
-   *
-   * Scoped by `user_id`, which is set only on per-user rows. A client's Instagram connection keys
-   * on `client_id` and belongs to the workspace, not to whoever happened to link it.
-   */
   const { error: connectionError } = await admin
     .from('social_connections')
     .delete()
@@ -90,17 +79,23 @@ export async function removeTeamMember(userId: string): Promise<ActionResult> {
     return { ok: false, error: 'Could not remove the member' }
   }
 
+  const { error: inviteError } = await admin
+    .from('team_invites')
+    .delete()
+    .eq('auth_user_id', userId)
+  if (inviteError) {
+    console.error(`[team:remove] failed to remove invites for ${userId}:`, inviteError.message)
+    return { ok: false, error: 'Could not remove the member' }
+  }
+
   const { error: rowError } = await admin.from('users').delete().eq('id', userId)
   if (rowError) {
     console.error(`[team:remove] failed to delete user row ${userId}:`, rowError.message)
     return { ok: false, error: 'Could not remove the member' }
   }
 
-  await deleteAuthIdentity(admin, userId, 'team:remove')
-
-  // The removed member's agency and role are cached for five minutes; without this their session
-  // would keep resolving to a workspace they no longer belong to until the entry expired.
+  const loginDeleted = await deleteAuthIdentity(admin, userId, 'team:remove')
   revalidateTag(USER_RECORD_TAG, 'max')
   revalidatePath('/settings')
-  return { ok: true, data: undefined }
+  return { ok: true, data: { notice: loginDeleted ? null : LOGIN_SURVIVED } }
 }

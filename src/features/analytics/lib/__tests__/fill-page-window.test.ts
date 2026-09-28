@@ -46,11 +46,7 @@ beforeEach(() => {
 })
 
 describe('fillPageWindow', () => {
-  /**
-   * 91 inclusive days — one past the cap — so chunk one covers exactly 90 and chunk two picks up
-   * the remainder, its `since` continuing from the first chunk's `until`.
-   */
-  it('splits a window longer than 90 days into chunks Meta accepts', async () => {
+  it('splits a 91-day window into chunks Meta accepts: 90 days, then the rest from the first chunk’s until', async () => {
     await fillPageWindow(admin, {
       clientId: 'client-1',
       pageId: 'page-1',
@@ -70,7 +66,6 @@ describe('fillPageWindow', () => {
     expect(since2).toBe(until1)
   })
 
-  /** Meta serves one of the three days: that one is a measurement, the others markers. */
   it('writes marker rows for asked days Meta served nothing for, so the fill settles', async () => {
     fetchPageDaySeries.mockResolvedValue({
       ...EMPTY_PAGE_SERIES,
@@ -92,8 +87,7 @@ describe('fillPageWindow', () => {
     expect(outcome.wroteDays).toBe(3)
   })
 
-  /** Meta's `until` is loose: a bucket one day past the asked window can arrive in the series. */
-  it('drops series buckets that bleed outside the asked window', async () => {
+  it('drops series buckets that bleed outside the asked window, like the day past it that Meta’s loose until returns', async () => {
     fetchPageDaySeries.mockResolvedValue({
       ...EMPTY_PAGE_SERIES,
       page_views_total: [
@@ -111,11 +105,8 @@ describe('fillPageWindow', () => {
     const rows = upsertFbPageMetricDays.mock.calls[0]![1] as Array<Record<string, unknown>>
     expect(rows.every((row) => (row.metric_date as string) <= '2026-09-03')).toBe(true)
   })
-  /**
-   * `wroteDays` must exclude already-marked days: it is the caller's only "stalled" signal, and
-   * counting every upserted row would make zero unreachable, so the AutoFill chain never stops.
-   */
-  it('skips a chunk whose every day was already asked of Meta, and reports no new days', async () => {
+
+  it('skips a chunk whose every day was already asked of Meta, and reports zero new days so the auto-fill chain stops', async () => {
     readMarkerRows.mockResolvedValue([
       { metric_date: '2026-09-04', totals_synced_at: '2026-09-07T03:30:00Z' },
       { metric_date: '2026-09-05', totals_synced_at: '2026-09-07T03:30:00Z' },
@@ -135,8 +126,7 @@ describe('fillPageWindow', () => {
     expect(outcome.wroteDays).toBe(0)
   })
 
-  /** Three rows are written — the marked day is re-upserted harmlessly — and two are new. */
-  it('counts only the days it actually adds when part of the window is already marked', async () => {
+  it('counts only the days it adds when part of the window is already marked, re-upserting the marked one harmlessly', async () => {
     readMarkerRows.mockResolvedValue([
       { metric_date: '2026-09-04', totals_synced_at: '2026-09-07T03:30:00Z' },
     ])

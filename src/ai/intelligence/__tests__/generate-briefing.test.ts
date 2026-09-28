@@ -1,12 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 vi.mock('@/utils/ai-client')
-vi.mock('@/lib/billing/telemetry', () => ({
-  anthropicUsageOf: () => ({}),
-  recordAiUsage: vi.fn(),
-}))
 
-import { anthropic } from '@/utils/__mocks__/ai-client'
+import { attributedClaudeCall, claudeClient } from '@/utils/__mocks__/ai-client'
 import { generateBriefing } from '../generate-briefing'
 
 const WINDOW = { since: '2026-08-31', until: '2026-09-07' }
@@ -41,7 +37,7 @@ const USAGE = {
 }
 
 function respondWith(...content: unknown[]) {
-  anthropic.messages.create.mockResolvedValue({ content, usage: USAGE })
+  claudeClient.messages.create.mockResolvedValue({ content, usage: USAGE })
 }
 
 const GRID = {
@@ -61,6 +57,7 @@ describe('generateBriefing', () => {
     const run = await generateBriefing(WINDOW)
 
     expect(run).toEqual({ items: [GRID], unverified: 0 })
+    expect(attributedClaudeCall).toHaveBeenCalledWith('claude-sonnet-5', expect.any(Function))
   })
 
   it('drops an item whose source the search never returned, and counts it', async () => {
@@ -156,7 +153,7 @@ describe('generateBriefing', () => {
   })
 
   it('lets an API failure propagate', async () => {
-    anthropic.messages.create.mockRejectedValue(new Error('overloaded'))
+    claudeClient.messages.create.mockRejectedValue(new Error('overloaded'))
 
     await expect(generateBriefing(WINDOW)).rejects.toThrow('overloaded')
   })
@@ -166,7 +163,7 @@ describe('generateBriefing', () => {
 
     await generateBriefing(WINDOW)
 
-    const params = anthropic.messages.create.mock.calls[0]?.[0] as {
+    const params = claudeClient.messages.create.mock.calls[0]?.[0] as {
       tools: Array<{ type: string; max_uses: number; allowed_domains: string[] }>
     }
     expect(params.tools[0]?.type).toBe('web_search_20260209')

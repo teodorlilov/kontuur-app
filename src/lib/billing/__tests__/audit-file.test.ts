@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import type { SaleDocumentColumns } from '@/lib/queries/select-columns'
-import { auditMonthSchema, buildAuditFile, documentsOfMonth, monthReadRange } from '../audit-file'
+import {
+  AuditFileError,
+  auditMonthSchema,
+  buildAuditFile,
+  documentsOfMonth,
+  monthReadRange,
+} from '../audit-file'
 
 const SELLER = {
   eik: '206770508',
@@ -21,6 +27,7 @@ function document(overrides: Partial<SaleDocumentColumns>): SaleDocumentColumns 
     stripe_refund_id: null,
     refunds: null,
     issued_at: '2026-10-03T10:00:00.000Z',
+    tax_event_at: '2026-10-03T09:59:55.000Z',
     customer: { name: 'Acme OOD', email: 'a@acme.bg', address: null, taxIds: [] },
     lines: [
       {
@@ -51,6 +58,7 @@ const REVERSE_CHARGE = document({
   stripe_invoice_id: 'in_2DEF',
   stripe_charge_id: 'ch_2DEF',
   issued_at: '2026-10-12T08:00:00.000Z',
+  tax_event_at: '2026-10-12T07:59:58.000Z',
   lines: [
     {
       description: '1 × Kontuur (at €19.00 / month)',
@@ -76,6 +84,7 @@ const CREDIT_NOTE = document({
   stripe_refund_id: 're_1',
   refunds: 'doc_1',
   issued_at: '2026-10-20T15:00:00.000Z',
+  tax_event_at: '2026-10-20T14:59:59.000Z',
   lines: [
     {
       description: 'Credit note to invoice No. 1000000001',
@@ -172,6 +181,66 @@ describe('buildAuditFile — Приложение 38', () => {
     ).toThrow(/lines total 6840 but the document says 6900/)
   })
 
+  it('dates the order and the refund by the tax point and the document by its issue, a day apart across Sofia midnight', () => {
+    const paidLate = document({
+      issued_at: '2026-10-03T21:00:10.000Z',
+      tax_event_at: '2026-10-03T20:59:50.000Z',
+    })
+    const refundedLate = { ...CREDIT_NOTE, tax_event_at: '2026-10-19T21:30:00.000Z' }
+    const xml = buildAuditFile({
+      seller: SELLER,
+      month: '2026-10',
+      documents: [paidLate, refundedLate],
+      createdOn: CREATED_ON,
+    })!
+    expect(xml).toContain(
+      '<ord_d>2026-10-03</ord_d><doc_n>1000000001</doc_n><doc_date>2026-10-04</doc_date>'
+    )
+    expect(xml).toContain('<r_date>2026-10-20</r_date>')
+  })
+
+  it('refuses a fractional VAT rate by document rather than round it into a false line — the schema takes whole percentages', () => {
+    expect(() =>
+      buildAuditFile({
+        seller: SELLER,
+        month: '2026-10',
+        documents: [document({ vat_rate: 25.5 })],
+        createdOn: CREATED_ON,
+      })
+    ).toThrow(
+      new AuditFileError(
+        'Document 1000000001 carries VAT at 25.5 %, but the audit file takes whole percentages only. Ask the accountant how to report it.'
+      )
+    )
+  })
+
+  it('refuses a month of refunds and no sale — the schema requires an order', () => {
+    expect(() =>
+      buildAuditFile({
+        seller: SELLER,
+        month: '2026-10',
+        documents: [CREDIT_NOTE],
+        createdOn: CREATED_ON,
+      })
+    ).toThrow(AuditFileError)
+  })
+
+  it('counts the orders returned, not the notes — two notes against one invoice are one returned order', () => {
+    const second = {
+      ...CREDIT_NOTE,
+      id: 'doc_4',
+      number: 1_000_000_004,
+      stripe_credit_note_id: 'cn_2',
+    }
+    const xml = buildAuditFile({
+      seller: SELLER,
+      month: '2026-10',
+      documents: [document({}), CREDIT_NOTE, second],
+      createdOn: CREATED_ON,
+    })!
+    expect(xml).toContain('<r_ord>1</r_ord>')
+  })
+
   it('is nothing for a month with no document', () => {
     expect(
       buildAuditFile({ seller: SELLER, month: '2026-10', documents: [], createdOn: CREATED_ON })
@@ -180,8 +249,7 @@ describe('buildAuditFile — Приложение 38', () => {
 })
 
 describe('the month', () => {
-  it('cuts the month on Sofia midnight, not UTC', () => {
-    // 31 October 22:30 UTC is already 1 November in Sofia (UTC+2 once summer time has ended).
+  it('cuts the month on Sofia midnight, not UTC: 31 October 22:30 UTC is already 1 November in Sofia', () => {
     const late = document({ id: 'late', issued_at: '2026-10-31T22:30:00.000Z' })
     const early = document({ id: 'early', issued_at: '2026-09-30T22:30:00.000Z' })
     const mid = document({ id: 'mid' })
@@ -202,5 +270,9 @@ describe('the month', () => {
     expect(auditMonthSchema.safeParse('2026-10').success).toBe(true)
     expect(auditMonthSchema.safeParse('2026-13').success).toBe(false)
     expect(auditMonthSchema.safeParse('10-2026').success).toBe(false)
+  })
+
+  it('refuses to read a range for a month the schema refuses, rather than read it as another month', () => {
+    expect(() => monthReadRange('2026-13')).toThrow(/YYYY-MM/)
   })
 })

@@ -4,6 +4,7 @@ import { z } from 'zod'
 import { resolveAuth } from '@/lib/auth/resolve-auth'
 import { verifyAdminRole } from '@/lib/auth/helpers'
 import { fetchAgencyById } from '@/lib/queries/db'
+import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import { accountSettingsSchema } from '@/features/settings/schemas'
 import { formatZodIssues } from '@/lib/validation/format-issues'
 
@@ -22,7 +23,12 @@ export async function GET() {
   return NextResponse.json({ agency })
 }
 
-/** Update the agency's account settings. */
+/**
+ * Update the agency's account settings — its name and timezone. Admin only: the role is read
+ * fresh (`verifyAdminRole`) and the body allowlisted by `accountSettingsSchema`, then the write
+ * goes through the admin client, because the tenant role holds no update on these columns
+ * (migration 20260862 revokes it — a member could otherwise rename the workspace from the browser).
+ */
 export async function PUT(request: Request) {
   const auth = await resolveAuth()
   if (!auth.ok) return auth.response
@@ -50,7 +56,10 @@ export async function PUT(request: Request) {
     return NextResponse.json({ error: 'Nothing to update' }, { status: 400 })
   }
 
-  const { error } = await supabase.from('agencies').update(updates).eq('id', agencyId)
+  const { error } = await createAdminSupabaseClient()
+    .from('agencies')
+    .update(updates)
+    .eq('id', agencyId)
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 })

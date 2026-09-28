@@ -2,8 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from '@/components/ui/toast'
+import { readErrorMessage } from '@/utils/read-error-message'
 import { fetchVisualProgress } from '@/lib/actions/visual-progress'
-import { mapImageRow } from '@/lib/posts/map-image-row'
+import { readImageResponse } from '@/lib/posts/map-image-row'
 import { createSemaphore } from '@/lib/concurrency'
 import { MAX_CONCURRENT_VISUAL_REQUESTS } from '@/lib/visual/limits'
 import { StaleImageError } from '@/features/canvas-editor/lib/save-canvas'
@@ -13,7 +14,6 @@ import type { DraftVisual } from '@/lib/visual/draft-visuals'
 import { toVisualSlots } from '@/lib/visual/visual-slots'
 import { isUnbakedArt, totalVisualSlots } from '@/lib/visual/visual-backlog'
 import type { PostImage } from '@/types/api'
-import type { PostImageRow } from '@/types/index'
 
 /** The post a visual belongs to: its id, and the copy its text is baked from. */
 export type VisualPost = SlideCopySource & { id: string }
@@ -52,6 +52,10 @@ class RefusedError extends Error {}
 /** 409 — the position is claimed by another session or the cron (`lib/visual/visual-jobs.ts`). */
 class InFlightError extends Error {}
 
+/**
+ * Ask the visuals route for the picture at one position: the landed image, or a refusal, an
+ * in-flight claim or a failure thrown in the route's own words where it gave any.
+ */
 async function requestVisual(
   postId: string,
   position: number,
@@ -63,12 +67,10 @@ async function requestVisual(
     body: JSON.stringify({ position }),
     signal,
   })
-  const data = await res.json()
   if (res.status === 402)
-    throw new RefusedError(data.error ?? 'AI images are not available right now')
+    throw new RefusedError((await readErrorMessage(res)) ?? 'AI images are not available right now')
   if (res.status === 409) throw new InFlightError()
-  if (!res.ok) throw new Error(data.error ?? 'Visual generation failed')
-  return mapImageRow(data.image as PostImageRow)
+  return readImageResponse(res, 'Visual generation failed')
 }
 
 function withPositions(map: PositionsByPost, postId: string, positions: number[]): PositionsByPost {

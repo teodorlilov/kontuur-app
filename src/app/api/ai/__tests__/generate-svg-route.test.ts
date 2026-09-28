@@ -5,7 +5,6 @@ const mocks = vi.hoisted(() => ({
   downloadFalFile: vi.fn(),
   svgRejectionReason: vi.fn(),
   upload: vi.fn(),
-  runMetered: vi.fn(),
 }))
 vi.mock('@/lib/auth/resolve-auth', () => ({
   resolveAuth: () => Promise.resolve({ ok: true, userId: 'u1', agencyId: 'a1', supabase: {} }),
@@ -32,10 +31,11 @@ vi.mock('@/lib/visual/sanitize-svg', () => ({
 }))
 vi.mock('@/lib/billing/usage', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/lib/billing/usage')>()),
-  runMetered: (...args: unknown[]) => mocks.runMetered(...args),
+  runMetered: (await import('./metered-stand-in')).metered,
 }))
 
 import { POST } from '../generate-svg/route'
+import { outcomes } from './metered-stand-in'
 
 function request(body: unknown): Request {
   return new Request('https://kontuur.app/api/ai/generate-svg', {
@@ -45,23 +45,9 @@ function request(body: unknown): Request {
   })
 }
 
-/** What `runMetered` does with the callback's outcome is its own test; here it only has to be the thing the whole landing runs under. */
-const outcomes: Array<'landed' | 'thrown'> = []
-async function metered(_spender: unknown, fn: () => Promise<unknown>) {
-  try {
-    const result = await fn()
-    outcomes.push('landed')
-    return result
-  } catch (err) {
-    outcomes.push('thrown')
-    throw err
-  }
-}
-
 describe('POST /api/ai/generate-svg — the vector is counted only once it is in storage', () => {
   beforeEach(() => {
     outcomes.length = 0
-    mocks.runMetered.mockReset().mockImplementation(metered)
     mocks.generateVectorAsset.mockReset().mockResolvedValue('https://fal.example/v.svg')
     mocks.downloadFalFile.mockReset().mockResolvedValue(Buffer.from('<svg/>'))
     mocks.svgRejectionReason.mockReset().mockReturnValue(null)
@@ -100,7 +86,7 @@ describe('POST /api/ai/generate-svg — the vector is counted only once it is in
     mocks.downloadFalFile.mockRejectedValue(new Error('Failed to download generated file (503)'))
 
     const response = await POST(request({ prompt: 'a leaf', clientId: 'c1' }))
-    expect(response.status).toBe(500)
+    expect(response.status).toBe(502)
     expect(await response.json()).toEqual({ error: 'Failed to download generated file (503)' })
     expect(outcomes).toEqual(['thrown'])
     error.mockRestore()

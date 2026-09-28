@@ -4,28 +4,14 @@ import { ScheduleCard } from '../components/schedule-card'
 import type { CalendarPost } from '@/types/api'
 
 /**
- * The seven-field pre-fill effect, pinned.
- *
- * `schedule-card.tsx:147` carries a block-level `eslint-disable
- * react-hooks/set-state-in-effect` — a deliberate suppression (TECH-DEBT §4.1) on the
- * grounds that seeding seven independent fields from one prop is a genuine effect. The
- * suppression is fine; what it removed was the only automated attention this code had.
- *
- * The failure mode a suppressed initialiser effect has is specific and quiet: it keys on
- * the wrong thing and stops re-seeding, so the form shows the PREVIOUS post's values
- * while the header shows the current one. `feedback-trace-state-loops` names exactly this
- * — key an initialiser on its trigger, not on derived data — and it cost a real bug once.
- *
- * Mocked here: only the leaves that reach the network or the canvas. The effect under
- * test is the component's own.
+ * Pins the pre-fill effect: when `post` changes, every field re-seeds from it, so the form never
+ * shows the previous post's values under the current post's header. Only the leaves that reach
+ * the network or the canvas are mocked; the effect under test is the component's own.
  */
 vi.mock('@/hooks/use-canva-status', () => ({
   useCanvaStatus: () => false,
 }))
-// The real return shape, not an invented one. A mock that drifts from its subject is a
-// test that passes against a component nobody ships — this one returned `generating: {}`
-// at first and blew up inside `missingImagePositions`, which wants an array; the hook now
-// answers per post through `positionsFor`.
+// `positionsFor` answers arrays, as the real hook does: `missingPositions` iterates them.
 vi.mock('@/components/posts/use-generate-visuals', () => ({
   useGenerateVisuals: () => ({
     positionsFor: () => ({ generating: [] as number[], composing: [] as number[] }),
@@ -43,8 +29,13 @@ vi.mock('@/features/canvas-editor/components/canvas-editor', () => ({
   CanvasEditor: () => <div data-testid="canvas-editor" />,
 }))
 
+/** Sofia is UTC+3 in September (summer time), so 06:00Z seeds 09:00 and 07:30Z seeds 10:30. */
 const ZONE = 'Europe/Sofia'
 
+/**
+ * A calendar post with nothing published yet (`publications: []`). WHY as: only the fields these
+ * tests need are populated; the cast covers the rest.
+ */
 function makePost(over: Partial<CalendarPost> = {}): CalendarPost {
   return {
     id: 'post-1',
@@ -53,11 +44,9 @@ function makePost(over: Partial<CalendarPost> = {}): CalendarPost {
     platform: 'Instagram',
     post_type: 'single',
     status: 'pending',
-    // Nothing has gone out: publish state lives on the destinations now.
     publications: [],
     scheduled_at: '2026-09-01T06:00:00.000Z',
     slides_json: null,
-    // Only the fields this card reads are populated; the cast documents the gap.
     ...over,
   } as CalendarPost
 }
@@ -93,16 +82,13 @@ beforeEach(() => {
 })
 
 describe('ScheduleCard pre-fill', () => {
-  it('seeds date and time from the post, in the agency zone', () => {
-    // 06:00 UTC is 09:00 in Sofia (UTC+3 in September). Both fields must come from the
-    // SAME zone — the documented bug was a UTC date beside a browser-local time, which
-    // rewrote the post at the wrong instant on any reopen-and-update.
+  it('seeds date and time from the post, both in the agency zone', () => {
     renderCard(makePost({ scheduled_at: '2026-09-01T06:00:00.000Z' }))
     expect(dateField().value).toBe('2026-09-01')
     expect(timeField().value).toBe('09:00')
   })
 
-  it('re-seeds every field when the post changes', () => {
+  it('re-seeds every field when the post changes, so no value from the previous post is saved onto the next one', () => {
     const { rerender } = renderCard(makePost())
     expect(dateField().value).toBe('2026-09-01')
     expect(screen.getByDisplayValue('First caption')).toBeInTheDocument()
@@ -131,8 +117,6 @@ describe('ScheduleCard pre-fill', () => {
       />
     )
 
-    // The whole point: no field may still hold post-1's value. A stale caption here is
-    // an edit saved onto the wrong post.
     expect(dateField().value).toBe('2026-09-04')
     expect(timeField().value).toBe('10:30')
     expect(screen.getByDisplayValue('Second caption')).toBeInTheDocument()

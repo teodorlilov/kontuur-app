@@ -5,9 +5,10 @@ import { createAdminSupabaseClient, type AdminClient } from '@/lib/supabase/admi
 import { notify } from '@/lib/notifications/notify'
 import type { Entitlement } from './entitlement'
 import { getCachedEntitlement } from '@/lib/queries/cache'
+import { readPages } from '@/lib/queries/read-pages'
 import { runAsSpender, type Spender } from './spend-context'
-import { ALLOWANCE_WARN_SHARE, type Allowance, type AllowanceKind } from './plans'
-import { allowanceUsedUp, allowanceWarning } from './copy'
+import { ALLOWANCE_KINDS, ALLOWANCE_WARN_SHARE, type Allowance, type AllowanceKind } from './plans'
+import { allowanceUsedUp, allowanceWarning, type OwedImages } from './copy'
 
 /**
  * The allowance ledger — one row per (agency, period, kind) in `usage_counters`, with two
@@ -27,14 +28,7 @@ import { allowanceUsedUp, allowanceWarning } from './copy'
  * and an `AllowanceError` from `reserveUsage`; a route answers it with `allowanceResponse` (402).
  */
 
-type ConsumeResult =
-  | {
-      allowed: true
-      /** Committed units — landed plus in flight — after this call. */
-      used: number
-      quota: number
-    }
-  | { allowed: false; refused: AllowanceError }
+type ConsumeResult = { allowed: true } | { allowed: false; refused: AllowanceError }
 
 /**
  * Reserve `cost` units of `kind` against the entitlement's period; refused when the quota is zero
@@ -67,33 +61,33 @@ export async function consumeUsage(
       refused: new AllowanceError(kind, outcome.used, quota, cost, entitlement),
     }
   }
-  return { allowed: true, used: outcome.used, quota }
+  return { allowed: true }
 }
 
 /**
- * End a reservation: `landed` of the `reserved` units are counted, the rest given back — a
- * picture that reached storage, a run that wrote fewer drafts than it asked for, a rewrite that
- * threw. Never more than was reserved: the cap was checked against the reservation. The 80 % bell
- * fires on the call that carries `count` across the line and is telemetry: a bell that cannot be
- * written never undoes a settle. A failed RPC is logged, not thrown — the thing already exists,
- * and a settle that is lost is a free unit for the customer plus a pending one the daily
- * `clearStaleReservations` releases.
+ * End a reservation: count `landed` of the `reserved` units (never more — the cap was checked
+ * against the reservation) and take `release` units out of `pending`, the whole reservation unless
+ * it may already have been cleared (`closeAbandonedRuns`, src/lib/generation/runs.ts). Settle with
+ * the reserving entitlement, so the units land in the period they were reserved from. The 80 %
+ * bell is telemetry and never undoes a settle. A failed RPC is logged, not thrown: the thing
+ * already exists, and a lost settle is a free unit plus a pending one `clearStaleReservations`
+ * releases.
  */
 export async function settleUsage(
   entitlement: Entitlement,
   agencyId: string,
   kind: AllowanceKind,
-  reserved: number,
-  landed: number
+  settle: { reserved: number; landed: number; release?: number }
 ): Promise<void> {
-  if (reserved <= 0) return
-  const counted = Math.min(landed, reserved)
+  const counted = Math.max(0, Math.min(settle.landed, settle.reserved))
+  const release = settle.release ?? settle.reserved
+  if (counted <= 0 && release <= 0) return
   const admin = createAdminSupabaseClient()
   const { data: count, error } = await admin.rpc('settle_usage', {
     p_agency_id: agencyId,
     p_period: entitlement.periodKey,
     p_kind: kind,
-    p_reserved: reserved,
+    p_reserved: release,
     p_landed: counted,
   })
   if (error) {
@@ -109,7 +103,7 @@ export async function settleUsage(
         agencyId,
         type: 'allowance_warning',
         message: allowanceWarning(kind, count, quota, entitlement),
-        cooldownDays: 31,
+        dedupKey: `allowance_warning:${entitlement.periodKey}:${kind}`,
       })
     } catch (err) {
       console.warn(`[billing] could not record the allowance warning for ${agencyId}:`, err)
@@ -124,24 +118,64 @@ interface UsageRead {
   committed: Allowance
 }
 
-/** What the workspace has used this period, by kind — zero for a kind with no row yet. */
-export async function readUsage(agencyId: string, periodKey: string): Promise<UsageRead> {
-  const { data, error } = await createAdminSupabaseClient()
-    .from('usage_counters')
-    .select('kind, count, pending')
-    .eq('agency_id', agencyId)
-    .eq('period', periodKey)
-  if (error) throw new Error(`usage_counters read failed: ${error.message}`)
-  const landed: Allowance = { draft: 0, image: 0, rewrite: 0 }
-  const committed: Allowance = { draft: 0, image: 0, rewrite: 0 }
-  for (const row of data ?? []) {
-    if (!(row.kind in landed)) continue
-    // WHY as: the column is text under a CHECK the generated type cannot see; `in` proved it.
-    const kind = row.kind as AllowanceKind
-    landed[kind] = row.count
-    committed[kind] = row.count + row.pending
+/** Whether a stored `kind` is an allowance pool — the generated type reads the column as text. */
+function isAllowanceKind(kind: string): kind is AllowanceKind {
+  return ALLOWANCE_KINDS.some((known) => known === kind)
+}
+
+/**
+ * What each workspace has used in its own period, by kind — zero for a kind with no row yet — in
+ * ONE query: every agency's rows in any of the periods named, kept only where the row's period is
+ * that agency's. The query is read a page at a time (`readPages`) in the table's key order
+ * (agency, period, kind: migration 20260852), so a roster past PostgREST's 1000-row answer is read
+ * whole. The crons read their whole roster this way, so a tick makes one usage read rather than
+ * one per workspace, and a failed page fails the tick, as its schedules read does.
+ */
+export async function readUsageByAgency(
+  entries: ReadonlyArray<{ agencyId: string; periodKey: string }>
+): Promise<Map<string, UsageRead>> {
+  const out = new Map<string, UsageRead>()
+  if (entries.length === 0) return out
+  const periodOf = new Map(entries.map((entry) => [entry.agencyId, entry.periodKey]))
+  for (const agencyId of periodOf.keys()) {
+    out.set(agencyId, {
+      landed: { draft: 0, image: 0, rewrite: 0 },
+      committed: { draft: 0, image: 0, rewrite: 0 },
+    })
   }
-  return { landed, committed }
+  const agencyIds = [...periodOf.keys()]
+  const periods = [...new Set(periodOf.values())]
+  const admin = createAdminSupabaseClient()
+  const pages = readPages('usage_counters read', (from, to) =>
+    admin
+      .from('usage_counters')
+      .select('agency_id, period, kind, count, pending')
+      .in('agency_id', agencyIds)
+      .in('period', periods)
+      .order('agency_id')
+      .order('period')
+      .order('kind')
+      .range(from, to)
+  )
+  for await (const rows of pages) {
+    for (const row of rows) {
+      const usage = out.get(row.agency_id)
+      if (!usage || periodOf.get(row.agency_id) !== row.period || !isAllowanceKind(row.kind)) {
+        continue
+      }
+      usage.landed[row.kind] = row.count
+      usage.committed[row.kind] = row.count + row.pending
+    }
+  }
+  return out
+}
+
+/**
+ * What one workspace has used this period — `readUsageByAgency` for one entry, whose map holds an
+ * entry for every agency asked about.
+ */
+export async function readUsage(agencyId: string, periodKey: string): Promise<UsageRead> {
+  return (await readUsageByAgency([{ agencyId, periodKey }])).get(agencyId)!
 }
 
 /**
@@ -149,6 +183,23 @@ export async function readUsage(agencyId: string, periodKey: string): Promise<Us
  * reserved on for this long holds only what a killed invocation left behind.
  */
 const STALE_RESERVATION_MS = 10 * 60_000
+
+/** The UTC hour the billing cron runs `clearStaleReservations` (vercel.json, "0 8 * * *"). */
+const DAILY_RESET_HOUR_UTC = 8
+
+/**
+ * The most recent moment the daily reset was due. A reservation taken after it cannot have been
+ * cleared by it — the reset only clears rows reserved on more than `STALE_RESERVATION_MS` before
+ * it runs — so its owner may still release it exactly (the abandoned-run closer,
+ * src/lib/generation/runs.ts). A reset delayed by more than ten minutes is the one case this
+ * misjudges.
+ */
+export function lastDailyResetAt(now: Date): Date {
+  const reset = new Date(now)
+  reset.setUTCHours(DAILY_RESET_HOUR_UTC, 0, 0, 0)
+  if (reset > now) reset.setUTCDate(reset.getUTCDate() - 1)
+  return reset
+}
 
 /**
  * Release the reservations a killed invocation never settled — the daily reset behind
@@ -171,7 +222,11 @@ export async function clearStaleReservations(admin: AdminClient): Promise<number
   return data?.length ?? 0
 }
 
-/** A refused spend, carrying what a screen needs to say why, worded in the agency's own zone. */
+/**
+ * A refused spend, carrying what a screen needs to say why, worded in the agency's own zone. `used`
+ * is the counted figure; pictures earlier posts still owe, when they are the reason, are named in
+ * the message (`owed`).
+ */
 export class AllowanceError extends Error {
   readonly resetsOn: Date | null
 
@@ -180,9 +235,10 @@ export class AllowanceError extends Error {
     readonly used: number,
     readonly quota: number,
     readonly needed: number,
-    entitlement: Pick<Entitlement, 'resetsOn' | 'timezone'>
+    entitlement: Pick<Entitlement, 'resetsOn' | 'timezone' | 'paymentFailed'>,
+    owed?: OwedImages
   ) {
-    super(allowanceUsedUp(kind, used, quota, needed, entitlement))
+    super(allowanceUsedUp(kind, used, quota, needed, entitlement, owed))
     this.name = 'AllowanceError'
     this.resetsOn = entitlement.resetsOn
   }
@@ -203,8 +259,8 @@ export async function reserveUsage(
   if (!spender.agencyId || spender.reserved === undefined) {
     throw new Error(`${kind}: a paid call outside runMetered — nobody would settle it`)
   }
-  const entitlement = await getCachedEntitlement(spender.agencyId)
-  const reserved = await consumeUsage(entitlement, spender.agencyId, kind, cost)
+  spender.entitlement ??= await getCachedEntitlement(spender.agencyId)
+  const reserved = await consumeUsage(spender.entitlement, spender.agencyId, kind, cost)
   if (!reserved.allowed) throw reserved.refused
   spender.reserved[kind] = (spender.reserved[kind] ?? 0) + cost
 }
@@ -228,13 +284,17 @@ export async function runMetered<T>(spender: Spender, fn: () => Promise<T>): Pro
   }
 }
 
+/**
+ * Settle everything the spender holds against the entitlement it reserved with (`reserveUsage`
+ * filled it), pool by pool in `ALLOWANCE_KINDS` order.
+ */
 async function settleReserved(spender: Spender, landed: boolean): Promise<void> {
-  const held = Object.entries(spender.reserved ?? {}).filter(([, cost]) => (cost ?? 0) > 0)
-  if (!spender.agencyId || held.length === 0) return
-  const entitlement = await getCachedEntitlement(spender.agencyId)
-  for (const [kind, cost] of held) {
-    // WHY as: the keys of `reserved` are written only by `reserveUsage`, typed on `AllowanceKind`.
-    await settleUsage(entitlement, spender.agencyId, kind as AllowanceKind, cost, landed ? cost : 0)
+  const { agencyId, entitlement, reserved = {} } = spender
+  const held = ALLOWANCE_KINDS.filter((kind) => (reserved[kind] ?? 0) > 0)
+  if (!agencyId || !entitlement || held.length === 0) return
+  for (const kind of held) {
+    const cost = reserved[kind] ?? 0
+    await settleUsage(entitlement, agencyId, kind, { reserved: cost, landed: landed ? cost : 0 })
   }
   spender.reserved = {}
 }
@@ -260,17 +320,15 @@ export function allowanceResponse(err: unknown): NextResponse | null {
 
 /**
  * The answer to a spend that failed under `runMetered`: the 402 when the allowance refused it,
- * otherwise the error's own words — a provider's reason is what the person can act on — behind
- * `status` (502 when the provider failed, 500 when we did), logged under `scope`.
+ * otherwise a 502 in the error's own words — a metered route's work is a provider call (a model,
+ * an image), and the provider's reason is what the person can act on — logged under `scope`.
  */
-export function spendFailureResponse(
-  err: unknown,
-  scope: string,
-  fallback: string,
-  status: 500 | 502
-): NextResponse {
+export function spendFailureResponse(err: unknown, scope: string, fallback: string): NextResponse {
   const refusal = allowanceResponse(err)
   if (refusal) return refusal
   console.error(`[${scope}] failed:`, err)
-  return NextResponse.json({ error: err instanceof Error ? err.message : fallback }, { status })
+  return NextResponse.json(
+    { error: err instanceof Error ? err.message : fallback },
+    { status: 502 }
+  )
 }

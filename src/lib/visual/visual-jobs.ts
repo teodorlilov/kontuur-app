@@ -1,9 +1,7 @@
 import 'server-only'
 
 import type { SupabaseClient } from '@supabase/supabase-js'
-
-/** Postgres unique_violation — the primary key rejected a second claim on the same position. */
-const UNIQUE_VIOLATION = '23505'
+import { UNIQUE_VIOLATION } from '@/utils/constants'
 
 /**
  * How long a claim speaks for its generation.
@@ -18,18 +16,13 @@ const VISUAL_JOB_STALE_MS = 3 * 60_000
 const staleBefore = (): string => new Date(Date.now() - VISUAL_JOB_STALE_MS).toISOString()
 
 /**
- * Take a slide position for the picture about to be made — the claim that stops one position
- * being generated twice.
+ * Take a slide position for the picture about to be made, so no position is generated, and paid
+ * for, twice: a generation leaves no trace until it lands as a `post_images` row.
  *
- * Nothing else can tell: a generation leaves no trace until it lands as a `post_images` row, so
- * every reader of "which positions still owe a picture" — a resumed run, a second tab, the
- * visuals cron beside a person pressing Regenerate — asks for the same position again and the
- * workspace pays twice for one surviving picture.
- *
- * False means someone else is making it right now. A claim older than `VISUAL_JOB_STALE_MS` is
- * taken over instead, because the invocation that left it was killed and will never release it.
- * A failure that is not a lost race returns TRUE: this is bookkeeping, and it must never be the
- * reason a person does not get their picture.
+ * False means someone else is making it right now (the primary key refused the claim). A claim
+ * older than `VISUAL_JOB_STALE_MS` is taken over instead: the invocation that left it was killed
+ * and will never release it. A failure that is not a lost race returns TRUE: this is bookkeeping,
+ * and it must never be the reason a person does not get their picture.
  */
 export async function claimVisualJob(
   admin: SupabaseClient,

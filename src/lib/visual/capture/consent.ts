@@ -35,13 +35,14 @@ export async function dismissConsent(page: Page): Promise<void> {
   await page
     .evaluate(() => {
       for (const el of Array.from(document.querySelectorAll('body *'))) {
+        if (!(el instanceof HTMLElement)) continue
         const s = getComputedStyle(el)
-        const rect = (el as HTMLElement).getBoundingClientRect()
+        const rect = el.getBoundingClientRect()
         const coversViewport =
           rect.width >= window.innerWidth * 0.9 && rect.height >= window.innerHeight * 0.9
         const isOverlay =
           (s.position === 'fixed' || s.position === 'sticky') && Number(s.zIndex) >= 1000
-        if (coversViewport && isOverlay) (el as HTMLElement).style.display = 'none'
+        if (coversViewport && isOverlay) el.style.display = 'none'
       }
     })
     .catch(() => undefined)

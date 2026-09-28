@@ -18,10 +18,10 @@ interface TeamTabProps {
 }
 
 /**
- * Who has access to the workspace.
- *
- * Members only — there is no invitations table, so a pending-invite count could report nothing
- * but a fixed zero.
+ * Who has access to the workspace: its members. Pending invites are `team_invites` rows (written
+ * by `inviteMember`, src/features/settings/lib/invite-member.ts) and are not listed here. A
+ * removal that answers ok is done, so the dialog closes; its notice, when it has one, says what
+ * could not be finished.
  */
 export function TeamTab({ members, currentUserId, currentUserRole, agencyMode }: TeamTabProps) {
   const router = useRouter()
@@ -34,7 +34,8 @@ export function TeamTab({ members, currentUserId, currentUserRole, agencyMode }:
     setRemoving(true)
     const result = await removeTeamMember(pendingRemoval.id)
     if (result.ok) {
-      toast.success(`${pendingRemoval.email} removed from the workspace`)
+      if (result.data.notice) toast.error(result.data.notice)
+      else toast.success(`${pendingRemoval.email} removed from the workspace`)
       setPendingRemoval(null)
       router.refresh()
     } else {

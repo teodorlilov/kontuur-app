@@ -1,18 +1,17 @@
 import QRCode from 'qrcode'
 import { escapeHtml } from '@/lib/email/layout'
 import type { SaleDocumentColumns } from '@/lib/queries/select-columns'
-import { COMPANY } from '@/utils/constants'
+import { COMPANY, DOCUMENT_TIMEZONE } from '@/utils/constants'
 import { getZonedParts, toDateKey } from '@/utils/date-helpers'
-import { formatDocumentNumber, formatLongDate, formatMoney } from '@/utils/format'
+import { centsToDecimal, formatDocumentNumber, formatLongDate, formatMoney } from '@/utils/format'
 import {
   parseDocumentCustomer,
   parseDocumentLines,
+  parseVatBasis,
+  taxPointOf,
   type DocumentCustomer,
   type VatBasis,
 } from './document-schemas'
-
-/** The zone a Bulgarian sale document is dated in, whatever the customer's own. */
-const DOCUMENT_TIMEZONE = 'Europe/Sofia'
 
 /**
  * The fiscal tax group printed on every line (Н-18 чл. 52о ал. 1 т. 5): 'Б' for the 20 %
@@ -27,9 +26,9 @@ export const TAX_GROUPS: Record<VatBasis, 'А' | 'Б'> = {
   outside_eu: 'А',
 }
 
-/** The VAT line's legal basis, as the invoice must state it. */
+/** The VAT line's legal basis, as the invoice must state it; the stored rate follows it. */
 const VAT_BASIS_TEXT: Record<VatBasis, string> = {
-  domestic: 'VAT 20 %',
+  domestic: 'Bulgarian VAT',
   oss: 'VAT at the customer’s national rate (OSS)',
   reverse_charge: 'Reverse charge, Art. 21(2) Bulgarian VAT Act',
   outside_eu: 'Outside the scope of EU VAT, Art. 21 Bulgarian VAT Act',
@@ -44,7 +43,11 @@ export function documentIds(): { eShopNumber: string; stripeAccountId: string } 
   return { eShopNumber, stripeAccountId }
 }
 
-/** The document's order number and transaction reference: the Stripe ids the sale, or the refund, is known by. */
+/**
+ * The document's order number and transaction reference: the Stripe ids the sale, or the refund,
+ * is known by. A credit note for a chargeback the bank won has no refund of its own, so its
+ * transaction is the original charge (docs/n18/README.md, Refunds).
+ */
 function references(
   document: Pick<
     SaleDocumentColumns,
@@ -54,7 +57,10 @@ function references(
   const invoice = document.kind === 'invoice'
   return {
     order: (invoice ? document.stripe_invoice_id : document.stripe_credit_note_id) ?? '',
-    transaction: (invoice ? document.stripe_charge_id : document.stripe_refund_id) ?? '',
+    transaction:
+      (invoice
+        ? document.stripe_charge_id
+        : (document.stripe_refund_id ?? document.stripe_charge_id)) ?? '',
   }
 }
 
@@ -86,7 +92,7 @@ export function qrPayload(
     transaction,
     toDateKey(issued, DOCUMENT_TIMEZONE),
     time,
-    (document.gross_cents / 100).toFixed(2),
+    centsToDecimal(document.gross_cents),
   ].join('*')
 }
 
@@ -121,10 +127,12 @@ function block(label: string, lines: string[]): string {
 /**
  * The invoice or credit note as printable HTML — tables and inline styles, the same discipline
  * as the email shell, because Chromium prints it. English throughout, the company under its
- * registered Latin name: the seller, the customer with its VAT or registration number, the order
- * number and transaction reference, the lines with their tax group (the regulation's own letter
- * codes), the VAT line with its legal basis, the totals in euro, and the QR code.
+ * registered Latin name: the date of issue and the tax point, the seller, the customer with its VAT
+ * or registration number, the order number and transaction reference, the lines with their tax
+ * group (the regulation's own letter codes), the VAT line with its legal basis and exact rate, the
+ * totals in euro, and the QR code.
  * Every item чл. 52о ал. 1 asks for is on the page, so the invoice is the sale document (ал. 3).
+ * Throws on a customer, lines or VAT basis the document schemas refuse, rather than print them.
  * Async only because the QR encoder is; it does no I/O.
  */
 export async function renderSaleDocumentHtml(
@@ -132,11 +140,12 @@ export async function renderSaleDocumentHtml(
   ids: { eShopNumber: string; stripeAccountId: string } = documentIds()
 ): Promise<string> {
   const invoice = document.kind === 'invoice'
-  const basis = document.vat_basis as VatBasis
+  const basis = parseVatBasis(document.vat_basis)
   const customer = parseDocumentCustomer(document.customer)
   const lines = parseDocumentLines(document.lines)
   const number = formatDocumentNumber(document.number)
   const issued = new Date(document.issued_at)
+  const taxPoint = taxPointOf(document)
   const { order, transaction } = references(document)
   const qr = await QRCode.toString(qrPayload(document, ids.eShopNumber), {
     type: 'svg',
@@ -164,7 +173,7 @@ export async function renderSaleDocumentHtml(
 <body style="margin:0;${PAGE_STYLE}">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:24px"><tr>
 <td><span style="font-family:Georgia,serif;font-style:italic;font-size:22px">kontuur<span style="color:#164430">.</span></span></td>
-<td style="text-align:right"><div style="font-size:18px;font-weight:600">${escapeHtml(title)}</div><div style="font-size:14px;font-variant-numeric:tabular-nums">No. ${number}</div><div>${escapeHtml(formatLongDate(issued, DOCUMENT_TIMEZONE))}</div></td>
+<td style="text-align:right"><div style="font-size:18px;font-weight:600">${escapeHtml(title)}</div><div style="font-size:14px;font-variant-numeric:tabular-nums">No. ${number}</div><div>Issued ${escapeHtml(formatLongDate(issued, DOCUMENT_TIMEZONE))}</div><div>Tax point ${escapeHtml(formatLongDate(taxPoint, DOCUMENT_TIMEZONE))}</div></td>
 </tr></table>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:24px"><tr>
 <td width="50%" style="vertical-align:top">${block('Seller', [
@@ -199,7 +208,7 @@ export async function renderSaleDocumentHtml(
 <td style="vertical-align:top;text-align:right">
 <table role="presentation" cellpadding="0" cellspacing="0" style="margin-left:auto">
 <tr><td style="${CELL}text-align:right">Net</td><td style="${NUMBER_CELL}">${escapeHtml(formatMoney(document.net_cents))}</td></tr>
-<tr><td style="${CELL}text-align:right">${escapeHtml(VAT_BASIS_TEXT[basis])}${document.vat_rate > 0 && basis !== 'domestic' ? ` (${document.vat_rate} %)` : ''}</td><td style="${NUMBER_CELL}">${escapeHtml(formatMoney(document.vat_cents))}</td></tr>
+<tr><td style="${CELL}text-align:right">${escapeHtml(VAT_BASIS_TEXT[basis])}${document.vat_rate > 0 ? ` (${document.vat_rate} %)` : ''}</td><td style="${NUMBER_CELL}">${escapeHtml(formatMoney(document.vat_cents))}</td></tr>
 <tr><td style="${CELL}text-align:right;font-weight:600;border-bottom:none">Total</td><td style="${NUMBER_CELL}font-weight:600;border-bottom:none">${escapeHtml(formatMoney(document.gross_cents))}</td></tr>
 </table>
 </td>

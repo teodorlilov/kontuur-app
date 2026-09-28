@@ -14,8 +14,9 @@ const INVOICE: SaleDocumentColumns = {
   stripe_charge_id: 'ch_1XYZ',
   stripe_refund_id: null,
   refunds: null,
-  // 21:30:05 in Sofia on 1 October (UTC+3).
+  // 21:30:05 in Sofia on 1 October (UTC+3), five seconds after the payment it documents.
   issued_at: '2025-10-01T18:30:05.000Z',
+  tax_event_at: '2025-10-01T18:30:00.000Z',
   customer: {
     name: 'Acme OOD',
     email: 'billing@acme.bg',
@@ -59,6 +60,7 @@ const CREDIT_NOTE: SaleDocumentColumns = {
   stripe_refund_id: 're_1GHI',
   refunds: 'doc_1',
   issued_at: '2025-10-05T07:00:00.000Z',
+  tax_event_at: '2025-10-04T21:30:00.000Z',
   customer: {
     name: 'Hans Müller',
     email: 'hans@example.de',
@@ -101,6 +103,12 @@ describe('qrPayload — Приложение 18а', () => {
       'RF0000123*cn_1DEF*re_1GHI*2025-10-05*10:00:00*22.61'
     )
   })
+
+  it('names the original charge for a credit note with no refund of its own — a chargeback the bank won', () => {
+    expect(qrPayload({ ...CREDIT_NOTE, stripe_refund_id: null }, IDS.eShopNumber)).toBe(
+      'RF0000123*cn_1DEF*ch_1XYZ*2025-10-05*10:00:00*22.61'
+    )
+  })
 })
 
 describe('documentIds', () => {
@@ -137,8 +145,10 @@ describe('renderSaleDocumentHtml', () => {
       'Card payment, Stripe',
       '3 × Kontuur (at €19.00 / month)',
       '€57.00',
-      'VAT 20 %',
+      'Bulgarian VAT (20 %)',
       '€11.40',
+      'Issued 1 October 2025',
+      'Tax point 1 October 2025',
       '€68.40',
       'RF0000123*in_1ABC*ch_1XYZ*2025-10-01*21:30:05*68.40',
       '<svg',
@@ -147,6 +157,28 @@ describe('renderSaleDocumentHtml', () => {
       expect(html, text).toContain(text)
     }
     expect(html).toContain(`>${TAX_GROUPS.domestic}<`)
+  })
+
+  it('prints the tax point beside the date of issue, both in Sofia — the two can fall on different days', async () => {
+    const html = await renderSaleDocumentHtml(CREDIT_NOTE, IDS)
+    expect(html).toContain('Issued 5 October 2025')
+    expect(html).toContain('Tax point 5 October 2025')
+    const late = await renderSaleDocumentHtml(
+      { ...CREDIT_NOTE, tax_event_at: '2025-10-03T12:00:00.000Z' },
+      IDS
+    )
+    expect(late).toContain('Tax point 3 October 2025')
+  })
+
+  it('prints the rate Stripe charged exactly, for every basis', async () => {
+    const html = await renderSaleDocumentHtml({ ...CREDIT_NOTE, vat_rate: 25.5 }, IDS)
+    expect(html).toContain('(OSS) (25.5 %)')
+  })
+
+  it('refuses a VAT basis it does not know — a VAT line with no legal basis would be a false document', async () => {
+    await expect(
+      renderSaleDocumentHtml({ ...INVOICE, vat_basis: 'zero_rated' }, IDS)
+    ).rejects.toThrow()
   })
 
   it('carries no Bulgarian text — only the regulation’s own tax-group letters', async () => {

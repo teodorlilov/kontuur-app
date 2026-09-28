@@ -63,11 +63,7 @@ function hoverDay(container: HTMLElement, index: number): SVGSVGElement {
 }
 
 describe('FollowerFlow', () => {
-  /**
-   * Every day measured, nothing moved. `gainCeil` clamps to 1, so an SVG here would be a
-   * full-height plot of air under a "+1" axis — a broken chart, not a quiet week.
-   */
-  it('says a quiet period in a sentence instead of drawing an empty plot', () => {
+  it('says a fully measured period where nothing moved in a sentence instead of drawing an empty plot', () => {
     const quiet: FollowerSummary = {
       ...FOLLOWERS,
       gained: { now: 0, then: null, deltaPct: null },
@@ -85,8 +81,7 @@ describe('FollowerFlow', () => {
     expect(container.querySelector('svg')).toBeNull()
   })
 
-  /** Unmeasured days and measured zeros are different facts, and the sentence separates them. */
-  it('names where the data begins when the window reaches past the first stored day', () => {
+  it('names where the data begins when the window reaches past the first stored day, so unmeasured days never read as zeros', () => {
     const partial: FollowerSummary = {
       ...FOLLOWERS,
       gained: { now: 0, then: null, deltaPct: null },
@@ -108,11 +103,7 @@ describe('FollowerFlow', () => {
     ).toBeInTheDocument()
   })
 
-  /**
-   * Net keeps its sign on the comparison side too — "was −6", never "was 6" — and the follows
-   * attribution is the network's claim, which the copy names rather than adopting as ours.
-   */
-  it('headlines gained, lost and net with their last-period anchors', () => {
+  it('headlines gained, lost and net with their last-period anchors, net’s anchor signed, and names who credits the follows', () => {
     render(<FollowerFlow followers={FOLLOWERS} />)
     expect(screen.getByText('118')).toBeInTheDocument()
     expect(screen.getByText('13')).toBeInTheDocument()
@@ -124,8 +115,7 @@ describe('FollowerFlow', () => {
     ).toBeInTheDocument()
   })
 
-  /** The fixture publishes on one day only, so a single circle is the whole pin layer. */
-  it('pins publish days and raises the day card with the posts on hover', () => {
+  it('pins the one publish day with one circle and raises the day card with its posts on hover', () => {
     const { container } = render(<FollowerFlow followers={FOLLOWERS} />)
     expect(container.querySelectorAll('circle')).toHaveLength(1)
     hoverDay(container, 1)

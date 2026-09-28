@@ -2,12 +2,14 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { z } from 'zod'
 import { validateEmail } from '@/lib/validation'
 import { Button } from '@/components/ui/button'
 import { Field, FormSection } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
 import { toast } from '@/components/ui/toast'
+import { readRouteBody } from '@/utils/read-route-body'
 
 /**
  * Only two roles are real: every permission check in the app tests for `admin`, and anything
@@ -18,7 +20,20 @@ const ROLE_OPTIONS = [
   { value: 'admin', label: 'Admin' },
 ]
 
-/** Invites a colleague into the workspace with a chosen role. */
+/**
+ * The invite route's success body, as far as the form reads it: the notice of an invite that went
+ * out with something unfinished (src/app/api/settings/team/invite/route.ts). A 200 means the email
+ * went out, so a body that is not this shape reads as no notice rather than as a failure.
+ */
+const inviteAnswerSchema = z.object({ notice: z.string().nullable() }).catch({ notice: null })
+
+/**
+ * Invites a colleague into the workspace with a chosen role. A submit while one is sending returns
+ * at once: the button is disabled then, but Enter in the address field is not, and a held Enter
+ * would otherwise post the same invite in parallel. An invite that answers ok went out, so the
+ * form resets; its notice, when it has one, says what could not be finished, in place of the
+ * success toast.
+ */
 export function InviteForm() {
   const router = useRouter()
   const [email, setEmail] = useState('')
@@ -27,6 +42,7 @@ export function InviteForm() {
   const [sending, setSending] = useState(false)
 
   async function handleSubmit() {
+    if (sending) return
     const error = validateEmail(email)
     if (error) {
       setEmailError(error)
@@ -41,9 +57,9 @@ export function InviteForm() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: email.trim(), role }),
       })
-      const data = (await res.json()) as { error?: string; success?: boolean }
-      if (!res.ok) throw new Error(data.error ?? 'Failed to send invite')
-      toast.success(`Invite sent to ${email.trim()}`)
+      const { notice } = await readRouteBody(res, inviteAnswerSchema, 'Failed to send invite')
+      if (notice) toast.error(notice)
+      else toast.success(`Invite sent to ${email.trim()}`)
       setEmail('')
       setRole('member')
       router.refresh()

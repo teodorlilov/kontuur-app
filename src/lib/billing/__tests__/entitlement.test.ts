@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { AgencyBillingColumns } from '@/lib/queries/select-columns'
 import { entitlementFor, noEntitlement } from '../entitlement'
 import { GRACE_DAYS, PRO_PLAN, TRIAL_ALLOWANCE, TRIAL_BRANDS } from '../plans'
+import { paidRow, trialRow } from './fixtures'
 
 const NOW = new Date('2026-09-13T12:00:00Z')
 
@@ -9,37 +10,9 @@ function daysFromNow(days: number): string {
   return new Date(NOW.getTime() + days * 86_400_000).toISOString()
 }
 
-function row(overrides: Partial<AgencyBillingColumns> = {}): AgencyBillingColumns {
-  return {
-    plan: 'trial',
-    mode: 'agency',
-    timezone: 'Europe/Sofia',
-    stripe_customer_id: null,
-    stripe_subscription_id: null,
-    subscription_status: null,
-    subscription_quantity: null,
-    trial_ends_at: daysFromNow(7),
-    current_period_start: null,
-    current_period_end: null,
-    cancel_at_period_end: false,
-    past_due_since: null,
-    ...overrides,
-  }
-}
-
-function paid(overrides: Partial<AgencyBillingColumns> = {}): AgencyBillingColumns {
-  return row({
-    plan: 'pro',
-    stripe_customer_id: 'cus_1',
-    stripe_subscription_id: 'sub_1',
-    subscription_status: 'active',
-    subscription_quantity: 5,
-    current_period_start: '2026-09-01T00:00:00Z',
-    current_period_end: '2026-10-01T00:00:00Z',
-    trial_ends_at: daysFromNow(-30),
-    ...overrides,
-  })
-}
+const row = (overrides: Partial<AgencyBillingColumns> = {}) => trialRow(NOW, overrides)
+const paid = (overrides: Partial<AgencyBillingColumns> = {}) =>
+  paidRow(NOW, { subscription_quantity: 5, ...overrides })
 
 describe('entitlementFor — the trial', () => {
   it('a live trial in agency mode may spend, publish and create up to three brands', () => {
@@ -56,11 +29,10 @@ describe('entitlementFor — the trial', () => {
     expect(e.timezone).toBe('Europe/Sofia')
   })
 
-  it('a solo trial is one brand, on the same one trial allowance', () => {
+  it('a solo trial is one brand, on the same workspace-wide trial allowance as an agency', () => {
     const e = entitlementFor(row({ mode: 'solo' }), NOW)
     expect(e.mode).toBe('solo')
     expect(e.brands).toBe(1)
-    // The cap on clients is the mode's; what the trial may spend is the workspace's, either way.
     expect(e.limits).toEqual(TRIAL_ALLOWANCE)
   })
 
@@ -196,5 +168,100 @@ describe('entitlementFor — canDelete', () => {
     expect(entitlementFor(paid({ subscription_status: 'incomplete_expired' }), NOW).canDelete).toBe(
       true
     )
+  })
+})
+
+describe('entitlementFor — the subscription behind the state', () => {
+  it('an active plan has an open subscription and no failed payment', () => {
+    const e = entitlementFor(paid(), NOW)
+    expect([e.subscriptionOpen, e.paymentFailed]).toEqual([true, false])
+  })
+
+  it('a failed renewal is a failed payment inside the grace and after it, when the state says locked', () => {
+    const inside = entitlementFor(
+      paid({ subscription_status: 'past_due', past_due_since: daysFromNow(-3) }),
+      NOW
+    )
+    expect([inside.state, inside.subscriptionOpen, inside.paymentFailed]).toEqual([
+      'past_due',
+      true,
+      true,
+    ])
+    const after = entitlementFor(
+      paid({ subscription_status: 'past_due', past_due_since: daysFromNow(-9) }),
+      NOW
+    )
+    expect([after.state, after.subscriptionOpen, after.paymentFailed]).toEqual([
+      'locked',
+      true,
+      true,
+    ])
+    const unpaid = entitlementFor(paid({ subscription_status: 'unpaid' }), NOW)
+    expect([unpaid.state, unpaid.paymentFailed]).toEqual(['locked', true])
+  })
+
+  it.each(['canceled', 'incomplete_expired'])('a %s subscription is not open', (status) => {
+    const e = entitlementFor(paid({ subscription_status: status }), NOW)
+    expect([e.subscriptionOpen, e.paymentFailed]).toEqual([false, false])
+  })
+
+  it('no subscription is nothing open, on the trial and in the empty entitlement', () => {
+    expect(entitlementFor(row(), NOW).subscriptionOpen).toBe(false)
+    expect(noEntitlement().subscriptionOpen).toBe(false)
+    expect(noEntitlement().paymentFailed).toBe(false)
+  })
+
+  it('a failed renewal inside its grace names no reset date, since the period moves only once it is paid', () => {
+    const e = entitlementFor(
+      paid({ subscription_status: 'past_due', past_due_since: daysFromNow(-3) }),
+      NOW
+    )
+    expect(e.resetsOn).toBeNull()
+  })
+})
+
+describe('entitlementFor — the plan is derived', () => {
+  it('is pro once a subscription is on the row, and trial before, whatever the column says', () => {
+    expect(entitlementFor(paid({ plan: 'trial' }), NOW).plan).toBe('pro')
+    expect(entitlementFor(paid({ plan: 'trial' }), NOW).state).toBe('active')
+    expect(entitlementFor(row({ plan: 'pro' }), NOW).plan).toBe('trial')
+  })
+
+  it('is house only when the row is set to house by hand', () => {
+    expect(entitlementFor(paid({ plan: 'house' }), NOW).plan).toBe('house')
+  })
+
+  it('house with an open subscription blocks deletion until it is set to end, and never names an end', () => {
+    const open = entitlementFor(paid({ plan: 'house' }), NOW)
+    expect([open.state, open.canDelete, open.planEnding]).toEqual(['active', false, false])
+    const ending = entitlementFor(paid({ plan: 'house', cancel_at_period_end: true }), NOW)
+    expect([ending.canDelete, ending.planEnding, ending.endsOn]).toEqual([true, true, null])
+  })
+})
+
+describe('entitlementFor — a plan set to end', () => {
+  it('is ending at its period end, and may then be deleted', () => {
+    const e = entitlementFor(paid({ cancel_at_period_end: true }), NOW)
+    expect([e.planEnding, e.canDelete]).toEqual([true, true])
+    expect(e.endsOn?.toISOString()).toBe('2026-10-01T00:00:00.000Z')
+  })
+
+  it('is not ending while a failed renewal is still being collected, so it can be cancelled but not yet deleted', () => {
+    for (const since of [daysFromNow(-3), daysFromNow(-9)]) {
+      const e = entitlementFor(
+        paid({
+          subscription_status: 'past_due',
+          past_due_since: since,
+          cancel_at_period_end: true,
+        }),
+        NOW
+      )
+      expect([e.paymentFailed, e.planEnding, e.canDelete, e.endsOn]).toEqual([
+        true,
+        false,
+        false,
+        null,
+      ])
+    }
   })
 })

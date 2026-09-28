@@ -3,6 +3,10 @@ import { requireSessionUser } from '@/lib/auth/session'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { getCachedAgency, getCachedAgencyClients, getCachedEntitlement } from '@/lib/queries/cache'
 import { readUsage } from '@/lib/billing/usage'
+import { generationGate } from '@/lib/billing/post-allowance'
+import { NOTHING_OWED } from '@/lib/billing/copy'
+import { createAdminSupabaseClient } from '@/lib/supabase/admin'
+import { fetchOwedImages, owedImagesOf, sumOwed } from '@/lib/visual/owed-images'
 import {
   fetchClientSourceSummaries,
   fetchConnectionsByClient,
@@ -24,68 +28,55 @@ interface PageProps {
 }
 
 /**
- * The generate wizard, preloaded for the idea's client, the `?client=` one, or the first.
- *
- * Carries the same first-run gate as the (dashboard) layout: this route group has no shell, so a
- * solo workspace with no client that deep-links here is sent to /clients/new rather than shown the
- * agency-worded empty state. The client list it reads is fresh because `createClient`
- * (features/clients/actions/client-actions.ts) busts its tag with `{ expire: 0 }`.
- *
- * It also reads what this run may still draw on — both pools, because how many POSTS they buy
- * depends on a format only the browser knows: a carousel costs one image per slide
- * (`postsAffordable`, lib/billing/post-allowance.ts). The stepper and the Generate button say so
- * before anyone presses it, and the server reserves against the same counters.
- *
- * And it reads the drafts still waiting for review — rows in status `'draft'`, written by the
- * stream the moment they landed — with the runs that wrote them, so the flow can open straight
- * into a run and still say what that run could not cover. A failed read is logged and degrades to
- * "nothing waiting": the wizard must never be hidden behind its own resume.
+ * The generate wizard, preloaded for the idea's client, the agency's `?client=`, or the first.
+ * This route group has no shell (src/app/(generate)/layout.tsx), so the page repeats the layout's
+ * first-run gate (`requireBusinessSetup`) and hands down the agency's zone, in which scheduled
+ * times resolve rather than in the browser's. An `?ideaId=` is honoured or refused, never dropped
+ * for a plain run, and keys `GenerateFlow`: Next keeps client state across a search-params-only
+ * navigation (node_modules/next/dist/client/components/layout-router.js), and New run on an idea
+ * moves to the client's plain `/generate`. It hands down both pools, not a post count, because
+ * what they buy depends on the format chosen in the browser (`postsAffordable`). Owed pictures
+ * that could not be read reach `generationGate` as unknown (null), never zero; a failed drafts
+ * read shows nothing waiting rather than hiding the wizard behind its own resume.
  */
 export default async function GeneratePage({ searchParams }: PageProps) {
-  // The params do not depend on the session, and the idea does not depend on the client list, so
-  // each wave holds everything that can resolve at once. Only fetchClientData below is genuinely
-  // sequential: it needs whichever client the idea or the params resolved to.
   const [{ agencyId }, { ideaId, client }] = await Promise.all([requireSessionUser(), searchParams])
   const supabase = await createServerSupabaseClient()
 
-  // The agency's zone rides along in the same wave. This route group has no
-  // ShellProvider, so `useShell` is unavailable below and the scheduling dialog was
-  // resolving wall-clock times against the operator's browser instead.
   const [clients, initialIdea, agency, entitlement] = await Promise.all([
     getCachedAgencyClients(agencyId),
     ideaId ? fetchIdeaById(ideaId, agencyId) : null,
     getCachedAgency(agencyId),
     getCachedEntitlement(agencyId),
   ])
-  const [usage, waitingDrafts] = await Promise.all([
+  const clientIds = clients.map((c) => c.id)
+  const [usage, drafts, reviewOwed] = await Promise.all([
     readUsage(agencyId, entitlement.periodKey),
-    fetchEditorialPosts(
-      supabase,
-      clients.map((c) => c.id),
-      'draft'
-    )
+    fetchEditorialPosts(supabase, clientIds, 'draft')
       .then(async (posts) => {
-        // The runs behind those drafts, in one read: what each asked for, and what it could not
-        // cover. Sequential on purpose — which runs to read is the drafts' own answer.
         const runIds = [...new Set(posts.flatMap((item) => item.post.generation_run_id ?? []))]
-        return groupWaitingDrafts(posts, await fetchWaitingRuns(supabase, runIds))
+        return {
+          posts,
+          groups: groupWaitingDrafts(posts, await fetchWaitingRuns(supabase, runIds)),
+        }
       })
-      .catch((err: unknown): WaitingDrafts[] => {
+      .catch((err: unknown) => {
         console.error('[generate] waiting drafts read failed:', err)
-        return []
+        return null
       }),
+    fetchOwedImages(createAdminSupabaseClient(), clientIds, ['pending_review']).catch(
+      (err: unknown) => {
+        console.error('[generate] owed images read failed:', err)
+        return null
+      }
+    ),
   ])
+  const waitingDrafts: WaitingDrafts[] = drafts?.groups ?? []
+  const owed = drafts && reviewOwed ? sumOwed([owedImagesOf(drafts.posts), reviewOwed]) : null
   requireBusinessSetup(agency?.mode, clients.length, entitlement.canCreate)
 
-  // An `?ideaId=` that resolves to nothing used to fall through to `clients[0]`, so a
-  // deleted, mistyped or other-agency id silently opened a full batch run for the
-  // agency's oldest client — the user pressed "Generate from this idea" and got N
-  // posts for someone else, with nothing saying the idea had been dropped.
   if (ideaId && !initialIdea) notFound()
 
-  // And a bookmarked link re-ran an idea that had already been generated from, or
-  // resurrected a dismissed one. Send the user to where the idea actually is rather
-  // than 404ing on a row that does exist.
   if (initialIdea && !AWAITING_DECISION.includes(initialIdea.status)) {
     redirect(`/ideas?tab=${initialIdea.status === 'generated' ? 'generated' : 'dismissed'}`)
   }
@@ -95,20 +86,13 @@ export default async function GeneratePage({ searchParams }: PageProps) {
   let initialSources: ClientSourceSummary[] = []
   let initialConnections: MetaConnection[] = []
 
-  // ?client= preselects a client; ignore ids that don't belong to this agency
   const requestedClientId = client && clients.some((c) => c.id === client) ? client : undefined
-
-  // Pre-load client data for the idea's client, the requested client, or the first client
   const targetClientId = initialIdea?.clientId ?? requestedClientId ?? clients[0]?.id
   if (targetClientId) {
     const targetClient = clients.find((c) => c.id === targetClientId)
     if (targetClient && targetClient.posts_per_week > 0) {
       initialTargetPostCount = targetClient.posts_per_week
     }
-    // The agency-scoped list row already proves ownership, so buildClientData
-    // skips fetchClientData's verification round-trip. The fallback covers an
-    // idea whose client is newer than the 60s-cached list — there the DB check
-    // still runs.
     const [result, sources, connections] = await Promise.all([
       targetClient
         ? buildClientData(supabase, targetClient).then((data) => ({ data }))
@@ -123,11 +107,17 @@ export default async function GeneratePage({ searchParams }: PageProps) {
 
   return (
     <GenerateFlow
+      key={initialIdea?.id ?? 'plain'}
       timeZone={agency?.timezone ?? 'UTC'}
       initialClients={clients}
       initialClientData={initialClientData}
       initialTargetPostCount={initialTargetPostCount}
-      allowance={{ limits: entitlement.limits, committed: usage.committed }}
+      allowance={{
+        limits: entitlement.limits,
+        committed: usage.committed,
+        owed: owed ?? NOTHING_OWED,
+      }}
+      gate={generationGate(entitlement, usage.committed, owed)}
       initialIdea={initialIdea ?? undefined}
       initialClientId={requestedClientId}
       initialSources={initialSources}

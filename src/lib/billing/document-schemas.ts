@@ -34,11 +34,31 @@ export const documentLineSchema = z.object({
 })
 export type DocumentLine = z.infer<typeof documentLineSchema>
 
-/** The two jsonb columns, parsed at the read boundary — the renderer and the audit file never trust raw Json. */
+/** The customer jsonb column, parsed at the read boundary — the renderer and the audit file never trust raw Json. */
 export function parseDocumentCustomer(value: Json): DocumentCustomer {
   return documentCustomerSchema.parse(value)
 }
 
+/** The lines jsonb column, parsed at the read boundary like the customer. */
 export function parseDocumentLines(value: Json): DocumentLine[] {
   return z.array(documentLineSchema).parse(value)
+}
+
+/**
+ * The `vat_basis` text column, parsed at the read boundary like the jsonb columns: a basis outside
+ * `VAT_BASES` throws rather than print a document with no legal basis for its VAT line.
+ */
+export function parseVatBasis(value: string): VatBasis {
+  return z.enum(VAT_BASES).parse(value)
+}
+
+/**
+ * The document's tax point — the payment's date for an invoice, the credit note's own creation
+ * for a credit note (`issueCreditNote`, documents.ts) — beside `issued_at`, which is the date the document was issued. Every document carries one
+ * (migration 20260861 backfilled the older rows, and the issuer always sends it); one without
+ * throws rather than borrowing another date for a legal record.
+ */
+export function taxPointOf(document: { number: number; tax_event_at: string | null }): Date {
+  if (!document.tax_event_at) throw new Error(`document ${document.number} has no tax point`)
+  return new Date(document.tax_event_at)
 }

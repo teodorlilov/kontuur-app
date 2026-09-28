@@ -54,6 +54,7 @@ function setup(props: Partial<Parameters<typeof DeleteClientDialog>[0]> = {}) {
       clientId="client-1"
       clientName="Acme Dental"
       counts={COUNTS}
+      notice={null}
       {...props}
     />
   )
@@ -71,9 +72,20 @@ describe('DeleteClientDialog', () => {
     expect(screen.getByText('12 published posts')).toBeInTheDocument()
     expect(screen.getByText('3 posts awaiting review')).toBeInTheDocument()
     expect(screen.getByText('5 sources')).toBeInTheDocument()
-    // scheduledCount and ideaCount are 0 — listing them would pad the list with non-losses.
     expect(screen.queryByText(/scheduled post/)).not.toBeInTheDocument()
     expect(screen.queryByText(/client idea/)).not.toBeInTheDocument()
+  })
+
+  it('names what the delete does to the bill before the name is typed', () => {
+    const notice =
+      "Your plan bills one client fewer from its renewal on 1 October 2026. This period's allowance stays as it is."
+    setup({ notice })
+    expect(screen.getByText(notice)).toBeInTheDocument()
+  })
+
+  it('says nothing about the bill without a notice', () => {
+    setup()
+    expect(screen.queryByText(/Your plan/)).not.toBeInTheDocument()
   })
 
   it('deletes, reports it, and leaves for the roster', async () => {
@@ -95,18 +107,16 @@ describe('DeleteClientDialog', () => {
 
     await waitFor(() => expect(toastError).toHaveBeenCalledWith('Not found'))
     expect(toastSuccess).not.toHaveBeenCalled()
-    // Navigating on failure would tell the user the client is gone while it is still there.
     expect(push).not.toHaveBeenCalled()
     expect(screen.getByRole('dialog')).toBeInTheDocument()
   })
 
-  it('recovers when the action throws rather than returning', async () => {
+  it('recovers when the action throws rather than returning, leaving the confirm button usable', async () => {
     deleteClient.mockRejectedValue(new Error('network'))
     const { user } = setup()
     await typeName(user)
     await user.click(screen.getByRole('button', { name: 'Delete permanently' }))
 
-    // Without the catch the spinner never clears and the dialog is stuck busy forever.
     await waitFor(() => expect(toastError).toHaveBeenCalled())
     expect(push).not.toHaveBeenCalled()
     await waitFor(() =>

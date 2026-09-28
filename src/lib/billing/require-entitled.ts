@@ -3,8 +3,13 @@ import 'server-only'
 import { NextResponse } from 'next/server'
 import { getCachedEntitlement } from '@/lib/queries/cache'
 import type { ActionResult } from '@/lib/actions/types'
-import { allows, type EntitlementNeed, type EntitlementState } from './entitlement'
-import { WORKSPACE_LOCKED } from './copy'
+import {
+  allows,
+  type Entitlement,
+  type EntitlementNeed,
+  type EntitlementState,
+} from './entitlement'
+import { WORKSPACE_LOCKED, cannotSpendNotice } from './copy'
 
 /**
  * The one gate pair every cost-bearing route and action calls, one line after its auth — the
@@ -20,6 +25,15 @@ function reasonFor(state: EntitlementState): string {
   return state === 'trial_grace' ? 'trial_ended' : state
 }
 
+/**
+ * The sentence a refusal carries: `cannotSpendNotice`'s, so a 402 says what the wall and the
+ * banner say. `entitlementFor` never lets a workspace spend without also letting it publish and
+ * create, so a refused need always means it cannot spend and the notice is always there.
+ */
+function refusalOf(entitlement: Entitlement): string {
+  return cannotSpendNotice(entitlement)?.text ?? WORKSPACE_LOCKED
+}
+
 /** A 402 with the workspace's state, or null when the need is allowed. */
 export async function requireEntitledRoute(
   agencyId: string,
@@ -28,7 +42,7 @@ export async function requireEntitledRoute(
   const entitlement = await getCachedEntitlement(agencyId)
   if (allows(entitlement, need)) return null
   return NextResponse.json(
-    { error: WORKSPACE_LOCKED, code: 'locked', reason: reasonFor(entitlement.state) },
+    { error: refusalOf(entitlement), code: 'locked', reason: reasonFor(entitlement.state) },
     { status: 402 }
   )
 }
@@ -40,5 +54,5 @@ export async function requireEntitledAction(
 ): Promise<Extract<ActionResult, { ok: false }> | null> {
   const entitlement = await getCachedEntitlement(agencyId)
   if (allows(entitlement, need)) return null
-  return { ok: false, error: WORKSPACE_LOCKED }
+  return { ok: false, error: refusalOf(entitlement) }
 }

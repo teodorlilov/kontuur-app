@@ -58,8 +58,8 @@ interface PutFields {
 }
 
 function parsePutFields(formData: FormData): PutFields | string {
-  const file = formData.get('file') as File | null // FormData.get() returns File | string | null
-  if (!file) return 'No file provided'
+  const file = formData.get('file')
+  if (!(file instanceof File)) return 'No file provided'
   const fileError = validateImageFile(file)
   if (fileError) return fileError
 

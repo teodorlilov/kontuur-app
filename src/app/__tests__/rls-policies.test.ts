@@ -3,23 +3,11 @@ import path from 'path'
 import { describe, expect, it } from 'vitest'
 
 /**
- * No migration may create a policy that is not scoped to a caller.
- *
- * On 2026-08-18 a probe with nothing but the public anon key — no JWT, no session — read
- * rows from `post_approval_tokens`. One policy was responsible:
- *
- *     post_approval_tokens_public_read  FOR SELECT TO public USING (true)
- *
- * `batch_id` in that table is not data, it is the credential: `sendApprovalBatch` mints it
- * as a random UUID so an approval link cannot be guessed, and this published it. Anyone
- * could read a client's unpublished posts and forge their approval.
- *
- * It survived because **no policy had ever been in version control**. All 18 were made in
- * the dashboard, so there was no diff for a reviewer to catch it in. The baseline
- * migration fixes the visibility; this test is what makes visibility worth something.
- *
- * The rule: a `create policy` whose USING/WITH CHECK is `true` — or which names no caller
- * at all — fails. Deliberate exceptions go in EXEMPT with their reason.
+ * No migration may create a policy that is not scoped to a caller: a `create policy` whose
+ * USING/WITH CHECK is `true`, or which never reads auth.uid()/auth.jwt()/current_setting(), fails.
+ * Deliberate exceptions go in EXEMPT with their reason. A `USING (true)` policy once exposed
+ * `post_approval_tokens.batch_id`, the credential in every approval link, to the bare anon key
+ * (20260818_drop_approval_token_public_read.sql).
  */
 
 const MIGRATIONS = path.resolve(__dirname, '../../../supabase/migrations')
@@ -41,22 +29,24 @@ const EXEMPT: Record<string, string> = {
 }
 
 /**
- * Tables that are deliberately left with no policy at all, i.e. service-role only.
+ * Tables deliberately left with no policy at all: RLS is enabled on each (the migration its entry
+ * names), so only the service role reaches it, through `createAdminSupabaseClient`, which bypasses
+ * RLS. Nothing in the database then keeps one agency out of another's rows; the server code that
+ * touches the table is the only guard.
  *
- * Empty, and that is the point. Eleven tables sat here until 2026-08-24 — every read of them
- * went through `createAdminSupabaseClient`, which bypasses RLS, so cross-agency safety was a
- * hand-written predicate repeated across 59 files. `GET /api/extract/status` is what happens
- * when one of them is missed: it read `brand_kit_extractions` on session id alone, and nothing
- * could catch it because the only guard was a convention.
- *
- * Adding an entry here means accepting that posture for that table. Say why, and say what
- * checks ownership instead.
+ * A table belongs here only when no policy could name a caller as the owner of its rows: a row
+ * that belongs to no tenant (the document counter), a claim only server code takes and releases
+ * (a visual job), or a proof of membership read before its user has a workspace (an invite).
+ * Adding an entry means accepting that posture for the table. Say why no policy can name a caller,
+ * and what checks ownership instead.
  */
 const POLICYLESS: Record<string, string> = {
   document_counters:
     'One counter row, read and written by the service role alone through the issue_sale_document RPC (migration 20260855). No tenant ever selects it, so no predicate could name a caller; the row belongs to nobody, and ownership is not a concept here.',
   post_visual_jobs:
     'A claim on a slide position while its picture is being generated (migration 20260859), taken and released by the service role inside generatePostVisual and read by the server components that decide what still owes a picture. No browser touches it; a forgeable claim would let one session stop another generating, which is exactly what the service-role-only posture prevents.',
+  team_invites:
+    'An invite is the one proof of which workspace a new login may join (migration 20260861). It is written by inviteMember (src/features/settings/lib/invite-member.ts) after the admin check in the invite route, read by createUserRecord through the service role, and removed with a member. An invitee has no workspace yet, so no predicate could name them as its owner; letting any session read or write it would bring back the user_metadata hole it replaces.',
 }
 
 interface Policy {
@@ -66,20 +56,18 @@ interface Policy {
   body: string
 }
 
-/** Every `create policy` statement in the migrations, with its body up to the terminating `;`. */
+/**
+ * Every `create policy` statement in the migrations, with its body up to the terminating `;`.
+ * Whole-line SQL comments are stripped first, because a migration's header may quote a bad policy
+ * to explain it. A quoted name may contain spaces ("Users can manage their agency's client
+ * sources"), so the quoted-name branch must not stop at whitespace: one that did recorded such a
+ * policy as `Users` and skipped its body.
+ */
 function policies(): Policy[] {
   const found: Policy[] = []
   for (const file of readdirSync(MIGRATIONS).filter((f) => f.endsWith('.sql'))) {
     const sql = readFileSync(path.join(MIGRATIONS, file), 'utf8')
-    // Comments may quote a bad policy to explain it — the baseline migration's header
-    // quotes the exact one that caused this. Strip them before matching.
     const code = sql.replace(/^\s*--.*$/gm, '')
-    // A quoted name may contain spaces — two of the live policies are spelled
-    // "Users can manage their agency's client sources". The previous pattern used
-    // `[^"\s]+` for the name, which stopped at the first space, recorded those two as
-    // being named `Users`, and never reached their `on` clause. It reported them as
-    // checked while checking nothing, which is the §7.4 failure exactly: a detector
-    // wrong in the safe-looking direction.
     for (const match of code.matchAll(
       /create\s+policy\s+(?:"([^"]+)"|(\S+))\s+on\s+(?:public\.)?"?([a-z_]+)"?[\s\S]*?;/gi
     )) {
@@ -95,26 +83,16 @@ function policies(): Policy[] {
 }
 
 /**
- * Every table in the database, read from the schema baseline plus any migration
- * written since.
- *
- * The baseline is what §8.2 bought beyond "the database can be rebuilt": until
- * `00000000_baseline.sql` existed, the migrations described 12 of 31 tables, so a test could not
- * enumerate what it was supposed to be checking. Coverage was unmeasurable, which is the same
- * reason the bad policy survived — nothing could see the whole surface at once.
- *
- * The later migrations are read too because the baseline is REGENERATED FROM PRODUCTION. A table
- * created in a migration that has not been applied yet is therefore absent from it, and reading
- * the baseline alone made the policy on such a table look like a policy on a table that does not
- * exist. That is backwards: the window between writing a migration and applying it is exactly
- * when this check has the most to say, and it was the one window it was blind in.
+ * Every table a migration creates: the schema baseline (regenerated from production) plus every
+ * later migration, since a table whose migration is not applied yet is absent from the baseline
+ * and its policy would otherwise look orphaned. `drop table` is not read, so a dropped table still
+ * counts. `public.` is optional: the baseline is fully qualified, hand-written migrations usually
+ * are not.
  */
 function tables(): string[] {
   const sources = readdirSync(MIGRATIONS)
     .filter((name) => name.endsWith('.sql'))
     .map((name) => readFileSync(path.join(MIGRATIONS, name), 'utf8'))
-  // `public.` is optional: the baseline is generated fully qualified, hand-written
-  // migrations usually are not.
   const found = sources.flatMap((sql) => [
     ...sql.matchAll(/^create table (?:if not exists )?(?:public\.)?([a-z_]+)/gim),
   ])
@@ -124,20 +102,16 @@ function tables(): string[] {
 describe('RLS policies in migrations', () => {
   const all = policies()
 
-  it('finds the policies to check', () => {
-    // A parser that matched nothing would make every assertion below vacuous. The baseline
-    // migration alone carries 17.
+  it('finds the policies to check, since a parser that matched nothing would let the policy checks below pass vacuously', () => {
     expect(all.length).toBeGreaterThan(10)
   })
 
-  it('has no policy that is open to everyone', () => {
+  it('has no policy open to everyone: USING/WITH CHECK (true) is as exposed as no RLS, yet still counts as a policy', () => {
     const offenders = all
       .filter(({ name }) => !(name in EXEMPT))
       .filter(({ body }) => /using\s*\(\s*true\s*\)|with\s+check\s*\(\s*true\s*\)/i.test(body))
       .map(({ file, name }) => `${file}: ${name} — USING (true)`)
 
-    // A `USING (true)` policy leaves a table exactly as exposed as no RLS at all, while
-    // reporting as protected to anything that counts policies instead of reading them.
     expect(offenders).toEqual([])
   })
 
@@ -167,18 +141,13 @@ describe('RLS policy coverage', () => {
   const declared = tables()
   const covered = new Set(all.map((p) => p.table))
 
-  it('reads the schema baseline', () => {
-    // Every assertion below is vacuous if this parses nothing, and it would parse nothing if
-    // the baseline were ever regenerated into a different shape.
+  it('reads the schema baseline, since a baseline the parser misses would drop its tables from the coverage check', () => {
     expect(declared.length).toBeGreaterThan(25)
   })
 
-  it('every table has a policy', () => {
+  it('every table has a policy or a POLICYLESS entry: leaving a table to code must be a choice made in a diff', () => {
     const bare = declared.filter((t) => !covered.has(t) && !(t in POLICYLESS))
 
-    // A table with no policy is not "locked down" — it is delegated to code. That is a
-    // defensible choice, but it has to be a choice someone made in a diff, not a state a
-    // table drifts into by being created in the dashboard.
     expect(bare).toEqual([])
   })
 
@@ -188,18 +157,14 @@ describe('RLS policy coverage', () => {
     }
   })
 
-  it('has no stale POLICYLESS entry', () => {
-    // Same shrink-only shape as the §7.3/§7.4 backlogs: giving a table a policy and leaving
-    // its exemption behind would let the list overstate the debt as easily as understate it.
+  it('has no POLICYLESS entry for a table that has a policy, so the list never overstates what is left to code', () => {
     expect(Object.keys(POLICYLESS).filter((t) => covered.has(t))).toEqual([])
   })
 
-  it('names a real table in every policy', () => {
+  it('names a real table in every policy, so a misparsed table name cannot read as coverage', () => {
     const known = new Set(declared)
     const orphans = all.filter((p) => !known.has(p.table)).map((p) => `${p.file}: ${p.name}`)
 
-    // Catches the parser silently failing and the policy on a table that no longer exists —
-    // both of which would otherwise read as coverage.
     expect(orphans).toEqual([])
   })
 })

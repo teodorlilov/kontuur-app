@@ -72,7 +72,6 @@ export const UNTESTED_COMPONENTS: string[] = [
   'features/review/components/send-to-client-dialog.tsx',
   'features/settings/components/integrations-tab.tsx',
   'features/settings/components/settings-view.tsx',
-  'features/settings/components/team-tab.tsx',
   'features/sources/components/manual-add-modal.tsx',
   'features/sources/components/page-group-list.tsx',
   'features/sources/components/page-picker-modal.tsx',

@@ -1,5 +1,5 @@
 import { capableDestinations } from '@/features/publishing/lib/destinations'
-import type { PostType } from '@/types/api'
+import { toPostType } from '@/lib/visual/visual-backlog'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { requireSessionUser } from '@/lib/auth/session'
 import { getCachedAgencyClients } from '@/lib/queries/cache'
@@ -10,23 +10,21 @@ import { ReviewQueue } from '@/features/review/components/review-queue'
 import type { QueueApproval, QueuePost } from '@/features/review/lib/queue-post'
 
 /**
- * The review queue's data, in ONE round: the editorial read (which fans out to images and docs
- * itself), the clients' flags and connections, the week strip, and the pending sign-off tokens —
- * reached through their post's client rather than by post id, so they need not wait for the posts
- * to come back first; every token of the agency's posts comes back and only the queue's rows read
- * theirs. The queue's own fields ride on the shared editorial read; the raw validation blob stays
- * server-side (`validation_json: null` keeps the shape assignable to PostData).
+ * The review queue's data in ONE round: the editorial read, the clients' flags and connections,
+ * the week strip (empty if its read fails) and the pending sign-off tokens, reached through their
+ * post's client so they need not wait for the posts; only the queue's rows read theirs. The raw
+ * validation blob stays server-side (`validation_json: null` keeps the shape assignable to
+ * PostData). The `access_token` filter shapes the connections embed, not the client list: a
+ * token-less connection is no destination, as in `resolveDestinations`
+ * (src/features/publishing/lib/destinations.ts), without selecting the token.
  */
 export default async function ReviewPage() {
   const { agencyId } = await requireSessionUser()
   const supabase = await createServerSupabaseClient()
 
-  // Use cached clients from layout (cache hit — no extra round-trip)
   const cachedClients = await getCachedAgencyClients(agencyId)
   const clientIds = cachedClients.map((c) => c.id)
 
-  // Names already live in the cached client list — this join only adds the
-  // brand-profile fields the queue needs.
   type ClientRow = {
     id: string
     brand_profiles: { is_health_niche: boolean } | null
@@ -38,12 +36,9 @@ export default async function ReviewPage() {
     supabase
       .from('clients')
       .select('id, brand_profiles(is_health_niche), social_connections(platform)')
-      // Same embed-shaping filter as the calendar: a token-less connection is not a
-      // destination, and the rule must match `resolveDestinations` without selecting the token.
       .not('social_connections.access_token', 'is', null)
       .eq('agency_id', agencyId),
     fetchEditorialPosts(supabase, clientIds, 'pending_review'),
-    // Week context fills the dialog's week strip — worth degrading, never failing for.
     fetchWeekSchedule(supabase, clientIds, getMondayISO()).catch((err: unknown) => {
       console.error('[review] week schedule failed:', err)
       return [] as WeekScheduledPost[]
@@ -64,8 +59,6 @@ export default async function ReviewPage() {
     clientList.map((c) => [c.id, c.brand_profiles?.is_health_niche ?? false])
   )
   const nameByClient = new Map(clients.map((c) => [c.id, c.name]))
-  // The same rule the calendar and the publish path apply — one `capableDestinations`, so no
-  // surface can disagree with another about where a post can go.
   const connectedByClient = new Map(
     clientList.map((c) => [c.id, (c.social_connections ?? []).map((conn) => conn.platform)])
   )
@@ -82,7 +75,7 @@ export default async function ReviewPage() {
     client_name: nameByClient.get(post.client_id) ?? 'Unknown',
     destinations: capableDestinations(
       connectedByClient.get(post.client_id) ?? [],
-      (post.post_type ?? 'single') as PostType
+      toPostType(post.post_type)
     ),
     is_health_niche: healthByClient.get(post.client_id) ?? false,
     approval: approvalByPost.get(post.id) ?? null,

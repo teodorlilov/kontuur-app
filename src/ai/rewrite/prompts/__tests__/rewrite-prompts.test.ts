@@ -56,17 +56,17 @@ describe('rewriteCaption', () => {
     expect(result).toBe('Ето как 30 минути разходка след хранене променят кръвната ви захар.')
   })
 
-  it('returns original caption when Claude returns non-text response', async () => {
+  it('throws on a reply with no text rather than returning the original, so the metered rewrite is given back', async () => {
     callAnthropic.mockResolvedValue({
       content: [{ type: 'tool_use', id: 'x', name: 'y', input: {} }],
     })
-    const original = 'Original caption text.'
-    const result = await rewriteCaption({
-      caption: original,
-      aiTells: ['Generic opener'],
-      client: makeClient(),
-    })
-    expect(result).toBe(original)
+    await expect(
+      rewriteCaption({
+        caption: 'Original caption text.',
+        aiTells: ['Generic opener'],
+        client: makeClient(),
+      })
+    ).rejects.toThrow('The rewrite came back empty')
   })
 
   it('includes AI tells in the prompt', async () => {
@@ -197,5 +197,21 @@ describe('rewriteCarousel', () => {
     const schema = callArgs.outputSchema
     expect(schema.properties.slides.minItems).toBe(3)
     expect(schema.properties.slides.maxItems).toBe(3)
+  })
+
+  it.each([
+    ['an empty caption', { ...CAROUSEL_TOOL_INPUT, main_caption: '' }],
+    ['a caption only of markdown', { ...CAROUSEL_TOOL_INPUT, main_caption: '**  **' }],
+    ['no slides', { main_caption: 'Rewritten carousel caption' }],
+  ])('throws on %s, so the rewrite is given back and nothing is saved', async (_label, input) => {
+    mockClaudeToolResponse(input)
+    await expect(
+      rewriteCarousel({
+        mainCaption: 'Caption',
+        slides: [{ headline: 'H', body: 'B' }],
+        aiTells: [],
+        client: makeClient(),
+      })
+    ).rejects.toThrow('rewriteCarousel: model returned an incomplete carousel')
   })
 })

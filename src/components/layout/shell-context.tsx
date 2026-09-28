@@ -15,6 +15,7 @@ import { toast } from '@/components/ui/toast'
 import { formatClientName } from '@/utils/format'
 import { NOTIFICATION_COLUMNS } from '@/lib/queries/select-columns'
 import type { EnrichedNotification } from '@/types/api'
+import type { AddBrandGate } from '@/lib/billing/copy'
 
 /**
  * Split out of this bundle rather than imported at the top of the file. The
@@ -223,13 +224,17 @@ interface ShellProviderProps {
   todayLabel: string
   timezone: string
   clients: Array<{ id: string; name: string }>
+  /** What the palette's "Add client" says (`addBrandGate`, src/lib/billing/copy.ts). */
+  addClient: AddBrandGate
   children: ReactNode
 }
 
 /**
  * Holds the app-shell state the page header reads, so every dashboard page does
  * not thread the same props. Mounted in the dashboard layout, which is what lets
- * the notifications channel survive navigation.
+ * the notifications channel survive navigation. The palette is rendered only while
+ * open, which keeps its chunk — and Radix Dialog with it — out of every dashboard
+ * route's initial payload.
  */
 export function ShellProvider({
   agencyName,
@@ -238,6 +243,7 @@ export function ShellProvider({
   todayLabel,
   timezone,
   clients,
+  addClient,
   children,
 }: ShellProviderProps) {
   const [paletteOpen, setPaletteOpen] = useState(false)
@@ -280,14 +286,13 @@ export function ShellProvider({
   return (
     <ShellContext.Provider value={value}>
       {children}
-      {/* Rendered only while open, which is what keeps its chunk — and Radix
-          Dialog with it — out of every dashboard route's initial payload. */}
       {paletteOpen && (
         <CommandPalette
           open
           onOpenChange={setPaletteOpen}
           agencyMode={agencyMode}
           clients={clients}
+          addClient={addClient}
         />
       )}
     </ShellContext.Provider>

@@ -26,8 +26,8 @@ const fetchVisualProgress = vi.fn()
 vi.mock('@/lib/actions/visual-progress', () => ({
   fetchVisualProgress: (...args: unknown[]) => fetchVisualProgress(...args),
 }))
+// `uploadSlideImage` hands back the mapped image, the way the route's row reaches a surface.
 vi.mock('@/lib/posts/upload-slide-image', () => ({
-  // `uploadSlideImage` hands back the mapped image, the way the route's row reaches a surface.
   uploadSlideImage: (postId: string, position: number) =>
     Promise.resolve({
       id: `${postId}-${position}`,
@@ -118,7 +118,6 @@ describe('useGenerateVisuals — a picture being made elsewhere', () => {
     act(() => result.current.noteInFlight(POST_A, [0]))
     expect(result.current.slotsFor(POST_A, [])).toEqual([{ position: 0, status: 'generating' }])
 
-    // Still being made: the slot holds and the loop keeps asking.
     fetchVisualProgress.mockResolvedValue({
       ok: true,
       data: [{ postId: 'a', images: [], generatingPositions: [0] }],
@@ -129,7 +128,6 @@ describe('useGenerateVisuals — a picture being made elsewhere', () => {
     expect(fetchVisualProgress).toHaveBeenCalledWith(['a'])
     expect(result.current.slotsFor(POST_A, [])).toEqual([{ position: 0, status: 'generating' }])
 
-    // The claim is gone and a picture is there: it lands, and the position stops being in flight.
     fetchVisualProgress.mockResolvedValue({
       ok: true,
       data: [{ postId: 'a', images: [mappedImage('a', 0)], generatingPositions: [] }],
@@ -140,7 +138,6 @@ describe('useGenerateVisuals — a picture being made elsewhere', () => {
     expect(landed).toEqual([['a', expect.objectContaining({ position: 0 })]])
     expect(result.current.slotsFor(POST_A, [])).toEqual([])
 
-    // Nothing left in flight, so the loop is over — no further asking.
     const asked = fetchVisualProgress.mock.calls.length
     await act(async () => {
       await vi.advanceTimersByTimeAsync(20_000)
@@ -149,7 +146,7 @@ describe('useGenerateVisuals — a picture being made elsewhere', () => {
     vi.useRealTimers()
   })
 
-  it('bakes the slide text onto a picture another invocation made', async () => {
+  it('bakes the slide text onto clean AI art another invocation made, so a carousel never mixes in a bare photo', async () => {
     vi.useFakeTimers()
     loadPostCanvas.mockResolvedValue({ identity: { palette: {} }, docs: new Map() })
     composePersistedPosition.mockResolvedValue(null)
@@ -164,8 +161,6 @@ describe('useGenerateVisuals — a picture being made elsewhere', () => {
       await vi.advanceTimersByTimeAsync(5_000)
     })
 
-    // Clean AI art, whoever made it: the person must not be handed a bare photo in a carousel
-    // whose other slides carry text.
     expect(composePersistedPosition).toHaveBeenCalledWith(
       expect.objectContaining({ postId: 'a', position: 0 })
     )
@@ -196,13 +191,11 @@ describe('useGenerateVisuals — a picture being made elsewhere', () => {
     vi.useRealTimers()
   })
 
-  it('stops asking about a post that is gone', async () => {
+  it('stops asking about a post deleted here or in another tab, which the progress read no longer answers for', async () => {
     vi.useFakeTimers()
     const { result } = renderHook(() => useGenerateVisuals(() => {}))
 
     act(() => result.current.noteInFlight(POST_A, [0]))
-    // The post was deleted — here or in another tab — so the read answers for nobody. Without
-    // settling it the loop would outlive the post and ask every five seconds forever.
     fetchVisualProgress.mockResolvedValue({ ok: true, data: [] })
     await act(async () => {
       await vi.advanceTimersByTimeAsync(5_000)
@@ -217,13 +210,11 @@ describe('useGenerateVisuals — a picture being made elsewhere', () => {
     vi.useRealTimers()
   })
 
-  it('shows a position claimed elsewhere as generating on the calendar too', () => {
+  it('shows a position claimed elsewhere as generating on the calendar too (positionsFor), so it offers no Generate button', () => {
     const { result } = renderHook(() => useGenerateVisuals(() => {}))
 
     act(() => result.current.noteInFlight(POST_A, [1]))
 
-    // `positionsFor` is what the calendar card reads; `slotsFor` what the queue reads. A slot the
-    // server is already painting must not be offered a Generate button on one of them.
     expect(result.current.positionsFor('a').generating).toEqual([1])
   })
 
@@ -239,7 +230,7 @@ describe('useGenerateVisuals — a picture being made elsewhere', () => {
 })
 
 describe('useGenerateVisuals — per post', () => {
-  it('tracks two posts at once and reports each landed image under its own post', async () => {
+  it('tracks two posts at once, reports each landed image under its own post, and one landing leaves the other waiting', async () => {
     const { fetchMock, land, visualRequests } = deferredFetch()
     vi.stubGlobal('fetch', fetchMock)
     const landed: Array<[string, PostImage]> = []
@@ -262,7 +253,6 @@ describe('useGenerateVisuals — per post', () => {
     expect(landed).toEqual([
       ['b', expect.objectContaining({ position: 0, publicUrl: 'https://cdn/b/0.jpg' })],
     ])
-    // A is still waiting on its picture — B landing changed nothing about it.
     expect(result.current.positionsFor('a').generating).toEqual([0])
   })
 
@@ -325,7 +315,32 @@ describe('useGenerateVisuals — per post', () => {
     expect(toast.error).toHaveBeenCalledWith('1 visual failed to generate')
   })
 
-  it('a replaced image lands under its post and is composed like any other picture', async () => {
+  it('a refusal whose body is an edge page, not JSON, is said in the fallback words; a success with no row offers Retry, landing nothing', async () => {
+    const fetchMock = vi.fn((url: string) =>
+      Promise.resolve(
+        url.includes('/a/')
+          ? new Response('<html>Payment required</html>', { status: 402 })
+          : Response.json({ ok: true })
+      )
+    )
+    vi.stubGlobal('fetch', fetchMock)
+    const { toast } = await import('sonner')
+    const landed: string[] = []
+    const { result } = renderHook(() => useGenerateVisuals((postId) => landed.push(postId)))
+
+    await act(async () => {
+      await result.current.generate(POST_A, [0])
+      await result.current.generate(POST_B, [0])
+    })
+
+    expect(toast.error).toHaveBeenCalledWith('AI images are not available right now', {
+      id: 'visuals-refused',
+    })
+    expect(result.current.slotsFor(POST_B, [])).toEqual([{ position: 0, status: 'error' }])
+    expect(landed).toEqual([])
+  })
+
+  it('a replaced image lands under its post and takes the compose step any picture does, a no-op here with no canvas', async () => {
     const landed: Array<[string, PostImage]> = []
     const { result } = renderHook(() =>
       useGenerateVisuals((postId, image) => landed.push([postId, image]))
@@ -340,8 +355,6 @@ describe('useGenerateVisuals — per post', () => {
     expect(landed).toEqual([
       ['a', expect.objectContaining({ position: 2, fileName: 'upload.jpg' })],
     ])
-    // The bake goes through the same step a generated picture does — here it is a no-op, because
-    // the mocked canvas read answers null, which is how a slide with no text keeps the upload.
     expect(composePersistedPosition).toHaveBeenCalledTimes(0)
     await waitFor(() => expect(result.current.positionsFor('a').composing).toEqual([]))
   })

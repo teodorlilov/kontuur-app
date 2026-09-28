@@ -1,10 +1,16 @@
 import { vi } from 'vitest'
 
-export const anthropic = {
+/** The client `attributedClaudeCall` hands its callback; a test sets what its `create` answers. */
+export const claudeClient = {
   messages: {
     create: vi.fn(),
   },
 }
+
+export const attributedClaudeCall = vi.fn(
+  async (_model: string, call: (client: typeof claudeClient) => Promise<unknown>) =>
+    call(claudeClient)
+)
 
 export const callAnthropic = vi.fn()
 

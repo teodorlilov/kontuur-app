@@ -23,24 +23,42 @@ function filesUnder(dir: string, keep: (name: string) => boolean): string[] {
 
 const cronSources = filesUnder(CRON, (name) => name.endsWith('.ts') && !name.endsWith('.test.ts'))
 
-describe('the scheduler never generates from a client idea', () => {
-  /**
-   * A client idea is a request, not an instruction.
-   *
-   * Someone at the agency has to decide an idea is worth making before it becomes a
-   * post — auto-generating from an unread one would put a client's words into
-   * production with nobody having agreed to them, and the client would first learn
-   * of it by seeing it published.
-   *
-   * This held by accident before: the generate cron passed `priorityPosts: []` and
-   * simply never queried the table. That is exactly the kind of invariant that
-   * survives until someone adds a plausible-looking feature. It is now checked.
-   *
-   * If a scheduled run ever *should* consume ideas, this test is the conversation —
-   * delete it deliberately, do not widen it.
-   */
-  it('no cron route reads client_ideas or the ideas data layer', () => {
-    const offenders = cronSources.flatMap((file) => {
+/**
+ * The modules a file imports from this codebase, resolved to files — one level down. A cron's
+ * work may sit in what its route delegates to (`./helpers`, the publish scheduler, the scheduled
+ * batch), so the sweeps below read those too.
+ */
+function firstLevelImports(file: string): string[] {
+  const src = readFileSync(file, 'utf8')
+  return [...src.matchAll(/from\s+'([^']+)'/g)]
+    .map((m) => m[1] ?? '')
+    .flatMap((spec) => {
+      if (spec.startsWith('@/')) return [path.join(SRC, spec.slice(2))]
+      if (spec.startsWith('./')) return [path.join(path.dirname(file), spec)]
+      return []
+    })
+    .flatMap((base) => ['.ts', '.tsx', '/index.ts'].map((ext) => base + ext))
+    .filter((candidate) => {
+      try {
+        return readFileSync(candidate, 'utf8').length > 0
+      } catch {
+        return false
+      }
+    })
+}
+
+/** Every cron source and every first-level module a cron route delegates to. */
+const cronReach = [
+  ...new Set([
+    ...cronSources,
+    ...cronSources.filter((file) => file.endsWith('route.ts')).flatMap(firstLevelImports),
+  ]),
+]
+
+/** If a scheduled run should ever consume ideas, delete this test deliberately; never widen its filter. */
+describe('the scheduler never generates from a client idea: an idea is a request until someone at the agency agrees to it', () => {
+  it('no cron route, nor what it delegates to, reads client_ideas or the ideas data layer', () => {
+    const offenders = cronReach.flatMap((file) => {
       const body = readFileSync(file, 'utf8')
       return body
         .split('\n')
@@ -59,23 +77,18 @@ describe('the scheduler never generates from a client idea', () => {
     expect(offenders).toEqual([])
   })
 
-  it('found the cron routes it means to be guarding', () => {
-    // A path typo would make the sweep above pass by checking nothing at all.
+  it('found the cron routes it guards and the scheduled batch they delegate to, so a path typo cannot pass the sweep', () => {
     const names = cronSources.map((file) => path.relative(CRON, file))
     expect(names).toContain(path.join('generate', 'route.ts'))
     expect(names.length).toBeGreaterThanOrEqual(4)
+    expect(cronReach.map((file) => path.relative(SRC, file))).toContain(
+      path.join('lib', 'generation', 'scheduled-run.ts')
+    )
   })
 })
 
 describe('one writer per run-progress table', () => {
-  /**
-   * `generation_themes` was inserted from three routes, each discarding the error,
-   * so a theme could silently fail to record on one path and not the others — and
-   * the run panel would report progress that never matched what was generated.
-   * `trackGenerationTheme` in lib/generation/runs.ts is the single writer, which
-   * its own JSDoc had already claimed to be.
-   */
-  it('generation_themes is written in exactly one place', () => {
+  it('generation_themes is written in exactly one place, so every path records a theme the same way', () => {
     const sources = filesUnder(SRC, (name) => name.endsWith('.ts') || name.endsWith('.tsx'))
     const writers = sources.filter((file) =>
       readFileSync(file, 'utf8').includes("from('generation_themes')")
@@ -87,72 +100,37 @@ describe('one writer per run-progress table', () => {
   })
 })
 
-describe('the publish queue can always be re-entered', () => {
-  /**
-   * `publish_attempts` is the gate on the whole queue: `publishDuePosts` selects
-   * `.lt('publish_attempts', MAX_ATTEMPTS)`, so a post at the limit is invisible to
-   * the scheduler no matter what its status says. A row can therefore sit on the
-   * calendar reading "Scheduled" and never be picked up again.
-   *
-   * Two files may touch it, and each has a different job:
-   *
-   * - `publish-post.ts` **increments** it when claiming a post — the single
-   *   implementation both the cron scheduler and the manual publish route run,
-   *   so a hand-fired attempt counts against the same budget by construction.
-   * - `post-recovery.ts` is the only thing that **resets** it, and it is the reason
-   *   a failed post can be revived at all.
-   *
-   * A third writer is the thing to catch. An incrementer added elsewhere would spend
-   * the budget without the scheduler knowing; a second resetter would let a post loop
-   * past MAX_ATTEMPTS forever, which is the runaway this ceiling exists to stop.
-   */
-  /**
-   * Files that write the column to the **table**, not ones that merely name it.
-   *
-   * `types/database.ts` declares it because it is generated from the schema, and the
-   * calendar's optimistic patch sets it in local React state, where no ceiling applies
-   * because no query reads it. Requiring `from('posts')` alongside is what separates a
-   * write from a mention.
-   */
-  function publicationWriters(pattern: RegExp): string[] {
-    return filesUnder(SRC, (name) => name.endsWith('.ts') || name.endsWith('.tsx'))
-      .filter((file) => {
-        const src = readFileSync(file, 'utf8')
-        return src.includes(".from('post_publications')") && pattern.test(src)
-      })
-      .map((file) => path.relative(SRC, file))
-      .sort()
-  }
+/**
+ * Files that write the column to the table, not ones that merely name it: a file must call
+ * `.from('post_publications')` and spell the column as an object key (`publish_attempts:`). The
+ * generated `types/database.ts` declares the key but queries no table; the scheduler queries the
+ * table but names the column only in filters and reads.
+ */
+function publicationWriters(pattern: RegExp): string[] {
+  return filesUnder(SRC, (name) => name.endsWith('.ts') || name.endsWith('.tsx'))
+    .filter((file) => {
+      const src = readFileSync(file, 'utf8')
+      return src.includes(".from('post_publications')") && pattern.test(src)
+    })
+    .map((file) => path.relative(SRC, file))
+    .sort()
+}
 
-  it('publish_attempts is written in exactly one place', () => {
-    // It moved off `posts` onto `post_publications` when a post gained more than one
-    // destination — two networks retry independently, so one counter could not serve both.
-    // With a store owning the table, the two writers this used to permit became one.
+describe('the publish queue can always be re-entered', () => {
+  it('publish_attempts, the retry budget, is written in exactly one place, so nothing spends it unseen by the scheduler', () => {
     expect(publicationWriters(/publish_attempts:\s/)).toEqual([
       path.join('features', 'publishing', 'lib', 'publication-store.ts'),
     ])
   })
 
-  it('that one place is also the only thing that resets it to zero', () => {
-    // The half that actually matters. Every other path adds to the count; if a second file
-    // starts zeroing it, MAX_ATTEMPTS stops being a ceiling.
+  it('that one place is also the only thing that resets it to zero, so no destination loops past MAX_ATTEMPTS', () => {
     expect(publicationWriters(/publish_attempts:\s*0\b/)).toEqual([
       path.join('features', 'publishing', 'lib', 'publication-store.ts'),
     ])
   })
 })
 
-describe('every cron that can spend money or publish is gated by the entitlement', () => {
-  /**
-   * The crons run as the service role with no request and no user, so nothing upstream of them
-   * says whether a workspace may still spend or publish. Each one has to ask — by resolving the
-   * entitled clients (`@/lib/billing/entitled-clients`) or deriving entitlements from its own
-   * agency read (`@/lib/billing/entitlement`) — before it claims a slot, paints an image, publishes
-   * a post or syncs a network. A cron that forgets is a paused workspace still costing money.
-   *
-   * The gate may sit in the route or in the first-level module the route hands its work to
-   * (`./helpers`, the publish scheduler), so the check resolves those imports one level down.
-   */
+describe('every cron that can spend money or publish is gated by the entitlement, so a paused workspace stops costing money', () => {
   const EXEMPT: Record<string, string> = {
     'refresh-tokens':
       'One free Meta call per expiring token keeps a paused workspace reconnectable; gating it would make reactivation require a reconnect.',
@@ -161,26 +139,7 @@ describe('every cron that can spend money or publish is gated by the entitlement
   }
   const GATE = /@\/lib\/billing\/entitl/
 
-  function firstLevelImports(file: string): string[] {
-    const src = readFileSync(file, 'utf8')
-    return [...src.matchAll(/from\s+'([^']+)'/g)]
-      .map((m) => m[1] ?? '')
-      .flatMap((spec) => {
-        if (spec.startsWith('@/')) return [path.join(SRC, spec.slice(2))]
-        if (spec.startsWith('./')) return [path.join(path.dirname(file), spec)]
-        return []
-      })
-      .flatMap((base) => ['.ts', '.tsx', '/index.ts'].map((ext) => base + ext))
-      .filter((candidate) => {
-        try {
-          return readFileSync(candidate, 'utf8').length > 0
-        } catch {
-          return false
-        }
-      })
-  }
-
-  it('each cron route reaches the gate directly or through what it delegates to', () => {
+  it('each cron route reaches the gate directly or through what it delegates to, since nothing upstream of a cron asks', () => {
     const routes = cronSources.filter((file) => file.endsWith('route.ts'))
     const ungated = routes
       .filter((file) => !(path.basename(path.dirname(file)) in EXEMPT))

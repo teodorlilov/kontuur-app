@@ -1,6 +1,7 @@
 import 'server-only'
 
 import { AsyncLocalStorage } from 'node:async_hooks'
+import type { Entitlement } from './entitlement'
 import type { AllowanceKind } from './plans'
 
 /**
@@ -45,6 +46,12 @@ export interface Spender {
    * and refuses.
    */
   reserved?: Partial<Record<AllowanceKind, number>>
+  /**
+   * The one entitlement this spender's reservations are made and settled against. A boundary that
+   * already holds a fresh one (the visuals cron) passes it; otherwise the first `reserveUsage`
+   * fills it from the cached read, so a settle never reads a different period than its reservation.
+   */
+  entitlement?: Entitlement
 }
 
 const storage = new AsyncLocalStorage<Spender>()

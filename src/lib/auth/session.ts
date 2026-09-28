@@ -4,8 +4,8 @@ import { cache } from 'react'
 import { headers } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
-import { AUTH_USER_ID_HEADER, AUTH_USER_NAME_HEADER } from '@/lib/auth/headers'
-import { getCachedUserRecord } from '@/lib/auth/helpers'
+import { AUTH_USER_NAME_HEADER } from '@/lib/auth/headers'
+import { getAuthUserId, getCachedUserRecord } from '@/lib/auth/helpers'
 import { SIGN_IN_PATH } from '@/utils/constants'
 
 /**
@@ -15,7 +15,7 @@ import { SIGN_IN_PATH } from '@/utils/constants'
  * ever revalidated — so removing a team member invalidated the page path and left every route
  * resolving them to the agency they had just left. One definition, one tag, both paths.
  */
-export { getCachedUserRecord, USER_RECORD_TAG } from '@/lib/auth/helpers'
+export { getAuthUserId, getCachedUserRecord, USER_RECORD_TAG } from '@/lib/auth/helpers'
 
 /**
  * The signed-in gate for a layout or page: the validated user id, or a redirect to the sign-in
@@ -27,7 +27,7 @@ export { getCachedUserRecord, USER_RECORD_TAG } from '@/lib/auth/helpers'
  * middleware already runs on every matched route. This is the hot path — prefer it.
  */
 export async function requireAuthUserId(): Promise<string> {
-  const userId = (await headers()).get(AUTH_USER_ID_HEADER)
+  const userId = await getAuthUserId()
   if (!userId) redirect(SIGN_IN_PATH)
   return userId
 }

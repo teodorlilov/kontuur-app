@@ -25,25 +25,14 @@ export class AuthError extends Error {
 export const USER_RECORD_TAG = 'user-record'
 
 /**
- * The user's agency and role — ONE cached view of that row, for pages and routes alike.
- *
- * There were two. Routes resolved `agency_id` through a second `unstable_cache` tagged
- * `user-agency`, which NOTHING in the app ever revalidated: the only three mentions of that tag were
- * its own declaration and a comment telling the reader to bust it. So removing a team member busted
- * `user-record` — which the server-component path reads — while every API route kept resolving that
- * user to the agency they had just been removed from, for up to five more minutes. A stale query is
- * a performance problem; a stale `agency_id` is an access-control one.
- *
- * `unstable_cache` for the cross-request TTL, wrapped in React `cache` so a layout and its page
- * share one read within a render. The admin client is required inside `unstable_cache` — a
- * request-scoped client cannot be captured by a cross-request cache.
- *
- * A cached "no row" is never served. The row is created moments after the first render that can
- * miss it — the (dashboard) layout's own fallback creates it when the email-confirmation callback
- * never reached `createUserRecord` — and a render cannot bust the tag, so serving that miss for
- * its 300s TTL sent every page's `requireSessionUser` to /login, which bounced back through the
- * dashboard, in a loop. A miss re-reads once, uncached: one extra round trip, only while the row
- * is missing.
+ * The user's agency and role — the ONE cached view of that row, for pages and routes alike, busted
+ * by `USER_RECORD_TAG`: a second cache nobody busts keeps a removed member's `agency_id`, which is
+ * an access-control bug. `unstable_cache` for the TTL inside React `cache` for one read per
+ * render, with the admin client, since a request-scoped one cannot be captured across requests.
+ * A cached "no row" is never served: `provisionUserRecord` (src/lib/auth/provision-user-record.ts)
+ * creates the row just after a render can miss it, a render cannot bust the tag, and a cached miss
+ * would send every page's `requireSessionUser` to sign-in (`SIGN_IN_PATH`) and back, in a loop. A miss re-reads
+ * once, uncached.
  */
 const _fetchUserRecord = unstable_cache(
   async (userId: string) => getUserRecord(createAdminSupabaseClient(), userId),
@@ -87,7 +76,7 @@ async function getUserRecord(
   userId: string
 ): Promise<{ agency_id: string; role: string } | null> {
   const { data } = await supabase.from('users').select(USER_AUTH_COLUMNS).eq('id', userId).single()
-  return data as { agency_id: string; role: string } | null
+  return data
 }
 
 export async function verifyClientOwnership(
@@ -226,25 +215,29 @@ export async function fetchClientWithOwnership(
 }
 
 /**
- * Resolve authentication for a Server Action.
- * Returns the auth context on success, or an error string on failure.
- * Mirrors resolveAuth() but returns ActionResult-shaped output instead of NextResponse.
- *
- * Reads the identity middleware already verified rather than verifying again: actions POST to
- * page URLs, which the middleware matcher covers, and it strips any client-supplied value from
- * this header before stamping its own — so an absent header means no valid session, and the
- * action fails closed. API routes cannot take this path; they are excluded from the matcher
- * and go through requireAuth above.
- *
- * The cached role comes back with the agency, so an action that is for admins alone (the
- * billing actions) needs no second `users` read. `removeTeamMember` keeps its fresh
- * `verifyAdminRole` read on purpose: it changes who is an admin.
+ * The user id middleware validated for this request, or null when it stamped none — the one read
+ * of `AUTH_USER_ID_HEADER`, with no auth-server round trip. Trusted on pages and server actions
+ * only: middleware strips a client-sent header before stamping its own there
+ * (src/lib/supabase/middleware.ts), but its matcher skips /api, where the header is whatever the
+ * client sent. Never call it from a route handler.
+ */
+export async function getAuthUserId(): Promise<string | null> {
+  return (await headers()).get(AUTH_USER_ID_HEADER)
+}
+
+/**
+ * Resolve authentication for a Server Action: the counterpart of `resolveAuth`
+ * (src/lib/auth/resolve-auth.ts), answering an error string instead of a NextResponse. The
+ * identity is the one middleware already verified (`getAuthUserId`), so an absent one fails
+ * closed; route handlers go through `requireAuth` instead. The cached role comes back with the
+ * agency, so an admins-only action needs no second `users` read; `removeTeamMember` keeps its
+ * fresh `verifyAdminRole` read on purpose: it changes who is an admin.
  */
 export async function resolveActionAuth(): Promise<
   | { ok: true; supabase: SupabaseServerClient; agencyId: string; userId: string; role: string }
   | { ok: false; error: string }
 > {
-  const userId = (await headers()).get(AUTH_USER_ID_HEADER)
+  const userId = await getAuthUserId()
   if (!userId) {
     return { ok: false, error: 'Unauthorized' }
   }

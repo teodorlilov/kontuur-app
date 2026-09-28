@@ -22,6 +22,8 @@ interface CoverageRowProps {
   name: string
   week: WeekDay[]
   pendingCount: number
+  /** Why no run may start (`GenerateGate.refusal`, src/lib/billing/post-allowance.ts), or null — the Generate link is refused with it. */
+  generateRefusal: string | null
   /**
    * Which capsule tier to wear. Derived from the client's place in the whole
    * roster, never its row on the current page — otherwise the same client is
@@ -30,8 +32,20 @@ interface CoverageRowProps {
   tier: number
 }
 
-/** One client's week: published, scheduled, or still open. */
-export function CoverageRow({ clientId, name, week, pendingCount, tier }: CoverageRowProps) {
+/**
+ * One client's week: published, scheduled, or still open. An empty week offers Generate; when no
+ * run may start it is the same pill disabled where it stands, the reason read to a screen reader
+ * and shown as its tooltip — the row has no room for the sentence, which the header's refused
+ * Generate says in full (`DashboardHeader`, src/features/dashboard/components/dashboard-header.tsx).
+ */
+export function CoverageRow({
+  clientId,
+  name,
+  week,
+  pendingCount,
+  generateRefusal,
+  tier,
+}: CoverageRowProps) {
   const isDark = tier === DARK_TIER_INDEX
   const { published, scheduled } = countWeek(week)
   const filledCount = published + scheduled
@@ -88,14 +102,24 @@ export function CoverageRow({ clientId, name, week, pendingCount, tier }: Covera
         ))}
       </div>
 
-      {isEmpty && (
-        <Link
-          href={`/generate?client=${clientId}`}
-          className="ml-1 shrink-0 rounded-sm bg-surface px-3.5 py-2 text-body font-medium text-forest no-underline transition-colors hover:bg-wash"
-        >
-          Generate →
-        </Link>
-      )}
+      {isEmpty &&
+        (generateRefusal === null ? (
+          <Link
+            href={`/generate?client=${clientId}`}
+            className="ml-1 shrink-0 rounded-sm bg-surface px-3.5 py-2 text-body font-medium text-forest no-underline transition-colors hover:bg-wash"
+          >
+            Generate →
+          </Link>
+        ) : (
+          <span
+            role="link"
+            aria-disabled="true"
+            title={generateRefusal}
+            className="ml-1 shrink-0 cursor-not-allowed rounded-sm bg-surface px-3.5 py-2 text-body font-medium text-text3"
+          >
+            Generate →<span className="sr-only"> — {generateRefusal}</span>
+          </span>
+        ))}
     </div>
   )
 }

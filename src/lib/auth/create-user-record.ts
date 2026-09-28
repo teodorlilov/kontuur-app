@@ -1,22 +1,21 @@
 import { z } from 'zod'
-import type { SupabaseClient } from '@supabase/supabase-js'
-import type { Database } from '@/types/database'
+import { TRIAL_DAYS } from '@/lib/billing/plans'
+import type { AdminClient } from '@/lib/supabase/admin'
+import { MS_PER_DAY } from '@/utils/constants'
 
 /**
  * What signup metadata must say before any of it reaches a column.
  *
  * `mode` lands in `agencies.mode`, which the app shell and the first-run gate
  * (features/onboarding/lib/require-business-setup.ts) read, so an unrecognised value has to be
- * refused rather than stored. This schema lived in the signup route, which meant the OTHER path
- * into this function — the auth callback, reading the same two values out of `user_metadata`
- * through an `as` cast — stored whatever was there.
+ * refused rather than stored. Every caller (src/app/api/auth/signup/route.ts,
+ * src/app/auth/callback/page.tsx, `provisionUserRecord` in src/lib/auth/provision-user-record.ts)
+ * passes `user_metadata` as the login wrote it, so this is the one check it gets.
  */
 const accountMetadataSchema = z.object({
   businessName: z.string().trim().min(1),
   mode: z.enum(['agency', 'solo']).default('agency'),
 })
-
-type AdminClient = SupabaseClient<Database>
 
 interface UserInput {
   id: string
@@ -30,22 +29,18 @@ interface CreateUserRecordResult {
 }
 
 /**
- * Create a user record (and optionally an agency) from auth metadata.
- * Used by the signup route, the auth callback and the dashboard layout fallback.
+ * Create the `users` row (and, for a new signup, its agency) for a login with none. Idempotent,
+ * since every caller can re-run for one user and a new signup inserts its agency first. A failed
+ * read or insert throws: a half-created account is a broken dashboard, not a signup.
  *
- * - Invited users: inserts into existing agency with 'member' role.
- * - New signups: creates agency, inserts user as 'admin'. Never a client: in both modes the
- *   first client is created by the onboarding flow through `createClient`
- *   (features/clients/actions/client-actions.ts), and a solo workspace with no client is sent
- *   there by `requireBusinessSetup` (features/onboarding/lib/require-business-setup.ts).
- *
- * Idempotent: a second call for a user who already has a row returns that row's agency and writes
- * nothing. Without this guard the new-signup path creates the agency *before* inserting the user,
- * so a repeat call left an orphaned agency behind every time — and all three callers can re-run
- * for the same user.
- *
- * Throws if any write fails. A half-created account renders as a signed-in user with a broken
- * dashboard, so the failure has to surface rather than be reported as a successful signup.
+ * An invited login joins by its pending `team_invites` row alone (born in `inviteMember`,
+ * src/features/settings/lib/invite-member.ts), never by `user_metadata`, which anyone can write.
+ * The invite is stamped accepted after the user insert, so a failed insert can try again; a failed
+ * stamp is only logged, the membership standing. A new signup needs an email (forgot-password
+ * finds accounts by it) and a business name, with a mode of `agency` or `solo` (absent means
+ * `agency`), and gets an admin row, no client (onboarding
+ * makes the first, `createClient` in src/features/clients/actions/client-actions.ts) and a trial
+ * end from `TRIAL_DAYS`, because migration 20260862 drops that column's default.
  */
 export async function createUserRecord(
   admin: AdminClient,
@@ -59,46 +54,51 @@ export async function createUserRecord(
   if (existingError) throw new Error(`user lookup failed: ${existingError.message}`)
 
   if (existing) {
-    return { agencyId: (existing as { agency_id: string }).agency_id, isInvited: false }
+    return { agencyId: existing.agency_id, isInvited: false }
   }
 
-  const meta = user.user_metadata as {
-    businessName?: string
-    mode?: 'agency' | 'solo'
-    invited_agency_id?: string
-    role?: string
-  }
+  const { data: invite, error: inviteError } = await admin
+    .from('team_invites')
+    .select('id, agency_id, role')
+    .eq('auth_user_id', user.id)
+    .is('accepted_at', null)
+    .maybeSingle()
+  if (inviteError) throw new Error(`invite lookup failed: ${inviteError.message}`)
 
-  // Invited user — join existing agency
-  if (meta.invited_agency_id) {
+  if (invite) {
     const { error } = await admin.from('users').insert({
       id: user.id,
-      agency_id: meta.invited_agency_id,
+      agency_id: invite.agency_id,
       email: user.email,
-      role: meta.role ?? 'member',
+      role: invite.role,
     })
     if (error) throw new Error(`invited-user insert failed: ${error.message}`)
-    return { agencyId: meta.invited_agency_id, isInvited: true }
+    const { error: acceptError } = await admin
+      .from('team_invites')
+      .update({ accepted_at: new Date().toISOString() })
+      .eq('id', invite.id)
+    if (acceptError) {
+      console.error(
+        `[auth] invite ${invite.id} joined but not stamped accepted:`,
+        acceptError.message
+      )
+    }
+    return { agencyId: invite.agency_id, isInvited: true }
   }
 
-  // New signup — create agency.
-  //
-  // Validated, not defaulted. This read `meta.businessName ?? 'My Business'`, so a signup whose
-  // metadata was missing or malformed silently created an agency called "My Business" — while the
-  // signup route, which the same browser call also hits, refused an empty name outright. Two
-  // answers to one question, decided by whichever path ran first.
-  const parsed = accountMetadataSchema.safeParse(meta)
+  const parsed = accountMetadataSchema.safeParse(user.user_metadata)
   if (!parsed.success) throw new Error('signup metadata is missing a business name or mode')
   const { businessName, mode } = parsed.data
 
-  // `users.email` is a lookup key — forgot-password finds accounts by it — so an empty one is an
-  // account nobody can recover. The signup route wrote `user.email ?? ''` here; failing the signup
-  // is the better outcome, and the caller reports it.
   if (!user.email) throw new Error('cannot create a user record without an email')
 
   const { data: agencyData, error: agencyError } = await admin
     .from('agencies')
-    .insert({ name: businessName, mode })
+    .insert({
+      name: businessName,
+      mode,
+      trial_ends_at: new Date(Date.now() + TRIAL_DAYS * MS_PER_DAY).toISOString(),
+    })
     .select('id')
     .single()
 
@@ -106,7 +106,7 @@ export async function createUserRecord(
     throw new Error(`agency insert failed: ${agencyError?.message ?? 'no row returned'}`)
   }
 
-  const agencyId = (agencyData as { id: string }).id
+  const agencyId = agencyData.id
 
   const { error: userError } = await admin.from('users').insert({
     id: user.id,

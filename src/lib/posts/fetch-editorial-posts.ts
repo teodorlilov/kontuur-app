@@ -2,9 +2,9 @@ import 'server-only'
 
 import type { SupabaseServerClient } from '@/lib/auth/helpers'
 import { POST_COLUMNS, type PostColumns } from '@/lib/queries/select-columns'
-import { fetchCanvasDocPositions, fetchImagesByPost } from '@/lib/posts/fetch-post-images'
+import { fetchCanvasDocPositions } from '@/lib/posts/fetch-post-images'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
-import { fetchVisualJobs } from '@/lib/visual/visual-jobs'
+import { fetchPostVisuals } from '@/lib/visual/post-visuals'
 import {
   fallbackValidationData,
   needsSlopFallback,
@@ -59,10 +59,9 @@ export async function fetchEditorialPosts(
 
   const rows = data ?? []
   const postIds = rows.map((row) => row.id)
-  const [imagesByPost, composedByPost, jobsByPost] = await Promise.all([
-    fetchImagesByPost(postIds),
+  const [{ imagesByPost, generatingByPost }, composedByPost] = await Promise.all([
+    fetchPostVisuals(createAdminSupabaseClient(), postIds),
     fetchCanvasDocPositions(postIds),
-    fetchVisualJobs(createAdminSupabaseClient(), postIds),
   ])
 
   return rows.map((post) => ({
@@ -72,6 +71,6 @@ export async function fetchEditorialPosts(
     needsSlopCheck: needsSlopFallback(post.validation_json),
     images: imagesByPost.get(post.id) ?? [],
     composedPositions: composedByPost.get(post.id) ?? [],
-    generatingPositions: jobsByPost.get(post.id) ?? [],
+    generatingPositions: generatingByPost.get(post.id) ?? [],
   }))
 }

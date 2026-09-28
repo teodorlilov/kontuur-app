@@ -5,6 +5,12 @@ import { useRouter } from 'next/navigation'
 import { createBrowserSupabaseClient } from '@/lib/supabase/client'
 import { SIGN_IN_PATH } from '@/utils/constants'
 
+/**
+ * An invite link's landing: the session arrives in the URL hash, is set in the browser, and the
+ * invitee goes to /setup-password, which makes them a member (`provisionUserRecord`,
+ * src/lib/auth/provision-user-record.ts) before they choose a password. A link without a session
+ * goes to sign-in.
+ */
 export function InviteHandler() {
   const router = useRouter()
   const [error, setError] = useState<string | null>(null)
@@ -37,8 +43,6 @@ export function InviteHandler() {
         return
       }
 
-      // Session established — redirect to password setup.
-      // The dashboard layout will auto-create the user record on first visit.
       router.replace('/setup-password')
     }
 

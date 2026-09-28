@@ -140,6 +140,11 @@ export function formatMoney(cents: number): string {
   return new Intl.NumberFormat('en-IE', { style: 'currency', currency: 'EUR' }).format(cents / 100)
 }
 
+/** Cents as the plain decimal a document or a filing writes — "29.00", two places, no currency sign. */
+export function centsToDecimal(cents: number): string {
+  return (cents / 100).toFixed(2)
+}
+
 /** A document number as the VAT act wants it printed: ten digits, zero-padded (ППЗДДС чл. 78). */
 export function formatDocumentNumber(number: number): string {
   return String(number).padStart(10, '0')

@@ -17,23 +17,17 @@ interface DeleteClientDialogProps {
   /** The *stored* name, never the unsaved draft — it is what the person types back. */
   clientName: string
   counts: ClientDeletionCounts
+  /** What the delete does to the bill, or null when there is nothing to say (`deleteClientNotice`). */
+  notice: string | null
 }
 
 /**
- * The confirm step for deleting a client: what goes, then the typed-name gate
- * (`TypedConfirmDialog`, shared with the workspace delete), then the action and the way out.
- *
- * Typed confirmation rather than a plain button because this is one of the two actions in the
- * product that take everything with them — ~18 tables and two storage buckets — and it sits one
- * tab away from the page people open to edit a niche.
- *
- * What is this dialog's own, and stays here: the copy, the call, and the exit. The three
- * deletion flows (a teammate, a client, a workspace) end in different places — a refresh, the
- * roster, leaving the app — so the act-then-go step is written where each is read, not hidden in
- * a hook that would make the differences look accidental. On success `isDeleting` stays true
- * through the navigation, so the button keeps its loading state on a page that is going away and
- * cannot be pressed twice; a server action that rejects outright is caught, or the spinner would
- * never clear and the dialog would look permanently busy.
+ * The confirm step for deleting a client: what goes and, on a paid plan, what it does to the bill
+ * (`notice`), then the typed-name gate (`TypedConfirmDialog`, shared with the workspace delete).
+ * Typed, not a plain button: the delete takes ~18 tables and two storage buckets, and its button
+ * sits in the Basic info rail, beside where people edit a niche. The act-then-go step stays here, not in a shared hook, because
+ * each deletion flow ends somewhere different. On success `isDeleting` stays true through the
+ * navigation, so the button cannot be pressed twice.
  */
 export function DeleteClientDialog({
   open,
@@ -41,6 +35,7 @@ export function DeleteClientDialog({
   clientId,
   clientName,
   counts,
+  notice,
 }: DeleteClientDialogProps) {
   const router = useRouter()
   const [isDeleting, setIsDeleting] = useState(false)
@@ -95,6 +90,8 @@ export function DeleteClientDialog({
         with the Instagram history synced for this client and any saved reports. Instagram cannot
         return past days once an account is disconnected. This cannot be undone.
       </p>
+
+      {notice && <p className="mt-3">{notice}</p>}
     </TypedConfirmDialog>
   )
 }

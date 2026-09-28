@@ -10,7 +10,11 @@ import { POST_IMAGE_STORAGE_COLUMNS } from '@/lib/queries/select-columns'
 
 const deleteImageSchema = z.object({ imageId: z.uuid() })
 
-/** Upload an image for a post (linked to a carousel slide position or single post). */
+/**
+ * Upload an image for a post (linked to a carousel slide position or single post). The picker
+ * accepts PNG and WebP for convenience, but Instagram containers take JPEG only, so the upload is
+ * converted here at the boundary and a slide can never fail at publish.
+ */
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id: postId } = await params
   const auth = await resolveAuth()
@@ -20,15 +24,15 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   if (!post) return NextResponse.json({ error: 'Post not found' }, { status: 404 })
 
   const formData = await request.formData()
-  const file = formData.get('file') as File | null // FormData.get() returns File | string | null
+  const file = formData.get('file')
   const position = Number(formData.get('position') ?? 0)
 
-  if (!file) return NextResponse.json({ error: 'No file provided' }, { status: 400 })
+  if (!(file instanceof File)) {
+    return NextResponse.json({ error: 'No file provided' }, { status: 400 })
+  }
   const fileError = validateImageFile(file)
   if (fileError) return NextResponse.json({ error: fileError }, { status: 400 })
 
-  // The picker accepts PNG/WebP for convenience, but Instagram containers take
-  // JPEG only — convert at the boundary so a slide can never fail at publish.
   const jpeg = await toJpeg(Buffer.from(await file.arrayBuffer()), file.type, file.name)
   const { publicUrl, storagePath } = await uploadPostImage(
     jpeg.buffer,

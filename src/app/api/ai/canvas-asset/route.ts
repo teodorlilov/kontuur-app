@@ -15,8 +15,10 @@ export async function POST(request: Request) {
   if (!auth.ok) return auth.response
 
   const formData = await request.formData()
-  const file = formData.get('file') as File | null // FormData.get() returns File | string | null
-  if (!file) return NextResponse.json({ error: 'No file provided' }, { status: 400 })
+  const file = formData.get('file')
+  if (!(file instanceof File)) {
+    return NextResponse.json({ error: 'No file provided' }, { status: 400 })
+  }
   const fileError = validateImageFile(file)
   if (fileError) return NextResponse.json({ error: fileError }, { status: 400 })
 

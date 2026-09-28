@@ -43,7 +43,7 @@ export default async function AuthCallbackPage({
           const result = await createUserRecord(admin, {
             id: user.id,
             email: user.email ?? '',
-            user_metadata: (user.user_metadata ?? {}) as Record<string, unknown>,
+            user_metadata: user.user_metadata ?? {},
           })
 
           if (result.isInvited) {

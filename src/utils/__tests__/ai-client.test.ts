@@ -26,7 +26,7 @@ vi.mock('@/lib/billing/telemetry', () => ({
   }),
 }))
 
-import { callAnthropic, DEFAULT_MODEL } from '../ai-client'
+import { attributedClaudeCall, callAnthropic, DEFAULT_MODEL } from '../ai-client'
 import { runAsSpender } from '@/lib/billing/spend-context'
 
 const MESSAGE = {
@@ -46,6 +46,20 @@ describe('callAnthropic — the one door to Claude', () => {
   it('refuses with no spender in scope, before any request is made', async () => {
     await expect(callAnthropic({ userMessage: 'hi' })).rejects.toThrow(/no spender in scope/)
     expect(mocks.stream).not.toHaveBeenCalled()
+  })
+
+  it('never runs a hand-built request (one callAnthropic cannot express) without a spender, and records one that ran', async () => {
+    const call = vi.fn(async () => MESSAGE as never)
+    await expect(attributedClaudeCall(DEFAULT_MODEL, call)).rejects.toThrow(/no spender in scope/)
+    expect(call).not.toHaveBeenCalled()
+
+    await runAsSpender({ agencyId: null, flow: 'brief' }, () =>
+      attributedClaudeCall(DEFAULT_MODEL, call)
+    )
+    expect(call).toHaveBeenCalledTimes(1)
+    expect(mocks.recordAiUsage).toHaveBeenCalledWith(
+      expect.objectContaining({ provider: 'anthropic', model: DEFAULT_MODEL })
+    )
   })
 
   it('records the final message usage for the spender in scope', async () => {

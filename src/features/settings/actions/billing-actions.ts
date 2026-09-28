@@ -7,12 +7,14 @@ import { getCachedAgency, getCachedEntitlement } from '@/lib/queries/cache'
 import { countClientsByAgency, fetchAgencyById } from '@/lib/queries/db'
 import { createCheckoutSession, createPortalSession } from '@/lib/billing/checkout'
 import { entitlementFor } from '@/lib/billing/entitlement'
+import { billableQuantity } from '@/lib/billing/plans'
 import { ensureStripeCustomer, setPlanEnding } from '@/lib/billing/subscription-store'
 import {
   BILLING_ADMINS_ONLY,
   NO_BILLING_ACCOUNT,
   NO_PLAN_TO_CANCEL,
   NO_PLAN_TO_KEEP,
+  PLAN_ACTIVATING,
   PLAN_ALREADY_ACTIVE,
   STRIPE_UNAVAILABLE,
 } from '@/lib/billing/copy'
@@ -35,9 +37,12 @@ async function adminAuth() {
 }
 
 /**
- * Send the admin to Checkout for the one plan, with the workspace's client count as the
- * quantity. Refused while a plan is already live — the portal is the way then. `getCachedAgency`
- * and `getCachedEntitlement` are one read: the entitlement is derived from that row.
+ * Send the admin to Checkout for the one plan, billed for the workspace's clients
+ * (`billableQuantity`). Refused on house and while a subscription is open in any state — a
+ * locked workspace whose renewal failed updates its card or cancels instead, since a second
+ * subscription would charge twice. The row may not show a subscription Stripe already holds, so
+ * `createCheckoutSession` asks Stripe too. `getCachedAgency` and `getCachedEntitlement` are one
+ * read, which the Stripe snapshot's `{ expire: 0 }` bust keeps current.
  */
 export async function startCheckout(): Promise<Url> {
   const auth = await adminAuth()
@@ -49,11 +54,7 @@ export async function startCheckout(): Promise<Url> {
     getCachedEntitlement(agencyId),
   ])
   if (!agency) return { ok: false, error: 'Workspace not found' }
-  if (
-    entitlement.plan === 'house' ||
-    entitlement.state === 'active' ||
-    entitlement.state === 'past_due'
-  ) {
+  if (entitlement.plan === 'house' || entitlement.subscriptionOpen) {
     return { ok: false, error: PLAN_ALREADY_ACTIVE }
   }
 
@@ -63,8 +64,9 @@ export async function startCheckout(): Promise<Url> {
     const url = await createCheckoutSession({
       customerId,
       agencyId,
-      quantity: Math.max(1, clients),
+      quantity: billableQuantity(clients),
     })
+    if (!url) return { ok: false, error: PLAN_ACTIVATING }
     return { ok: true, data: { url } }
   } catch (err) {
     console.error(`[billing:checkout] failed for ${agencyId}:`, err)
@@ -72,7 +74,7 @@ export async function startCheckout(): Promise<Url> {
   }
 }
 
-/** Send the admin to Stripe's portal for the card, the address, the tax ID and cancellation. */
+/** Send the admin to Stripe's portal for the card, the address and the tax ID — never to cancel. */
 export async function openBillingPortal(): Promise<Url> {
   const auth = await adminAuth()
   if (!auth.ok) return auth
@@ -90,12 +92,16 @@ export async function openBillingPortal(): Promise<Url> {
 }
 
 /**
- * End the plan at its period end, or keep it after all — from inside the app, never the portal.
- * Reads the row uncached, like the settings page: the answer to "is it already ending" must be
- * seconds fresh. Cancelling wants a plan that is open and not yet set to end (the same fact
- * `Entitlement.canDelete` negates); keeping wants one that is set to end and still running.
+ * End the plan, or keep it after all — from inside the app, never the portal. Reads the row
+ * uncached, like the settings page: the answer to "is it already ending" must be seconds fresh.
+ * Cancelling wants an open plan not yet set to end (`Entitlement.planEnding`, which a failed
+ * renewal never is, so its plan can always be cancelled); keeping wants one that is. Whether the
+ * cancel ends the plan now or at its period end is `setPlanEnding`'s decision, on Stripe's live
+ * status, and `endedNow` tells the page which happened.
  */
-export async function setPlanEndingAction(ending: boolean): Promise<ActionResult> {
+export async function setPlanEndingAction(
+  ending: boolean
+): Promise<ActionResult<{ endedNow: boolean }>> {
   const auth = await adminAuth()
   if (!auth.ok) return auth
   const { supabase, agencyId } = auth
@@ -107,11 +113,15 @@ export async function setPlanEndingAction(ending: boolean): Promise<ActionResult
   if (!agency?.stripe_subscription_id) return { ok: false, error: NO_PLAN_TO_CANCEL }
   const entitlement = entitlementFor(agency, new Date())
   if (parsed.data && entitlement.canDelete) return { ok: false, error: NO_PLAN_TO_CANCEL }
-  if (!parsed.data && !entitlement.endsOn) return { ok: false, error: NO_PLAN_TO_KEEP }
+  if (!parsed.data && !entitlement.planEnding) return { ok: false, error: NO_PLAN_TO_KEEP }
 
   try {
-    await setPlanEnding(createAdminSupabaseClient(), agency.stripe_subscription_id, parsed.data)
-    return { ok: true, data: undefined }
+    const ended = await setPlanEnding(
+      createAdminSupabaseClient(),
+      agency.stripe_subscription_id,
+      parsed.data
+    )
+    return { ok: true, data: ended }
   } catch (err) {
     console.error(`[billing:plan-ending] failed for ${agencyId}:`, err)
     return { ok: false, error: STRIPE_UNAVAILABLE }

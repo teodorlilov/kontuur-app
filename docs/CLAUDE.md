@@ -216,7 +216,7 @@ that table: `scripts/table-writers.json` names every writer with a reason.
 
 The check is keyed on `.from('table')`, never on column names — most real writers pass a
 pre-built variable, and a column-name grep finds none of them. Read the docblock in
-`scripts/table-writers.mjs` for the four things it cannot see; none of them are covered.
+`scripts/table-writers.mjs` for the five things it cannot see; none of them are covered.
 
 ### Functions
 - One responsibility per function. If describing it needs "and", split it.
@@ -241,8 +241,10 @@ pre-built variable, and a column-name grep finds none of them. Read the docblock
 - The doc says what that thing is FOR in the feature, and the constraints a reader must know
   before editing it. Not what the code does line by line — the code says that.
 - **No comments inside a function body.** No line comment, no block, no JSX `{/* … */}` inside a
-  return, no trailing comment after code on the same line. In-body commentary is noise: the
-  reader is already looking at the code. `npm run comments` fails on any of these.
+  return, no trailing comment after code on the same line — and in a test, no doc above a case or
+  a fixture inside `describe`: the `it(…)` title is the explanation. In-body commentary is noise:
+  the reader is already looking at the code. `npm run comments` fails on any of these in the
+  directories its `ALLOWLIST` names (`scripts/comment-placement.mjs`); the rule holds everywhere.
 - Something a future editor genuinely needs — a trap, a rejected alternative, a probe result, a
   reason an obvious simplification is wrong — goes UP into the doc, restated as part of the
   purpose. Do not relocate the sentence; rewrite it as something the function is for.

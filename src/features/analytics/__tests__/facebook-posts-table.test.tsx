@@ -38,8 +38,7 @@ function row(overrides: Partial<ReportPostRow> = {}): ReportPostRow {
 }
 
 describe('the post type chip', () => {
-  /** With no type to name, the day still has to print — and without a dangling separator. */
-  it('says nothing about a post whose type the network never reported', () => {
+  it('says nothing about a post whose type the network never reported, and prints its day with no dangling separator', () => {
     render(<FacebookPostsTable posts={[row()]} medianInteractions={40} />)
     expect(screen.queryByText(/single/)).not.toBeInTheDocument()
     expect(screen.getByText('6 Sept')).toBeInTheDocument()

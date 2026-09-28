@@ -13,7 +13,9 @@ interface AnalyzeBrandInput {
  *
  * `null` means nothing could be fetched at all — the one outcome both callers turn into a distinct
  * answer rather than an error, because a site that will not load is a fact about the site. An
- * unparseable model response throws through to the caller's boundary, where it is logged once.
+ * unparseable model reply is not an error either: it reads as an empty profile (`analyzeUrl`,
+ * src/utils/ai.ts:95). Only the model call itself failing throws, through to the caller's
+ * boundary, where it is logged once.
  *
  * Shared because onboarding and the brand-profile re-read compose exactly the same three steps,
  * and a second copy is how the two would come to disagree about which sources a read includes.

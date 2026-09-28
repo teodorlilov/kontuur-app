@@ -3,7 +3,7 @@ import 'server-only'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { fetchPageDaySeries, fetchPagePostMeasurements } from '@/lib/meta/facebook/insights'
 import { fetchPostIdsByMediaId } from '@/lib/queries/posts-by-media-id'
-import type { SyncableConnection } from '@/lib/queries/select-columns'
+import type { ClientSyncableConnection } from '@/lib/queries/select-columns'
 import { PLATFORM_NAMES } from '@/lib/meta/platforms'
 import { MS_PER_DAY, SECONDS_PER_DAY } from '@/utils/constants'
 import { dayKeyToUnixSeconds, shiftDateKey } from '@/utils/date-helpers'
@@ -68,7 +68,7 @@ export async function syncAllFacebookMetrics(
  */
 async function syncClientPageMetrics(
   admin: SupabaseClient,
-  connection: SyncableConnection & { client_id: string }
+  connection: ClientSyncableConnection
 ): Promise<void> {
   const { client_id: clientId, account_id: pageId, access_token: accessToken } = connection
 

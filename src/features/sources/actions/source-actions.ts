@@ -117,8 +117,10 @@ export async function uploadSource(
   const owned = await verifyClientOwnership(supabase, clientId, agencyId)
   if (!owned) return { ok: false, error: 'Not found' }
 
-  const file = formData.get('file') as File | null
-  const label = (formData.get('label') as string | null)?.trim()
+  const fileEntry = formData.get('file')
+  const file = fileEntry instanceof File ? fileEntry : null
+  const labelEntry = formData.get('label')
+  const label = typeof labelEntry === 'string' ? labelEntry.trim() : undefined
 
   const validation = validateUpload(
     file ? { type: file.type, size: file.size, name: file.name } : null,

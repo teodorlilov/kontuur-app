@@ -15,7 +15,6 @@ describe('escapeHtml', () => {
   })
 
   it('escapes the ampersand first, so an escape is not itself escaped', () => {
-    // `&lt;` rather than `&amp;lt;`: replacing `<` before `&` would double-encode.
     expect(escapeHtml('<')).toBe('&lt;')
   })
 })
@@ -78,7 +77,7 @@ describe('reminderEmail', () => {
       'Your workspace was paused on 4 October.',
       planUrl
     )
-    expect(content.paragraphs[1]).toContain('Everything you made is still here to read.')
+    expect(content.paragraphs[1]).toContain('The workspace keeps everything you made.')
   })
 
   it.each([
@@ -131,6 +130,17 @@ describe('documentEmail', () => {
       )
     }
   )
+
+  it('mails a deleted workspace’s document with no button or link, and asks the payer to keep the PDF', async () => {
+    const content = documentEmail(invoice, null)
+    expect(content.cta).toBeUndefined()
+    expect(content.paragraphs).toHaveLength(1)
+    expect(content.footnote).toBe('Keep this email: the attached PDF is the original invoice.')
+    const html = renderEmail(content)
+    expect(html).not.toContain('Plan &amp; billing')
+    expect(html).not.toContain('<a href')
+    await expect(html).toMatchFileSnapshot('./__snapshots__/document-invoice-no-workspace.html')
+  })
 })
 
 describe('strong', () => {

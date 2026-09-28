@@ -86,8 +86,7 @@ function actualFolder(file: string): string {
 }
 
 describe('component placement follows the import graph', () => {
-  /** A walk that matched nothing would make every assertion below it vacuous. */
-  it('finds both document roots and a real graph', () => {
+  it('finds both document roots and a real graph, or every check below would pass vacuously', () => {
     expect(files).toContain(IG_ROOT)
     expect(files).toContain(FB_ROOT)
     expect(files.length).toBeGreaterThan(20)
@@ -95,8 +94,7 @@ describe('component placement follows the import graph', () => {
     expect(fromFacebook.size).toBeGreaterThan(5)
   })
 
-  /** The root is where a component lands when nobody decided anything about it. */
-  it('puts nothing at the components root', () => {
+  it('puts nothing at the components root, where a component lands when nobody decided where it goes', () => {
     expect(files.filter((file) => !file.includes(path.sep))).toEqual([])
   })
 

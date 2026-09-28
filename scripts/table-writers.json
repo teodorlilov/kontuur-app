@@ -2,14 +2,15 @@
   "agencies": {
     "src/lib/auth/create-user-record.ts": "The agency is created with the account. Provisioning is idempotent and lives only here — the signup route and the auth callback both delegate, after a period where both provisioned and raced.",
     "src/app/api/settings/account/route.ts": "The agency name and timezone as edited in settings.",
-    "src/lib/billing/subscription-store.ts": "The billing columns, through applySubscriptionSnapshot alone: ensureStripeCustomer sets stripe_customer_id once; the Stripe webhook and setPlanEnding (the in-app cancel) both write what a re-fetched subscription says (plan, status, quantity, cancel flag, the period on a paid invoice, past_due_since). Nothing else may write these columns — entitlementFor is their only reader.",
-    "src/features/settings/actions/workspace-actions.ts": "deleteWorkspace — the one delete; migration 20260856 cascades every table the workspace owns, so nothing else here deletes agency-scoped rows."
+    "src/lib/billing/subscription-store.ts": "The billing columns. ensureStripeCustomer sets stripe_customer_id once. The rest go through applySubscriptionSnapshot alone, with Stripe's own current copy of the subscription — re-fetched by handleEvent (src/lib/billing/stripe-events.ts), or returned by the update or cancel in setPlanEnding (end at the period end, or at once when the renewal failed; or keep): the subscription id, status, cancel flag and past_due_since; the period on a new subscription's first fill or a paid invoice for the current period; the quantity on the first fill, then from the period's paid invoices on every paid invoice. plan and billing_updated_at are not written here: entitlementFor (src/lib/billing/entitlement.ts) derives the plan. Nothing else may write these columns.",
+    "src/lib/billing/quantity-sync.ts": "quantity_sync_at only — the short per-workspace claim around a Stripe quantity write (claimQuantity, releaseQuantity), taken only inside syncSubscriptionQuantity. A lock, not a fact: nothing reads it but the claim itself.",
+    "src/features/settings/actions/workspace-actions.ts": "deleteWorkspace — the one delete; migration 20260856 cascades every table the workspace owns (team_invites since migration 20260861). The one other delete here is its pending invites, just before, to learn their logins (the team_invites entry)."
   },
   "billing_events": {
-    "src/app/api/billing/webhook/route.ts": "recordBillingEvent inserts every Stripe event before any work (ignoreDuplicates, then read back — a processed duplicate is answered 200, a failed one runs again on Stripe's retry); finishBillingEvent stamps processed_at, the agency it concerned, or the error."
+    "src/lib/billing/stripe-events.ts": "recordBillingEvent inserts every Stripe event before any work (ignoreDuplicates, then read back — a processed duplicate is answered 200, a failed one runs again on Stripe's retry); finishBillingEvent stamps processed_at, the agency it concerned, or the error. The webhook route (src/app/api/billing/webhook/route.ts) verifies the signature and calls both; it writes nothing itself."
   },
   "ai_usage_daily": {
-    "src/lib/billing/telemetry.ts": "[hand-listed] recordAiUsage writes through the add_ai_usage RPC (migration 20260852), which the scan cannot see. Telemetry only — never a gate — called from the three provider wrappers (callAnthropic, subscribeFal, queryTavily) and the brief."
+    "src/lib/billing/telemetry.ts": "[hand-listed] recordAiUsage writes through the add_ai_usage RPC (migrations 20260852, 20260861), which the scan cannot see. Telemetry only — never a gate — called from the three provider doors: attributedClaudeCall (every Claude call, the weekly brief's included), subscribeFal and queryTavily."
   },
   "analytics_reports": {
     "src/features/analytics/actions/report-actions.ts": "Saved-report CRUD behind the analytics screen.",
@@ -19,7 +20,7 @@
     "src/lib/visual/queries.ts": "The only store for a brand-extraction run."
   },
   "brand_profiles": {
-    "src/features/clients/actions/client-actions.ts": "createClient seeds the profile; updateBrandProfile is the client screen's editor.",
+    "src/features/clients/actions/client-actions.ts": "updateBrandProfile — the client screen's editor, reached through updateClient; it updates the existing row and never creates one. The row is created with its client by provisionClient (provision-client.ts).",
     "src/app/(dashboard)/clients/[id]/sources/page.tsx": "A lazy backfill of pillar ids on first open, for clients that predate them. Writes content_pillars only. The comment beside it records why the web-research row is deliberately NOT created here: a page render must not decide whether the pipeline searches the web.",
     "src/features/clients/lib/provision-client.ts": "provisionClient — the ONE way a client and its mandatory children are created. Its only caller is createClient, the onboarding flow in both modes."
   },
@@ -39,14 +40,14 @@
     "src/ai/learning/distill-style-memo.ts": "The memo's only writer, next to the distiller that produces it."
   },
   "clients": {
-    "src/features/clients/actions/client-actions.ts": "create, update and delete from the clients screen.",
-    "src/features/clients/lib/provision-client.ts": "provisionClient — the ONE way a client and its mandatory children are created. Its only caller is createClient, the onboarding flow in both modes."
+    "src/features/clients/actions/client-actions.ts": "updateClientFields — the clients screen's editor, reached through updateClient. Creating and deleting a client row go through provision-client.ts (provisionClient, unprovisionClient); createClient and deleteClient here only call them.",
+    "src/features/clients/lib/provision-client.ts": "provisionClient — the ONE way a client and its mandatory children are created; its only caller is createClient, the onboarding flow in both modes. unprovisionClient — the ONE delete of a client row, reached only through deleteClient's admin check and takeBackClient (a failed provision, a create the plan refused)."
   },
   "discarded_drafts": {
     "src/lib/queries/discarded-drafts.ts": "One insert for both discard sources (wizard, review). reason stays optional — distill-style-memo filters on it being non-null."
   },
   "generation_runs": {
-    "src/lib/generation/runs.ts": "start and finish, paired in one file so a run cannot be opened without a way to close it."
+    "src/lib/generation/runs.ts": "start, finish and the abandoned-run closer, in one file so a run cannot be opened without a way to close it; the finisher and the closer flip a run out of running by the same conditional update, so exactly one settles it."
   },
   "generation_themes": {
     "src/lib/generation/runs.ts": "Themes belong to a run and are tracked beside it."
@@ -67,7 +68,7 @@
   },
   "notifications": {
     "src/components/layout/shell-context.tsx": "The browser toggling is_read for the signed-in user, optimistically. Read state only — it can never create a notification, and it is RLS-scoped rather than admin.",
-    "src/lib/notifications/notify.ts": "notify() — the only insert. There were five, four bypassing the dedup. Cooldown is a per-caller decision (NOTIFY_EVERY_TIME), not blanket: two approval emails in a week are two events."
+    "src/lib/notifications/notify.ts": "notify() — the only insert. There were five, four bypassing the dedup. An event passes dedupKey and is one upsert against the unique (agency_id, dedup_key) index (migration 20260861); a persistent condition keeps the per-caller cooldown (NOTIFY_EVERY_TIME for user-caused events: two approval emails in a week are two events)."
   },
   "post_approval_tokens": {
     "src/features/approval-portal/lib/approval-batch.ts": "createApprovalBatch mints the week's tokens, clearing any superseded batch first.",
@@ -75,7 +76,7 @@
     "src/lib/actions/post-actions.ts": "resolveChangeRequest closes a change request from the agency side."
   },
   "post_canvas_docs": {
-    "src/lib/canvas/doc-store.ts": "upsertCanvasDoc — the one write: a slide's doc replaced whenever its canvas is saved or auto-composed. There was an insertCanvasDocs beside it for docs made before the post existed; every draft is a row now, so there is no such moment."
+    "src/lib/canvas/doc-store.ts": "upsertCanvasDoc — the one write: a slide's doc replaced whenever its canvas is saved or auto-composed. No second insert exists for a doc made before its post: every draft is a posts row from the moment it is written (insertDraftPosts), so a doc always has its post."
   },
   "post_history": {
     "src/lib/queries/post-history.ts": "recordPostTopics — one row shape, written from one place: the moment a reviewer keeps a post (schedulePosts). Writing a draft records nothing, or a discarded one would burn its topic for good."
@@ -88,7 +89,7 @@
     "src/lib/visual/visual-jobs.ts": "claimVisualJob takes a slide position before its picture is made, releaseVisualJob gives it back, and clearStaleVisualJobs drops the claims of invocations that were killed — one file, because a claim nobody releases is a slide stuck looking busy. The only writer by design: a claim written anywhere else would not be seen by the readers that decide what still owes a picture."
   },
   "posting_schedules": {
-    "src/features/clients/actions/client-actions.ts": "createClient seeds it; updateSchedule is the schedule editor.",
+    "src/features/clients/actions/client-actions.ts": "updateSchedule — the schedule editor, reached through updateClient; it updates the existing row and never creates one. The row is created with its client by provisionClient (provision-client.ts).",
     "src/features/clients/lib/provision-client.ts": "provisionClient — the ONE way a client and its mandatory children are created. Its only caller is createClient, the onboarding flow in both modes."
   },
   "post_publications": {
@@ -99,11 +100,14 @@
     "src/lib/generation/draft-posts.ts": "insertDraftPosts — the ONE insert of a generated draft, through draftColumns: the cron's batch as pending_review, the wizard stream's rows as draft the moment they land, a duplicate. Three files spelled this insert out and drifted on priority and scheduled_at.",
     "src/app/api/posts/[id]/publish/route.ts": "Publish-now stamps the slot on a post published straight from the unscheduled tray — scheduled_at plus the status statusForSlot pairs with it — because the cron's backstop window only selects rows that have one. It writes nothing else: the claim, the attempt counter and the outcome are the publication's, in publication-store.ts.",
     "src/features/calendar/actions/post-recovery.ts": "rearmFailedPublication — the user putting a failed destination back in the queue. It writes the post's SLOT (scheduled_at with the status statusForSlot pairs with it) and nothing else; the attempt counter it used to reset belongs to the publication now, in rearmPublication.",
-    "src/app/api/cron/visuals/route.ts": "The visuals lane's own attempt counter and status, which is separate from the publish counter on purpose.",
+    "src/lib/visual/paint-backlog.ts": "The visuals cron's own attempt counter and its stamp (countAttempt), written only when a position failed for a reason of the post's own; separate from the publish counter on purpose.",
     "src/lib/visual/post-color.ts": "claimScheme — a compare-and-swap on visual_ground/visual_accent so two lanes generating one carousel cannot split its colours."
   },
   "sale_documents": {
-    "src/lib/billing/documents.ts": "issueSaleDocument / issueCreditNote insert through the issue_sale_document RPC (migration 20260855), which the scan cannot see — the one gapless-numbered writer; deliverSaleDocument stamps storage_path / delivered_at / delivery_error, which the scan does see."
+    "src/lib/billing/documents.ts": "issueSaleDocument / issueCreditNote insert through the issue_sale_document RPC (migrations 20260855, 20260861), which the scan cannot see — the one gapless-numbered writer; deliverSaleDocument stamps storage_path / delivered_at / delivery_error, which the scan does see."
+  },
+  "document_counters": {
+    "src/lib/billing/documents.ts": "[hand-listed] The number series is advanced only inside the issue_sale_document RPC (migrations 20260855, 20260861), in the same transaction as the document it numbers, which the scan cannot see; issueSaleDocument / issueCreditNote reach it through issue(). Nothing else may take a number: a second writer is a gap or a duplicate in a series the law requires gapless (ППЗДДС чл. 78)."
   },
   "social_connections": {
     "src/features/publishing/lib/refresh-tokens.ts": "Rotates an expiring Instagram token without the user (update by id, never touching account identity). Retiring a dead one is retireConnection in lib/meta/connection-store.ts — this file only calls it.",
@@ -135,5 +139,11 @@
   "fb_page_metrics": {
     "src/features/analytics/lib/facebook/fb-page-metrics-store.ts": "upsertFbPageMetricDays is the one writer of a Page's daily metrics — a separate table from ig_account_metrics by decision (20260846): five shared columns did not justify squeezing Facebook concepts into Instagram-named ones.",
     "src/features/analytics/lib/shared/purge-account-metrics.ts": "Deletes a Page's day rows as part of the Meta data-deletion cascade and the reconnect purge, beside the other analytics tables."
+  },
+  "team_invites": {
+    "src/features/settings/lib/invite-member.ts": "inviteMember creates a pending invite for a login its own probe created, before that login's email goes out, or updates the one already pending for this workspace on a resend. The only place an invite is born: createUserRecord joins a workspace by this row alone, never by the login's own metadata. Deleting a login also removes its rows through the auth.users cascade (migration 20260861), which this check cannot see: an older login it takes back takes a lapsed invite elsewhere with it, and a login it claimed whose email then failed takes its own new row.",
+    "src/lib/auth/create-user-record.ts": "Accepting: stamps accepted_at on the pending invite a login joined by, after its users row exists.",
+    "src/features/settings/actions/team-actions.ts": "removeTeamMember deletes the member's invite rows before their users row, so no pending invite can join the login back.",
+    "src/features/settings/actions/workspace-actions.ts": "deleteWorkspace deletes the workspace's pending invites immediately before the agencies row, returning their logins so it can delete them whether or not that delete succeeds; the agencies delete would cascade the rows (migration 20260861) but not the logins."
   }
 }

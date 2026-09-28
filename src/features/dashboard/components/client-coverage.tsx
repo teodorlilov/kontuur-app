@@ -15,14 +15,29 @@ interface ClientCoverageProps {
   clients: Array<{ id: string; name: string }>
   coverage: Record<string, WeekDay[]>
   clientPendingMap: Record<string, number>
+  /** Why a client cannot be added right now (`addBrandRefusal`), or null — the empty state says it. */
+  addClientRefusal: string | null
+  /** Why no run may start (`GenerateGate.refusal`, src/lib/billing/post-allowance.ts), or null — each row's Generate link is refused with it. */
+  generateRefusal: string | null
 }
 
-/** Each client's week at a glance: published, scheduled, or still open. */
-export function ClientCoverage({ clients, coverage, clientPendingMap }: ClientCoverageProps) {
+/**
+ * Each client's week at a glance: published, scheduled, or still open. The page is clamped during
+ * render, because the list can shrink under it when a client is removed. A row's tier follows the
+ * client's place in the whole roster, so each page still reads lime → sage → dark while a given
+ * client keeps its capsule whichever page it lands on. With no clients, the empty state offers the
+ * first one — or says why the plan will not allow it.
+ */
+export function ClientCoverage({
+  clients,
+  coverage,
+  clientPendingMap,
+  addClientRefusal,
+  generateRefusal,
+}: ClientCoverageProps) {
   const [page, setPage] = useState(0)
 
   const pageCount = Math.max(Math.ceil(clients.length / COVERAGE_ROWS_PER_PAGE), 1)
-  // Clamp during render — the list can shrink under us when a client is removed.
   const currentPage = Math.min(page, pageCount - 1)
   const firstIndex = currentPage * COVERAGE_ROWS_PER_PAGE
   const visible = clients.slice(firstIndex, firstIndex + COVERAGE_ROWS_PER_PAGE)
@@ -39,12 +54,14 @@ export function ClientCoverage({ clients, coverage, clientPendingMap }: ClientCo
       {clients.length === 0 ? (
         <p className="mt-4 rounded-card border border-line bg-surface px-5 py-8 text-center text-body text-text2">
           No clients yet.{' '}
-          <Link
-            href="/clients/new"
-            className="font-medium text-forest underline-offset-2 hover:underline"
-          >
-            Add your first client
-          </Link>
+          {addClientRefusal ?? (
+            <Link
+              href="/clients/new"
+              className="font-medium text-forest underline-offset-2 hover:underline"
+            >
+              Add your first client
+            </Link>
+          )}
         </p>
       ) : (
         <>
@@ -56,9 +73,7 @@ export function ClientCoverage({ clients, coverage, clientPendingMap }: ClientCo
                 name={client.name}
                 week={coverage[client.id] ?? emptyWeek()}
                 pendingCount={clientPendingMap[client.id] ?? 0}
-                // Tier follows the client's place in the whole roster, so each
-                // page still reads lime → sage → dark while a given client
-                // keeps its capsule no matter which page it lands on.
+                generateRefusal={generateRefusal}
                 tier={(firstIndex + index) % TIER_COUNT}
               />
             ))}

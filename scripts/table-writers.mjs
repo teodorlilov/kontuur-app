@@ -21,15 +21,16 @@
  * once reporting twelve writers of a column that has four, and once three.
  *
  * WHAT IT CANNOT SEE. None of these may be treated as covered:
- *   - It counts FILES, not operations. publish-post.ts legitimately writes `posts` from claimPost,
- *     markPublished and markFailed; a fourth duplicate added to that same file is invisible.
- *   - It cannot resolve a computed table name. `purgeAccountAnalytics` deletes from four tables
- *     through a `scoped(table)` helper and the scan finds one of them; the other three are
- *     `[hand-listed]` in the JSON, because a silent skip would have let the registry read as
- *     complete when it was not.
+ *   - It counts FILES, not operations. publication-store.ts legitimately writes `post_publications`
+ *     from seven functions; an eighth that duplicates one of them in that same file is invisible.
+ *   - It cannot resolve a computed table name: a write through `.from(table)`, with the table in a
+ *     variable, is invisible, so such a writer must be `[hand-listed]` in the JSON — a silent skip
+ *     would let the registry read as complete when it is not.
  *   - It never sees writes that do not go through PostgREST: the `posts_stamp_edited_at` trigger
- *     writes `edited_at`, the image-credit RPCs write `image_generation_usage`, and the clients
- *     cascade deletes rows in six tables.
+ *     writes `edited_at`; the `add_ai_usage`, `consume_usage` / `settle_usage` and
+ *     `issue_sale_document` RPCs write `ai_usage_daily`, `usage_counters`, `sale_documents` and
+ *     `document_counters`, each named in that table's entry in the JSON; and the `clients` and
+ *     `agencies` cascades (migrations 20260820, 20260856) delete the rows those two own.
  *   - It says nothing about whether a write is VALIDATED. It would have passed batchSchedulePosts
  *     writing any string into scheduled_at, and updateSource writing an unchecked URL.
  *   - Storage writes (`supabase.storage.from`) are a different API and out of scope.
@@ -96,11 +97,10 @@ for (const file of walk(SRC)) {
 }
 
 /**
- * A writer the scan cannot see, carrying its reason like any other entry.
- *
- * Only `purgeAccountAnalytics` needs this today: it deletes from four tables through a `scoped(table)`
- * helper, so `.from(table)` never names one and three of the four would go unlisted. Silently
- * skipping the file would have been the worse failure — the registry would have read as complete.
+ * A writer the scan cannot see — a write inside an RPC, or through a computed table name — carrying
+ * its reason like any other entry. A reason that starts with this marker is exempt from the stale
+ * check, never from the missing-file check. Silently skipping such a writer would be the worse
+ * failure: the registry would read as complete.
  */
 const HAND_LISTED = '[hand-listed]'
 

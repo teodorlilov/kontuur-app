@@ -45,6 +45,7 @@ function tavilyResponse(results: ReturnType<typeof tavilyResult>[]) {
   })
 }
 
+/** Defaults: query generation returns two queries, and re-ranking keeps every candidate in order. */
 beforeEach(() => {
   mockCallAnthropic.mockReset()
   mockParseJsonResponse.mockReset()
@@ -53,7 +54,6 @@ beforeEach(() => {
   mockFetch.mockReset()
   process.env.TAVILY_API_URL_KEY = 'test-key'
 
-  // Defaults: query gen returns 2 queries; re-rank keeps everything as-is
   mockCallAnthropic.mockResolvedValue({})
   mockParseJsonResponse.mockReturnValue(['health blog', 'health news'])
   mockValidateSourceUrl.mockResolvedValue(true)
@@ -62,12 +62,25 @@ beforeEach(() => {
   )
 })
 
+describe('suggestSources — the queries it pays for', () => {
+  it('searches at most four of the model’s queries, dropping any that are not strings', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    mockFetch.mockImplementation(() => tavilyResponse([]))
+    mockParseJsonResponse
+      .mockReturnValueOnce(['q1', 7, 'q2', ' ', 'q3', 'q4', 'q5', 'q6'])
+      .mockReturnValue([])
+
+    await suggestSources({ niche: 'health' })
+    const searched = mockFetch.mock.calls.map(([, init]) => JSON.parse(init.body).query)
+    expect(searched).toEqual(['q1', 'q2', 'q3', 'q4'])
+  })
+})
+
 describe('suggestSources', () => {
-  it('returns feeds for domains discovered via Tavily', async () => {
+  it('returns feeds for domains discovered via Tavily, unranked when the re-rank reply is empty', async () => {
     mockFetch.mockImplementation(() =>
       tavilyResponse([tavilyResult('site-a.com', 0.9), tavilyResult('site-b.com', 0.8)])
     )
-    // Re-rank pass-through: parse fails → unranked order
     mockParseJsonResponse.mockReturnValueOnce(['q1', 'q2']).mockReturnValue([])
 
     const results = await suggestSources({ niche: 'health' })
@@ -132,17 +145,28 @@ describe('suggestSources', () => {
         tavilyResult('third.com', 0.7),
       ])
     )
-    mockParseJsonResponse
-      .mockReturnValueOnce(['q1']) // query gen
-      .mockReturnValueOnce([
-        { index: 3, keep: true, reason: 'Best match for the clinic.' },
-        { index: 1, keep: true, reason: 'Solid industry news.' },
-        { index: 2, keep: false },
-      ])
+    mockParseJsonResponse.mockReturnValueOnce(['q1']).mockReturnValueOnce([
+      { index: 3, keep: true, reason: 'Best match for the clinic.' },
+      { index: 1, keep: true, reason: 'Solid industry news.' },
+      { index: 2, keep: false },
+    ])
 
     const results = await suggestSources({ niche: 'health' })
     expect(results.map((r) => r.url)).toEqual(['https://third.com/feed', 'https://first.com/feed'])
     expect(results[0]!.reason).toBe('Best match for the clinic.')
+  })
+
+  it('drops a ranking entry that is not the expected shape, so a string "false" keeps nothing', async () => {
+    mockFetch.mockImplementation(() =>
+      tavilyResponse([tavilyResult('first.com', 0.9), tavilyResult('second.com', 0.8)])
+    )
+    mockParseJsonResponse.mockReturnValueOnce(['q1']).mockReturnValueOnce([
+      { index: 1, keep: true, reason: 'Solid industry news.' },
+      { index: 2, keep: 'false' },
+    ])
+
+    const results = await suggestSources({ niche: 'health' })
+    expect(results.map((r) => r.url)).toEqual(['https://first.com/feed'])
   })
 
   it('falls back to unranked order when the re-rank call throws', async () => {
@@ -150,22 +174,34 @@ describe('suggestSources', () => {
       tavilyResponse([tavilyResult('a.com', 0.9), tavilyResult('b.com', 0.8)])
     )
     mockParseJsonResponse.mockReturnValueOnce(['q1'])
-    // Query-gen call resolves; re-rank call rejects
     mockCallAnthropic.mockResolvedValueOnce({}).mockRejectedValueOnce(new Error('model down'))
 
     const results = await suggestSources({ niche: 'health' })
     expect(results.map((r) => r.url)).toEqual(['https://a.com/feed', 'https://b.com/feed'])
   })
 
-  it('uses fallback queries when query generation fails', async () => {
+  it('searches the two fallback queries when query generation fails', async () => {
     mockCallAnthropic.mockRejectedValueOnce(new Error('model down')).mockResolvedValue({})
     mockParseJsonResponse.mockReturnValue([])
     mockFetch.mockImplementation(() => tavilyResponse([tavilyResult('a.com', 0.9)]))
 
     const results = await suggestSources({ niche: 'health' })
-    // 2 fallback query searches ran against Tavily
     expect(mockFetch).toHaveBeenCalledTimes(2)
     expect(results.map((r) => r.url)).toEqual(['https://a.com/feed'])
+  })
+
+  it('says so when the model answers with no usable query, and uses the fallback queries', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+    mockCallAnthropic.mockResolvedValue({})
+    mockParseJsonResponse.mockReturnValueOnce(['  ', 42]).mockReturnValue([])
+    mockFetch.mockImplementation(() => tavilyResponse([tavilyResult('a.com', 0.9)]))
+
+    await suggestSources({ niche: 'health' })
+    expect(mockFetch).toHaveBeenCalledTimes(2)
+    expect(warn).toHaveBeenCalledWith(
+      '[suggest-sources] the model returned no usable queries; using the fallback queries'
+    )
+    warn.mockRestore()
   })
 
   it('returns empty when Tavily key is missing', async () => {

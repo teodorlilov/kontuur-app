@@ -26,11 +26,7 @@ const PERIOD: AnalyticsPeriod = {
 beforeEach(() => vi.clearAllMocks())
 
 describe('AutoFill', () => {
-  /**
-   * The fill fires on a (window, unfilled-count) key: the same pair must not re-spend the budget
-   * on a re-render, while a dropped count is progress and fires the next link of the chain.
-   */
-  it('fires the fill once for a window and refreshes when data landed', async () => {
+  it('fires the fill once per window and unfilled count, refreshes when data landed, and fires again once the count drops', async () => {
     fillPeriodData.mockResolvedValue({ ok: true, data: { filled: true } })
     const { rerender } = render(<AutoFill clientId="c1" period={PERIOD} unfilledDays={12} />)
 

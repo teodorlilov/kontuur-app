@@ -62,6 +62,6 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     }
     return NextResponse.json({ image: result.image })
   } catch (err) {
-    return spendFailureResponse(err, 'visuals', 'Visual generation failed', 502)
+    return spendFailureResponse(err, 'visuals', 'Visual generation failed')
   }
 }

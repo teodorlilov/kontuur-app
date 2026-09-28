@@ -6,10 +6,15 @@ import { Icon } from '@/components/ui/icon'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { validateEmail } from '@/lib/validation'
+import { readErrorMessage } from '@/utils/read-error-message'
 import { useAuthDialog } from './auth-dialog-provider'
 import { AuthFormError, AuthLink, AuthPanel, FIELD_SURFACE } from './auth-panel'
 import { useAuthForm } from './use-auth-form'
 
+/**
+ * The password-reset request form. The route answers 200 whether or not the address has an
+ * account, so a success opens the one view that promises nothing it would have to take back.
+ */
 export function ResetView() {
   const { open } = useAuthDialog()
   const [email, setEmail] = useState('')
@@ -40,13 +45,10 @@ export function ResetView() {
     })
 
     if (!response.ok) {
-      const body = (await response.json().catch(() => ({}))) as { error?: string }
-      rejectWith(body.error ?? 'Something went wrong. Please try again.')
+      rejectWith((await readErrorMessage(response)) ?? 'Something went wrong. Please try again.')
       return
     }
 
-    // The route answers 200 whether or not that address has an account, so this
-    // view can promise nothing it would have to take back.
     open('sent')
   }
 
