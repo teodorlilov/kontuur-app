@@ -42,7 +42,6 @@ export type Database = {
       agencies: {
         Row: {
           agency_logo: string | null
-          billing_updated_at: string | null
           cancel_at_period_end: boolean
           created_at: string | null
           current_period_end: string | null
@@ -62,7 +61,6 @@ export type Database = {
         }
         Insert: {
           agency_logo?: string | null
-          billing_updated_at?: string | null
           cancel_at_period_end?: boolean
           created_at?: string | null
           current_period_end?: string | null
@@ -82,7 +80,6 @@ export type Database = {
         }
         Update: {
           agency_logo?: string | null
-          billing_updated_at?: string | null
           cancel_at_period_end?: boolean
           created_at?: string | null
           current_period_end?: string | null
@@ -1710,7 +1707,7 @@ export type Database = {
           stripe_credit_note_id: string | null
           stripe_invoice_id: string | null
           stripe_refund_id: string | null
-          tax_event_at: string | null
+          tax_event_at: string
           vat_basis: string
           vat_cents: number
           vat_rate: number
@@ -1734,7 +1731,7 @@ export type Database = {
           stripe_credit_note_id?: string | null
           stripe_invoice_id?: string | null
           stripe_refund_id?: string | null
-          tax_event_at?: string | null
+          tax_event_at: string
           vat_basis: string
           vat_cents: number
           vat_rate: number
@@ -1758,7 +1755,7 @@ export type Database = {
           stripe_credit_note_id?: string | null
           stripe_invoice_id?: string | null
           stripe_refund_id?: string | null
-          tax_event_at?: string | null
+          tax_event_at?: string
           vat_basis?: string
           vat_cents?: number
           vat_rate?: number
@@ -2023,7 +2020,7 @@ export type Database = {
           stripe_credit_note_id: string | null
           stripe_invoice_id: string | null
           stripe_refund_id: string | null
-          tax_event_at: string | null
+          tax_event_at: string
           vat_basis: string
           vat_cents: number
           vat_rate: number
