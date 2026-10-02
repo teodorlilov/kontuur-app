@@ -186,6 +186,7 @@ function renderFlow(over: Partial<Parameters<typeof GenerateFlow>[0]> = {}) {
       timeZone="Europe/Sofia"
       allowance={{ limits: UNLIMITED, committed: NOTHING_USED, owed: NONE_OWED }}
       gate={{ refusal: null, wayOut: true }}
+      addClient={{ refusal: null, wayOut: true }}
       initialClients={CLIENTS}
       initialClientData={null}
       initialTargetPostCount={3}
@@ -369,5 +370,26 @@ describe('GenerateFlow — the allowance', () => {
     expect(await screen.findByRole('button', { name: 'One post more' })).toBeDisabled()
     expect(screen.getByRole('button', { name: 'One post fewer' })).toBeEnabled()
     vi.unstubAllGlobals()
+  })
+})
+
+describe('no clients yet', () => {
+  it('refuses Add your first client in place, with the reason and the way past it', () => {
+    renderFlow({
+      initialClients: [],
+      addClient: { refusal: 'Choose a plan to add clients.', wayOut: true },
+    })
+    expect(screen.getByRole('button', { name: 'Add your first client' })).toBeDisabled()
+    expect(screen.getByText(/Choose a plan to add clients\./)).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Plan & billing' })).toBeInTheDocument()
+  })
+
+  it('refuses a member without sending them to Plan & billing', () => {
+    renderFlow({
+      initialClients: [],
+      addClient: { refusal: 'Only admins can add or delete clients.', wayOut: false },
+    })
+    expect(screen.getByRole('button', { name: 'Add your first client' })).toBeDisabled()
+    expect(screen.queryByRole('link', { name: 'Plan & billing' })).not.toBeInTheDocument()
   })
 })

@@ -13,7 +13,6 @@ import type { Icon as Glyph } from '@solar-icons/react/lib/types'
 import { Icon } from '@/components/ui/icon'
 import { cn } from '@/utils/cn'
 import { getNavItems } from '@/components/layout/nav-items'
-import type { AddBrandGate } from '@/lib/billing/copy'
 
 interface PaletteEntry {
   id: string
@@ -33,8 +32,8 @@ interface CommandPaletteProps {
   onOpenChange: (open: boolean) => void
   agencyMode: 'agency' | 'solo'
   clients: Array<{ id: string; name: string }>
-  /** What "Add client" says: its refusal, or what a client costs (`addBrandGate`, src/lib/billing/copy.ts). */
-  addClient: AddBrandGate
+  /** Why "Add client" is refused, or null (`addBrandRefusal`, src/lib/billing/copy.ts). */
+  addClientRefusal: string | null
 }
 
 /**
@@ -46,7 +45,7 @@ export function CommandPalette({
   onOpenChange,
   agencyMode,
   clients,
-  addClient,
+  addClientRefusal,
 }: CommandPaletteProps) {
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
@@ -56,7 +55,7 @@ export function CommandPalette({
           onOpenChange={onOpenChange}
           agencyMode={agencyMode}
           clients={clients}
-          addClient={addClient}
+          addClientRefusal={addClientRefusal}
         />
       </Dialog.Portal>
     </Dialog.Root>
@@ -67,7 +66,7 @@ export function CommandPalette({
  * The searchable list. A solo workspace is one business, so it gets neither the per-client
  * "Client settings" rows (its "My business" nav row is that one screen) nor "Add client". An
  * "Add client" the plan refuses stays listed, disabled, with the reason as its hint — found but
- * never followed, on a click or on Enter — and a paid workspace's hint says what it costs.
+ * never followed, on a click or on Enter — a paid workspace at its client slots included.
  * "Generate posts" stays a plain link, like the sidebar's row: `/generate` is where waiting
  * drafts live (docs/plans/BILLING.md step 14), and gating it would need a usage read in the
  * layout, which renders on every page. The highlight is clamped during render rather than synced
@@ -77,7 +76,7 @@ function PaletteBody({
   onOpenChange,
   agencyMode,
   clients,
-  addClient,
+  addClientRefusal,
 }: Omit<CommandPaletteProps, 'open'>) {
   const router = useRouter()
   const [query, setQuery] = useState('')
@@ -113,10 +112,10 @@ function PaletteBody({
       !isSolo && {
         id: 'action:add-client',
         label: 'Add client',
-        hint: addClient.refusal ?? addClient.note ?? 'Action',
+        hint: addClientRefusal ?? 'Action',
         href: '/clients/new',
         icon: UserPlusRoundedIcon,
-        refusal: addClient.refusal,
+        refusal: addClientRefusal,
       },
     ]
     return [
@@ -124,7 +123,7 @@ function PaletteBody({
       ...clientEntries,
       ...actions.filter((action): action is PaletteEntry => action !== false),
     ]
-  }, [agencyMode, clients, addClient])
+  }, [agencyMode, clients, addClientRefusal])
 
   const results = useMemo(() => {
     const term = query.trim().toLowerCase()

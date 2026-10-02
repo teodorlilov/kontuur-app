@@ -114,9 +114,8 @@ indexes as (
     )
 ),
 
--- Functions and triggers. `client_edit_stats`, `consume_image_credits`,
--- `refund_image_credits` and `swap_rendered_post_images` are RPCs the app calls by name, so
--- a baseline without them rebuilds a database the app cannot run against.
+-- Functions and triggers. The app calls RPCs by name (every `.rpc('…')` in src/), so a
+-- baseline without them rebuilds a database the app cannot run against.
 routines as (
   select 5 as section, p.proname as sort_key,
     pg_get_functiondef(p.oid) || ';' as ddl

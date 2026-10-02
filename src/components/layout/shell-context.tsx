@@ -15,7 +15,6 @@ import { toast } from '@/components/ui/toast'
 import { formatClientName } from '@/utils/format'
 import { NOTIFICATION_COLUMNS } from '@/lib/queries/select-columns'
 import type { EnrichedNotification } from '@/types/api'
-import type { AddBrandGate } from '@/lib/billing/copy'
 
 /**
  * Split out of this bundle rather than imported at the top of the file. The
@@ -224,8 +223,8 @@ interface ShellProviderProps {
   todayLabel: string
   timezone: string
   clients: Array<{ id: string; name: string }>
-  /** What the palette's "Add client" says (`addBrandGate`, src/lib/billing/copy.ts). */
-  addClient: AddBrandGate
+  /** Why the palette's "Add client" is refused, or null (`addBrandRefusal`, src/lib/billing/copy.ts). */
+  addClientRefusal: string | null
   children: ReactNode
 }
 
@@ -243,7 +242,7 @@ export function ShellProvider({
   todayLabel,
   timezone,
   clients,
-  addClient,
+  addClientRefusal,
   children,
 }: ShellProviderProps) {
   const [paletteOpen, setPaletteOpen] = useState(false)
@@ -292,7 +291,7 @@ export function ShellProvider({
           onOpenChange={setPaletteOpen}
           agencyMode={agencyMode}
           clients={clients}
-          addClient={addClient}
+          addClientRefusal={addClientRefusal}
         />
       )}
     </ShellContext.Provider>

@@ -35,7 +35,7 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
   if (!site.ok) return site.response
 
   try {
-    const analysis = await runAsSpender({ agencyId, clientId: id, flow: 'onboarding' }, () =>
+    const analysis = await runAsSpender({ agencyId, flow: 'onboarding' }, () =>
       analyzeBrand({ websiteUrl: site.websiteUrl })
     )
     if (!analysis) {

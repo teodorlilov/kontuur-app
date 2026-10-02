@@ -285,13 +285,6 @@ describe('POST /api/ai/generate-stream — every draft is a row before it is an 
     const response = await POST(request())
     expect(response.status).toBe(402)
     const body = await response.json()
-    expect(body).toMatchObject({
-      code: 'allowance',
-      kind: 'image',
-      used: 98,
-      quota: 100,
-      needed: 2,
-    })
     expect(body.error).toMatch(
       /^1 post still waiting for pictures needs 1 AI image; you have 2 left/
     )

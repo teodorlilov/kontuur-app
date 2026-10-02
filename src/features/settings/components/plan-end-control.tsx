@@ -5,13 +5,13 @@ import { Button } from '@/components/ui/button'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { toast } from '@/components/ui/toast'
 import { setPlanEndingAction } from '@/features/settings/actions/billing-actions'
+import { PLAN_END, planEndingChanged } from '@/lib/billing/copy'
 
 interface PlanEndControlProps {
   /** Whether the plan is already set to end — decides which of the two buttons this is. */
   ending: boolean
   /** What cancelling means, worded by copy.ts (`cancelPlanConsequence`); shown before confirming. */
   consequence: string
-  className?: string
 }
 
 /**
@@ -24,7 +24,7 @@ interface PlanEndControlProps {
  * panel and the danger zone show the new state with it. Rendered by the plan panel alone: the
  * danger zone's refusal names it rather than repeating it.
  */
-export function PlanEndControl({ ending, consequence, className }: PlanEndControlProps) {
+export function PlanEndControl({ ending, consequence }: PlanEndControlProps) {
   const [confirming, setConfirming] = useState(false)
   const [busy, setBusy] = useState(false)
 
@@ -37,44 +37,27 @@ export function PlanEndControl({ ending, consequence, className }: PlanEndContro
       return
     }
     setConfirming(false)
-    toast.success(
-      result.data.endedNow
-        ? 'Your plan has ended.'
-        : nextEnding
-          ? 'Your plan is set to end.'
-          : 'Your plan continues.'
-    )
+    toast.success(planEndingChanged(result.data.endedNow, nextEnding))
   }
 
   if (ending) {
     return (
-      <Button
-        variant="secondary"
-        size="sm"
-        className={className}
-        loading={busy}
-        onClick={() => void submit(false)}
-      >
-        Keep plan
+      <Button variant="secondary" size="sm" loading={busy} onClick={() => void submit(false)}>
+        {PLAN_END.keep}
       </Button>
     )
   }
 
   return (
     <>
-      <Button
-        variant="secondary"
-        size="sm"
-        className={className}
-        onClick={() => setConfirming(true)}
-      >
-        Cancel plan
+      <Button variant="secondary" size="sm" onClick={() => setConfirming(true)}>
+        {PLAN_END.cancel}
       </Button>
       <ConfirmDialog
         open={confirming}
-        title="Cancel your plan"
-        confirmLabel="Cancel plan"
-        cancelLabel="Keep it"
+        title={PLAN_END.confirmTitle}
+        confirmLabel={PLAN_END.cancel}
+        cancelLabel={PLAN_END.stay}
         loading={busy}
         onConfirm={() => void submit(true)}
         onClose={() => setConfirming(false)}

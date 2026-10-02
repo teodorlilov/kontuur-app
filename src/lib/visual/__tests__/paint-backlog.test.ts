@@ -244,7 +244,7 @@ describe('ringImagesWaiting', () => {
     mocks.notify.mockReset().mockResolvedValue('written')
   })
 
-  it('rings once per period, with the count in the message and never in the key', async () => {
+  it('rings once per period and pool size, with the count in the message and never in the key', async () => {
     const { admin } = postsTable([])
     const waiting = (posts: number) =>
       new Map([['a1', { posts, entitlement: ENTITLED.get('c1')!.entitlement }]])
@@ -254,14 +254,14 @@ describe('ringImagesWaiting', () => {
       agencyId: 'a1',
       type: 'allowance_reached',
       message: expect.stringMatching(/^3 posts in your review queue are waiting for pictures/),
-      dedupKey: 'images_waiting:2026-09-01',
+      dedupKey: 'images_waiting:2026-09-01:10',
     })
 
     mocks.notify.mockResolvedValue('suppressed')
     await ringImagesWaiting(admin, waiting(5))
     expect(mocks.notify).toHaveBeenLastCalledWith(
       admin,
-      expect.objectContaining({ dedupKey: 'images_waiting:2026-09-01' })
+      expect.objectContaining({ dedupKey: 'images_waiting:2026-09-01:10' })
     )
   })
 })

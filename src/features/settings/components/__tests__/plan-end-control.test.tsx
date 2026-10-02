@@ -18,7 +18,7 @@ vi.mock('@/components/ui/toast', () => ({ toast: mocks.toast }))
 
 import { PlanEndControl } from '../plan-end-control'
 
-const CONSEQUENCE = 'Your plan ends on 1 October and nothing more is charged.'
+const CONSEQUENCE = 'Your plan ends on 1 October.'
 
 describe('PlanEndControl', () => {
   beforeEach(() => {

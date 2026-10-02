@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { AgencyBillingColumns } from '@/lib/queries/select-columns'
-import { entitlementFor, noEntitlement } from '../entitlement'
+import { brandCap, entitlementFor, noEntitlement } from '../entitlement'
 import { GRACE_DAYS, PRO_PLAN, TRIAL_ALLOWANCE, TRIAL_BRANDS } from '../plans'
 import { paidRow, trialRow } from './fixtures'
 
@@ -12,13 +12,13 @@ function daysFromNow(days: number): string {
 
 const row = (overrides: Partial<AgencyBillingColumns> = {}) => trialRow(NOW, overrides)
 const paid = (overrides: Partial<AgencyBillingColumns> = {}) =>
-  paidRow(NOW, { subscription_quantity: 5, ...overrides })
+  paidRow(NOW, { subscription_quantity: 5, client_slots: 5, ...overrides })
 
 describe('entitlementFor — the trial', () => {
   it('a live trial in agency mode may spend, publish and create up to three brands', () => {
     const e = entitlementFor(row(), NOW)
     expect(e.state).toBe('trial')
-    expect([e.canSpend, e.canPublish, e.canCreate]).toEqual([true, true, true])
+    expect([e.canSpend, e.canPublish]).toEqual([true, true])
     expect(e.brands).toBe(TRIAL_BRANDS.agency)
     expect(e.limits).toEqual(TRIAL_ALLOWANCE)
     expect(e.periodKey).toBe('trial')
@@ -39,7 +39,7 @@ describe('entitlementFor — the trial', () => {
   it('an ended trial inside the grace publishes but spends nothing, until the grace ends', () => {
     const e = entitlementFor(row({ trial_ends_at: daysFromNow(-2) }), NOW)
     expect(e.state).toBe('trial_grace')
-    expect([e.canSpend, e.canPublish, e.canCreate]).toEqual([false, true, false])
+    expect([e.canSpend, e.canPublish]).toEqual([false, true])
     expect(e.limits).toEqual({ draft: 0, image: 0, rewrite: 0 })
     expect(e.graceEndsAt?.toISOString()).toBe(daysFromNow(GRACE_DAYS - 2))
   })
@@ -47,7 +47,7 @@ describe('entitlementFor — the trial', () => {
   it('an ended trial past the grace is locked, and remembers when the grace ran out', () => {
     const e = entitlementFor(row({ trial_ends_at: daysFromNow(-(GRACE_DAYS + 1)) }), NOW)
     expect(e.state).toBe('locked')
-    expect([e.canSpend, e.canPublish, e.canCreate]).toEqual([false, false, false])
+    expect([e.canSpend, e.canPublish]).toEqual([false, false])
     expect(e.graceEndsAt?.toISOString()).toBe(daysFromNow(-1))
   })
 
@@ -68,28 +68,39 @@ describe('entitlementFor — the trial', () => {
 })
 
 describe('entitlementFor — paid', () => {
-  it('an active plan scales the allowance by the paid quantity and buckets by period start', () => {
+  it('an active plan scales the allowance by the slots paid for and buckets by period start', () => {
     const e = entitlementFor(paid(), NOW)
     expect(e.state).toBe('active')
     expect(e.plan).toBe('pro')
     expect(e.brands).toBe(5)
-    expect(e.brandsUnlimited).toBe(true)
+    expect(e.brandsPaid).toBe(5)
+    expect(brandCap(e)).toBe(5)
     expect(e.limits.draft).toBe(PRO_PLAN.perBrand.draft * 5)
     expect(e.periodKey).toBe('2026-09-01')
     expect(e.resetsOn?.toISOString()).toBe('2026-10-01T00:00:00.000Z')
     expect(e.endsOn).toBeNull()
   })
 
-  it('a quantity below one, or none recorded, counts as one brand', () => {
-    expect(entitlementFor(paid({ subscription_quantity: 0 }), NOW).brands).toBe(1)
-    expect(entitlementFor(paid({ subscription_quantity: null }), NOW).brands).toBe(1)
+  it('a paid count below one, or none recorded, pays for one slot', () => {
+    expect(entitlementFor(paid({ subscription_quantity: 0 }), NOW).brandsPaid).toBe(1)
+    expect(entitlementFor(paid({ subscription_quantity: null }), NOW).brandsPaid).toBe(1)
   })
 
-  it('the paid quantity is the brand count, with no ceiling', () => {
-    const e = entitlementFor(paid({ subscription_quantity: 4 }), NOW)
-    expect(e.brands).toBe(4)
-    expect(e.brandsUnlimited).toBe(true)
+  it('the client slots cap the clients; the allowance stays at what the period paid for', () => {
+    const e = entitlementFor(paid({ subscription_quantity: 4, client_slots: 2 }), NOW)
+    expect(brandCap(e)).toBe(2)
+    expect(e.brandsPaid).toBe(4)
     expect(e.limits.image).toBe(PRO_PLAN.perBrand.image * 4)
+  })
+
+  it('a row no snapshot has written since the column arrived is capped at its paid count', () => {
+    expect(entitlementFor(paid({ subscription_quantity: 3, client_slots: null }), NOW).brands).toBe(
+      3
+    )
+  })
+
+  it('a slot count of 0, set by hand in Stripe, caps the clients at 0', () => {
+    expect(brandCap(entitlementFor(paid({ client_slots: 0 }), NOW))).toBe(0)
   })
 
   it('a failed renewal keeps full access for the grace, counted from past_due_since', () => {
@@ -134,8 +145,8 @@ describe('entitlementFor — paid', () => {
   it("a 'house' workspace is always active, uncapped and unmetered, with no Stripe row", () => {
     const e = entitlementFor(row({ plan: 'house', trial_ends_at: daysFromNow(-90) }), NOW)
     expect(e.state).toBe('active')
-    expect([e.canSpend, e.canPublish, e.canCreate]).toEqual([true, true, true])
-    expect(e.brandsUnlimited).toBe(true)
+    expect([e.canSpend, e.canPublish]).toEqual([true, true])
+    expect(brandCap(e)).toBeNull()
     expect(e.limits.draft).toBeGreaterThan(1_000_000)
     expect(e.periodKey).toBe('2026-09')
     expect(e.resetsOn).toBeNull()

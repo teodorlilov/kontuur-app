@@ -143,7 +143,6 @@ export default async function ClientsPage({ searchParams }: ClientsPageProps) {
               href="/clients/new"
               label="Add client"
               refusal={addClient.refusal}
-              note={addClient.note}
               refusalId="add-client-refusal"
               wayOut={addClient.wayOut}
             />

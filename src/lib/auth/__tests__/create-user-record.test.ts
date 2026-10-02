@@ -29,10 +29,7 @@ interface Invite {
  * when it passes every `eq` and `is` filter the function applies, and the agency insert a fixed id.
  * WHY as: only the chains the function builds exist.
  */
-function recordingAdmin(
-  existing: { agency_id: string } | null = null,
-  invite: Invite | null = null
-) {
+function recordingAdmin(existing: { id: string } | null = null, invite: Invite | null = null) {
   const writes: Write[] = []
   const tables: string[] = []
   const admin = {
@@ -88,7 +85,7 @@ describe('createUserRecord', () => {
       user_metadata: { businessName: 'Acme', mode: 'solo' },
     })
 
-    expect(result).toEqual({ agencyId: 'agency-1', isInvited: false })
+    expect(result).toEqual({ isInvited: false })
     expect(recorder.writes).toEqual([
       { table: 'agencies', row: { name: 'Acme', mode: 'solo', trial_ends_at: TRIAL_END } },
       {
@@ -115,13 +112,13 @@ describe('createUserRecord', () => {
   })
 
   it('writes nothing for a user who already has a row', async () => {
-    const recorder = recordingAdmin({ agency_id: 'agency-existing' })
+    const recorder = recordingAdmin({ id: USER.id })
     const result = await createUserRecord(recorder.admin, {
       ...USER,
       user_metadata: { businessName: 'Acme', mode: 'solo' },
     })
 
-    expect(result).toEqual({ agencyId: 'agency-existing', isInvited: false })
+    expect(result).toEqual({ isInvited: false })
     expect(recorder.writes).toEqual([])
   })
 
@@ -138,7 +135,7 @@ describe('createUserRecord', () => {
       user_metadata: { agency_name: 'Host' },
     })
 
-    expect(result).toEqual({ agencyId: 'agency-host', isInvited: true })
+    expect(result).toEqual({ isInvited: true })
     expect(recorder.writes).toEqual([
       {
         table: 'users',
@@ -160,7 +157,7 @@ describe('createUserRecord', () => {
       },
     })
 
-    expect(result).toEqual({ agencyId: 'agency-1', isInvited: false })
+    expect(result).toEqual({ isInvited: false })
     expect(recorder.writes.map((write) => write.row.agency_id ?? write.row.name)).toEqual([
       'Forger',
       'agency-1',

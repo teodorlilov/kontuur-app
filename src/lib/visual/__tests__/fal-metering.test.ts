@@ -37,7 +37,7 @@ const IMAGE = { data: { images: [{ url: 'https://fal.example/one.jpg' }] } }
 const CUTOUT = { data: { image: { url: 'https://fal.example/cutout.png' } } }
 
 function spender(): Spender {
-  return { agencyId: 'a1', clientId: 'c1', flow: 'editor', reserved: {} }
+  return { agencyId: 'a1', flow: 'editor', reserved: {} }
 }
 
 describe('subscribeFal — the one place images are metered', () => {
@@ -55,7 +55,7 @@ describe('subscribeFal — the one place images are metered', () => {
     expect(url).toBe('https://fal.example/one.jpg')
     expect(mocks.order).toEqual(['reserve', 'subscribe'])
     expect(mocks.reserveUsage).toHaveBeenCalledWith(who, 'image', 1)
-    expect(mocks.recordAiUsage).toHaveBeenCalledWith({
+    expect(mocks.recordAiUsage).toHaveBeenCalledWith(expect.objectContaining({ agencyId: 'a1' }), {
       provider: 'fal',
       model: 'fal-ai/gpt-image-2',
     })
@@ -85,13 +85,13 @@ describe('subscribeFal — the one place images are metered', () => {
   it('the cutout model is free: no reservation, telemetry only', async () => {
     mocks.subscribe.mockResolvedValue(CUTOUT)
 
-    const who: Spender = { agencyId: 'a1', clientId: 'c1', flow: 'editor' }
+    const who: Spender = { agencyId: 'a1', flow: 'editor' }
     const url = await runAsSpender(who, () =>
       removeImageBackground('https://storage.example/in.png')
     )
     expect(url).toBe('https://fal.example/cutout.png')
     expect(mocks.reserveUsage).not.toHaveBeenCalled()
-    expect(mocks.recordAiUsage).toHaveBeenCalledWith({
+    expect(mocks.recordAiUsage).toHaveBeenCalledWith(who, {
       provider: 'fal',
       model: 'fal-ai/birefnet/v2',
     })

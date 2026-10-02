@@ -65,29 +65,33 @@ interface OpenRun {
 }
 
 /**
- * The one bell for a pool a scheduled run cannot be paid from: once per workspace, period and pool
- * (`allowance_reached:<period>:<kind>`), however many clients and ticks find it empty — the pool is
- * the workspace's, and the first client it stopped is the one named. The sentence is the caller's,
- * because the two who raise it know different things — the budget knows which pool ran out, the
- * reservation race is handed the refusal itself — and both come from `allowanceUsedUp`, so a
- * workspace stopped by its pictures is never told it is out of drafts.
+ * The one bell for a pool a scheduled run cannot be paid from: once per workspace, period, pool and
+ * pool size (`allowance_reached:<period>:<kind>:<quota>`), however many clients and ticks find it
+ * empty — the pool is the workspace's, and the first client it stopped is the one named. The size
+ * is in the key because a charged slot raise grows the pool mid-period (`setClientSlots`,
+ * src/lib/billing/client-slots.ts) and nothing shrinks it (`paidQuantity`,
+ * src/lib/billing/subscription-store.ts), so each bigger pool rings once. The sentence is the
+ * caller's, because the two who raise it know different things — the budget knows which pool ran
+ * out, the reservation race is handed the refusal itself — and both come from `allowanceUsedUp`,
+ * so a workspace stopped by its pictures is never told it is out of drafts.
  */
 async function notifyAllowanceExhausted(
   supabase: AdminClient,
   input: {
     agencyId: string
     clientId: string
-    periodKey: string
+    entitlement: Pick<Entitlement, 'periodKey' | 'limits'>
     kind: AllowanceKind
     message: string
   }
 ): Promise<void> {
+  const { entitlement, kind } = input
   await notify(supabase, {
     agencyId: input.agencyId,
     clientId: input.clientId,
     type: 'allowance_reached',
     message: input.message,
-    dedupKey: `allowance_reached:${input.periodKey}:${input.kind}`,
+    dedupKey: `allowance_reached:${entitlement.periodKey}:${kind}:${entitlement.limits[kind]}`,
   })
 }
 
@@ -108,7 +112,8 @@ function batchFormat(brandProfile: ScheduledRunInput['brandProfile']): BatchForm
 /**
  * How many posts the batch may be: the schedule's ask, trimmed to the workspace's budget for the
  * tick (`AgencyBudgets`, src/lib/generation/scheduled-budget.ts). When not one post fits, the
- * workspace gets the period's one bell, worded on what that post lacks (`ScheduledBatch.short`).
+ * workspace gets the empty pool's one bell (`notifyAllowanceExhausted`), worded on what that post
+ * lacks (`ScheduledBatch.short`).
  */
 async function sizeBatch(
   supabase: AdminClient,
@@ -123,7 +128,7 @@ async function sizeBatch(
   await notifyAllowanceExhausted(supabase, {
     agencyId: client.agency_id,
     clientId: client.id,
-    periodKey: entitlement.periodKey,
+    entitlement,
     kind,
     message: allowanceUsedUp(
       kind,
@@ -161,7 +166,7 @@ async function claimSlot(
     await notifyAllowanceExhausted(supabase, {
       agencyId: client.agency_id,
       clientId: client.id,
-      periodKey: entitlement.periodKey,
+      entitlement,
       kind: claim.refused.kind,
       message: claim.refused.message,
     })
@@ -216,7 +221,7 @@ async function announceBatch(
       message: `${posts} post${posts === 1 ? '' : 's'} ready to review for ${name}`,
       cooldownDays: NOTIFY_EVERY_TIME,
     })
-    await runAsSpender({ agencyId, clientId, flow: 'style_memo' }, () =>
+    await runAsSpender({ agencyId, flow: 'style_memo' }, () =>
       distillStyleMemo(supabase, clientId, {
         language: client.language,
         languageNotes: client.languageNotes,
@@ -245,7 +250,7 @@ export async function runScheduledBatch(
 ): Promise<ScheduledOutcome> {
   const { id: clientId, agency_id: agencyId } = input.client
   const format = batchFormat(input.brandProfile)
-  const spender = { agencyId, clientId, flow: 'generation' as const }
+  const spender = { agencyId, flow: 'generation' as const }
   let run: OpenRun | null = null
 
   try {

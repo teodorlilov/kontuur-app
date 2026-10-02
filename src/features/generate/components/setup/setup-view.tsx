@@ -15,7 +15,8 @@ import { DEFAULT_RUN_SIZE, PLAN_AND_BILLING_PATH } from '@/utils/constants'
 import type { ImagePool } from '@/lib/billing/copy'
 import type { RunPlan } from '@/features/generate/lib/run-plan'
 import type { PostType, PriorityPost, ClientIdea } from '@/types/api'
-import type { GenerateGate, PostsAffordable } from '@/lib/billing/post-allowance'
+import type { PlanGate } from '@/lib/billing/copy'
+import type { PostsAffordable } from '@/lib/billing/post-allowance'
 
 interface SetupViewProps {
   clients: PickerClient[]
@@ -30,7 +31,7 @@ interface SetupViewProps {
   /** The image pool, for saying why pictures bind: what is left, one post's cost, what is owed. */
   pool?: ImagePool
   /** Whether a run may start at all (`generationGate`) — its refusal replaces the form. */
-  gate: GenerateGate
+  gate: PlanGate
   briefs: PriorityPost[]
   runPlan: RunPlan
   sourceIdea?: ClientIdea
@@ -64,7 +65,7 @@ interface WaitingRow {
  * refusal rather than rendered around a stepper that cannot leave zero: the choices exist to size
  * a run, and there is no run to size. A dearer format that no longer fits keeps the form, so a
  * cheaper one can be chosen; the stepper and panel refuse at the format chosen. The refusal
- * offers Plan & billing when a plan is the way past it (`GenerateGate.wayOut`). The waiting rows stay — drafts from earlier runs are still reviewable, and this route is
+ * offers Plan & billing when a plan is the way past it (`PlanGate.wayOut`). The waiting rows stay — drafts from earlier runs are still reviewable, and this route is
  * where they live. The stepper shows on an idea's run too: an idea is a locked priority brief, so
  * the count starts at 0 ("just this idea") and raising it adds researched posts alongside.
  */

@@ -9,7 +9,6 @@ import type { Icon as Glyph } from '@solar-icons/react/lib/types'
 import { Icon } from '@/components/ui/icon'
 import { IconChip } from '@/components/ui/icon-chip'
 import { cn } from '@/utils/cn'
-import type { AddBrandGate } from '@/lib/billing/copy'
 
 const CARD_CLASS =
   'flex items-center gap-3 rounded-panel border border-ink/[0.05] bg-surface px-3.5 py-3.5 no-underline transition-[transform,border-color] duration-150 ease-contour'
@@ -31,8 +30,8 @@ interface QuickActionsStripProps {
   isSolo: boolean
   /** Why this workspace cannot generate right now, or null. */
   generateRefusal: string | null
-  /** What "Add client" says: its refusal, or what a client costs (`addBrandGate`). */
-  addClient: AddBrandGate
+  /** Why "Add client" is refused, or null (`addBrandRefusal`, src/lib/billing/copy.ts). */
+  addClientRefusal: string | null
 }
 
 /**
@@ -40,13 +39,13 @@ interface QuickActionsStripProps {
  *
  * A card the plan would refuse is not a link: it keeps its place and its words and says why,
  * rather than spending a click to arrive at a wizard that can only refuse — and the strip does not
- * reflow around a missing tile. A paid workspace's "Add client" says what a new client costs.
+ * reflow around a missing tile. A paid workspace at its client slots is refused like the trial.
  */
 export function QuickActionsStrip({
   pendingCount,
   isSolo,
   generateRefusal,
-  addClient,
+  addClientRefusal,
 }: QuickActionsStripProps) {
   const actions: Array<QuickAction | false> = [
     {
@@ -60,8 +59,8 @@ export function QuickActionsStrip({
       href: '/clients/new',
       icon: UserPlusRoundedIcon,
       title: 'Add client',
-      subtitle: addClient.refusal ?? addClient.note ?? 'Start onboarding',
-      refusal: addClient.refusal,
+      subtitle: addClientRefusal ?? 'Start onboarding',
+      refusal: addClientRefusal,
     },
     {
       href: '/review',

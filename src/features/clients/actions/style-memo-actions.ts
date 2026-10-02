@@ -32,7 +32,7 @@ export async function refreshStyleMemo(
 
   try {
     const profile = await fetchBrandProfileByClient(supabase, clientId)
-    const result = await runAsSpender({ agencyId, clientId, flow: 'style_memo' }, () =>
+    const result = await runAsSpender({ agencyId, flow: 'style_memo' }, () =>
       distillStyleMemo(createAdminSupabaseClient(), clientId, {
         language: client.language,
         languageNotes: profile?.language_notes ?? '',

@@ -11,12 +11,13 @@ import type { AllowanceKind } from './plans'
  * sits below every image route and the visuals cron. Threading an id through all of them would be
  * a cross-layer change touching most of the engine; instead the boundary that already knows who is
  * spending — a gated route, the spending action, a cron's per-client loop — wraps its work in
- * `runAsSpender`, and the three provider wrappers read `currentSpender()`. The context follows
+ * `runAsSpender`, and the three provider wrappers read `requireSpender()`. The context follows
  * every await inside `fn`, including a streaming response's pull callbacks created inside it.
  *
- * Fail closed is the reader's job: a wrapper that finds no spender refuses to spend, so a new call
- * site cannot burn money unattributed. The one legitimate exception is the global weekly brief,
- * which belongs to nobody and declares `flow: 'brief'` with no agency.
+ * Fail closed is the reader's job, and `requireSpender` is the one reader: it throws when no
+ * spender is in scope, so a new call site cannot burn money unattributed. The one legitimate
+ * exception is the global weekly brief, which belongs to nobody and declares `flow: 'brief'` with
+ * no agency.
  *
  * The analytics narrative runs inside `unstable_cache`, whose callback need not inherit the
  * request's async context, so it declares its own spender inside the callback
@@ -37,7 +38,6 @@ type SpendFlow =
 export interface Spender {
   /** Null only for `flow: 'brief'`. */
   agencyId: string | null
-  clientId?: string
   flow: SpendFlow
   /**
    * Allowance units `reserveUsage` holds under this spender, by kind, that nobody has settled
@@ -61,7 +61,12 @@ export function runAsSpender<T>(spender: Spender, fn: () => Promise<T>): Promise
   return storage.run(spender, fn)
 }
 
-/** The spender in scope, or undefined when a boundary forgot to declare one. */
-export function currentSpender(): Spender | undefined {
-  return storage.getStore()
+/**
+ * The spender in scope. Throws when a boundary forgot to declare one — the refusal every provider
+ * wrapper makes before it spends, so a call with nobody to bill never reaches the provider.
+ */
+export function requireSpender(): Spender {
+  const spender = storage.getStore()
+  if (!spender) throw new Error('no spender in scope — wrap the boundary in runAsSpender')
+  return spender
 }

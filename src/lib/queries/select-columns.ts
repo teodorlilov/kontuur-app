@@ -246,17 +246,16 @@ export const POSTING_SCHEDULE_DUE_COLUMNS =
 /**
  * Everything `entitlementFor` (src/lib/billing/entitlement.ts) reads to decide what a workspace
  * may do — the timezone included, because every date the entitlement says out loud is read in
- * it. One list, so the cached agency read, the settings read and the cron roster cannot drift
- * apart on a billing column.
+ * it. One list, so the agency read and the cron roster cannot drift apart on a billing column.
  */
 const AGENCY_BILLING_KEYS = [
   'plan',
   'mode',
   'timezone',
-  'stripe_customer_id',
   'stripe_subscription_id',
   'subscription_status',
   'subscription_quantity',
+  'client_slots',
   'trial_ends_at',
   'current_period_start',
   'current_period_end',
@@ -264,29 +263,21 @@ const AGENCY_BILLING_KEYS = [
   'past_due_since',
 ] as const satisfies readonly (keyof AgencyRow)[]
 
+/**
+ * The one agency read, cached for every render (`getCachedAgency`, src/lib/queries/cache.ts) and
+ * uncached where it must be seconds fresh (`fetchAgencyById`, src/lib/queries/db.ts): identity, the
+ * billing columns, and the Stripe customer that Checkout and the portal reuse.
+ */
 const AGENCY_KEYS = [
   'id',
   'name',
-  'agency_logo',
-  'created_at',
+  'stripe_customer_id',
   ...AGENCY_BILLING_KEYS,
 ] as const satisfies readonly (keyof AgencyRow)[]
 
 export const AGENCY_COLUMNS = AGENCY_KEYS.join(', ') as Join<typeof AGENCY_KEYS, ', '>
 
-/** The settings page's read: identity plus the billing columns, without the logo or timestamps. */
-const AGENCY_SETTINGS_KEYS = [
-  'id',
-  'name',
-  ...AGENCY_BILLING_KEYS,
-] as const satisfies readonly (keyof AgencyRow)[]
-
-export const AGENCY_SETTINGS_COLUMNS = AGENCY_SETTINGS_KEYS.join(', ') as Join<
-  typeof AGENCY_SETTINGS_KEYS,
-  ', '
->
-
-export type AgencySettingsColumns = Pick<AgencyRow, (typeof AGENCY_SETTINGS_KEYS)[number]>
+export type AgencyColumns = Pick<AgencyRow, (typeof AGENCY_KEYS)[number]>
 
 /** The row `entitlementFor` takes — any read that carries the billing keys satisfies it. */
 export type AgencyBillingColumns = Pick<AgencyRow, (typeof AGENCY_BILLING_KEYS)[number]>
@@ -745,7 +736,6 @@ const SALE_DOCUMENT_KEYS = [
   'stripe_credit_note_id',
   'stripe_charge_id',
   'stripe_refund_id',
-  'refunds',
   'issued_at',
   'tax_event_at',
   'customer',
@@ -758,7 +748,6 @@ const SALE_DOCUMENT_KEYS = [
   'storage_path',
   'delivered_at',
   'delivery_error',
-  'created_at',
 ] as const satisfies readonly (keyof SaleDocumentRow)[]
 
 export const SALE_DOCUMENT_COLUMNS = SALE_DOCUMENT_KEYS.join(', ') as Join<

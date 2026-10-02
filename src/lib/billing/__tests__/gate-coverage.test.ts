@@ -15,7 +15,7 @@ const SRC = path.resolve(__dirname, '../../..')
  * or `runMetered` where images are settled) is about to pay a provider and must appear in this
  * list — or in EXEMPT, with the reason its gate lives somewhere else.
  */
-const GATED: Record<string, 'spend' | 'publish' | 'create'> = {
+const GATED: Record<string, 'spend' | 'publish'> = {
   'app/api/ai/analyze-url/route.ts': 'spend',
   'app/api/ai/detect-slop/route.ts': 'spend',
   'app/api/ai/generate-background/route.ts': 'spend',
@@ -27,12 +27,12 @@ const GATED: Record<string, 'spend' | 'publish' | 'create'> = {
   'app/api/ai/suggest-sources/route.ts': 'spend',
   'app/api/clients/[id]/brand-profile/reanalyze/route.ts': 'spend',
   'app/api/clients/[id]/visual-identity/reanalyze/route.ts': 'spend',
-  'app/api/extract/start/route.ts': 'create',
+  'app/api/extract/start/route.ts': 'spend',
   'app/api/posts/[id]/visuals/route.ts': 'spend',
   'app/api/posts/[id]/publish/route.ts': 'publish',
   'features/calendar/actions/post-recovery.ts': 'publish',
   'features/clients/actions/style-memo-actions.ts': 'spend',
-  'features/clients/actions/client-actions.ts': 'create',
+  'features/clients/actions/client-actions.ts': 'spend',
   'lib/actions/post-actions.ts': 'publish',
 }
 

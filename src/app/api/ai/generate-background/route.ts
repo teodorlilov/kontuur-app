@@ -78,11 +78,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: destination.error }, { status: destination.status })
   }
 
-  const spender: Spender = {
-    agencyId: auth.agencyId,
-    clientId: destination.clientId,
-    flow: 'editor',
-  }
+  const spender: Spender = { agencyId: auth.agencyId, flow: 'editor' }
   try {
     return await runMetered(spender, async () => {
       const { position, total } = slidePlace(body)

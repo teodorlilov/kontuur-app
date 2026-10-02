@@ -123,12 +123,6 @@ describe('startGenerationRun', () => {
     expect(settleUsage).not.toHaveBeenCalled()
   })
 
-  it('an insert that returns no row opens no run and gives the drafts back, since nothing could settle them', async () => {
-    const { supabase } = makeSupabase({ data: null, error: null })
-    expect(await startGenerationRun(supabase, INPUT)).toEqual({ runId: null, slotTaken: false })
-    expect(settleUsage).toHaveBeenCalledWith(ENTITLEMENT, 'a1', 'draft', GIVE_BACK)
-  })
-
   it('a real insert failure is logged and is not a lost race', async () => {
     const error = vi.spyOn(console, 'error').mockImplementation(() => {})
     const { supabase } = makeSupabase({

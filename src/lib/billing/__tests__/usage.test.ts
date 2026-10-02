@@ -46,7 +46,7 @@ import {
   settleUsage,
   spendFailureResponse,
 } from '../usage'
-import { currentSpender } from '../spend-context'
+import { requireSpender } from '../spend-context'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 
 const ENTITLEMENT = {
@@ -59,7 +59,7 @@ const ENTITLEMENT = {
 const ARGS = { p_agency_id: 'a1', p_period: '2026-09-01', p_kind: 'image' }
 
 function spender(): Spender {
-  return { agencyId: 'a1', clientId: 'c1', flow: 'editor' }
+  return { agencyId: 'a1', flow: 'editor' }
 }
 
 beforeEach(() => {
@@ -75,7 +75,7 @@ describe('reserveUsage and runMetered — the meter moves only when the thing la
     mocks.rpc.mockResolvedValueOnce({ data: [{ allowed: true, used: 16 }], error: null })
     const who = spender()
     const result = await runMetered(who, async () => {
-      expect(currentSpender()).toBe(who)
+      expect(requireSpender()).toBe(who)
       await reserveUsage(who, 'image', 1)
       expect(who.reserved).toEqual({ image: 1 })
       return 'stored'
@@ -185,14 +185,6 @@ describe('consumeUsage and settleUsage', () => {
     expect(mocks.notify).not.toHaveBeenCalled()
   })
 
-  it('refuses a zero quota without asking the database, with the refusal ready to throw', async () => {
-    const paused = { ...ENTITLEMENT, limits: { draft: 0, image: 0, rewrite: 0 } } as Entitlement
-    const outcome = await consumeUsage(paused, 'a1', 'image', 1)
-    expect(outcome.allowed).toBe(false)
-    expect(!outcome.allowed && outcome.refused).toMatchObject({ kind: 'image', used: 0, quota: 0 })
-    expect(mocks.rpc).not.toHaveBeenCalled()
-  })
-
   it('never counts more than was reserved', async () => {
     mocks.rpc.mockResolvedValue({ data: 3, error: null })
     await settleUsage(ENTITLEMENT, 'a1', 'draft', { reserved: 3, landed: 5 })
@@ -227,7 +219,7 @@ describe('consumeUsage and settleUsage', () => {
       expect.objectContaining({
         agencyId: 'a1',
         type: 'allowance_warning',
-        dedupKey: 'allowance_warning:2026-09-01:image',
+        dedupKey: 'allowance_warning:2026-09-01:image:120',
       })
     )
 

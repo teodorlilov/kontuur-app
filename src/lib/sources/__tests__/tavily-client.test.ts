@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('@/lib/billing/spend-context', () => ({
-  currentSpender: () => ({ agencyId: 'agency-1', flow: 'sources' }),
+  requireSpender: () => ({ agencyId: 'agency-1', flow: 'sources' }),
 }))
 vi.mock('@/lib/billing/telemetry', () => ({ recordAiUsage: vi.fn() }))
 

@@ -133,8 +133,8 @@ export function pluralise(count: number, noun: string, plural?: string): string 
 
 /**
  * Money for a person, in euro — "€19.00". Kontuur stores, shows and charges euro and nothing
- * else, so the currency is not a parameter. Readers: the plan sentence beside Choose plan, the
- * add-client cost line, and the invoice.
+ * else, so the currency is not a parameter. Readers: the client-slot sentences and the checkout
+ * card (src/lib/billing/copy.ts), and the invoice.
  */
 export function formatMoney(cents: number): string {
   return new Intl.NumberFormat('en-IE', { style: 'currency', currency: 'EUR' }).format(cents / 100)

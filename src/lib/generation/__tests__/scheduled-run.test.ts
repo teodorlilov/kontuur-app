@@ -79,7 +79,7 @@ describe('runScheduledBatch — the exhausted bell', () => {
       message: expect.stringMatching(
         /^3 posts still waiting for pictures need 12 AI images; you have 12 left this period\. Resets on /
       ),
-      dedupKey: 'allowance_reached:2026-09-01:image',
+      dedupKey: 'allowance_reached:2026-09-01:image:105',
     })
   })
 

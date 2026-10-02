@@ -23,8 +23,11 @@ import {
  */
 export type EntitlementState = 'trial' | 'trial_grace' | 'active' | 'past_due' | 'locked'
 
-/** What a site is about to do: spend money, publish to a network, or create a brand. */
-export type EntitlementNeed = 'spend' | 'publish' | 'create'
+/**
+ * What a site is about to do: spend money — which creating a brand is too, since a new brand's
+ * setup reads its site and every later run spends on it — or publish to a network.
+ */
+export type EntitlementNeed = 'spend' | 'publish'
 
 export interface Entitlement {
   state: EntitlementState
@@ -34,11 +37,19 @@ export interface Entitlement {
   timezone: string
   canSpend: boolean
   canPublish: boolean
-  canCreate: boolean
-  /** Brands the workspace may hold: the trial cap, or the paid quantity. */
+  /**
+   * Brands the workspace may hold: the trial's cap, the paid plan's client slots (Stripe's
+   * quantity, `agencies.client_slots`, docs/plans/CLIENT-SLOTS.md — the paid count on a row no
+   * snapshot has written since migration 20260865), Infinity on house, 0 when it cannot spend.
+   * Ask `brandCap` for "is there a cap".
+   */
   brands: number
-  /** Whether more brands may be created at all — the paid plan has no ceiling, only a price. */
-  brandsUnlimited: boolean
+  /**
+   * Client slots paid for in the current period (`agencies.subscription_quantity`) — the paid
+   * allowance's multiplier, and what a raise may restore uncharged. Higher than `brands` after a
+   * lower, until the renewal is paid; 0 off the paid plan.
+   */
+  brandsPaid: number
   /** All zero whenever the workspace cannot spend: whatever slips past a gate consumes nothing. */
   limits: Allowance
   /**
@@ -89,8 +100,8 @@ export interface Entitlement {
 /**
  * Whether the workspace is on the paid plan and Stripe is billing it — active, or inside the
  * grace after a failed renewal. Asked by the Checkout return card (whether the plan it waits for
- * is live) and by `billedSubscriptionId` (src/lib/billing/quantity-sync.ts); what the plan panel
- * offers is decided by `subscriptionOpen` instead, which a locked workspace can still have.
+ * is live); what the plan panel offers is decided by `subscriptionOpen` instead, which a locked
+ * workspace can still have.
  */
 export function isPaying(entitlement: Pick<Entitlement, 'plan' | 'state'>): boolean {
   return (
@@ -101,20 +112,24 @@ export function isPaying(entitlement: Pick<Entitlement, 'plan' | 'state'>): bool
 
 /** Whether the entitlement allows what a site is about to do. */
 export function allows(entitlement: Entitlement, need: EntitlementNeed): boolean {
-  return need === 'spend'
-    ? entitlement.canSpend
-    : need === 'publish'
-      ? entitlement.canPublish
-      : entitlement.canCreate
+  return need === 'spend' ? entitlement.canSpend : entitlement.canPublish
+}
+
+/**
+ * The most brands the workspace may hold, or null when there is no cap (house). One answer for
+ * `createClient` and its race re-check, every Add-client control (`addBrandRefusal`) and the plan
+ * panel's Clients meter.
+ */
+export function brandCap(entitlement: Pick<Entitlement, 'brands'>): number | null {
+  return Number.isFinite(entitlement.brands) ? entitlement.brands : null
 }
 
 /**
  * Whether a subscription status is final — Stripe ends a subscription as `canceled`, or as
  * `incomplete_expired` when its first payment never went through. Every other status can still
  * bill. The one reading of "ended" for the entitlement, the Stripe snapshot
- * (src/lib/billing/subscription-store.ts), Checkout (`createCheckoutSession`,
- * src/lib/billing/checkout.ts) and the webhook's quantity reconcile (`reconcileQuantity`,
- * src/lib/billing/stripe-events.ts).
+ * (src/lib/billing/subscription-store.ts) and Checkout (`createCheckoutSession`,
+ * src/lib/billing/checkout.ts).
  */
 export function hasSubscriptionEnded(status: string | null): boolean {
   return status === 'canceled' || status === 'incomplete_expired'
@@ -156,14 +171,6 @@ function plusGrace(from: Date): Date {
   return new Date(from.getTime() + GRACE_DAYS * MS_PER_DAY)
 }
 
-/**
- * The trial's brand cap and allowance. The cap on clients scales with the mode; the allowance does
- * not — it is the workspace's one trial, not three brands' worth (plans.ts, TRIAL_ALLOWANCE).
- */
-function trialLimits(mode: 'agency' | 'solo'): { brands: number; limits: Allowance } {
-  return { brands: TRIAL_BRANDS[mode], limits: TRIAL_ALLOWANCE }
-}
-
 /** A workspace with no row to derive from — locked, nothing allowed. */
 export function noEntitlement(): Entitlement {
   return {
@@ -173,9 +180,8 @@ export function noEntitlement(): Entitlement {
     timezone: 'UTC',
     canSpend: false,
     canPublish: false,
-    canCreate: false,
     brands: 0,
-    brandsUnlimited: false,
+    brandsPaid: 0,
     limits: zeroAllowance(),
     periodKey: 'trial',
     trialEndsAt: null,
@@ -213,9 +219,8 @@ export function entitlementFor(row: AgencyBillingColumns, now: Date): Entitlemen
     timezone,
     canSpend: false,
     canPublish: state === 'trial_grace',
-    canCreate: false,
     brands: 0,
-    brandsUnlimited: false,
+    brandsPaid: 0,
     limits: zeroAllowance(),
     periodKey: 'trial',
     trialEndsAt,
@@ -225,27 +230,23 @@ export function entitlementFor(row: AgencyBillingColumns, now: Date): Entitlemen
     ...standing,
   })
 
-  const onTrial = (): Entitlement => {
-    const { brands, limits } = trialLimits(mode)
-    return {
-      state: 'trial',
-      plan,
-      mode,
-      timezone,
-      canSpend: true,
-      canPublish: true,
-      canCreate: true,
-      brands,
-      brandsUnlimited: false,
-      limits,
-      periodKey: 'trial',
-      trialEndsAt,
-      resetsOn: null,
-      graceEndsAt: null,
-      endsOn: null,
-      ...standing,
-    }
-  }
+  const onTrial = (): Entitlement => ({
+    state: 'trial',
+    plan,
+    mode,
+    timezone,
+    canSpend: true,
+    canPublish: true,
+    brands: TRIAL_BRANDS[mode],
+    brandsPaid: 0,
+    limits: TRIAL_ALLOWANCE,
+    periodKey: 'trial',
+    trialEndsAt,
+    resetsOn: null,
+    graceEndsAt: null,
+    endsOn: null,
+    ...standing,
+  })
 
   if (plan === 'house') {
     return {
@@ -255,9 +256,8 @@ export function entitlementFor(row: AgencyBillingColumns, now: Date): Entitlemen
       timezone,
       canSpend: true,
       canPublish: true,
-      canCreate: true,
       brands: Infinity,
-      brandsUnlimited: true,
+      brandsPaid: 0,
       limits: { draft: UNMETERED, image: UNMETERED, rewrite: UNMETERED },
       periodKey: now.toISOString().slice(0, 7),
       trialEndsAt: null,
@@ -286,7 +286,7 @@ export function entitlementFor(row: AgencyBillingColumns, now: Date): Entitlemen
 
   const periodStart = row.current_period_start?.slice(0, 10)
   if (!periodStart) return locked('locked', null)
-  const brands = Math.max(1, row.subscription_quantity ?? 1)
+  const brandsPaid = Math.max(1, row.subscription_quantity ?? 1)
   const periodEnd = dateOf(row.current_period_end)
 
   return {
@@ -296,10 +296,9 @@ export function entitlementFor(row: AgencyBillingColumns, now: Date): Entitlemen
     timezone,
     canSpend: true,
     canPublish: true,
-    canCreate: true,
-    brands,
-    brandsUnlimited: true,
-    limits: scaled(PRO_PLAN.perBrand, brands),
+    brands: row.client_slots ?? brandsPaid,
+    brandsPaid,
+    limits: scaled(PRO_PLAN.perBrand, brandsPaid),
     periodKey: periodStart,
     trialEndsAt,
     resetsOn: state === 'past_due' ? null : periodEnd,

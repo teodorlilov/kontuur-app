@@ -9,7 +9,11 @@ import { sweepClientStorage } from '@/lib/clients/sweep-client-storage'
 import { fetchAgencyById, fetchTeamMembersByAgency } from '@/lib/queries/db'
 import { getCachedAgencyClients, revalidateClientData } from '@/lib/queries/cache'
 import { entitlementFor } from '@/lib/billing/entitlement'
-import { DELETE_ADMINS_ONLY, deleteWorkspaceRefusal } from '@/lib/billing/copy'
+import {
+  DELETE_ADMINS_ONLY,
+  WORKSPACE_NOT_DELETED,
+  deleteWorkspaceRefusal,
+} from '@/lib/billing/copy'
 import { deleteWorkspaceSchema } from '@/features/settings/schemas'
 import { normalizeForCompare } from '@/utils/format'
 import type { ActionResult } from '@/lib/actions/types'
@@ -71,7 +75,7 @@ export async function deleteWorkspace(confirmName: string): Promise<ActionResult
       `[workspace:delete] pending invites delete failed for ${agencyId}:`,
       invites.error.message
     )
-    return { ok: false, error: 'Could not delete the workspace. Please try again.' }
+    return { ok: false, error: WORKSPACE_NOT_DELETED }
   }
 
   const { error } = await admin.from('agencies').delete().eq('id', agencyId)
@@ -80,10 +84,7 @@ export async function deleteWorkspace(confirmName: string): Promise<ActionResult
   }
   if (error) {
     console.error(`[workspace:delete] failed for ${agencyId}:`, error.message)
-    if (error.code === '23503') {
-      return { ok: false, error: 'Cannot delete: the database is missing migration 20260856.' }
-    }
-    return { ok: false, error: 'Could not delete the workspace. Please try again.' }
+    return { ok: false, error: WORKSPACE_NOT_DELETED }
   }
 
   for (const member of members) await deleteAuthIdentity(admin, member.id, 'workspace:delete')

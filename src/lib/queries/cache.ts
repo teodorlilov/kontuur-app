@@ -38,7 +38,8 @@ type Client = Database['public']['Tables']['clients']['Row']
  * - unstable_cache: persists in Next.js Data Cache across requests (60s TTL, 'agencies' tag). A
  *   failed read throws inside it, so an error is never stored as "no row" for a minute.
  * - React cache(): deduplicates within a single SSR request so layout + page share one result
- * Call revalidateTag('agencies') after any agency mutation to clear stale entries immediately.
+ * After an agency write a reader must see, `revalidateTag('agencies', { expire: 0 })`; 'max' is
+ * stale-while-revalidate and serves the old row once more.
  */
 const _fetchAgency = unstable_cache(
   async (agencyId: string) => {
@@ -74,7 +75,8 @@ export const getCachedAgency = cache(async (agencyId: string) => {
  * What the workspace may do, derived from the same cached agency read every dashboard render
  * already makes — no second agencies query. Inherits that read's 60 s staleness and its
  * 'agencies' tag: whatever changes the billing columns (the settings PUT, the Stripe webhook)
- * must `revalidateTag('agencies')`. A missing row is a locked workspace, never an open one.
+ * must `revalidateTag('agencies', { expire: 0 })`. A missing row is a locked workspace, never an
+ * open one.
  */
 export const getCachedEntitlement = cache(async (agencyId: string): Promise<Entitlement> => {
   const agency = await getCachedAgency(agencyId)
@@ -83,7 +85,11 @@ export const getCachedEntitlement = cache(async (agencyId: string): Promise<Enti
 
 /**
  * Returns all clients for the given agencyId with commonly needed columns.
- * - unstable_cache: persists in Next.js Data Cache across requests (60s TTL, 'agency-clients' tag)
+ * - unstable_cache: persists in Next.js Data Cache across requests (60s TTL, 'agency-clients' tag).
+ *   A failed read throws inside it, so an error is never stored as "no clients" for a minute. An
+ *   empty list sends a solo workspace back to setup (src/app/(dashboard)/layout.tsx) and gives
+ *   `deleteWorkspace` nothing to sweep (src/features/settings/actions/workspace-actions.ts), so
+ *   unlike the agency read it has no safe default to degrade to.
  * - React cache(): deduplicates within a single SSR request so layout + page share one result
  * Call revalidateTag('agency-clients', …) after any client mutation. Only the `{ expire: 0 }` profile
  * clears the entry for the very next read; 'max' is stale-while-revalidate and serves it once more.
@@ -98,15 +104,13 @@ const _fetchAgencyClients = unstable_cache(
     Pick<Client, 'id' | 'name' | 'niche' | 'posts_per_week' | 'language' | 'created_at'>[]
   > => {
     const supabase = createAdminSupabaseClient()
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('clients')
       .select(CLIENT_LIST_COLUMNS)
       .eq('agency_id', agencyId)
       .order('created_at', { ascending: true })
-    return (data ?? []) as Pick<
-      Client,
-      'id' | 'name' | 'niche' | 'posts_per_week' | 'language' | 'created_at'
-    >[]
+    if (error) throw new Error(`agency clients read failed: ${error.message}`)
+    return data
   },
   ['agency-clients'],
   { revalidate: 60, tags: ['agency-clients'] }
@@ -302,7 +306,9 @@ export const getCachedClientWeekCoverage = cache(_fetchClientWeekCoverage)
 
 /**
  * Every client in the agency with its social connections.
- * Call revalidateTag('agency-clients') after any client or connection mutation.
+ * Call revalidateTag('agency-clients') after any client or connection mutation. A failed read
+ * throws inside the cache, as `_fetchAgencyClients` does, so an empty roster is never stored for a
+ * minute.
  */
 const _fetchClientRoster = unstable_cache(
   async (agencyId: string): Promise<RosterClientRow[]> => {
@@ -312,13 +318,10 @@ const _fetchClientRoster = unstable_cache(
       .select(CLIENT_ROSTER_COLUMNS)
       .eq('agency_id', agencyId)
       .order('created_at', { ascending: true })
-    if (error) {
-      console.error('[roster] client fetch failed:', error.message)
-      return []
-    }
+    if (error) throw new Error(`client roster read failed: ${error.message}`)
     // WHY as: the generated types cannot express an embedded select's shape, and
     // social_connections is a reverse relationship so it arrives as an array.
-    return (data ?? []) as unknown as RosterClientRow[]
+    return data as unknown as RosterClientRow[]
   },
   ['client-roster'],
   { revalidate: 60, tags: ['agency-clients'] }

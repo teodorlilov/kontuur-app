@@ -78,11 +78,7 @@ export async function POST(request: Request) {
   const foreignPath = foreignStoragePathResponse(destination.clientId, fields.storagePath)
   if (foreignPath) return foreignPath
 
-  const spender: Spender = {
-    agencyId: auth.agencyId,
-    clientId: destination.clientId,
-    flow: 'editor',
-  }
+  const spender: Spender = { agencyId: auth.agencyId, flow: 'editor' }
   try {
     const maskUrl = await uploadFalTempFile(fields.mask)
     const stored = await runMetered(spender, async () => {

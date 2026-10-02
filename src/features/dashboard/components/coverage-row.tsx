@@ -22,7 +22,7 @@ interface CoverageRowProps {
   name: string
   week: WeekDay[]
   pendingCount: number
-  /** Why no run may start (`GenerateGate.refusal`, src/lib/billing/post-allowance.ts), or null — the Generate link is refused with it. */
+  /** Why no run may start (`PlanGate.refusal`, src/lib/billing/copy.ts), or null — the Generate link is refused with it. */
   generateRefusal: string | null
   /**
    * Which capsule tier to wear. Derived from the client's place in the whole

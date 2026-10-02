@@ -6,8 +6,8 @@ import { fetchAgencyById } from '@/lib/queries/db'
 import { notify } from '@/lib/notifications/notify'
 import { sendEmail } from '@/lib/email/resend'
 import { reminderEmail } from '@/lib/email/templates'
-import { resolveAppUrl } from '@/utils/url'
-import { MS_PER_DAY, PLAN_AND_BILLING_PATH } from '@/utils/constants'
+import { planAndBillingUrl } from '@/utils/url'
+import { MS_PER_DAY } from '@/utils/constants'
 import type { BillingReminderType } from '@/types/api'
 import { entitlementFor, type Entitlement } from './entitlement'
 import { shellNotice, workspacePaused } from './copy'
@@ -18,6 +18,9 @@ import { GRACE_DAYS, TRIAL_NOTICE_DAYS } from './plans'
  * days must not lose the message; a workspace paused months ago must not be woken by it.
  */
 const PAUSED_WINDOW_DAYS = 7
+
+/** The reminders the trial cron raises; `payment_failed` is the webhook's (`remindPaymentFailed`). */
+type TrialReminderType = Exclude<BillingReminderType, 'payment_failed'>
 
 interface Reminder {
   type: BillingReminderType
@@ -45,37 +48,25 @@ function reminderKey(type: BillingReminderType, about: Date): string {
  * redelivered tomorrow writes nothing. A paid or house workspace is never due: its states are not
  * the trial's.
  */
-export function pickReminder(entitlement: Entitlement, now: Date): Reminder | null {
-  const { trialEndsAt } = entitlement
+export function pickReminder(
+  entitlement: Entitlement,
+  now: Date
+): (Reminder & { type: TrialReminderType }) | null {
+  const { state, trialEndsAt, graceEndsAt } = entitlement
   if (!trialEndsAt) return null
-  const notice = shellNotice(entitlement, now)
-  if (entitlement.state === 'trial') {
-    return notice
-      ? {
-          type: 'trial_ending',
-          message: notice.text,
-          dedupKey: reminderKey('trial_ending', trialEndsAt),
-        }
-      : null
+  const type = state === 'trial' ? 'trial_ending' : state === 'trial_grace' ? 'trial_ended' : null
+  if (type) {
+    const notice = shellNotice(entitlement, now)
+    return notice ? { type, message: notice.text, dedupKey: reminderKey(type, trialEndsAt) } : null
   }
-  if (entitlement.state === 'trial_grace') {
-    return notice
-      ? {
-          type: 'trial_ended',
-          message: notice.text,
-          dedupKey: reminderKey('trial_ended', trialEndsAt),
-        }
-      : null
-  }
-  const pausedAt = entitlement.graceEndsAt?.getTime()
   if (
-    entitlement.state === 'locked' &&
-    pausedAt !== undefined &&
-    now.getTime() - pausedAt <= PAUSED_WINDOW_DAYS * MS_PER_DAY
+    state === 'locked' &&
+    graceEndsAt &&
+    now.getTime() - graceEndsAt.getTime() <= PAUSED_WINDOW_DAYS * MS_PER_DAY
   ) {
     return {
       type: 'workspace_paused',
-      message: workspacePaused(entitlement),
+      message: workspacePaused(graceEndsAt, entitlement.timezone),
       dedupKey: reminderKey('workspace_paused', trialEndsAt),
     }
   }
@@ -86,10 +77,6 @@ export function pickReminder(entitlement: Entitlement, now: Date): Reminder | nu
 type RemindOutcome =
   | { outcome: 'suppressed' | 'unwritten' | 'no_admin' | 'emailed' }
   | { outcome: 'send_failed'; error: string }
-
-function planUrl(): string {
-  return `${resolveAppUrl()}${PLAN_AND_BILLING_PATH}`
-}
 
 /**
  * The admins' emails of these workspaces, by agency — the one users read behind every reminder:
@@ -133,7 +120,10 @@ export async function remindWorkspace(
   if (wrote === 'failed') return { outcome: 'unwritten' }
   if (input.to.length === 0) return { outcome: 'no_admin' }
   try {
-    await sendEmail({ to: input.to, content: reminderEmail(input.type, input.message, planUrl()) })
+    await sendEmail({
+      to: input.to,
+      content: reminderEmail(input.type, input.message, planAndBillingUrl()),
+    })
     return { outcome: 'emailed' }
   } catch (err) {
     return { outcome: 'send_failed', error: err instanceof Error ? err.message : String(err) }
@@ -144,7 +134,7 @@ interface ReminderOutcome {
   /** Trial workspaces examined this tick. */
   checked: number
   /** Bell rows written, by kind — one whose key was already written is not counted. */
-  notified: Record<BillingReminderType, number>
+  notified: Record<TrialReminderType, number>
   emailed: number
   errors: Array<{ agencyId: string; error: string }>
 }
@@ -157,8 +147,7 @@ interface ReminderOutcome {
  * anything is written — one agencies read and one users read per tick (`fetchAdminEmails`) — so a
  * failed read leaves no row behind and the next tick is a clean retry. A row that could not be
  * written, a workspace with no admin to mail and a send the provider refused are all reported in
- * `errors` — data problems worth seeing in the totals, not ones to hide. `payment_failed` is the
- * webhook's and stays at zero here.
+ * `errors` — data problems worth seeing in the totals, not ones to hide.
  */
 export async function remindTrialWorkspaces(
   admin: AdminClient,
@@ -177,14 +166,14 @@ export async function remindTrialWorkspaces(
 
   const outcome: ReminderOutcome = {
     checked: 0,
-    notified: { trial_ending: 0, trial_ended: 0, workspace_paused: 0, payment_failed: 0 },
+    notified: { trial_ending: 0, trial_ended: 0, workspace_paused: 0 },
     emailed: 0,
     errors: [],
   }
   const fail = (agencyId: string, err: unknown) =>
     outcome.errors.push({ agencyId, error: err instanceof Error ? err.message : String(err) })
 
-  const due: Array<Reminder & { agencyId: string }> = []
+  const due: Array<Reminder & { agencyId: string; type: TrialReminderType }> = []
   for (const row of agencies ?? []) {
     outcome.checked++
     const reminder = pickReminder(entitlementFor(row, now), now)

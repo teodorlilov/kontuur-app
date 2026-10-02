@@ -31,7 +31,7 @@ import { ContourField } from '@/components/layout/contour-field'
 import { BillingBanner } from '@/components/layout/billing-banner'
 import { BillingWall } from '@/components/layout/billing-wall'
 import { noEntitlement, type Entitlement } from '@/lib/billing/entitlement'
-import { addBrandGate, pausedNotice, shellNotice } from '@/lib/billing/copy'
+import { addBrandRefusal, pausedNotice, shellNotice } from '@/lib/billing/copy'
 import { Sidebar } from '@/components/layout/sidebar'
 import type { ActiveRun } from '@/types/api'
 
@@ -42,7 +42,11 @@ import type { ActiveRun } from '@/types/api'
  * confirmation callback, sign-in and setup-password all end on /dashboard. A missing `users` row
  * is created here (`provisionUserRecord`); with no row there is no role, so Add client is refused.
  * The comments badge counts the queue /comments reads (`getCachedCommentQueue`), so the two agree.
- * Only `<main>` scrolls, so `ContourField`'s absolute canvas stays fixed behind the content.
+ * The two client reads throw rather than cache a failure (src/lib/queries/cache.ts); the shell
+ * logs one and renders without it for this request — no first-run redirect on a roster it could
+ * not read, no reconnect prompt — since a throw here would fail every page, Plan & billing
+ * included. Only `<main>` scrolls, so `ContourField`'s absolute canvas stays fixed behind the
+ * content.
  */
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const userId = await requireAuthUserId()
@@ -76,17 +80,25 @@ export default async function DashboardLayout({ children }: { children: React.Re
       cachedEntitlement,
     ] = await Promise.all([
       getCachedAgency(userData.agency_id),
-      getCachedAgencyClients(userData.agency_id),
+      getCachedAgencyClients(userData.agency_id).catch((err: unknown) => {
+        console.error(`[layout] clients read failed for ${userData.agency_id}:`, err)
+        return null
+      }),
       getCachedPendingRows(userData.agency_id),
       getCachedNewIdeasCount(userData.agency_id),
       getCachedCommentQueue(userData.agency_id),
       fetchActiveRuns(supabase, userData.agency_id),
-      getCachedClientRoster(userData.agency_id),
+      getCachedClientRoster(userData.agency_id).catch((err: unknown) => {
+        console.error(`[layout] roster read failed for ${userData.agency_id}:`, err)
+        return []
+      }),
       getCachedEntitlement(userData.agency_id),
     ])
     entitlement = cachedEntitlement
 
-    requireBusinessSetup(agencyData?.mode, agencyClients.length, entitlement.canCreate)
+    if (agencyClients) {
+      requireBusinessSetup(agencyData?.mode, agencyClients.length, entitlement.canSpend)
+    }
 
     if (agencyData?.mode === 'solo') agencyMode = 'solo'
     agencyName = agencyData?.name ?? ''
@@ -94,7 +106,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
     pendingCount = pendingRows.length
     ideasCount = ideas
     commentsCount = countNeedingReply(commentQueue.groups)
-    clients = agencyClients.map((client) => ({ id: client.id, name: client.name }))
+    clients = (agencyClients ?? []).map((client) => ({ id: client.id, name: client.name }))
     activeRuns = runs
 
     const hasRetired = roster.some((client) =>
@@ -123,7 +135,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
           todayLabel={formatLongDate(new Date(), timezone)}
           timezone={timezone}
           clients={clients}
-          addClient={addBrandGate(entitlement, clients.length, userData?.role ?? '')}
+          addClientRefusal={addBrandRefusal(entitlement, clients.length, userData?.role ?? '')}
         >
           <div className="app-shell flex h-screen gap-3.5 overflow-hidden bg-paper p-3">
             <Sidebar

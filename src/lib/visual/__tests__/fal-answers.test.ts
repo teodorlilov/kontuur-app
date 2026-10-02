@@ -28,7 +28,7 @@ import { generateSlideImage, removeImageBackground } from '../fal'
 import { runAsSpender, type Spender } from '@/lib/billing/spend-context'
 
 function spender(): Spender {
-  return { agencyId: 'a1', clientId: 'c1', flow: 'editor', reserved: {} }
+  return { agencyId: 'a1', flow: 'editor', reserved: {} }
 }
 
 function refusal(message: string, body: unknown) {

@@ -32,14 +32,7 @@ const NOTICE =
 
 async function confirmRemoval() {
   const user = userEvent.setup()
-  render(
-    <TeamTab
-      members={[ME, THEM]}
-      currentUserId={ME.id}
-      currentUserRole="admin"
-      agencyMode="agency"
-    />
-  )
+  render(<TeamTab members={[ME, THEM]} currentUserId={ME.id} currentUserRole="admin" />)
   await user.click(screen.getByRole('button', { name: 'Remove' }))
   await user.click(
     within(screen.getByRole('dialog')).getByRole('button', { name: 'Remove permanently' })

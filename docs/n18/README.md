@@ -38,7 +38,7 @@ the schema and its output is held to ASCII so its declared encoding is true.
    - the virtual POS identifier: the Stripe account id (`acct_…`).
    Then `NRA_ESHOP_NUMBER` (the number the NRA assigns) and `STRIPE_ACCOUNT_ID` in Vercel. No
    document can be rendered without them. Changes to any of the above are reported within 7 days.
-4. **Accountant** — seven confirmations this build assumes:
+4. **Accountant** — eight confirmations this build assumes:
    - the invoice may serve as the sale document (чл. 52о, ал. 3);
    - the audit file's payment code for a Stripe charge is 2 (virtual POS), not 4 (payment
      service provider);
@@ -50,15 +50,19 @@ the schema and its output is held to ASCII so its declared encoding is true.
      `art_vat_rate` is a whole number, so such a month is refused rather than rounded;
    - how to report a month with refunds and no sale: the schema requires at least one order, so
      such a month is refused;
-   - whether a chargeback the bank won is reported as a returned order (the convention below).
+   - whether a chargeback the bank won is reported as a returned order (the convention below);
+   - the credit note's wording: its one line reads "Credit note to invoice No. ‹number› of
+     ‹date›" (`issueCreditNote`, `src/lib/billing/documents.ts`), the number and date of the
+     invoice it corrects — confirm that, and whether it must also state a reason.
    Plus the OSS registration once the first consumer outside Bulgaria appears — Stripe's
    threshold monitor emails when the €10,000 EU total is near.
 5. **Live keys** — `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET` on Production only; the
-   webhook endpoint registered in live mode with the seven event types
+   webhook endpoint registered in live mode with the six event types
    (`customer.subscription.created|updated|deleted`, `invoice.paid`, `invoice.payment_failed`,
-   `invoice.upcoming`, `credit_note.created`), its API version set to the one the installed SDK
-   pins; Billing → Subscriptions must send upcoming-renewal events, which lower the client count
-   before each renewal is invoiced.
+   `credit_note.created`), its API version set to the one the installed SDK pins. The client slots
+   change only when an admin changes them in Plan & billing (docs/plans/CLIENT-SLOTS.md), so no
+   upcoming-renewal event is needed; Billing → Subscriptions' default billing mode is Flexible, so
+   a subscription made by hand prorates like one made at Checkout.
 
 ## Every month, by the 15th
 

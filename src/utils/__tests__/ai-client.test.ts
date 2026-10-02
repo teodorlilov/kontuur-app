@@ -58,6 +58,7 @@ describe('callAnthropic — the one door to Claude', () => {
     )
     expect(call).toHaveBeenCalledTimes(1)
     expect(mocks.recordAiUsage).toHaveBeenCalledWith(
+      { agencyId: null, flow: 'brief' },
       expect.objectContaining({ provider: 'anthropic', model: DEFAULT_MODEL })
     )
   })
@@ -69,10 +70,13 @@ describe('callAnthropic — the one door to Claude', () => {
 
     expect(message).toBe(MESSAGE)
     expect(mocks.stream).toHaveBeenCalledTimes(1)
-    expect(mocks.recordAiUsage).toHaveBeenCalledWith({
-      provider: 'anthropic',
-      model: DEFAULT_MODEL,
-      usage: expect.objectContaining({ inputTokens: 120, outputTokens: 30 }),
-    })
+    expect(mocks.recordAiUsage).toHaveBeenCalledWith(
+      { agencyId: 'a1', flow: 'generation' },
+      {
+        provider: 'anthropic',
+        model: DEFAULT_MODEL,
+        usage: expect.objectContaining({ inputTokens: 120, outputTokens: 30 }),
+      }
+    )
   })
 })

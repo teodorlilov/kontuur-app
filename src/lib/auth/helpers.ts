@@ -251,10 +251,20 @@ export async function resolveActionAuth(): Promise<
   return { ok: true, supabase, agencyId: record.agency_id, userId, role: record.role }
 }
 
+/**
+ * Whether the user's `users` row says admin, read fresh through the caller's client — for the
+ * admin-only writes that do not trust the cached role `resolveActionAuth` returns. Fails closed:
+ * a failed read is logged here and answers false, like `fetchClientWithOwnership`, never a throw
+ * its callers would have to catch.
+ */
 export async function verifyAdminRole(
   supabase: SupabaseServerClient,
   userId: string
 ): Promise<boolean> {
-  const { data } = await supabase.from('users').select('role').eq('id', userId).single()
+  const { data, error } = await supabase.from('users').select('role').eq('id', userId).maybeSingle()
+  if (error) {
+    console.error(`[auth] admin role check failed for ${userId}:`, error.message)
+    return false
+  }
   return data?.role === 'admin'
 }

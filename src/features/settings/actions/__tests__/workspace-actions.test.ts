@@ -4,10 +4,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
  * The most destructive action in the product, executed rather than text-scanned. What is pinned:
  * the agency is the caller's own and the delete is scoped to it; every refusal (member, open
  * subscription, wrong name) happens before anything is read or deleted; the pending invites are
- * deleted immediately before the workspace row, and a failure there refuses; the 23503 branch
- * names its migration; and after the workspace delete the identities (members', then the
- * invitees' that delete returned), the sweep and the busts follow — with `'max'` only and no
- * `revalidatePath`, the constraint the action's doc explains.
+ * deleted immediately before the workspace row, and a failure there refuses; and after the
+ * workspace delete the identities (the invitees' that delete returned, then the members'), the
+ * sweep and the busts follow — with `'max'` only and no `revalidatePath`, the constraint the
+ * action's doc explains.
  */
 
 const AGENCY_ID = '6ba7b810-9dad-11d1-80b4-00c04fd430c8'
@@ -53,36 +53,21 @@ vi.mock('next/cache', () => ({
 }))
 
 import { deleteWorkspace } from '../workspace-actions'
+import { paidRow, trialRow } from '@/lib/billing/__tests__/fixtures'
+import type { AgencyBillingColumns } from '@/lib/queries/select-columns'
 
-/** A trial agencies row as the settings read returns it; `paid` makes it a live subscription. */
-function agency(overrides: Record<string, unknown> = {}) {
+/** The agency row as the settings read returns it, on a trial unless `overrides` say otherwise. */
+function agency(overrides: Partial<AgencyBillingColumns> = {}) {
   return {
     id: AGENCY_ID,
     name: 'About Social Media',
-    plan: 'trial',
-    mode: 'agency',
-    timezone: 'Europe/Sofia',
     stripe_customer_id: null,
-    stripe_subscription_id: null,
-    subscription_status: null,
-    subscription_quantity: null,
-    trial_ends_at: new Date(Date.now() + 7 * 86_400_000).toISOString(),
-    current_period_start: null,
-    current_period_end: null,
-    cancel_at_period_end: false,
-    past_due_since: null,
-    ...overrides,
+    ...trialRow(new Date(), overrides),
   }
 }
-const PAID = {
-  plan: 'pro',
-  stripe_customer_id: 'cus_1',
-  stripe_subscription_id: 'sub_1',
-  subscription_status: 'active',
-  subscription_quantity: 2,
-  current_period_start: '2026-09-01T00:00:00Z',
-  current_period_end: '2026-10-01T00:00:00Z',
-}
+
+/** A live subscription paying for two client slots. */
+const PAID = paidRow(new Date(), { subscription_quantity: 2, client_slots: 2 })
 
 /** One chain the action built: its table, whether it deletes, its filters and what it returns. */
 type RecordedChain = {
@@ -99,7 +84,7 @@ type RecordedChain = {
  * chains the action builds exist.
  */
 function recordingAdmin(
-  error: { code?: string; message: string } | null = null,
+  error: { message: string } | null = null,
   invites: Array<{ auth_user_id: string }> = [{ auth_user_id: 'invitee-1' }],
   inviteError: { message: string } | null = null
 ) {
@@ -234,21 +219,7 @@ describe('deleteWorkspace', () => {
     expect(mocks.revalidatePath).not.toHaveBeenCalled()
   })
 
-  it('names the missing migration when a foreign key still blocks the delete, and sweeps nothing', async () => {
-    const admin = recordingAdmin({ code: '23503', message: 'violates foreign key constraint' })
-    mocks.createAdminSupabaseClient.mockReturnValue(admin.client)
-    expect(await deleteWorkspace('About Social Media')).toEqual({
-      ok: false,
-      error: 'Cannot delete: the database is missing migration 20260856.',
-    })
-    expect(mocks.deleteAuthIdentity.mock.calls).toEqual([
-      [admin.client, 'invitee-1', 'workspace:delete'],
-    ])
-    expect(mocks.sweepClientStorage).not.toHaveBeenCalled()
-    expect(mocks.revalidateTag).not.toHaveBeenCalled()
-  })
-
-  it('reports any other database failure plainly, and still deletes the logins whose invites it deleted', async () => {
+  it('reports a failed workspace delete plainly, sweeps nothing, and still deletes the logins whose invites it deleted', async () => {
     const admin = recordingAdmin({ message: 'connection reset' })
     mocks.createAdminSupabaseClient.mockReturnValue(admin.client)
     expect(await deleteWorkspace('About Social Media')).toEqual({
@@ -258,6 +229,8 @@ describe('deleteWorkspace', () => {
     expect(mocks.deleteAuthIdentity.mock.calls).toEqual([
       [admin.client, 'invitee-1', 'workspace:delete'],
     ])
+    expect(mocks.sweepClientStorage).not.toHaveBeenCalled()
+    expect(mocks.revalidateTag).not.toHaveBeenCalled()
   })
 
   it('still answers ok when an identity survives — the rows are gone either way', async () => {

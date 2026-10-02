@@ -39,8 +39,8 @@ describe('GET /api/billing/audit-file', () => {
     expect(response.status).toBe(204)
     expect(mocks.fetchSaleDocumentsBetween).toHaveBeenCalledWith(
       ADMIN,
-      '2026-09-30T00:00:00.000Z',
-      '2026-11-02T00:00:00.000Z'
+      '2026-09-30T21:00:00.000Z',
+      '2026-10-31T22:00:00.000Z'
     )
   })
 
@@ -55,7 +55,6 @@ describe('GET /api/billing/audit-file', () => {
         stripe_credit_note_id: null,
         stripe_charge_id: 'ch_1',
         stripe_refund_id: null,
-        refunds: null,
         issued_at: '2026-10-03T10:00:00.000Z',
         tax_event_at: '2026-10-03T09:59:55.000Z',
         customer: { name: 'A', email: null, address: null, taxIds: [] },
@@ -77,7 +76,6 @@ describe('GET /api/billing/audit-file', () => {
         storage_path: null,
         delivered_at: null,
         delivery_error: null,
-        created_at: '2026-10-03T10:00:05.000Z',
       },
     ])
     const response = await GET(request('2026-10'))

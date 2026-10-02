@@ -98,10 +98,7 @@ export async function startGenerationRun(
     console.error(`[generation] could not open a run for client ${input.clientId}:`, error.message)
     return { runId: null, slotTaken: false }
   }
-
-  const runId = data?.id
-  if (!runId) await giveBack()
-  return runId ? { runId } : { runId: null, slotTaken: false }
+  return { runId: data.id }
 }
 
 /**
@@ -139,32 +136,53 @@ export interface WaitingRun {
 }
 
 /**
+ * Flip a run out of `running` — the one conditional update both closers (`finishGenerationRun`,
+ * `closeAbandonedRuns`) claim a run by, so exactly one of them settles it. True when this call won.
+ * Throws on a failed write.
+ */
+async function claimRunClose(
+  supabase: SupabaseClient,
+  runId: string,
+  close: { status: 'complete' | 'failed'; at: Date; skipped: SkippedPillars | null }
+): Promise<boolean> {
+  const { data, error } = await supabase
+    .from('generation_runs')
+    .update({
+      status: close.status,
+      completed_at: close.at.toISOString(),
+      skipped_pillars: close.skipped,
+    })
+    .eq('id', runId)
+    .eq('status', 'running')
+    .select('id')
+  if (error) throw new Error(`closing run ${runId} as ${close.status} failed: ${error.message}`)
+  return data.length > 0
+}
+
+/**
  * Marks a run terminal and settles its drafts: what landed is counted and the rest of the
  * reservation given back, so a customer pays for what exists, never for what was asked. It settles
- * only when this call flipped the run out of `running` — `closeAbandonedRuns` claims runs by the
- * same conditional flip, so exactly one of the two settles. A failed flip is logged, since the
- * shell hides a stale run within minutes and nothing else would show it; the closer settles it.
+ * only when this call won `claimRunClose`, which `closeAbandonedRuns` claims runs by too, so
+ * exactly one of the two settles. A failed flip is logged, not thrown: generate-stream calls this
+ * in a `finally` that must still close the stream (src/app/api/ai/generate-stream/route.ts), and
+ * the shell hides a stale run within minutes, so nothing else would show it; the closer settles it.
  */
 export async function finishGenerationRun(
   supabase: SupabaseClient,
   runId: string,
   outcome: RunOutcome
 ): Promise<void> {
-  const { data, error } = await supabase
-    .from('generation_runs')
-    .update({
+  try {
+    const won = await claimRunClose(supabase, runId, {
       status: outcome.status,
-      completed_at: new Date().toISOString(),
-      skipped_pillars: outcome.skipped,
+      at: new Date(),
+      skipped: outcome.skipped,
     })
-    .eq('id', runId)
-    .eq('status', 'running')
-    .select('id')
-  if (error) {
-    console.error(`[generation] could not close run ${runId} as ${outcome.status}:`, error.message)
+    if (!won) return
+  } catch (err) {
+    console.error(`[generation] could not close run ${runId}:`, err)
     return
   }
-  if (!data?.length) return
   await settleUsage(outcome.entitlement, outcome.agencyId, 'draft', {
     reserved: outcome.reserved,
     landed: outcome.landed,
@@ -238,11 +256,12 @@ export function lastCronRunAt(runs: RecentRun[]): Map<string, number> {
 /**
  * Close the runs a killed invocation left `running` (older than `ABANDONED_RUN_AFTER_MS`) and
  * return the runs with their new statuses, so the same tick can retry a slot closed as failed.
- * Each is claimed by the same conditional flip `finishGenerationRun` uses; only a won claim settles, into the
- * period the run reserved from. Its reservation is released only when taken after
+ * Each is claimed by `claimRunClose`, as `finishGenerationRun` claims it; only a won claim settles,
+ * into the period the run reserved from. Its reservation is released only when taken after
  * `lastDailyResetAt` (src/lib/billing/usage.ts), so the retry is not sized against a dead
  * reservation; an older one may already be cleared by `clearStaleReservations`, so it releases
- * nothing. Throws on a failed read or write, for the cron to log.
+ * nothing, and an older one that reset skipped (`lastDailyResetAt` says which) holds until the next
+ * reset. Throws on a failed read or write, for the cron to log.
  */
 export async function closeAbandonedRuns(
   supabase: AdminClient,
@@ -260,14 +279,7 @@ export async function closeAbandonedRuns(
     if (error) throw new Error(`landed drafts count failed for run ${run.id}: ${error.message}`)
     const landed = count ?? 0
     const status = landed > 0 ? 'complete' : 'failed'
-    const { data, error: flipError } = await supabase
-      .from('generation_runs')
-      .update({ status, completed_at: now.toISOString() })
-      .eq('id', run.id)
-      .eq('status', 'running')
-      .select('id')
-    if (flipError) throw new Error(`closing run ${run.id} failed: ${flipError.message}`)
-    if (data.length === 0) continue
+    if (!(await claimRunClose(supabase, run.id, { status, at: now, skipped: null }))) continue
     closed.set(run.id, status)
     if (run.periodKey && run.agencyId && run.targetCount) {
       const entitlement = await getCachedEntitlement(run.agencyId)

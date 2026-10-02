@@ -53,8 +53,8 @@ true.
 | Remove a teammate — their connections, their invites, their row and their login | `removeTeamMember` | [features/settings/actions/team-actions.ts](../src/features/settings/actions/team-actions.ts) |
 | Delete a workspace and everything it owns | `deleteWorkspace` | [features/settings/actions/workspace-actions.ts](../src/features/settings/actions/workspace-actions.ts) |
 | Create the Stripe customer for a workspace, once | `ensureStripeCustomer` | [lib/billing/subscription-store.ts](../src/lib/billing/subscription-store.ts) |
-| Write what a Stripe subscription says onto the agency row | `applySubscriptionSnapshot` | [lib/billing/subscription-store.ts](../src/lib/billing/subscription-store.ts) |
-| Keep the paid quantity equal to the client count, under the workspace's quantity claim (`agencies.quantity_sync_at`, taken and released only here) | `syncSubscriptionQuantity` | [lib/billing/quantity-sync.ts](../src/lib/billing/quantity-sync.ts) |
+| Write what a Stripe subscription says onto the agency row, the client slots (`client_slots`) included | `applySubscriptionSnapshot` | [lib/billing/subscription-store.ts](../src/lib/billing/subscription-store.ts) |
+| Set the client slots the admin chose on the Stripe subscription, under the workspace's quantity claim (`agencies.quantity_sync_at`, taken and released only here) | `setClientSlots` | [lib/billing/client-slots.ts](../src/lib/billing/client-slots.ts) |
 | End the plan (at its period end, or at once when its renewal failed), or keep it — from inside the app | `setPlanEnding` | [lib/billing/subscription-store.ts](../src/lib/billing/subscription-store.ts) |
 | Record a Stripe event before any work, and say whether it was already handled | `recordBillingEvent` | [lib/billing/stripe-events.ts](../src/lib/billing/stripe-events.ts) |
 | Stamp a recorded Stripe event with its outcome — done, the workspace it concerned, or the error | `finishBillingEvent` | [lib/billing/stripe-events.ts](../src/lib/billing/stripe-events.ts) |

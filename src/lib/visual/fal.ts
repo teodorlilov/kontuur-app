@@ -2,7 +2,7 @@ import 'server-only'
 
 import { fal, ApiError } from '@fal-ai/client'
 import { z } from 'zod'
-import { currentSpender } from '@/lib/billing/spend-context'
+import { requireSpender } from '@/lib/billing/spend-context'
 import { recordAiUsage } from '@/lib/billing/telemetry'
 import { reserveUsage } from '@/lib/billing/usage'
 import type { Rgb } from './extract/color'
@@ -33,24 +33,22 @@ const PAID_MODELS = new Set([FAL_MODEL, EDIT_MODEL, VECTOR_MODEL])
 /**
  * All model invocations go through here — which makes it the one place images are metered.
  *
- * Fail closed: the spender comes from the boundary (src/lib/billing/spend-context.ts), and a call
- * with none in scope is refused rather than billed to nobody. A paid model RESERVES one image
- * through `reserveUsage` before the call — which also refuses a boundary that is not `runMetered`
- * — and it is that boundary that counts the image once the picture has landed, or gives it back
- * when anything after this call fails. The cutout model records telemetry only. The refusal is
- * an `AllowanceError`, which the routes turn into a 402 and the visuals cron into a skip.
+ * Fail closed: the spender comes from the boundary (`requireSpender`,
+ * src/lib/billing/spend-context.ts), and a call with none in scope is refused rather than billed to
+ * nobody. A paid model RESERVES one image through `reserveUsage` before the call — which also
+ * refuses a boundary that is not `runMetered`, or one with no agency — and it is that boundary that
+ * counts the image once the picture has landed, or gives it back when anything after this call
+ * fails. The cutout model records telemetry only. The refusal is an `AllowanceError`, which the
+ * routes turn into a 402 and the visuals cron into a skip.
  */
 async function subscribeFal(model: string, input: Record<string, unknown>) {
   ensureConfigured()
-  const spender = currentSpender()
-  if (!spender?.agencyId)
-    throw new Error(`${model}: no spender in scope — wrap the boundary in runAsSpender`)
-
+  const spender = requireSpender()
   if (PAID_MODELS.has(model)) await reserveUsage(spender, 'image', 1)
   try {
     return await callFal(model, input)
   } finally {
-    void recordAiUsage({ provider: 'fal', model })
+    void recordAiUsage(spender, { provider: 'fal', model })
   }
 }
 

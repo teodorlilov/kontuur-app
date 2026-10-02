@@ -1,6 +1,13 @@
+import { PLAN_AND_BILLING_PATH } from '@/utils/constants'
+
 /** The app's public origin, for links that leave the app — emails, the idea form, invitations. */
 export function resolveAppUrl(): string {
   return process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
+}
+
+/** The absolute Plan & billing URL, for links that leave the app — billing emails and Stripe's redirects. */
+export function planAndBillingUrl(): string {
+  return `${resolveAppUrl()}${PLAN_AND_BILLING_PATH}`
 }
 
 /**

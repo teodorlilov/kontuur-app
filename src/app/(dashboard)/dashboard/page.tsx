@@ -232,7 +232,7 @@ export default async function DashboardPage() {
             pendingCount={metrics.pendingCount}
             isSolo={isSolo}
             generateRefusal={generate.refusal}
-            addClient={addClient}
+            addClientRefusal={addClient.refusal}
           />
         </div>
       </div>

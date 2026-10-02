@@ -121,9 +121,7 @@ const _fetchNarrative = unstable_cache(
     agencyId: string
   ): Promise<NarrativeResult | null> => {
     void syncStamp
-    return runAsSpender({ agencyId, clientId: args.clientId, flow: 'analytics' }, () =>
-      resolveNarrative(IG_NARRATIVE, args)
-    )
+    return runAsSpender({ agencyId, flow: 'analytics' }, () => resolveNarrative(IG_NARRATIVE, args))
   },
   ['analytics-narrative-v2', 'instagram'],
   { revalidate: 86_400, tags: [IG_METRICS_TAG] }

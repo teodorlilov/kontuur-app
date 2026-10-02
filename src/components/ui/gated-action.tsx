@@ -8,8 +8,6 @@ interface GatedActionProps {
   label: string
   /** Why the plan will not allow it, or null when it will. */
   refusal: string | null
-  /** What it costs, said before the page is opened — shown only when the action is allowed. */
-  note?: string | null
   /** Ties the reason to the disabled control for a screen reader; unique per page. */
   refusalId: string
   /** The control's weight beside a page's other actions; primary unless said. */
@@ -31,24 +29,16 @@ export function GatedAction({
   href,
   label,
   refusal,
-  note,
   refusalId,
   variant = 'primary',
   wayOut = true,
 }: GatedActionProps) {
   if (refusal === null) {
-    const link = (
+    return (
       <ActionLink href={href} variant={variant}>
         {label}
         <span aria-hidden="true">&rarr;</span>
       </ActionLink>
-    )
-    if (!note) return link
-    return (
-      <div className="flex flex-col items-end gap-1">
-        {link}
-        <p className="text-caption text-text2">{note}</p>
-      </div>
     )
   }
   return (

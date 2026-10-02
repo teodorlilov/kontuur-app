@@ -15,7 +15,6 @@ vi.mock('next/navigation', () => ({
 }))
 
 const CLIENTS = [{ id: 'c1', name: 'Acme' }]
-const ALLOWED = { refusal: null, note: null, wayOut: true }
 
 function rowNames() {
   return screen.getAllByRole('button').map((button) => button.textContent ?? '')
@@ -29,7 +28,7 @@ describe('CommandPalette', () => {
         onOpenChange={vi.fn()}
         agencyMode="agency"
         clients={CLIENTS}
-        addClient={ALLOWED}
+        addClientRefusal={null}
       />
     )
 
@@ -46,7 +45,7 @@ describe('CommandPalette', () => {
         onOpenChange={vi.fn()}
         agencyMode="solo"
         clients={CLIENTS}
-        addClient={ALLOWED}
+        addClientRefusal={null}
       />
     )
 
@@ -66,7 +65,7 @@ describe('CommandPalette', () => {
         onOpenChange={onOpenChange}
         agencyMode="agency"
         clients={CLIENTS}
-        addClient={{ refusal: 'Choose a plan to add clients.', note: null, wayOut: true }}
+        addClientRefusal="Choose a plan to add clients."
       />
     )
     const row = screen.getByRole('button', { name: /Add client/ })
@@ -81,7 +80,7 @@ describe('CommandPalette', () => {
     expect(onOpenChange).not.toHaveBeenCalled()
   })
 
-  it('says what a new client costs on a paid workspace, and still opens the form', () => {
+  it('refuses Add client on a paid workspace whose slots are all in use, in the slots sentence', () => {
     push.mockClear()
     render(
       <CommandPalette
@@ -89,16 +88,13 @@ describe('CommandPalette', () => {
         onOpenChange={vi.fn()}
         agencyMode="agency"
         clients={CLIENTS}
-        addClient={{
-          refusal: null,
-          note: 'Adds €29.00 a month excl. VAT, charged pro rata today.',
-          wayOut: true,
-        }}
+        addClientRefusal="All 3 client slots are in use. Add a slot to add more."
       />
     )
     const row = screen.getByRole('button', { name: /Add client/ })
-    expect(row).toHaveTextContent('Adds €29.00 a month excl. VAT, charged pro rata today.')
+    expect(row).toHaveAttribute('aria-disabled', 'true')
+    expect(row).toHaveTextContent('All 3 client slots are in use. Add a slot to add more.')
     fireEvent.click(row)
-    expect(push).toHaveBeenCalledWith('/clients/new')
+    expect(push).not.toHaveBeenCalled()
   })
 })

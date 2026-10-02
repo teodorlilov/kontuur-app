@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import {
   CLIENTS_ADMINS_ONLY,
+  SLOTS_SOLO,
   WORKSPACE_LOCKED,
-  addBrandCost,
   addBrandGate,
   imagesWaiting,
   addBrandRefusal,
@@ -13,13 +13,21 @@ import {
   checkoutActivated,
   pausedNotice,
   REMINDER_COPY,
-  checkoutSummary,
+  cardDeclined,
   clientRosterRefusal,
   deleteClientNotice,
   deleteWorkspaceNotice,
   deleteWorkspaceRefusal,
+  documentKindLabel,
+  planEndingChanged,
   postsLeft,
   shellNotice,
+  slotChangeConsequence,
+  slotsBelowClients,
+  slotsChanged,
+  slotsHint,
+  slotsSummary,
+  slotsUnavailable,
 } from '../copy'
 import { entitlementFor } from '../entitlement'
 import { paidRow, trialRow } from './fixtures'
@@ -162,7 +170,7 @@ describe('the refusal sentences', () => {
     ).toBe("You've used all 60 AI drafts for this period. Choose a plan to keep generating.")
   })
 
-  it('are the same words in the wizard before the server is asked, naming the pool that ran out', () => {
+  it('the wizard’s live line counts the posts left and names the pool that ran out', () => {
     expect(postsLeft(5, 'draft')).toBe('5 posts left this period')
     expect(postsLeft(1, 'draft')).toBe('1 post left this period')
     expect(postsLeft(2, 'draft', 3)).toBe('You have 2 posts left this period and this needs 3.')
@@ -185,7 +193,17 @@ describe('the refusal sentences', () => {
     expect(addBrandRefusal(trial, 3, 'admin')).toBe(
       'Trial includes 3 clients. Choose a plan to add more.'
     )
-    expect(addBrandRefusal(entitlementFor(paidRow(NOW), NOW), 1, 'admin')).toBeNull()
+    const paid = entitlementFor(paidRow(NOW, { client_slots: 3 }), NOW)
+    expect(addBrandRefusal(paid, 2, 'admin')).toBeNull()
+    expect(addBrandRefusal(paid, 3, 'admin')).toBe(
+      'All 3 client slots are in use. Add a slot to add more.'
+    )
+    expect(addBrandRefusal(entitlementFor(paidRow(NOW), NOW), 1, 'admin')).toBe(
+      'Your one client slot is in use. Add a slot to add more.'
+    )
+    expect(addBrandRefusal(entitlementFor(paidRow(NOW, { mode: 'solo' }), NOW), 1, 'admin')).toBe(
+      'Your plan covers one business.'
+    )
     expect(
       addBrandRefusal(entitlementFor({ ...TRIAL_ROW, plan: 'house' }, NOW), 40, 'admin')
     ).toBeNull()
@@ -196,8 +214,13 @@ describe('the refusal sentences', () => {
         'admin'
       )
     ).toBe('Choose a plan to add clients.')
+    const failedRenewal = entitlementFor(
+      paidRow(NOW, { subscription_status: 'unpaid', client_slots: 3 }),
+      NOW
+    )
+    expect(addBrandRefusal(failedRenewal, 0, 'admin')).toBe('Update your card to add clients.')
     expect(addBrandRefusal(entitlementFor({ ...TRIAL_ROW, mode: 'solo' }, NOW), 1, 'admin')).toBe(
-      'Trial includes one business. Choose a plan to add more.'
+      'Your plan covers one business.'
     )
   })
 })
@@ -220,13 +243,9 @@ describe('who may add or delete clients', () => {
   })
 
   it('reaches every Add-client control through addBrandGate', () => {
-    const paid = entitlementFor(paidRow(NOW, { subscription_quantity: 3 }), NOW)
-    expect(addBrandGate(paid, 3, 'member').refusal).toBe(CLIENTS_ADMINS_ONLY)
-    expect(addBrandGate(paid, 3, 'admin')).toEqual({
-      refusal: null,
-      note: addBrandCost(paid, 3),
-      wayOut: true,
-    })
+    const paid = entitlementFor(paidRow(NOW, { client_slots: 3 }), NOW)
+    expect(addBrandGate(paid, 2, 'member').refusal).toBe(CLIENTS_ADMINS_ONLY)
+    expect(addBrandGate(paid, 2, 'admin')).toEqual({ refusal: null, wayOut: true })
   })
 
   it('offers Plan & billing as the way out of the plan’s refusal only, never to a member', () => {
@@ -253,43 +272,35 @@ describe('who may add or delete clients', () => {
 })
 
 describe('deleteClientNotice — what deleting a client does to the bill', () => {
-  const paid = entitlementFor(paidRow(NOW, { subscription_quantity: 3 }), NOW)
-
-  it('names one client fewer from the renewal, and keeps this period, while several remain', () => {
+  it('says the slot is freed and the bill stays, and how to pay for fewer', () => {
+    const paid = entitlementFor(paidRow(NOW, { subscription_quantity: 3, client_slots: 3 }), NOW)
     expect(deleteClientNotice(paid, 3)).toBe(
-      "Your plan bills one client fewer from its renewal on 1 October 2026. This period's allowance stays as it is."
+      'This frees one of your 3 client slots. Your plan still bills for 3; to pay for fewer, lower your slots in Plan & billing.'
     )
   })
 
-  it('says the last client is still billed until the plan is cancelled', () => {
-    expect(deleteClientNotice(paid, 1)).toBe(
-      'Your plan keeps billing for one client until you cancel it under Plan & billing.'
+  it('says a one-slot plan keeps billing one client until it is cancelled', () => {
+    expect(deleteClientNotice(entitlementFor(paidRow(NOW), NOW), 1)).toBe(
+      'This frees your client slot. Your plan still bills for one client until you cancel it in Plan & billing.'
     )
   })
 
-  it('does not date the renewal while one has failed', () => {
-    const renewalFailed = entitlementFor(
-      paidRow(NOW, {
-        subscription_quantity: 3,
-        subscription_status: 'past_due',
-        past_due_since: '2026-09-12T00:00:00Z',
-      }),
-      NOW
-    )
-    expect(deleteClientNotice(renewalFailed, 3)).toBe(
-      "Your plan bills one client fewer from its next renewal. This period's allowance stays as it is."
-    )
-  })
-
-  it('says nothing on the trial, on house, or once the plan is set to end', () => {
-    expect(deleteClientNotice(entitlementFor(TRIAL_ROW, NOW), 2)).toBeNull()
-    expect(deleteClientNotice(entitlementFor(trialRow(NOW, { plan: 'house' }), NOW), 2)).toBeNull()
+  it('says nothing on the trial, on house, on a solo workspace, or once the plan is set to end', () => {
+    expect(deleteClientNotice(entitlementFor(TRIAL_ROW, NOW), 1)).toBeNull()
+    expect(deleteClientNotice(entitlementFor(trialRow(NOW, { plan: 'house' }), NOW), 1)).toBeNull()
+    expect(deleteClientNotice(entitlementFor(paidRow(NOW, { mode: 'solo' }), NOW), 1)).toBeNull()
     expect(
       deleteClientNotice(
-        entitlementFor(paidRow(NOW, { subscription_quantity: 3, cancel_at_period_end: true }), NOW),
-        3
+        entitlementFor(paidRow(NOW, { client_slots: 3, cancel_at_period_end: true }), NOW),
+        2
       )
     ).toBeNull()
+  })
+
+  it('says nothing while the workspace holds more clients than slots, where a delete frees none', () => {
+    const over = entitlementFor(paidRow(NOW, { subscription_quantity: 2, client_slots: 2 }), NOW)
+    expect(deleteClientNotice(over, 3)).toBeNull()
+    expect(deleteClientNotice(over, 2)).toMatch(/^This frees one of your 2 client slots\./)
   })
 })
 
@@ -303,28 +314,26 @@ describe('the delete-workspace sentences', () => {
 
   it('names the day a cancelled plan ends, in the same words the shell uses, and nothing for no plan', () => {
     const ending = entitlementFor(paidRow(NOW, { cancel_at_period_end: true }), NOW)
-    expect(deleteWorkspaceNotice(ending)).toBe(
-      'Your plan ends on 1 October 2026; nothing more will be charged.'
-    )
+    expect(deleteWorkspaceNotice(ending)).toBe('Your plan ends on 1 October 2026.')
     expect(shellNotice(ending, NOW)?.text).toMatch(/^Your plan ends on 1 October/)
     expect(deleteWorkspaceNotice({ endsOn: null, ...SOFIA })).toBeNull()
   })
 })
 
 describe('cancelPlanConsequence', () => {
-  it('names the period end in the shell’s words, what is charged, and what happens after', () => {
+  it('names the period end in the shell’s words and what happens after, promising no charge it cannot', () => {
     const active = entitlementFor(paidRow(NOW), NOW)
     expect(cancelPlanConsequence(active)).toBe(
-      'Your plan ends on 1 October 2026 and nothing more is charged. You keep full access until then; after that the workspace pauses and keeps everything you made. You can delete it any time.'
+      'Your plan ends on 1 October 2026. You keep full access until then; after that the workspace pauses and keeps everything you made. You can delete it any time.'
     )
     expect(
       cancelPlanConsequence({ plan: 'pro', paymentFailed: false, resetsOn: null, ...SOFIA })
-    ).toMatch(/^Your plan ends with the current period and nothing more is charged\./)
+    ).toMatch(/^Your plan ends with the current period\. You keep/)
   })
 })
 
 describe('checkoutActivated — the card once the plan is live', () => {
-  const paid = entitlementFor(paidRow(NOW, { subscription_quantity: 3 }), NOW)
+  const paid = entitlementFor(paidRow(NOW, { subscription_quantity: 3, client_slots: 3 }), NOW)
 
   it('names the plan, the clients, the month and the renewal, and where the invoice went', () => {
     const card = checkoutActivated(paid, { number: 1_000_000_002, email: 'owner@acme.bg' })
@@ -488,38 +497,6 @@ describe('the pictures earlier posts still owe', () => {
   })
 })
 
-describe('addBrandCost — what one more client costs', () => {
-  const paid = entitlementFor(paidRow(NOW, { subscription_quantity: 3 }), NOW)
-
-  it('is free until renewal below the count paid for, and pro rata today from it', () => {
-    expect(addBrandCost(paid, 2, NOW)).toBe(
-      'Already paid for this period; adds €29.00 a month excl. VAT from renewal.'
-    )
-    expect(addBrandCost(paid, 3, NOW)).toBe(
-      'Adds €29.00 a month excl. VAT, charged pro rata today.'
-    )
-  })
-
-  it('stops calling a client already paid for once the paid period is over, renewal failed or not yet heard of', () => {
-    const PRO_RATA = 'Adds €29.00 a month excl. VAT, charged pro rata today.'
-    const renewalFailed = entitlementFor(
-      paidRow(NOW, {
-        subscription_quantity: 3,
-        subscription_status: 'past_due',
-        past_due_since: '2026-09-12T00:00:00Z',
-      }),
-      NOW
-    )
-    expect(addBrandCost(renewalFailed, 2, NOW)).toBe(PRO_RATA)
-    expect(addBrandCost(paid, 2, new Date('2026-10-01T00:00:01Z'))).toBe(PRO_RATA)
-  })
-
-  it('says nothing on the trial or on house, where a client costs nothing', () => {
-    expect(addBrandCost(entitlementFor(TRIAL_ROW, NOW), 0)).toBeNull()
-    expect(addBrandCost(entitlementFor(trialRow(NOW, { plan: 'house' }), NOW), 0)).toBeNull()
-  })
-})
-
 describe('the reminder emails', () => {
   it('name the grace in days from the plan table, never in a word like “a week”', () => {
     expect(REMINDER_COPY.payment_failed.detail).toContain(
@@ -530,13 +507,140 @@ describe('the reminder emails', () => {
   })
 })
 
-describe('checkoutSummary', () => {
-  it('bills at least one client, the same count Checkout sells', () => {
-    expect(checkoutSummary('agency', 0)).toBe(
-      '€29.00 a month per client excl. VAT · 1 client today'
+describe('the client-slot sentences', () => {
+  const PERIOD = { start: new Date('2026-09-01T00:00:00Z'), end: new Date('2026-10-01T00:00:00Z') }
+  const MID = new Date('2026-09-16T00:00:00Z')
+  const change = (from: number, to: number, paid: number, now = MID) =>
+    slotChangeConsequence({
+      from,
+      to,
+      paid,
+      period: PERIOD,
+      timezone: 'Europe/Sofia',
+      now,
+    })
+
+  it('prices the slots a month, and a solo workspace its one business', () => {
+    expect(slotsSummary('agency', 3)).toBe('3 clients × €29.00 = €87.00 a month excl. VAT')
+    expect(slotsSummary('agency', 1)).toBe('1 client × €29.00 = €29.00 a month excl. VAT')
+    expect(slotsSummary('solo', 1)).toBe('€29.00 a month excl. VAT for your business')
+  })
+
+  it('says what a raise charges today and what the month becomes', () => {
+    expect(change(3, 4, 3)).toEqual({
+      title: 'Add 1 client slot',
+      body: 'About €14.50 excl. VAT is charged today for the rest of this period, with its own invoice. From 1 October 2026 you pay €116.00 a month excl. VAT for 4 clients.',
+      confirm: 'Add slot',
+      cancel: 'Keep 3',
+    })
+  })
+
+  it('names the part of a raise already paid for', () => {
+    expect(change(2, 4, 3).body).toBe(
+      'About €14.50 excl. VAT is charged today for the rest of this period, with its own invoice. 1 of them is already paid for this period. From 1 October 2026 you pay €116.00 a month excl. VAT for 4 clients.'
     )
-    expect(checkoutSummary('agency', 3)).toBe(
-      '€29.00 a month per client excl. VAT · 3 clients today'
+  })
+
+  it('puts an amount under the card minimum on the renewal invoice', () => {
+    expect(change(3, 4, 3, new Date('2026-09-30T23:00:00Z')).body).toMatch(
+      /^About €0\.04 excl\. VAT for the rest of this period is added to your invoice on 1 October 2026/
     )
+  })
+
+  it('charges nothing to restore what this period paid for', () => {
+    expect(change(2, 3, 3)).toMatchObject({
+      title: 'Add 1 client slot',
+      body: 'You already paid for 3 this period, so nothing is charged today. From 1 October 2026 you pay €87.00 a month excl. VAT for 3 clients.',
+    })
+  })
+
+  it('says a lower refunds nothing, keeps the allowance, and caps the clients at once', () => {
+    expect(change(3, 1, 3)).toEqual({
+      title: 'Remove 2 client slots',
+      body: "From 1 October 2026 you pay €29.00 a month excl. VAT for 1 client. Nothing is refunded, and this period's allowance stays as it is. From now on the workspace holds at most 1 client.",
+      confirm: 'Remove slots',
+      cancel: 'Keep 3',
+    })
+  })
+
+  it('reports what the server did, not what the page expected', () => {
+    expect(slotsChanged('charged', 4, 3)).toBe(
+      'You now pay for 4 clients. The invoice for the rest of this period is on its way by email.'
+    )
+    expect(slotsChanged('on_renewal', 4, 3)).toMatch(/added to your next invoice\.$/)
+    expect(slotsChanged('restored', 3, 3)).toBe(
+      'You now pay for 3 clients again. Nothing was charged.'
+    )
+    expect(slotsChanged('lowered', 2, 3)).toBe(
+      'From your next renewal you pay for 2 clients. Nothing was charged or refunded.'
+    )
+  })
+
+  it('words a partial restore from the renewal, since the period keeps the count it paid for', () => {
+    expect(slotsChanged('restored', 3, 4)).toBe(
+      'From your next renewal you pay for 3 clients. Nothing was charged.'
+    )
+  })
+
+  it('says under the stepper the room left, or why it goes no lower', () => {
+    expect(slotsHint('checkout', 4, 2)).toBe(
+      'Room for 2 more clients before you need another slot.'
+    )
+    expect(slotsHint('change', 3, 2)).toBe('Room for 1 more client before you need another slot.')
+    expect(slotsHint('checkout', 2, 2)).toBe('You have 2 clients, so you pay for at least 2.')
+    expect(slotsHint('change', 2, 2)).toBe(
+      'You have 2 clients. Delete a client first to pay for fewer.'
+    )
+    expect(slotsHint('change', 1, 1)).toBe('A plan pays for at least one client.')
+    expect(slotsHint('checkout', 1, 1)).toBe('A plan pays for at least one client.')
+    expect(slotsHint('change', 3, 4)).toBeNull()
+  })
+
+  it('refuses below the clients, and tells a declined card where to go', () => {
+    expect(slotsBelowClients(3)).toBe('You have 3 clients. Delete a client first to pay for fewer.')
+    expect(slotsBelowClients(1)).toBe('A plan pays for at least one client.')
+    expect(slotsBelowClients(0)).toBe('A plan pays for at least one client.')
+    expect(cardDeclined('Your card was declined.')).toBe(
+      'The card on file was declined: Your card was declined. Update it under Manage billing and try again.'
+    )
+  })
+
+  it('allows a change only on an active paid agency plan that is not set to end, inside its period', () => {
+    const paid = entitlementFor(paidRow(NOW, { client_slots: 3 }), NOW)
+    expect(slotsUnavailable(paid, NOW)).toBeNull()
+    expect(slotsUnavailable(entitlementFor(paidRow(NOW, { mode: 'solo' }), NOW), NOW)).toBe(
+      SLOTS_SOLO
+    )
+    expect(slotsUnavailable(entitlementFor(trialRow(NOW, { plan: 'house' }), NOW), NOW)).toBe(
+      'The Internal plan has no client slots to change.'
+    )
+    expect(
+      slotsUnavailable(
+        entitlementFor(
+          paidRow(NOW, { subscription_status: 'past_due', past_due_since: day(-1).toISOString() }),
+          NOW
+        ),
+        NOW
+      )
+    ).toBe('Your last payment failed. Update your card in Plan & billing to continue.')
+    expect(
+      slotsUnavailable(entitlementFor(paidRow(NOW, { cancel_at_period_end: true }), NOW), NOW)
+    ).toBe('Your plan ends on 1 October 2026. Keep your plan to change its client slots.')
+    expect(slotsUnavailable(paid, new Date('2026-10-01T00:00:01Z'))).toBe(
+      'Your plan is renewing, and its payment is taken within about an hour. Reload this page after that to change your client slots.'
+    )
+  })
+})
+
+describe('the plan-end toast and the document names', () => {
+  it('says the plan ended now, is set to end, or continues', () => {
+    expect(planEndingChanged(true, true)).toBe('Your plan has ended.')
+    expect(planEndingChanged(false, true)).toBe('Your plan is set to end.')
+    expect(planEndingChanged(false, false)).toBe('Your plan continues.')
+  })
+
+  it('names a sale document as its PDF does', () => {
+    expect(documentKindLabel('invoice')).toBe('Invoice')
+    expect(documentKindLabel('credit_note')).toBe('Credit note')
   })
 })

@@ -37,7 +37,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: 'position must be a non-negative integer' }, { status: 400 })
   }
 
-  const spender: Spender = { agencyId: auth.agencyId, clientId: post.client_id, flow: 'editor' }
+  const spender: Spender = { agencyId: auth.agencyId, flow: 'editor' }
   try {
     const result = await runMetered(spender, () =>
       generatePostVisual({ postId, clientId: post.client_id, position })

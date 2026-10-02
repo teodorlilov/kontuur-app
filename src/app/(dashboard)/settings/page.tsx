@@ -7,7 +7,6 @@ import { entitlementFor, isPaying } from '@/lib/billing/entitlement'
 import {
   cancelPlanConsequence,
   checkoutActivated,
-  checkoutSummary,
   deleteWorkspaceNotice,
   deleteWorkspaceRefusal,
 } from '@/lib/billing/copy'
@@ -21,6 +20,7 @@ import { AccountRail, AccountTab } from '@/features/settings/components/account-
 import { IntegrationsRail, IntegrationsTab } from '@/features/settings/components/integrations-tab'
 import { PlanSection } from '@/features/settings/components/plan-section'
 import { PlanActions } from '@/features/settings/components/plan-actions'
+import { slotsStateOf } from '@/features/settings/lib/slots-state'
 import { CheckoutReturn, type BillingReturn } from '@/features/settings/components/checkout-return'
 import { BillingDocuments } from '@/features/settings/components/billing-documents'
 import { ProfileRail, ProfileTab } from '@/features/settings/components/profile-tab'
@@ -40,7 +40,9 @@ function billingReturnOf(value: string | string[] | undefined): BillingReturn | 
  * One uncached agency read: this page follows the account PUT and the Checkout return, so it must
  * never show a stale row, and the entitlement is derived from that same read rather than through
  * `getCachedEntitlement`. The billing columns stay here; client components get only the fields
- * they edit or show. Invoice links (admins only) are minted per render. Canva's team status is
+ * they edit or show. Invoice links (admins only) are minted per render; the Checkout return card
+ * names only an invoice issued in the current period, so a workspace buying again is never told
+ * the previous plan's invoice is on its way. Canva's team status is
  * read here so the Integrations panel arrives with its rows, not a loading state after SSR. Panels
  * are handed to the client `SettingsView` as elements because anything it imports joins the client
  * bundle; this keeps the static ones (Profile, Plan) server components that ship no JS.
@@ -61,7 +63,8 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
 
   if (!agency) redirect(SIGN_IN_PATH)
 
-  const entitlement = entitlementFor(agency, new Date())
+  const now = new Date()
+  const entitlement = entitlementFor(agency, now)
   const { landed: usage } = await readUsage(agencyId, entitlement.periodKey)
   const agencyMode = entitlement.mode
   const account = { name: agency.name, timezone: agency.timezone }
@@ -73,7 +76,13 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
     console.error(`[settings] document links failed for ${agencyId}:`, err)
     return stored.map((document) => ({ ...document, url: null }))
   })
-  const latestInvoice = documents.find((document) => document.kind === 'invoice')
+  const periodStart = agency.current_period_start ? Date.parse(agency.current_period_start) : null
+  const latestInvoice = documents.find(
+    (document) =>
+      document.kind === 'invoice' &&
+      periodStart !== null &&
+      Date.parse(document.issued_at) >= periodStart
+  )
   const billingReturn = billingReturnOf(params.billing)
 
   return (
@@ -83,25 +92,17 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
       memberCount={members.length}
       agencyMode={agencyMode}
       panels={{
-        team: (
-          <TeamTab
-            members={members}
-            currentUserId={userId}
-            currentUserRole={role}
-            agencyMode={agencyMode}
-          />
-        ),
+        team: <TeamTab members={members} currentUserId={userId} currentUserRole={role} />,
         account: (
           <>
             <AccountTab agency={account} currentUserRole={role} />
             <PlanSection entitlement={entitlement} usage={usage} brandCount={clientCount} />
             {isAdmin && (
               <PlanActions
-                plan={entitlement.plan}
                 subscriptionOpen={entitlement.subscriptionOpen}
-                summary={checkoutSummary(entitlement.mode, clientCount)}
                 ending={entitlement.planEnding}
                 cancelConsequence={cancelPlanConsequence(entitlement)}
+                slots={slotsStateOf(entitlement, agency, clientCount, now)}
               />
             )}
             {isAdmin && <BillingDocuments documents={documents} />}

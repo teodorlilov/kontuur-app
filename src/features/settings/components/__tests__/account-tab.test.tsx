@@ -5,14 +5,13 @@ import userEvent from '@testing-library/user-event'
 /**
  * The timezone hint carries the clock of the zone it names, so a wrong zone shows itself. Pinned
  * at a fixed instant: the same minute reads differently in Sofia and in London, and moves when
- * the minute turns. Both server actions the tab reaches through the danger zone are stubbed —
- * they are `server-only` and never run here.
+ * the minute turns. The one server action the tab reaches through the danger zone
+ * (`deleteWorkspace`) is stubbed — it is `server-only` and never runs here.
  */
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: vi.fn(), refresh: vi.fn(), replace: vi.fn() }),
 }))
 vi.mock('@/features/settings/actions/workspace-actions', () => ({ deleteWorkspace: vi.fn() }))
-vi.mock('@/features/settings/actions/billing-actions', () => ({ setPlanEndingAction: vi.fn() }))
 
 import { AccountTab } from '../account-tab'
 

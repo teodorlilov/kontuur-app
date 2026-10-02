@@ -14,7 +14,6 @@ function entitlement(overrides: Partial<Entitlement>): Entitlement {
     timezone: 'Europe/Sofia',
     canSpend: true,
     canPublish: true,
-    canCreate: true,
     brands: 3,
     limits: { draft: 60, image: 150, rewrite: 45 },
     ...overrides,
@@ -106,20 +105,41 @@ describe('PlanSection', () => {
     expect(screen.queryByText('Renews on')).not.toBeInTheDocument()
   })
 
-  it('a paid solo workspace counts one business, not one businesses', () => {
+  it('a paid agency reads its clients against its client slots', () => {
     render(
       <PlanSection
-        entitlement={entitlement({
-          state: 'active',
-          plan: 'pro',
-          mode: 'solo',
-          brandsUnlimited: true,
-        })}
+        entitlement={entitlement({ state: 'active', plan: 'pro', brands: 3 })}
+        usage={USAGE}
+        brandCount={2}
+      />
+    )
+    expect(screen.getByText('2 of 3')).toBeInTheDocument()
+  })
+
+  it('a paid agency holding more clients than slots shows the overrun, not a hidden cap', () => {
+    render(
+      <PlanSection
+        entitlement={entitlement({ state: 'active', plan: 'pro', brands: 3 })}
+        usage={USAGE}
+        brandCount={4}
+      />
+    )
+    expect(screen.getByText('4 of 3')).toBeInTheDocument()
+    expect(
+      screen.getByText('4 of 3 clients used this period, more than the plan holds')
+    ).toBeInTheDocument()
+  })
+
+  it('a paid solo workspace reads its one business against its one slot', () => {
+    render(
+      <PlanSection
+        entitlement={entitlement({ state: 'active', plan: 'pro', mode: 'solo', brands: 1 })}
         usage={USAGE}
         brandCount={1}
       />
     )
-    expect(screen.getByText('1 business')).toBeInTheDocument()
+    expect(screen.getByText('Business')).toBeInTheDocument()
+    expect(screen.getByText('1 of 1')).toBeInTheDocument()
   })
 
   it('a house workspace shows plain counts with no ceiling', () => {
@@ -128,7 +148,7 @@ describe('PlanSection', () => {
         entitlement={entitlement({
           state: 'active',
           plan: 'house',
-          brandsUnlimited: true,
+          brands: Infinity,
           limits: { draft: UNMETERED, image: UNMETERED, rewrite: UNMETERED },
         })}
         usage={USAGE}

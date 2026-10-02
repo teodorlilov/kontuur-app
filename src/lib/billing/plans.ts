@@ -1,8 +1,9 @@
 /**
  * The plan table — every number a plan is made of, in one place (docs/plans/BILLING.md); nothing
  * else in the app may restate one. Amounts are euro cents, net of VAT. The one paid plan is billed
- * per brand (`priceCents`) and its allowance is `perBrand × brands`; the trial's allowance is for the WHOLE trial and workspace,
- * never per month or per brand (`TRIAL_ALLOWANCE`).
+ * per client slot (`priceCents`, docs/plans/CLIENT-SLOTS.md) and its allowance is `perBrand` times
+ * the slots paid for this period; the trial's allowance is for the WHOLE trial and workspace, never
+ * per month or per brand (`TRIAL_ALLOWANCE`).
  *
  * 'house' (the company's own and partner workspaces) is set by hand in the database, never from
  * the app or Stripe: no cap, never locks, usage still counted against `UNMETERED` so the meters
@@ -47,11 +48,92 @@ export const PRO_PLAN: { priceCents: number; perBrand: Allowance } = {
 }
 
 /**
- * How many brands Checkout bills for: the workspace's clients, never fewer than one — a workspace
- * starts paying for the brand it is set up for even before its first client exists.
+ * The fewest client slots a workspace may pay for: its clients, never fewer than one — a workspace
+ * pays for the brand it is set up for even before its first client exists. The floor of Checkout's
+ * number and of every lower (`startCheckout`, `setClientSlotsAction`,
+ * src/features/settings/actions/billing-actions.ts).
  */
 export function billableQuantity(clientCount: number): number {
   return Math.max(1, clientCount)
+}
+
+/**
+ * The most client slots a workspace may buy — a guard against a typo reaching the card, checked on
+ * a raise only, so a larger number set by hand in Stripe can always be lowered.
+ */
+export const MAX_CLIENT_SLOTS = 50
+
+/**
+ * Stripe's smallest charge in euro, €0.50 (Stripe's supported-currencies page, "Minimum charge
+ * amount by currency"). It holds while the account's payouts settle in euro. A pro-rata amount under
+ * it is left on the renewal invoice rather than invoiced on its own, since an invoice below it may
+ * leave `amount_due` at 0 (node_modules/stripe/esm/resources/Invoices.d.ts).
+ */
+const STRIPE_MIN_CHARGE_CENTS = 50
+
+/** What `slots` client slots cost a month, in euro cents net of VAT. */
+export function monthlyCents(slots: number): number {
+  return PRO_PLAN.priceCents * slots
+}
+
+/** What a change of client slots is, and how many of the new slots it charges for. */
+interface SlotChange {
+  kind: 'raise' | 'restore' | 'lower' | 'same'
+  charged: number
+}
+
+/**
+ * A change of the ordered slots from `from` to `to`, with `paid` slots already billed this period.
+ * Subscriptions run in Stripe's flexible billing mode (`createCheckoutSession`,
+ * src/lib/billing/checkout.ts), where a quantity update credits what was last billed and debits the
+ * new quantity (docs.stripe.com/billing/subscriptions/billing-mode). So only the slots above both
+ * `from` and `paid` are charged; going back up to `paid` is a free restore, and a lower is never
+ * credited. One rule for the Stripe write (`setClientSlots`, src/lib/billing/client-slots.ts) and
+ * for the confirm that describes it (`slotChangeConsequence`, src/lib/billing/copy.ts).
+ */
+export function slotChange(from: number, to: number, paid: number): SlotChange {
+  if (to === from) return { kind: 'same', charged: 0 }
+  if (to < from) return { kind: 'lower', charged: 0 }
+  const charged = Math.max(0, to - Math.max(from, paid))
+  return { kind: charged > 0 ? 'raise' : 'restore', charged }
+}
+
+/** The unrounded pro-rata amount for `units` slots over what is left of `period` at `now`. */
+function proRataExact(units: number, period: { start: Date; end: Date }, now: Date): number {
+  const length = period.end.getTime() - period.start.getTime()
+  const left = Math.max(0, period.end.getTime() - now.getTime())
+  return PRO_PLAN.priceCents * units * (length > 0 ? left / length : 0)
+}
+
+/**
+ * The pro-rata cents for `units` more slots over what is left of `period` at `now`, net of VAT, at
+ * `PRO_PLAN.priceCents` — the only price Checkout sells (`verifiedPriceId`,
+ * src/lib/billing/stripe.ts). An estimate to the cent: Stripe's invoice carries the exact figure.
+ */
+export function proRataCents(units: number, period: { start: Date; end: Date }, now: Date): number {
+  return Math.round(proRataExact(units, period, now))
+}
+
+/**
+ * How far above Stripe's minimum a raise must be to be charged at once. In flexible mode Stripe
+ * bills it as two separately rounded lines (a credit and a debit), so its total can land a cent
+ * below the estimate; an invoice under the minimum would carry to the customer's balance, which
+ * `refuseBalances` (src/lib/billing/documents.ts) will not document.
+ */
+const PRORATION_ROUNDING_CENTS = 2
+
+/**
+ * Whether `charged` slots raised at `now` are charged at once, or left on the renewal invoice
+ * because the amount is under Stripe's minimum. One decision for the Stripe write
+ * (`setClientSlots`, src/lib/billing/client-slots.ts) and the confirm that announces it
+ * (`slotChangeConsequence`, src/lib/billing/copy.ts).
+ */
+export function chargesToday(
+  charged: number,
+  period: { start: Date; end: Date },
+  now: Date
+): boolean {
+  return proRataExact(charged, period, now) >= STRIPE_MIN_CHARGE_CENTS + PRORATION_ROUNDING_CENTS
 }
 
 /** Brands a trial workspace may create, by workspace mode. */

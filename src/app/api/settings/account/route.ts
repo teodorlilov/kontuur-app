@@ -3,31 +3,18 @@ import { revalidateTag } from 'next/cache'
 import { z } from 'zod'
 import { resolveAuth } from '@/lib/auth/resolve-auth'
 import { verifyAdminRole } from '@/lib/auth/helpers'
-import { fetchAgencyById } from '@/lib/queries/db'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import { accountSettingsSchema } from '@/features/settings/schemas'
 import { formatZodIssues } from '@/lib/validation/format-issues'
-
-/** Fetch the agency's account settings. */
-export async function GET() {
-  const auth = await resolveAuth()
-  if (!auth.ok) return auth.response
-  const { supabase, agencyId } = auth
-
-  const agency = await fetchAgencyById(supabase, agencyId)
-
-  if (!agency) {
-    return NextResponse.json({ error: 'Agency not found' }, { status: 500 })
-  }
-
-  return NextResponse.json({ agency })
-}
 
 /**
  * Update the agency's account settings — its name and timezone. Admin only: the role is read
  * fresh (`verifyAdminRole`) and the body allowlisted by `accountSettingsSchema`, then the write
  * goes through the admin client, because the tenant role holds no update on these columns
  * (migration 20260862 revokes it — a member could otherwise rename the workspace from the browser).
+ * The cached agency is expired at once with `{ expire: 0 }`: the account tab's `router.refresh()`
+ * (src/features/settings/components/account-tab.tsx) re-renders the shell from `getCachedAgency`
+ * (src/lib/queries/cache.ts), and 'max' would serve it the old name and timezone once more.
  */
 export async function PUT(request: Request) {
   const auth = await resolveAuth()
@@ -65,6 +52,6 @@ export async function PUT(request: Request) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
-  revalidateTag('agencies', 'max')
+  revalidateTag('agencies', { expire: 0 })
   return NextResponse.json({ success: true })
 }

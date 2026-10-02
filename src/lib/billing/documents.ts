@@ -9,10 +9,10 @@ import { unwrap } from '@/lib/queries/unwrap'
 import { renderPdf } from '@/lib/render/pdf'
 import type { AdminClient } from '@/lib/supabase/admin'
 import type { Json, TablesInsert } from '@/types/database'
-import { BILLING_DOCUMENTS_BUCKET, PLAN_AND_BILLING_PATH } from '@/utils/constants'
+import { BILLING_DOCUMENTS_BUCKET, DOCUMENT_TIMEZONE } from '@/utils/constants'
 import { isoFromUnixSeconds } from '@/utils/date-helpers'
-import { formatDocumentNumber } from '@/utils/format'
-import { resolveAppUrl } from '@/utils/url'
+import { formatDocumentNumber, formatLongDate } from '@/utils/format'
+import { planAndBillingUrl } from '@/utils/url'
 import { renderSaleDocumentHtml } from './document-render'
 import {
   parseDocumentCustomer,
@@ -20,12 +20,12 @@ import {
   type DocumentLine,
   type VatBasis,
 } from './document-schemas'
-import { stripeClient } from './stripe'
+import { invoiceLines, stripeClient } from './stripe'
 
 /** What the issuer supplies; the RPC assigns the number and the document date (`issued_at`). */
 type IssueInput = Omit<
   TablesInsert<'sale_documents'>,
-  'id' | 'number' | 'issued_at' | 'created_at' | 'storage_path' | 'delivered_at' | 'delivery_error'
+  'id' | 'number' | 'issued_at' | 'storage_path' | 'delivered_at' | 'delivery_error'
 >
 
 /** The member states — what decides "outside the EU" when no tax was collected. */
@@ -133,8 +133,8 @@ async function fetchSaleDocumentByStripeInvoice(
 }
 
 /**
- * The ids of every document nobody has received yet, created before `beforeIso`, oldest first —
- * all pages of them (`readPages`), ordered on `id` after `created_at` so two documents made in one
+ * The ids of every document nobody has received yet, issued before `beforeIso`, oldest first —
+ * all pages of them (`readPages`), ordered on `id` after `issued_at` so two documents issued in one
  * instant sit in one place.
  */
 async function fetchUndeliveredSaleDocumentIds(
@@ -147,8 +147,8 @@ async function fetchUndeliveredSaleDocumentIds(
       .from('sale_documents')
       .select('id')
       .is('delivered_at', null)
-      .lt('created_at', beforeIso)
-      .order('created_at', { ascending: true })
+      .lt('issued_at', beforeIso)
+      .order('issued_at', { ascending: true })
       .order('id', { ascending: true })
       .range(from, to)
   )
@@ -215,8 +215,9 @@ async function issue(admin: AdminClient, input: IssueInput): Promise<SaleDocumen
  * Throw for an invoice a customer balance or a pre-payment credit note touched, naming which: its
  * total is then not what the card paid, and the audit file has no line for money held on account.
  * Checked before anything else, so an invoice paid wholly from a balance throws rather than
- * passing as a €0 invoice. None arises from this app's own billing — no change books a credit
- * (`syncSubscriptionQuantity`) — so one that does is a hand edit to undo.
+ * passing as a €0 invoice. None arises from this app's own billing — no slot change books a
+ * credit (`setClientSlots`, src/lib/billing/client-slots.ts) — so one that does is a hand edit to
+ * undo.
  */
 function refuseBalances(invoice: Stripe.Invoice): void {
   if (invoice.starting_balance < 0) {
@@ -237,13 +238,34 @@ function refuseBalances(invoice: Stripe.Invoice): void {
 }
 
 /**
+ * A sale's net, VAT and gross, the same reading for an invoice and a credit note: net after
+ * discounts and before tax (`total_excluding_tax`; `subtotal`, the fallback, is before an
+ * invoice-level discount — node_modules/stripe/esm/resources/CreditNotes.d.ts:171-183), VAT from
+ * Stripe's tax line or else what lies between net and gross, gross as charged.
+ */
+function saleAmounts(
+  sale: Pick<
+    Stripe.Invoice | Stripe.CreditNote,
+    'total' | 'total_excluding_tax' | 'subtotal' | 'total_taxes'
+  >
+) {
+  const net = sale.total_excluding_tax ?? sale.subtotal
+  return {
+    net_cents: net,
+    vat_cents: sale.total_taxes?.[0]?.amount ?? sale.total - net,
+    gross_cents: sale.total,
+  }
+}
+
+/**
  * The invoice for a paid Stripe invoice — also the Н-18 sale document (чл. 52о ал. 3) — written as
  * the snapshot everything is rendered and mailed from, never the workspace, so `agencyId` may be
- * null (paid after its workspace was deleted: the document is owed all the same). The payment's
- * date is the tax point (`tax_event_at`); the RPC dates the document and is idempotent by invoice
- * id. A €0 invoice yields nothing (`chargedMoney`); a balance (`refuseBalances`), a part payment or
- * no card charge (marked paid by hand) throws: the document states the whole total, and it and the
- * audit file name the card charge through the virtual POS.
+ * null (paid after its workspace was deleted: the document is owed all the same). Its lines are
+ * every line of the invoice (`invoiceLines`), its amounts `saleAmounts`. The payment's date is the
+ * tax point (`tax_event_at`); the RPC dates the document and is idempotent by invoice id. A €0
+ * invoice yields nothing (`chargedMoney`); a balance (`refuseBalances`), a part payment or no card
+ * charge (marked paid by hand) throws: the document states the whole total, and it and the audit
+ * file name the card charge through the virtual POS.
  */
 export async function issueSaleDocument(
   admin: AdminClient,
@@ -297,7 +319,7 @@ export async function issueSaleDocument(
       value: taxId.value ?? '',
     })),
   }
-  const lines: DocumentLine[] = invoice.lines.data.map((line) => ({
+  const lines: DocumentLine[] = (await invoiceLines(invoice)).map((line) => ({
     description: line.description ?? 'Kontuur',
     quantity: line.quantity ?? 1,
     unitCents: Math.round(
@@ -316,9 +338,7 @@ export async function issueSaleDocument(
     tax_event_at: isoFromUnixSeconds(invoice.status_transitions.paid_at ?? invoice.created),
     customer,
     lines,
-    net_cents: invoice.total_excluding_tax ?? invoice.subtotal,
-    vat_cents: tax?.amount ?? 0,
-    gross_cents: invoice.total,
+    ...saleAmounts(invoice),
     vat_rate: rate ? rate.percentage : 0,
     vat_basis: vatBasis,
   })
@@ -348,12 +368,15 @@ function returnedMoney(note: Stripe.CreditNote): { refundId: string | null } {
 
 /**
  * The credit note for a Stripe credit note that returned money (`returnedMoney`); a pre-payment
- * note moves no money and yields nothing. It refunds the invoice document by reference and keeps
- * that document's customer, VAT basis and rate, with its amounts from the note and the note's
- * date as its tax point. It also carries the invoice's Stripe ids beside the `refunds` link:
- * they are frozen onto the legal record so the audit file needs no second lookup, and the charge
- * id is the transaction of a chargeback, which has no refund of its own. Idempotent by credit
- * note id, through the insert-only RPC.
+ * note moves no money and yields nothing. Its one line names the invoice it refunds by that
+ * document's number and date of issue, the date in Sofia like the invoice's own "Issued" — the two
+ * the VAT Act asks a credit note to state (ЗДДС чл. 115–116; the wording is the accountant's to
+ * confirm, docs/n18/README.md). It keeps that document's customer, VAT basis and rate, with its
+ * amounts from the note (`saleAmounts`) and the note's date as its tax point. It links to the
+ * invoice by the Stripe invoice id, which `sale_documents_invoice_key` (migration 20260855) points
+ * at exactly one invoice document, and copies the charge id too — the transaction of a
+ * chargeback, which has no refund of its own — so the audit file needs no second lookup.
+ * Idempotent by credit note id, through the insert-only RPC.
  */
 export async function issueCreditNote(
   admin: AdminClient,
@@ -370,11 +393,12 @@ export async function issueCreditNote(
   if (!invoiceDocument) {
     throw new Error(`credit note ${note.id} refunds invoice ${invoiceId}, which has no document`)
   }
+  const amounts = saleAmounts(note)
   const line: DocumentLine = {
-    description: `Credit note to invoice No. ${formatDocumentNumber(invoiceDocument.number)}`,
+    description: `Credit note to invoice No. ${formatDocumentNumber(invoiceDocument.number)} of ${formatLongDate(new Date(invoiceDocument.issued_at), DOCUMENT_TIMEZONE)}`,
     quantity: 1,
-    unitCents: note.subtotal,
-    netCents: note.subtotal,
+    unitCents: amounts.net_cents,
+    netCents: amounts.net_cents,
     periodStart: null,
     periodEnd: null,
   }
@@ -385,13 +409,10 @@ export async function issueCreditNote(
     stripe_credit_note_id: note.id,
     stripe_charge_id: invoiceDocument.stripe_charge_id,
     stripe_refund_id: refundId,
-    refunds: invoiceDocument.id,
     tax_event_at: isoFromUnixSeconds(note.created),
     customer: invoiceDocument.customer,
     lines: [line],
-    net_cents: note.subtotal,
-    vat_cents: note.total_taxes?.[0]?.amount ?? note.total - note.subtotal,
-    gross_cents: note.total,
+    ...amounts,
     vat_rate: invoiceDocument.vat_rate,
     vat_basis: invoiceDocument.vat_basis,
   })
@@ -447,10 +468,7 @@ export async function deliverSaleDocument(
       : await storePdf(admin, document)
     await sendEmail({
       to: customer.email,
-      content: documentEmail(
-        document,
-        document.agency_id ? `${resolveAppUrl()}${PLAN_AND_BILLING_PATH}` : null
-      ),
+      content: documentEmail(document, document.agency_id ? planAndBillingUrl() : null),
       attachments: [
         { filename: `kontuur-${formatDocumentNumber(document.number)}.pdf`, content: pdf },
       ],

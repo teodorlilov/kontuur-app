@@ -487,6 +487,8 @@ from a verified review finding or a gap found while building:
 
 ### 4. Clients paid for the period
 
+> Superseded by docs/plans/CLIENT-SLOTS.md (2026-09-30): the admin chooses the client slots in Plan & billing; creating or deleting a client no longer changes the Stripe quantity.
+
 Closes:
 - **m1-4:** deleting shrinks the pool at once, and re-adding charges again.
 - **m1-6:** the create race.
@@ -1745,6 +1747,8 @@ that renders cold within the billing cron's 20 s reserve, and New run from an id
 browser.
 
 ### 15. Who adds and deletes clients, and what Stripe bills after a delete (founder, 2026-09-27)
+
+> Superseded by docs/plans/CLIENT-SLOTS.md (2026-09-30): the admin chooses the client slots in Plan & billing; creating or deleting a client no longer changes the Stripe quantity.
 
 Decided after the plan was built — the four items the plan had parked:
 

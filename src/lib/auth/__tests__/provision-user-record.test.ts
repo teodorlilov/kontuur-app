@@ -45,7 +45,7 @@ describe('provisionUserRecord', () => {
       email: 'ana@example.com',
       user_metadata: { agency_name: 'About Social Media', invite_tag: 'tag-1' },
     })
-    mocks.createUserRecord.mockResolvedValue({ agencyId: 'agency-1', isInvited: true })
+    mocks.createUserRecord.mockResolvedValue({ isInvited: true })
     mocks.reread.mockResolvedValue({ data: ROW, error: null })
   })
 

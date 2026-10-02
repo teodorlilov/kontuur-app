@@ -58,11 +58,7 @@ export async function POST(request: Request) {
   if (!destination.ok)
     return NextResponse.json({ error: destination.error }, { status: destination.status })
 
-  const spender: Spender = {
-    agencyId: auth.agencyId,
-    clientId: destination.clientId,
-    flow: 'editor',
-  }
+  const spender: Spender = { agencyId: auth.agencyId, flow: 'editor' }
   try {
     const identity = await fetchVisualIdentityOrDefault(destination.clientId)
     const colors = Object.values(identity.palette)

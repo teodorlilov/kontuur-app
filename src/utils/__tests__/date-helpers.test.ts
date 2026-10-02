@@ -3,6 +3,7 @@ import {
   getNextDateForDay,
   getMondayISO,
   getMonthBoundaries,
+  getMonthRange,
   getWeekDayKeys,
   getWeekRange,
   getWeekdayIndex,
@@ -337,5 +338,26 @@ describe('getZonedParts — the second', () => {
   it('reports the second beside the hour and minute, in the zone', () => {
     const parts = getZonedParts(new Date('2025-10-01T18:30:05Z'), 'Europe/Sofia')
     expect([parts.hour, parts.minute, parts.second]).toEqual([21, 30, 5])
+  })
+})
+
+describe('getMonthRange', () => {
+  it('cuts the month on Sofia midnight, not UTC: 31 October 22:30 UTC is already 1 November in Sofia', () => {
+    const { from, to } = getMonthRange('2026-10', 'Europe/Sofia')
+    expect(from).toBe('2026-09-30T21:00:00.000Z')
+    expect(to).toBe('2026-10-31T22:00:00.000Z')
+    expect(Date.parse('2026-10-31T22:30:00.000Z') >= Date.parse(to)).toBe(true)
+    expect(Date.parse('2026-09-30T22:30:00.000Z') >= Date.parse(from)).toBe(true)
+  })
+
+  it('rolls December into the next year', () => {
+    expect(getMonthRange('2026-12', 'UTC')).toEqual({
+      from: '2026-12-01T00:00:00.000Z',
+      to: '2027-01-01T00:00:00.000Z',
+    })
+  })
+
+  it('refuses a month past 12 rather than read it as another month', () => {
+    expect(() => getMonthRange('2026-13', 'UTC')).toThrow()
   })
 })

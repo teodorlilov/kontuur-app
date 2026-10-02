@@ -1,6 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk'
 import type { Message, MessageParam } from '@anthropic-ai/sdk/resources'
-import { currentSpender } from '@/lib/billing/spend-context'
+import { requireSpender } from '@/lib/billing/spend-context'
 import { anthropicUsageOf, recordAiUsage } from '@/lib/billing/telemetry'
 
 if (!process.env.ANTHROPIC_API_KEY) {
@@ -86,23 +86,19 @@ function isRetryable(err: unknown): boolean {
 
 /**
  * The one door to Claude. Two billing rules live here: the call is refused, before `call` runs,
- * when no spender is in scope — the boundary (a gated route, an action, a cron's per-client loop)
- * declares one with `runAsSpender`, so a new caller cannot burn money unattributed — and the
- * returned message's `usage` is recorded to `ai_usage_daily` for that spender, which never blocks
- * or throws. `callAnthropic` is the common case; a request it cannot express, such as the weekly
- * brief's server-side web search, passes its own `call`.
+ * when no spender is in scope (`requireSpender`) — the boundary (a gated route, an action, a
+ * cron's per-client loop) declares one with `runAsSpender`, so a new caller cannot burn money
+ * unattributed — and the returned message's `usage` is recorded to `ai_usage_daily` for that
+ * spender, which never blocks or throws. `callAnthropic` is the common case; a request it cannot
+ * express, such as the weekly brief's server-side web search, passes its own `call`.
  */
 export async function attributedClaudeCall(
   model: string,
   call: (client: Anthropic) => Promise<Message>
 ): Promise<Message> {
-  if (!currentSpender()) {
-    throw new Error(
-      `Claude call to ${model}: no spender in scope — wrap the boundary in runAsSpender`
-    )
-  }
+  const spender = requireSpender()
   const message = await call(anthropic)
-  void recordAiUsage({ provider: 'anthropic', model, usage: anthropicUsageOf(message) })
+  void recordAiUsage(spender, { provider: 'anthropic', model, usage: anthropicUsageOf(message) })
   return message
 }
 

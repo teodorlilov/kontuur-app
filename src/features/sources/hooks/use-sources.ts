@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { toast } from '@/components/ui/toast'
+import { readErrorMessage } from '@/utils/read-error-message'
 import {
   createSource,
   uploadSource,
@@ -41,6 +42,9 @@ interface UseSourcesOptions {
   initialSources: ClientSource[]
 }
 
+/** What a failed suggestion request says when the route gives no sentence of its own. */
+const SUGGESTIONS_FAILED = 'Failed to load suggestions'
+
 export function useSources({
   clientId,
   clientName,
@@ -64,11 +68,15 @@ export function useSources({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ niche, clientName, pillars: pillarNames }),
       })
-      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      if (!res.ok) {
+        toast.error((await readErrorMessage(res)) ?? SUGGESTIONS_FAILED)
+        setSuggestions([])
+        return
+      }
       const data = (await res.json()) as { suggestions: SourceSuggestion[] }
       setSuggestions(data.suggestions ?? [])
     } catch {
-      toast.error('Failed to load suggestions')
+      toast.error(SUGGESTIONS_FAILED)
       setSuggestions([])
     } finally {
       setSuggesting(false)

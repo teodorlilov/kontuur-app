@@ -2,11 +2,11 @@ import { z } from 'zod'
 import type { Json } from '@/types/database'
 
 /** How a sale is taxed on the document — one of four legal bases, decided from Stripe's tax line. */
-export const VAT_BASES = ['domestic', 'oss', 'reverse_charge', 'outside_eu'] as const
+const VAT_BASES = ['domestic', 'oss', 'reverse_charge', 'outside_eu'] as const
 export type VatBasis = (typeof VAT_BASES)[number]
 
 /** The customer as the invoice must name them, snapshotted from the Stripe invoice at issue. */
-export const documentCustomerSchema = z.object({
+const documentCustomerSchema = z.object({
   name: z.string().nullable(),
   email: z.string().nullable(),
   address: z
@@ -24,7 +24,7 @@ export const documentCustomerSchema = z.object({
 export type DocumentCustomer = z.infer<typeof documentCustomerSchema>
 
 /** One line of the document: what was sold, how many, at what net price, for which period. */
-export const documentLineSchema = z.object({
+const documentLineSchema = z.object({
   description: z.string(),
   quantity: z.number(),
   unitCents: z.number(),
@@ -50,15 +50,4 @@ export function parseDocumentLines(value: Json): DocumentLine[] {
  */
 export function parseVatBasis(value: string): VatBasis {
   return z.enum(VAT_BASES).parse(value)
-}
-
-/**
- * The document's tax point — the payment's date for an invoice, the credit note's own creation
- * for a credit note (`issueCreditNote`, documents.ts) — beside `issued_at`, which is the date the document was issued. Every document carries one
- * (migration 20260861 backfilled the older rows, and the issuer always sends it); one without
- * throws rather than borrowing another date for a legal record.
- */
-export function taxPointOf(document: { number: number; tax_event_at: string | null }): Date {
-  if (!document.tax_event_at) throw new Error(`document ${document.number} has no tax point`)
-  return new Date(document.tax_event_at)
 }

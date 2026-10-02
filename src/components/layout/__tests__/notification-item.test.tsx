@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
-import { NotificationItem } from '../notification-item'
+import { NotificationItem, notificationDestination } from '../notification-item'
 import type { EnrichedNotification } from '@/types/api'
 
 /**
@@ -134,5 +134,19 @@ describe('NotificationItem', () => {
     expect(onNavigate).toHaveBeenCalledWith(
       expect.objectContaining({ type: 'connection_retired', client_id: 'c1' })
     )
+  })
+
+  it('sends a row where its label says: Plan & billing, the client’s accounts, or the calendar', () => {
+    expect(
+      notificationDestination(notification({ type: 'trial_ending', client_id: null }))
+    ).toEqual({ href: '/settings?tab=account', label: 'Open plan & billing →' })
+    expect(notificationDestination(notification({ type: 'connection_retired' }))).toEqual({
+      href: '/clients/c1/edit?tab=accounts',
+      label: 'Open connected accounts →',
+    })
+    expect(notificationDestination(notification())).toEqual({
+      href: '/calendar',
+      label: 'Open in calendar →',
+    })
   })
 })

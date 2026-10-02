@@ -31,14 +31,12 @@ describe('the gate pair', () => {
     expect(mocks.getCachedEntitlement).toHaveBeenCalledWith('a1')
   })
 
-  it('answers a 402 in the trial’s grace with the banner’s sentence and the state as the reason', async () => {
+  it('answers a 402 in the trial’s grace with the banner’s own sentence', async () => {
     mocks.getCachedEntitlement.mockResolvedValue(GRACE)
     const refused = await requireEntitledRoute('a1', 'spend')
     expect(refused?.status).toBe(402)
     expect(await refused?.json()).toEqual({
       error: shellNotice(GRACE, NOW)?.text,
-      code: 'locked',
-      reason: 'trial_ended',
     })
     expect(await requireEntitledRoute('a1', 'publish')).toBeNull()
   })
@@ -49,14 +47,12 @@ describe('the gate pair', () => {
     expect(await refused?.json()).toEqual({
       error:
         'Your workspace is paused because your last payment failed. Update your card in Plan & billing to continue.',
-      code: 'locked',
-      reason: 'locked',
     })
   })
 
   it('shapes the paused refusal as an action result', async () => {
     mocks.getCachedEntitlement.mockResolvedValue(PAUSED)
-    expect(await requireEntitledAction('a1', 'create')).toEqual({
+    expect(await requireEntitledAction('a1', 'spend')).toEqual({
       ok: false,
       error: WORKSPACE_LOCKED,
     })

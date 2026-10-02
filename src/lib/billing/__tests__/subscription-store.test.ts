@@ -12,6 +12,7 @@ const mocks = vi.hoisted(() => ({
 }))
 vi.mock('next/cache', () => ({ revalidateTag: mocks.revalidateTag }))
 vi.mock('../stripe', () => ({
+  invoiceLines: (invoice: Stripe.Invoice) => Promise.resolve(invoice.lines.data),
   stripeClient: () => ({
     customers: { create: mocks.customersCreate },
     subscriptions: {
@@ -27,6 +28,7 @@ import {
   applySubscriptionSnapshot,
   ensureStripeCustomer,
   setPlanEnding,
+  slotItemOf,
 } from '../subscription-store'
 
 interface Row {
@@ -162,6 +164,7 @@ describe('applySubscriptionSnapshot', () => {
           past_due_since: null,
           current_period_start: '2025-10-01T00:00:00.000Z',
           current_period_end: '2025-10-31T00:00:00.000Z',
+          client_slots: 3,
           subscription_quantity: 3,
         },
       },
@@ -210,7 +213,7 @@ describe('applySubscriptionSnapshot', () => {
     expect(updates[0]?.values.subscription_quantity).toBe(3)
   })
 
-  it('counts a client added and charged mid-period by the charge for 4, not the credit for 3, whichever invoice is delivered last', async () => {
+  it('counts a slot raised and charged mid-period by the charge for 4, not the credit for 3, whichever invoice is delivered last', async () => {
     paidInPeriod(RENEWAL_FOR_3, ADDED_FOURTH)
     for (const delivered of [ADDED_FOURTH, RENEWAL_FOR_3]) {
       const { admin, updates } = makeAdmin(KNOWN)
@@ -224,6 +227,14 @@ describe('applySubscriptionSnapshot', () => {
     const { admin, updates } = makeAdmin(KNOWN)
     await applySubscriptionSnapshot(admin, subscription(), RENEWAL_FOR_3)
     expect(updates[0]?.values.subscription_quantity).toBe(3)
+  })
+
+  it('writes the client slots Stripe holds on every snapshot, a lower and a hand-set 0 included', async () => {
+    for (const quantity of [2, 0]) {
+      const event = makeAdmin(KNOWN)
+      await applySubscriptionSnapshot(event.admin, subscription({}, quantity))
+      expect(event.updates[0]?.values.client_slots).toBe(quantity)
+    }
   })
 
   it('leaves the paid count alone while no invoice of the period is paid, and on any event', async () => {
@@ -381,5 +392,33 @@ describe('setPlanEnding', () => {
     expect(await setPlanEnding(admin, 'sub_1', false)).toEqual({ endedNow: false })
     expect(mocks.subscriptionsRetrieve).not.toHaveBeenCalled()
     expect(mocks.subscriptionsUpdate).toHaveBeenCalledWith('sub_1', { cancel_at_period_end: false })
+  })
+})
+
+/** WHY as: a subscription carries dozens of fields; `slotItemOf` reads its id and its items. */
+const withItems = (items: unknown[]) =>
+  ({ id: 'sub_1', items: { data: items } }) as unknown as Stripe.Subscription
+
+describe('slotItemOf', () => {
+  it('reads the one item’s slots, 1 when Stripe leaves the quantity unset, and its period', () => {
+    const live = slotItemOf(
+      withItems([
+        {
+          id: 'si_1',
+          quantity: null,
+          current_period_start: 1759276800,
+          current_period_end: 1761955200,
+        },
+      ])
+    )
+    expect(live.slots).toBe(1)
+    expect(live.period).toEqual({
+      start: new Date('2025-10-01T00:00:00Z'),
+      end: new Date('2025-11-01T00:00:00Z'),
+    })
+  })
+
+  it('refuses a subscription with no item rather than write a row from nothing', () => {
+    expect(() => slotItemOf(withItems([]))).toThrow(/sub_1 has no item/)
   })
 })

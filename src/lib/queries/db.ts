@@ -18,7 +18,7 @@
 import { DECIDED_POST_STATUSES, UNDECIDED_POST_STATUSES } from '@/lib/validation'
 import {
   CLIENT_COLUMNS,
-  AGENCY_SETTINGS_COLUMNS,
+  AGENCY_COLUMNS,
   BRAND_PROFILE_COLUMNS,
   POSTING_SCHEDULE_COLUMNS,
   USER_COLUMNS,
@@ -124,21 +124,18 @@ export async function fetchPostingScheduleByClient(
 // ---------- agencies ----------
 
 /**
- * Fetches agency settings columns for the given agency id (non-cached).
- * Use getCachedAgency() from src/lib/queries/cache.ts for read-only pages
- * where a 60-second staleness window is acceptable.
- * Use this function in API routes that need fresh data after a PUT.
+ * The agency row (`AGENCY_COLUMNS`), uncached — for the readers that must
+ * see the row as it stands: the settings page (src/app/(dashboard)/settings/page.tsx), the billing
+ * and workspace actions (src/features/settings/actions/) and the payment-failed reminder
+ * (`remindPaymentFailed`, src/lib/billing/reminders.ts). A render that can live with a 60-second
+ * stale row reads `getCachedAgency` (src/lib/queries/cache.ts) instead.
  */
 export async function fetchAgencyById(
   supabase: SupabaseClient,
   agencyId: string
 ): Promise<AgencyInfo | null> {
   return unwrap(
-    await supabase
-      .from('agencies')
-      .select(AGENCY_SETTINGS_COLUMNS)
-      .eq('id', agencyId)
-      .maybeSingle(),
+    await supabase.from('agencies').select(AGENCY_COLUMNS).eq('id', agencyId).maybeSingle(),
     'fetchAgencyById'
   )
 }

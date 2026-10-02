@@ -11,11 +11,25 @@ import { Icon } from '@/components/ui/icon'
 import { formatRelativeTime, parseTimestamp } from '@/utils/format'
 import { cn } from '@/utils/cn'
 import { BILLING_NOTIFICATION_TITLES, OPEN_PLAN_AND_BILLING } from '@/lib/billing/copy'
+import { PLAN_AND_BILLING_PATH } from '@/utils/constants'
 import type { EnrichedNotification } from '@/types/api'
 
-/** Whether a notification is about the plan — the bell sends these to Plan & billing. */
-export function isBillingNotification(n: Pick<EnrichedNotification, 'type'>): boolean {
+/** Whether a notification is about the plan: it names no client and leads to Plan & billing. */
+function isBillingNotification(n: Pick<EnrichedNotification, 'type'>): boolean {
   return n.type !== null && n.type in BILLING_NOTIFICATION_TITLES
+}
+
+/**
+ * Where a bell row leads — the one decision behind both halves: the row shows `label`, and the
+ * bell (`NotificationsBell`, ./notifications-bell.tsx) pushes `href` on click. A retired
+ * connection needs its client for the accounts tab; without one it falls back to the calendar.
+ */
+export function notificationDestination(n: EnrichedNotification): { href: string; label: string } {
+  if (isBillingNotification(n)) return { href: PLAN_AND_BILLING_PATH, label: OPEN_PLAN_AND_BILLING }
+  if (n.type === 'connection_retired' && n.client_id) {
+    return { href: `/clients/${n.client_id}/edit?tab=accounts`, label: 'Open connected accounts →' }
+  }
+  return { href: '/calendar', label: 'Open in calendar →' }
 }
 
 interface NotificationItemProps {
@@ -57,12 +71,6 @@ function bodyForNotification(n: EnrichedNotification): string {
     return n.message ?? 'Changes requested on weekly calendar'
   }
   return n.message ?? ''
-}
-
-/** The row's call to action, matching where `handleNavigate` sends it. */
-function linkLabelForNotification(n: EnrichedNotification): string {
-  if (isBillingNotification(n)) return OPEN_PLAN_AND_BILLING
-  return n.type === 'connection_retired' ? 'Open connected accounts →' : 'Open in calendar →'
 }
 
 /** Single notification row in the panel. */
@@ -153,7 +161,7 @@ export function NotificationItem({
               {formatRelativeTime(parseTimestamp(n.created_at))}
             </span>
             <span className="text-micro font-medium text-forest">
-              {linkLabelForNotification(n)}
+              {notificationDestination(n).label}
             </span>
           </div>
         </div>

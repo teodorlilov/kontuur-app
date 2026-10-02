@@ -11,7 +11,7 @@ import { redirect } from 'next/navigation'
  * src/app/(generate)/generate/page.tsx; never from the (onboarding) route group, which is the
  * destination — the destination must not redirect back, or a stale roster becomes a loop.
  *
- * `canCreate` is the other half of that rule: a lapsed workspace is sent by the (onboarding)
+ * `canSpend` is the other half of that rule: a lapsed workspace is sent by the (onboarding)
  * layout to Plan & billing, which renders under the (dashboard) layout that calls this, so a
  * redirect from here would bounce it between the two forever. It stays where it is and sees the
  * wall instead.
@@ -19,7 +19,7 @@ import { redirect } from 'next/navigation'
 export function requireBusinessSetup(
   mode: string | null | undefined,
   clientCount: number,
-  canCreate: boolean
+  canSpend: boolean
 ): void {
-  if (mode === 'solo' && clientCount === 0 && canCreate) redirect('/clients/new')
+  if (mode === 'solo' && clientCount === 0 && canSpend) redirect('/clients/new')
 }

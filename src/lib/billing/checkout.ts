@@ -1,13 +1,12 @@
 import 'server-only'
 
-import { PLAN_AND_BILLING_PATH } from '@/utils/constants'
-import { resolveAppUrl } from '@/utils/url'
+import { planAndBillingUrl } from '@/utils/url'
 import { CHECKOUT_CONSENT } from './copy'
 import { hasSubscriptionEnded } from './entitlement'
 import { stripeClient, verifiedPriceId } from './stripe'
 
 function planPageUrl(outcome?: 'success' | 'cancelled'): string {
-  const base = `${resolveAppUrl()}${PLAN_AND_BILLING_PATH}`
+  const base = planAndBillingUrl()
   return outcome ? `${base}&billing=${outcome}` : base
 }
 
@@ -23,7 +22,10 @@ function planPageUrl(outcome?: 'success' | 'cancelled'): string {
  * and a business tax ID optional (consumers are customers), both saved onto the Customer so
  * renewals are taxed against the same address; no deferred trial end, so the subscription is active
  * from its first event; `agency_id` on its metadata is how every webhook finds the workspace, and
- * the webhook, never the success URL, provisions.
+ * the webhook, never the success URL, provisions. `quantity` is the client slots the admin chose.
+ * The billing mode is pinned to flexible, the API's default, so a later default cannot change it:
+ * a slot change is one Stripe write only because flexible mode credits what was last billed
+ * (`slotChange`, src/lib/billing/plans.ts).
  */
 export async function createCheckoutSession(input: {
   customerId: string
@@ -57,7 +59,10 @@ export async function createCheckoutSession(input: {
     consent_collection: { terms_of_service: 'required' },
     custom_text: { terms_of_service_acceptance: { message: CHECKOUT_CONSENT } },
     locale: 'auto',
-    subscription_data: { metadata: { agency_id: input.agencyId } },
+    subscription_data: {
+      billing_mode: { type: 'flexible' },
+      metadata: { agency_id: input.agencyId },
+    },
     success_url: planPageUrl('success'),
     cancel_url: planPageUrl('cancelled'),
   })

@@ -17,7 +17,7 @@ interface ClientCoverageProps {
   clientPendingMap: Record<string, number>
   /** Why a client cannot be added right now (`addBrandRefusal`), or null — the empty state says it. */
   addClientRefusal: string | null
-  /** Why no run may start (`GenerateGate.refusal`, src/lib/billing/post-allowance.ts), or null — each row's Generate link is refused with it. */
+  /** Why no run may start (`PlanGate.refusal`, src/lib/billing/copy.ts), or null — each row's Generate link is refused with it. */
   generateRefusal: string | null
 }
 

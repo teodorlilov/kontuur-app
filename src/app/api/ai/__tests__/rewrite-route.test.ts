@@ -83,7 +83,7 @@ describe('POST /api/ai/rewrite — one rewrite is counted only once the model ha
     expect(await response.json()).toEqual(REWRITTEN)
     expect(outcomes).toEqual(['landed'])
     expect(mocks.reserveUsage).toHaveBeenCalledWith(
-      { agencyId: 'a1', clientId: CLIENT_ID, flow: 'rewrite' },
+      { agencyId: 'a1', flow: 'rewrite' },
       'rewrite',
       1
     )

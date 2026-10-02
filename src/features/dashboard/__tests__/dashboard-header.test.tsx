@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { DashboardHeader } from '../components/dashboard-header'
 import { CLIENTS_ADMINS_ONLY, OWED_IMAGES_UNKNOWN, addBrandGate } from '@/lib/billing/copy'
-import type { GenerateGate } from '@/lib/billing/post-allowance'
+import type { PlanGate } from '@/lib/billing/copy'
 import { entitlementFor } from '@/lib/billing/entitlement'
 import { trialRow } from '@/lib/billing/__tests__/fixtures'
 import { PLAN_AND_BILLING_PATH } from '@/utils/constants'
@@ -45,7 +45,7 @@ const TRIAL = entitlementFor(trialRow(NOW), NOW)
 
 function renderHeader(
   addClient: ReturnType<typeof addBrandGate>,
-  generate: GenerateGate = { refusal: null, wayOut: true }
+  generate: PlanGate = { refusal: null, wayOut: true }
 ) {
   render(
     <DashboardHeader

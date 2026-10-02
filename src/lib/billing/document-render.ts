@@ -4,11 +4,11 @@ import type { SaleDocumentColumns } from '@/lib/queries/select-columns'
 import { COMPANY, DOCUMENT_TIMEZONE } from '@/utils/constants'
 import { getZonedParts, toDateKey } from '@/utils/date-helpers'
 import { centsToDecimal, formatDocumentNumber, formatLongDate, formatMoney } from '@/utils/format'
+import { documentKindLabel } from './copy'
 import {
   parseDocumentCustomer,
   parseDocumentLines,
   parseVatBasis,
-  taxPointOf,
   type DocumentCustomer,
   type VatBasis,
 } from './document-schemas'
@@ -127,10 +127,11 @@ function block(label: string, lines: string[]): string {
 /**
  * The invoice or credit note as printable HTML — tables and inline styles, the same discipline
  * as the email shell, because Chromium prints it. English throughout, the company under its
- * registered Latin name: the date of issue and the tax point, the seller, the customer with its VAT
- * or registration number, the order number and transaction reference, the lines with their tax
- * group (the regulation's own letter codes), the VAT line with its legal basis and exact rate, the
- * totals in euro, and the QR code.
+ * registered Latin name: the title (`documentKindLabel`, src/lib/billing/copy.ts), the date of
+ * issue and the tax point (`tax_event_at`), the seller, the customer with its VAT or registration
+ * number, the order number and transaction reference, the lines with their tax group (the
+ * regulation's own letter codes), the VAT line with its legal basis and exact rate, the totals in
+ * euro, and the QR code.
  * Every item чл. 52о ал. 1 asks for is on the page, so the invoice is the sale document (ал. 3).
  * Throws on a customer, lines or VAT basis the document schemas refuse, rather than print them.
  * Async only because the QR encoder is; it does no I/O.
@@ -139,13 +140,12 @@ export async function renderSaleDocumentHtml(
   document: SaleDocumentColumns,
   ids: { eShopNumber: string; stripeAccountId: string } = documentIds()
 ): Promise<string> {
-  const invoice = document.kind === 'invoice'
   const basis = parseVatBasis(document.vat_basis)
   const customer = parseDocumentCustomer(document.customer)
   const lines = parseDocumentLines(document.lines)
   const number = formatDocumentNumber(document.number)
   const issued = new Date(document.issued_at)
-  const taxPoint = taxPointOf(document)
+  const taxPoint = new Date(document.tax_event_at)
   const { order, transaction } = references(document)
   const qr = await QRCode.toString(qrPayload(document, ids.eShopNumber), {
     type: 'svg',
@@ -153,7 +153,7 @@ export async function renderSaleDocumentHtml(
     width: 120,
   })
 
-  const title = invoice ? 'Invoice' : 'Credit note'
+  const title = documentKindLabel(document.kind)
   const rows = lines
     .map(
       (line) =>

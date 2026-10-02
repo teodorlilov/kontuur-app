@@ -29,32 +29,28 @@ import {
   unprovisionClient,
 } from '@/features/clients/lib/provision-client'
 import { countClientsByAgency } from '@/lib/queries/db'
-import { getCachedAgency, getCachedEntitlement, revalidateClientData } from '@/lib/queries/cache'
+import { getCachedEntitlement, revalidateClientData } from '@/lib/queries/cache'
 import { requireEntitledAction } from '@/lib/billing/require-entitled'
 import { addBrandRefusal, clientRosterRefusal } from '@/lib/billing/copy'
-import {
-  QuantityChargeError,
-  billedSubscriptionId,
-  openSubscriptionId,
-  syncSubscriptionQuantity,
-} from '@/lib/billing/quantity-sync'
-import type { Entitlement } from '@/lib/billing/entitlement'
+import { brandCap, type Entitlement } from '@/lib/billing/entitlement'
 import type { ActionResult } from '@/lib/actions/types'
 
 /**
  * Create a client with its brand profile, posting schedule and visual identity — the one place a
  * client is created, in both modes, and the only door past the brand cap: the tenant role cannot
  * insert into `clients` since migration 20260854. Auth runs before validation, so an
- * unauthenticated caller cannot fill the log with parse issues. After the insert the plan has its
- * say in `settleNewClient`. The roster busts with `{ expire: 0 }`, not `'max'`: the caller goes
- * straight to `/generate?client=<id>`, whose first-run gate would get the cached empty list and
- * send a solo workspace back to setup (`retireConnection`, src/lib/meta/connection-store.ts).
+ * unauthenticated caller cannot fill the log with parse issues. The plan's cap is judged before the
+ * insert and again after it (`recheckBrandCap`); nothing reaches Stripe — what the paid plan bills
+ * is its client slots (docs/plans/CLIENT-SLOTS.md). The roster busts with `{ expire: 0 }`, not
+ * `'max'`: the caller goes straight to `/generate?client=<id>`, whose first-run gate would get the
+ * cached empty list and send a solo workspace back to setup (`retireConnection`,
+ * src/lib/meta/connection-store.ts).
  */
 export async function createClient(input: CreateClientInput): Promise<ActionResult<string>> {
   const auth = await resolveActionAuth()
   if (!auth.ok) return { ok: false, error: auth.error }
   const { supabase, agencyId, role } = auth
-  const refused = await requireEntitledAction(agencyId, 'create')
+  const refused = await requireEntitledAction(agencyId, 'spend')
   if (refused) return refused
 
   const parsed = createClientSchema.safeParse(input)
@@ -64,11 +60,8 @@ export async function createClient(input: CreateClientInput): Promise<ActionResu
   }
   const data = parsed.data
 
-  const [entitlement, agency] = await Promise.all([
-    getCachedEntitlement(agencyId),
-    getCachedAgency(agencyId),
-  ])
-  const brands = entitlement.brandsUnlimited ? 0 : await countClientsByAgency(supabase, agencyId)
+  const entitlement = await getCachedEntitlement(agencyId)
+  const brands = brandCap(entitlement) === null ? 0 : await countClientsByAgency(supabase, agencyId)
   const capped = addBrandRefusal(entitlement, brands, role)
   if (capped) return { ok: false, error: capped }
 
@@ -88,21 +81,22 @@ export async function createClient(input: CreateClientInput): Promise<ActionResu
   })
   if (!result.ok) return { ok: false, error: result.error }
 
-  const refusal = await settleNewClient(admin, entitlement, agency, agencyId, result.clientId, role)
+  const refusal = await recheckBrandCap(admin, entitlement, agencyId, result.clientId, role)
   if (refusal) return { ok: false, error: refusal }
 
   revalidateTag('agency-clients', { expire: 0 })
   return { ok: true, data: result.clientId }
 }
 
-/** Update a client's core fields, brand profile, posting schedule and visual identity. */
+/**
+ * Update a client's core fields, brand profile, posting schedule and visual identity. Auth runs
+ * before validation, so an unauthenticated caller cannot fill the log with parse issues from input
+ * that was never going to be acted on.
+ */
 export async function updateClient(
   clientId: string,
   input: UpdateClientInput
 ): Promise<ActionResult> {
-  // Auth before validation: parsing first let an unauthenticated caller reach the
-  // logging branch below and fill the log with issues from input we never intended
-  // to act on.
   const auth = await resolveActionAuth()
   if (!auth.ok) return { ok: false, error: auth.error }
   const { supabase, agencyId } = auth
@@ -140,9 +134,8 @@ export async function updateClient(
  * Permanently delete a client, its rows (the 20260820 cascade, via `unprovisionClient`) and its
  * stored files; the warn line is the only record it existed. Admins only, and ownership is checked
  * on the user-scoped client before the delete runs on the admin client, which the cascade needs
- * for tables with RLS on and no policies. While a subscription is open (`openSubscriptionId`) the
- * lower count reaches Stripe after the row is gone, uncharged; a failure there is logged, not
- * surfaced (`syncSubscriptionQuantity` says what heals it). Deliberate gap: a post already
+ * for tables with RLS on and no policies. Nothing reaches Stripe: a deleted client frees a slot and
+ * the bill stays (docs/plans/CLIENT-SLOTS.md). Deliberate gap: a post already
  * `publishing` still reaches the account, and its run's follow-up write silently matches no row;
  * guarding that would refuse the delete for up to one cron tick.
  */
@@ -163,9 +156,6 @@ export async function deleteClient(clientId: string): Promise<ActionResult> {
   const error = await unprovisionClient(admin, parsed.id, agencyId)
   if (error) {
     console.error(`[clients:delete] failed for ${parsed.id}:`, error.message)
-    if (error.code === '23503') {
-      return { ok: false, error: 'Cannot delete: the database is missing migration 20260820.' }
-    }
     return { ok: false, error: 'Could not delete the client. Please try again.' }
   }
 
@@ -174,19 +164,6 @@ export async function deleteClient(clientId: string): Promise<ActionResult> {
     `[clients:delete] removed "${client.name}" (${parsed.id}) — ` +
       `${swept.images} images, ${swept.files} files`
   )
-
-  const [entitlement, agency] = await Promise.all([
-    getCachedEntitlement(agencyId),
-    getCachedAgency(agencyId),
-  ])
-  const subscriptionId = openSubscriptionId(entitlement, agency)
-  if (subscriptionId) {
-    await syncSubscriptionQuantity(admin, agencyId, subscriptionId, {
-      direction: 'decrease',
-    }).catch((err: unknown) =>
-      console.error(`[clients:delete] quantity decrease failed for ${agencyId}:`, err)
-    )
-  }
 
   revalidateClientData()
   revalidatePath('/generate')
@@ -197,54 +174,26 @@ export async function deleteClient(clientId: string): Promise<ActionResult> {
 // ── Internal helpers ──
 
 /**
- * What the plan says about a client `createClient` just provisioned: null when it stays, or the
- * refusal once it has been taken back. A capped plan re-judges the cap after the insert with the
- * same rule and `role`, so two creates racing past it both give way instead of both keeping one; a
- * re-count that fails keeps the client, since the check before the insert passed. A billed plan
- * charges through `syncSubscriptionQuantity`; only its `QuantityChargeError` undoes the client,
- * then a decrease lowers any uncharged restore that increase made. Any other failure keeps the
- * client, logged, and the under-count heals on the next add, so no SDK message reaches the form.
+ * Re-judge the plan's cap for a client `createClient` just provisioned: null when it stays, or the
+ * refusal once it has been taken back. The same rule and `role` as the check before the insert, so
+ * two creates racing past the cap both give way instead of both keeping one; a re-count that fails
+ * keeps the client, since the check before the insert passed. Uncapped (house), nothing to judge.
  */
-async function settleNewClient(
+async function recheckBrandCap(
   admin: AdminClient,
   entitlement: Entitlement,
-  agency: { stripe_subscription_id: string | null; current_period_start: string | null } | null,
   agencyId: string,
   clientId: string,
   role: string
 ): Promise<string | null> {
-  if (!entitlement.brandsUnlimited) {
-    const count = await countClientsByAgency(admin, agencyId).catch((err: unknown) => {
-      console.error(`[clients:create] cap re-count failed for ${agencyId}; client kept:`, err)
-      return null
-    })
-    const refusal = count === null ? null : addBrandRefusal(entitlement, count - 1, role)
-    if (refusal) await takeBackClient(admin, clientId, agencyId)
-    return refusal
-  }
-  const subscriptionId = billedSubscriptionId(entitlement, agency)
-  if (!subscriptionId) return null
-  try {
-    await syncSubscriptionQuantity(admin, agencyId, subscriptionId, {
-      direction: 'increase',
-      paid: entitlement.brands,
-      paidFor: agency?.current_period_start ?? null,
-    })
+  if (brandCap(entitlement) === null) return null
+  const count = await countClientsByAgency(admin, agencyId).catch((err: unknown) => {
+    console.error(`[clients:create] cap re-count failed for ${agencyId}; client kept:`, err)
     return null
-  } catch (err) {
-    console.error(`[clients:create] quantity sync failed for ${agencyId}:`, err)
-    if (!(err instanceof QuantityChargeError)) return null
-    await takeBackClient(admin, clientId, agencyId)
-    await syncSubscriptionQuantity(admin, agencyId, subscriptionId, {
-      direction: 'decrease',
-    }).catch((decreaseErr: unknown) =>
-      console.error(
-        `[clients:create] quantity decrease after undo failed for ${agencyId}:`,
-        decreaseErr
-      )
-    )
-    return err.message
-  }
+  })
+  const refusal = count === null ? null : addBrandRefusal(entitlement, count - 1, role)
+  if (refusal) await takeBackClient(admin, clientId, agencyId)
+  return refusal
 }
 
 /**
@@ -306,13 +255,16 @@ async function updateBrandProfile(
   return error?.message ?? null
 }
 
+/**
+ * Clear the pillar ids a profile save removed from the client's posts. A failed read of the old
+ * pillar set throws rather than read as "nothing was deleted", which would leave orphaned pillar
+ * ids on posts.
+ */
 async function syncDeletedPillars(
   supabase: SupabaseServerClient,
   clientId: string,
   newPillarsJson: string | null
 ): Promise<void> {
-  // An unread previous pillar set looks like "nothing was deleted", which leaves
-  // orphaned pillar ids on posts instead of clearing them.
   const { data: oldProfile, error } = await supabase
     .from('brand_profiles')
     .select('content_pillars')
@@ -320,9 +272,7 @@ async function syncDeletedPillars(
     .maybeSingle()
   if (error) throw new Error(`pillar sync read failed: ${error.message}`)
 
-  const oldPillars = parsePillars(
-    (oldProfile as { content_pillars: string | null } | null)?.content_pillars ?? null
-  )
+  const oldPillars = parsePillars(oldProfile?.content_pillars ?? null)
   const newPillars = parsePillars(newPillarsJson)
   const newIds = new Set(newPillars.map((p) => p.id))
   const deletedIds = oldPillars.map((p) => p.id).filter((pid) => !newIds.has(pid))

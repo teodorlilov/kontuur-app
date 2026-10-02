@@ -2,7 +2,7 @@ import { FormSection } from '@/components/ui/form'
 import { StatusPill, type PillTone } from '@/components/ui/status-pill'
 import { cn } from '@/utils/cn'
 import { capitalize, formatLongDate } from '@/utils/format'
-import type { Entitlement, EntitlementState } from '@/lib/billing/entitlement'
+import { brandCap, type Entitlement, type EntitlementState } from '@/lib/billing/entitlement'
 import {
   ALLOWANCE_NOUNS,
   PLAN_SECTION,
@@ -59,14 +59,17 @@ function nextDate(entitlement: Entitlement): { label: string; at: Date } | null 
  * Plan, status, the date that matters next, and usage against every allowance. Not a client
  * component: plan and usage are read-only, and the settings page passes it in as an element.
  *
- * A workspace that cannot spend has no allowance to measure, so its brand row is a plain count
- * ("1 business", "3 clients") with no cap and no danger colour, and the three meters give way to
- * the one sentence that says why (`cannotSpendNotice`) — in the trial's grace, the banner's own.
+ * The brand row measures the clients against the plan's cap (`brandCap`): the trial's, or the paid
+ * plan's client slots, so a paid workspace reads "2 of 3" and one holding more clients than slots
+ * turns red. House has no cap. A workspace that cannot spend has no allowance to measure, so its
+ * brand row is a plain count ("1 business", "3 clients") with no cap and no danger colour, and the
+ * three meters give way to the one sentence that says why (`cannotSpendNotice`) — in the trial's
+ * grace, the banner's own.
  */
 export function PlanSection({ entitlement, usage, brandCount }: PlanSectionProps) {
   const date = nextDate(entitlement)
   const notice = cannotSpendNotice(entitlement)
-  const brandLimit = notice || entitlement.brandsUnlimited ? null : entitlement.brands
+  const brandLimit = notice ? null : brandCap(entitlement)
 
   return (
     <FormSection legend={PLAN_SECTION.legend} description={PLAN_SECTION.description}>
@@ -126,7 +129,9 @@ export function PlanSection({ entitlement, usage, brandCount }: PlanSectionProps
 
 /**
  * Usage against an allowance, with a bar once there is a finite limit. Amber from
- * `ALLOWANCE_WARN_SHARE`, Clay at the cap — the same line the bell fires at. The bar's width is
+ * `ALLOWANCE_WARN_SHARE`, Clay at the cap — the same line the bell fires at — and the overrun said
+ * in words for a screen reader, since only the paid plan's clients can pass their cap (a race,
+ * docs/plans/CLIENT-SLOTS.md). The bar's width is
  * the one inline style DESIGN.md allows, because it encodes a value.
  */
 function Meter({ used, limit, noun }: { used: number; limit: number | null; noun: string }) {
@@ -162,7 +167,7 @@ function Meter({ used, limit, noun }: { used: number; limit: number | null; noun
         />
       </span>
       <span className="sr-only">
-        {used} of {limit} {noun} used this period
+        {used} of {limit} {noun} used this period{used > limit ? ', more than the plan holds' : ''}
       </span>
     </span>
   )

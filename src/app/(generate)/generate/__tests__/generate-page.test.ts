@@ -14,7 +14,6 @@ vi.mock('@/lib/queries/cache', () => ({
   getCachedAgency: async () => ({ mode: 'agency', timezone: 'Europe/Sofia' }),
   getCachedEntitlement: async () => ({
     canSpend: true,
-    canCreate: true,
     state: 'active',
     paymentFailed: false,
     periodKey: '2026-09-01',
@@ -54,17 +53,17 @@ vi.mock('@/features/generate/components/generate-flow', () => ({ GenerateFlow: (
 
 import GeneratePage from '../page'
 import { OWED_IMAGES_UNKNOWN } from '@/lib/billing/copy'
-import type { GenerateGate } from '@/lib/billing/post-allowance'
+import type { PlanGate } from '@/lib/billing/copy'
 
 /** The flow element the page returns for these search params. */
 async function flowElement(
   searchParams: { ideaId?: string; client?: string } = {}
-): Promise<ReactElement<{ gate: GenerateGate; waitingDrafts: unknown[] }>> {
+): Promise<ReactElement<{ gate: PlanGate; waitingDrafts: unknown[] }>> {
   return GeneratePage({ searchParams: Promise.resolve(searchParams) })
 }
 
 /** What the page hands the flow — the gate is the question these cases ask. */
-async function flowProps(): Promise<{ gate: GenerateGate; waitingDrafts: unknown[] }> {
+async function flowProps(): Promise<{ gate: PlanGate; waitingDrafts: unknown[] }> {
   return (await flowElement()).props
 }
 

@@ -46,7 +46,7 @@ describe('DeleteWorkspaceDialog', () => {
   })
 
   it('names what goes, what the law keeps, and the plan line when there is one', () => {
-    setup({ notice: 'Your plan ends on 1 October; nothing more will be charged.' })
+    setup({ notice: 'Your plan ends on 1 October.' })
     expect(screen.getByText('3 clients')).toBeInTheDocument()
     expect(screen.getByText('2 members and their accounts')).toBeInTheDocument()
     expect(screen.getByText(/kept for ten years/)).toBeInTheDocument()

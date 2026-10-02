@@ -13,7 +13,6 @@ const INVOICE: SaleDocumentColumns = {
   stripe_credit_note_id: null,
   stripe_charge_id: 'ch_1XYZ',
   stripe_refund_id: null,
-  refunds: null,
   // 21:30:05 in Sofia on 1 October (UTC+3), five seconds after the payment it documents.
   issued_at: '2025-10-01T18:30:05.000Z',
   tax_event_at: '2025-10-01T18:30:00.000Z',
@@ -48,7 +47,6 @@ const INVOICE: SaleDocumentColumns = {
   storage_path: null,
   delivered_at: null,
   delivery_error: null,
-  created_at: '2025-10-01T18:30:10.000Z',
 }
 
 const CREDIT_NOTE: SaleDocumentColumns = {
@@ -58,7 +56,6 @@ const CREDIT_NOTE: SaleDocumentColumns = {
   kind: 'credit_note',
   stripe_credit_note_id: 'cn_1DEF',
   stripe_refund_id: 're_1GHI',
-  refunds: 'doc_1',
   issued_at: '2025-10-05T07:00:00.000Z',
   tax_event_at: '2025-10-04T21:30:00.000Z',
   customer: {
@@ -76,7 +73,7 @@ const CREDIT_NOTE: SaleDocumentColumns = {
   },
   lines: [
     {
-      description: 'Credit note to invoice No. 1000000001',
+      description: 'Credit note to invoice No. 1000000001 of 1 October 2025',
       quantity: 1,
       unitCents: 1900,
       netCents: 1900,

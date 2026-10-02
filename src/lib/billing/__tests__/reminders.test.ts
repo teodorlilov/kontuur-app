@@ -25,7 +25,7 @@ import {
 } from '../reminders'
 import { entitlementFor } from '../entitlement'
 import { GRACE_DAYS, TRIAL_NOTICE_DAYS } from '../plans'
-import { trialRow } from './fixtures'
+import { paidRow, trialRow } from './fixtures'
 
 const NOW = new Date('2026-09-14T08:00:00Z')
 const day = (offset: number) => new Date(NOW.getTime() + offset * 86_400_000).toISOString()
@@ -65,17 +65,7 @@ describe('pickReminder — which moment a trial workspace is at', () => {
 
   it('never reminds a house workspace or a paying one', () => {
     expect(pickReminder(entitlementFor(row({ plan: 'house' }), NOW), NOW)).toBeNull()
-    const paid = entitlementFor(
-      row({
-        plan: 'pro',
-        stripe_customer_id: 'cus_1',
-        stripe_subscription_id: 'sub_1',
-        subscription_status: 'active',
-        current_period_start: '2026-09-01T00:00:00Z',
-        trial_ends_at: day(-40),
-      }),
-      NOW
-    )
+    const paid = entitlementFor(paidRow(NOW), NOW)
     expect(pickReminder(paid, NOW)).toBeNull()
   })
 })
@@ -167,7 +157,6 @@ describe('remindTrialWorkspaces', () => {
       trial_ending: 1,
       trial_ended: 0,
       workspace_paused: 0,
-      payment_failed: 0,
     })
     expect(mocks.notify).toHaveBeenCalledTimes(1)
     expect(mocks.notify).toHaveBeenCalledWith(
@@ -285,18 +274,15 @@ describe('remindWorkspace — the one sender', () => {
 })
 
 describe('remindPaymentFailed — the webhook’s reminder', () => {
-  const pastDue = row({
+  const pastDue = {
     id: 'a1',
-    plan: 'pro',
-    stripe_customer_id: 'cus_1',
-    stripe_subscription_id: 'sub_1',
-    subscription_status: 'past_due',
-    subscription_quantity: 2,
-    current_period_start: '2026-09-01T00:00:00Z',
-    current_period_end: '2026-10-01T00:00:00Z',
-    past_due_since: day(-1),
-    trial_ends_at: day(-40),
-  })
+    ...paidRow(NOW, {
+      subscription_status: 'past_due',
+      subscription_quantity: 2,
+      client_slots: 2,
+      past_due_since: day(-1),
+    }),
+  }
 
   beforeEach(() => {
     mocks.notify.mockReset().mockResolvedValue('written')

@@ -5,10 +5,10 @@ import { stripeClient } from '@/lib/billing/stripe'
 import { finishBillingEvent, handleEvent, recordBillingEvent } from '@/lib/billing/stripe-events'
 
 /**
- * Room for a quantity reconcile that waits out another change's claim (`CLAIM_STALE_MS`,
- * src/lib/billing/quantity-sync.ts) before its own Stripe requests.
+ * Room for a paid invoice's document, rendered and emailed after the response (`after`,
+ * `deliverSaleDocument`, src/lib/billing/documents.ts; docs/plans/BILLING.md step 9).
  */
-export const maxDuration = 300
+export const maxDuration = 60
 
 /**
  * Stripe's webhook. The body is proven by Stripe's signature over the raw bytes, so no schema

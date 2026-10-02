@@ -28,7 +28,7 @@ export default function TermsPage() {
           <Link className={proseBackLink} href="/">
             ← Back
           </Link>
-          <p className={proseEyebrow}>Last updated: September 27, 2026</p>
+          <p className={proseEyebrow}>Last updated: October 1, 2026</p>
           <h1 className={proseH1}>Terms of Service</h1>
           <p className={proseLead}>
             These Terms of Service (&quot;Terms&quot;) govern your access to and use of Kontuur,
@@ -132,12 +132,14 @@ export default function TermsPage() {
           {/* 6. Subscription and billing */}
           <h2 className={proseH2}>6. Subscription and Billing</h2>
           <p className={proseP}>
-            Kontuur is offered on a monthly subscription basis. Fees are charged monthly in advance
-            and are non-refundable except where required by law. A client added beyond those already
-            paid for in the current period is charged pro rata, normally at once, or on the next
-            invoice when that amount is below the payment provider&apos;s minimum charge. Removing a
-            client refunds nothing, and re-adding one within the number already paid for costs
-            nothing until renewal.
+            Kontuur is offered on a monthly subscription basis and is priced per client slot. You
+            choose how many client slots to pay for in Plan &amp; billing, and a workspace holds at
+            most that many clients. Fees are charged monthly in advance and are non-refundable
+            except where required by law. Slots added during a billing period are charged pro rata
+            at once, or on the next invoice when that amount is below the payment provider&apos;s
+            minimum charge; slots already paid for in the current period cost nothing to restore.
+            Removing slots takes effect from the next renewal and refunds nothing. Deleting a client
+            frees its slot and does not change what you pay.
           </p>
           <p className={proseP}>
             You may cancel your subscription at any time from the Settings page. Cancellation takes

@@ -43,6 +43,7 @@ export type Database = {
         Row: {
           agency_logo: string | null
           cancel_at_period_end: boolean
+          client_slots: number | null
           created_at: string | null
           current_period_end: string | null
           current_period_start: string | null
@@ -62,6 +63,7 @@ export type Database = {
         Insert: {
           agency_logo?: string | null
           cancel_at_period_end?: boolean
+          client_slots?: number | null
           created_at?: string | null
           current_period_end?: string | null
           current_period_start?: string | null
@@ -81,6 +83,7 @@ export type Database = {
         Update: {
           agency_logo?: string | null
           cancel_at_period_end?: boolean
+          client_slots?: number | null
           created_at?: string | null
           current_period_end?: string | null
           current_period_start?: string | null

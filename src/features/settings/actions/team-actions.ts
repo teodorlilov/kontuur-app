@@ -17,10 +17,12 @@ const LOGIN_SURVIVED =
  * Removes a member from the workspace and hard-deletes their account — safe only because `users`
  * carries one `agency_id`. Admins only, members of the caller's agency only, never oneself or the
  * last admin; a failed lookup answers "could not remove", never "not found". Deletes in reference
- * order: `social_connections` by `user_id` (explicit where migration 20260856's cascade has not
- * landed; a client's connection keys on `client_id` and stays), their invites (a pending one would
- * join the login back), the `users` row, then the login (`deleteAuthIdentity`). The cached agency
- * and role are busted before answering; a surviving login still answers ok, with `LOGIN_SURVIVED`.
+ * order: their invites (a pending one would join the login back), the `users` row (which cascades
+ * their user-scoped `social_connections`, migration 20260856; a client's connection keys on
+ * `client_id` and stays), then the login (`deleteAuthIdentity`). The cached role is expired at
+ * once with `{ expire: 0 }`, not 'max': stale-while-revalidate would serve the removed member's
+ * next request, from a tab left open, their cached admin role (`resolveActionAuth`,
+ * src/lib/auth/helpers.ts). A surviving login still answers ok, with `LOGIN_SURVIVED`.
  */
 export async function removeTeamMember(
   userId: string
@@ -56,27 +58,19 @@ export async function removeTeamMember(
   }
 
   if (target.role === 'admin') {
-    const { count } = await admin
+    const { count, error: countError } = await admin
       .from('users')
       .select('id', { count: 'exact', head: true })
       .eq('agency_id', agencyId)
       .eq('role', 'admin')
+    if (countError) {
+      console.error(`[team:remove] admin count failed for ${agencyId}:`, countError.message)
+      return { ok: false, error: 'Could not remove the member' }
+    }
 
     if ((count ?? 0) <= 1) {
       return { ok: false, error: 'The workspace must keep at least one admin' }
     }
-  }
-
-  const { error: connectionError } = await admin
-    .from('social_connections')
-    .delete()
-    .eq('user_id', userId)
-  if (connectionError) {
-    console.error(
-      `[team:remove] failed to remove connections for ${userId}:`,
-      connectionError.message
-    )
-    return { ok: false, error: 'Could not remove the member' }
   }
 
   const { error: inviteError } = await admin
@@ -95,7 +89,7 @@ export async function removeTeamMember(
   }
 
   const loginDeleted = await deleteAuthIdentity(admin, userId, 'team:remove')
-  revalidateTag(USER_RECORD_TAG, 'max')
+  revalidateTag(USER_RECORD_TAG, { expire: 0 })
   revalidatePath('/settings')
   return { ok: true, data: { notice: loginDeleted ? null : LOGIN_SURVIVED } }
 }

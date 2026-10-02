@@ -562,7 +562,6 @@ Verified still correct; each stays in the ledger as a decision, not a task.
 | §2.10 Inpaint 16-px rounding | Measured twice against the live model. `compositeEditedRegion` is load-bearing because of it |
 | §2.11 Canvas doc v1 rows | The upgrade is pure and total. Retiring `doc-v1.ts` needs a deliberate backfill plus a `doc->>'version' = '1'` check returning zero rows — **not** "everything looks upgraded" |
 | §2.12 Mirrored picture → background | Baking the mirror means async work inside a synchronous reducer that must stay one undo step |
-| §7.3 `AgencyInfo` | Waiting on billing, not on effort. Deriving it now forces a UI decision about a flow that does not exist |
 | §7.10 "Ranked, not gated" | Doubling writer spend per post was decided against 2026-08-11. Variants remain the known lever if quality sags |
 | §7.11 Coverage-aware pre-skip | Only reachable by topic-limiting every source away from every pillar, and the sources page shows it loudly |
 

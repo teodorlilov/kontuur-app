@@ -199,12 +199,7 @@ export async function paintBacklog(
     const owner = entitled.get(clientId)
     try {
       const result = await runMetered(
-        {
-          agencyId: owner?.agencyId ?? null,
-          clientId,
-          flow: 'generation',
-          entitlement: owner?.entitlement,
-        },
+        { agencyId: owner?.agencyId ?? null, flow: 'generation', entitlement: owner?.entitlement },
         () => generatePostVisual({ postId, clientId, position })
       )
       if (result.ok) outcome.generated++
@@ -227,10 +222,12 @@ export async function paintBacklog(
 }
 
 /**
- * One bell per workspace per period whose review-queue posts this tick could not paint for its
- * image pool (`images_waiting:<period>`, distinct from the generate cron's allowance bell), with
- * the count of those posts in the message and never in the key. A bell that cannot be written is
- * logged: the pictures wait either way.
+ * One bell per workspace, period and image pool size whose review-queue posts this tick could not
+ * paint for that pool (`images_waiting:<period>:<quota>`, distinct from the generate cron's
+ * allowance bell), with the count of those posts in the message and never in the key. The size is
+ * in the key so a pool a charged slot raise grows mid-period (`setClientSlots`,
+ * src/lib/billing/client-slots.ts) rings again when it too cannot pay. A bell that cannot be
+ * written is logged: the pictures wait either way.
  */
 export async function ringImagesWaiting(
   admin: AdminClient,
@@ -242,7 +239,7 @@ export async function ringImagesWaiting(
         agencyId,
         type: 'allowance_reached',
         message: imagesWaiting(posts, entitlement),
-        dedupKey: `images_waiting:${entitlement.periodKey}`,
+        dedupKey: `images_waiting:${entitlement.periodKey}:${entitlement.limits.image}`,
       })
     } catch (err) {
       console.error(`[cron/visuals] images-waiting bell failed for ${agencyId}:`, err)

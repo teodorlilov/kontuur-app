@@ -27,6 +27,7 @@ import { useTabParam } from '@/components/layout/page-header/use-tab-param'
 import { extractInitials, formatRelativeTime, parseTimestamp } from '@/utils/format'
 import { isEqual } from '@/utils/is-equal'
 import { clearQueryParams } from '@/utils/url'
+import { readErrorMessage } from '@/utils/read-error-message'
 import { StatusPill } from '@/components/ui/status-pill'
 import { isConnectionRetired } from '@/lib/meta/token-expiry'
 import { cn } from '@/utils/cn'
@@ -112,6 +113,10 @@ const GROUP_LABEL: Record<keyof DirtyGroups, string> = {
   schedule: 'Schedule',
   identity: 'Visual identity',
 }
+
+/** What a failed re-read says when its route gives no sentence of its own. */
+const REANALYZE_FAILED = 'Could not re-analyze the website. Please try again.'
+const REREAD_FAILED = 'Could not read the website. Please try again.'
 
 interface ClientSettingsFormProps {
   clientId: string
@@ -266,12 +271,15 @@ export function ClientSettingsForm(props: ClientSettingsFormProps) {
       const res = await fetch(`/api/clients/${clientId}/visual-identity/reanalyze`, {
         method: 'POST',
       })
-      if (!res.ok) throw new Error('reanalyze failed')
+      if (!res.ok) {
+        toast.error((await readErrorMessage(res)) ?? REANALYZE_FAILED)
+        return
+      }
       const data = (await res.json()) as { identity: VisualIdentity }
       setIdentity(data.identity)
       toast.success('Visual identity refreshed from website')
     } catch {
-      toast.error('Could not re-analyze the website. Please try again.')
+      toast.error(REANALYZE_FAILED)
     } finally {
       setReanalyzing(false)
     }
@@ -283,7 +291,10 @@ export function ClientSettingsForm(props: ClientSettingsFormProps) {
       const res = await fetch(`/api/clients/${clientId}/brand-profile/reanalyze`, {
         method: 'POST',
       })
-      if (!res.ok) throw new Error('brand re-read failed')
+      if (!res.ok) {
+        toast.error((await readErrorMessage(res)) ?? REREAD_FAILED)
+        return
+      }
       const analysis = (await res.json()) as UrlAnalysisResponse
       if (buildBrandSuggestions(analysis, drafts, props.restrictedSourcePillarIds).length === 0) {
         toast.success('The site still matches this profile — nothing to change.')
@@ -291,7 +302,7 @@ export function ClientSettingsForm(props: ClientSettingsFormProps) {
       }
       setBrandAnalysis(analysis)
     } catch {
-      toast.error('Could not read the website. Please try again.')
+      toast.error(REREAD_FAILED)
     } finally {
       setRereadingBrand(false)
     }

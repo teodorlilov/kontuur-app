@@ -63,10 +63,10 @@ type GenerateStreamRequestBody = Omit<
  *
  * Before anything is reserved the run must fit as asked, with the pictures earlier posts still owe
  * set aside (`runShortfall`, `committedWithOwed`), or it is a 402; owed pictures that cannot be
- * read are unknown, not zero, so a 500. The run is opened with no slot key (a human's run is never
- * deduped against a schedule) and reserves its drafts inside that claim, so every refusal comes
- * before the stream opens. The kit read runs as the spender too: describing a missing palette is a
- * paid call (`fetchIdentityForGeneration`).
+ * read — the posts, or the client list they are read for — are unknown, not zero, so a 500. The
+ * run is opened with no slot key (a human's run is never deduped against a schedule) and reserves
+ * its drafts inside that claim, so every refusal comes before the stream opens. The kit read runs
+ * as the spender too: describing a missing palette is a paid call (`fetchIdentityForGeneration`).
  *
  * A brief's text is its title then its notes, for planner and writer alike: with the notes alone,
  * a planned topic that drifts off the request goes uncorrected. When two topics claim one brief
@@ -126,17 +126,16 @@ export async function POST(request: Request) {
 
   const targetCount = body.targetPostCount + (body.priorityPosts?.length ?? 0)
   const slideCount = body.slideCount || client.defaultCarouselSlides || DEFAULT_CAROUSEL_SLIDES
-  const [entitlement, clients] = await Promise.all([
-    getCachedEntitlement(agencyId),
-    getCachedAgencyClients(agencyId),
-  ])
+  const entitlement = await getCachedEntitlement(agencyId)
   const read = await Promise.all([
     readUsage(agencyId, entitlement.periodKey),
     meteredLimit(entitlement.limits.image) === null
       ? NOTHING_OWED
-      : fetchWorkspaceOwed(
-          createAdminSupabaseClient(),
-          clients.map((row) => row.id)
+      : getCachedAgencyClients(agencyId).then((clients) =>
+          fetchWorkspaceOwed(
+            createAdminSupabaseClient(),
+            clients.map((row) => row.id)
+          )
         ),
   ]).catch((err: unknown) => {
     console.error(`[generate-stream] allowance read failed for agency ${agencyId}:`, err)
@@ -178,7 +177,7 @@ export async function POST(request: Request) {
       { status: 500 }
     )
   }
-  const spender = { agencyId, clientId: body.clientId, flow: 'generation' as const }
+  const spender = { agencyId, flow: 'generation' as const }
   let produced = 0
   let landing = 0
   let runSkipped: SkippedPillars | null = null

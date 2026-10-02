@@ -2,7 +2,7 @@
 // this file — going through it would make the two circular.
 import type { Tables } from './database'
 import type { SlideText } from './slide'
-import type { AgencySettingsColumns, PostColumns, UserColumns } from '@/lib/queries/select-columns'
+import type { AgencyColumns, PostColumns, UserColumns } from '@/lib/queries/select-columns'
 import type { PublicationSummary } from '@/lib/posts/publish-state'
 // Imported rather than only re-exported at the foot of the file: `ValidationData` below is
 // built from these, and a bare `export … from` re-export does not bring a name into scope here.
@@ -337,7 +337,7 @@ export type EnrichedNotification = Pick<
 export type TeamMember = UserColumns
 
 /** The settings page's agency row — derived from the projection it selects, never restated. */
-export type AgencyInfo = AgencySettingsColumns
+export type AgencyInfo = AgencyColumns
 
 export type SettingsTab = 'team' | 'account' | 'integrations' | 'profile'
 

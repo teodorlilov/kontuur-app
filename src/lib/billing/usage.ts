@@ -31,9 +31,9 @@ import { allowanceUsedUp, allowanceWarning, type OwedImages } from './copy'
 type ConsumeResult = { allowed: true } | { allowed: false; refused: AllowanceError }
 
 /**
- * Reserve `cost` units of `kind` against the entitlement's period; refused when the quota is zero
- * or the committed total would pass it. Nothing is counted yet: the reservation ends in
- * `settleUsage`, and until then it only holds the cap.
+ * Reserve `cost` units of `kind` against the entitlement's period; refused when the committed
+ * total would pass the quota. Nothing is counted yet: the reservation ends in `settleUsage`, and
+ * until then it only holds the cap.
  */
 export async function consumeUsage(
   entitlement: Entitlement,
@@ -42,10 +42,6 @@ export async function consumeUsage(
   cost: number
 ): Promise<ConsumeResult> {
   const quota = entitlement.limits[kind]
-  if (quota <= 0) {
-    return { allowed: false, refused: new AllowanceError(kind, 0, 0, cost, entitlement) }
-  }
-
   const { data, error } = await createAdminSupabaseClient().rpc('consume_usage', {
     p_agency_id: agencyId,
     p_period: entitlement.periodKey,
@@ -69,9 +65,10 @@ export async function consumeUsage(
  * against the reservation) and take `release` units out of `pending`, the whole reservation unless
  * it may already have been cleared (`closeAbandonedRuns`, src/lib/generation/runs.ts). Settle with
  * the reserving entitlement, so the units land in the period they were reserved from. The 80 %
- * bell is telemetry and never undoes a settle. A failed RPC is logged, not thrown: the thing
- * already exists, and a lost settle is a free unit plus a pending one `clearStaleReservations`
- * releases.
+ * bell is telemetry and never undoes a settle; it rings once per period, pool and pool size, so a
+ * pool a charged slot raise grows mid-period (`setClientSlots`, src/lib/billing/client-slots.ts)
+ * warns again at its own line. A failed RPC is logged, not thrown: the thing already exists, and
+ * a lost settle is a free unit plus a pending one `clearStaleReservations` releases.
  */
 export async function settleUsage(
   entitlement: Entitlement,
@@ -103,7 +100,7 @@ export async function settleUsage(
         agencyId,
         type: 'allowance_warning',
         message: allowanceWarning(kind, count, quota, entitlement),
-        dedupKey: `allowance_warning:${entitlement.periodKey}:${kind}`,
+        dedupKey: `allowance_warning:${entitlement.periodKey}:${kind}:${quota}`,
       })
     } catch (err) {
       console.warn(`[billing] could not record the allowance warning for ${agencyId}:`, err)
@@ -191,8 +188,10 @@ const DAILY_RESET_HOUR_UTC = 8
  * The most recent moment the daily reset was due. A reservation taken after it cannot have been
  * cleared by it — the reset only clears rows reserved on more than `STALE_RESERVATION_MS` before
  * it runs — so its owner may still release it exactly (the abandoned-run closer,
- * src/lib/generation/runs.ts). A reset delayed by more than ten minutes is the one case this
- * misjudges.
+ * src/lib/generation/runs.ts). The guess misjudges both ways. A reset delayed by more than ten
+ * minutes can clear a reservation taken after it. A reservation taken in the ten minutes before
+ * it, or on a row something reserved on in those ten minutes (`consume_usage` re-stamps
+ * `reserved_at`, migration 20260858), is not cleared and holds until the next reset.
  */
 export function lastDailyResetAt(now: Date): Date {
   const reset = new Date(now)
@@ -223,24 +222,22 @@ export async function clearStaleReservations(admin: AdminClient): Promise<number
 }
 
 /**
- * A refused spend, carrying what a screen needs to say why, worded in the agency's own zone. `used`
- * is the counted figure; pictures earlier posts still owe, when they are the reason, are named in
- * the message (`owed`).
+ * A refused spend: its message is the sentence a screen shows, worded in the agency's own zone,
+ * and `kind` names the pool for the generate cron's bell (src/lib/generation/scheduled-run.ts).
+ * `used` is the counted figure; pictures earlier posts still owe, when they are the reason, are
+ * named in the message (`owed`).
  */
 export class AllowanceError extends Error {
-  readonly resetsOn: Date | null
-
   constructor(
     readonly kind: AllowanceKind,
-    readonly used: number,
-    readonly quota: number,
-    readonly needed: number,
+    used: number,
+    quota: number,
+    needed: number,
     entitlement: Pick<Entitlement, 'resetsOn' | 'timezone' | 'paymentFailed'>,
     owed?: OwedImages
   ) {
     super(allowanceUsedUp(kind, used, quota, needed, entitlement, owed))
     this.name = 'AllowanceError'
-    this.resetsOn = entitlement.resetsOn
   }
 }
 
@@ -299,23 +296,16 @@ async function settleReserved(spender: Spender, landed: boolean): Promise<void> 
   spender.reserved = {}
 }
 
-/** The one 402 a route returns for an `AllowanceError`; null for any other error. */
+/**
+ * The one 402 a route returns for an `AllowanceError`, carrying its sentence as the `{ error }`
+ * body every client reads (`readErrorMessage`, src/utils/read-error-message.ts); null for any other
+ * error.
+ */
 export function allowanceResponse(err: AllowanceError): NextResponse
 export function allowanceResponse(err: unknown): NextResponse | null
 export function allowanceResponse(err: unknown): NextResponse | null {
   if (!(err instanceof AllowanceError)) return null
-  return NextResponse.json(
-    {
-      error: err.message,
-      code: 'allowance',
-      kind: err.kind,
-      used: err.used,
-      quota: err.quota,
-      needed: err.needed,
-      resetsOn: err.resetsOn?.toISOString() ?? null,
-    },
-    { status: 402 }
-  )
+  return NextResponse.json({ error: err.message }, { status: 402 })
 }
 
 /**

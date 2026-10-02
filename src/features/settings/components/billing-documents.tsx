@@ -1,5 +1,6 @@
 // No 'use client': a list of links, rendered by the settings page for an admin.
 import { FormSection } from '@/components/ui/form'
+import { BILLING_DOCUMENTS, documentKindLabel } from '@/lib/billing/copy'
 import type { SaleDocumentColumns } from '@/lib/queries/select-columns'
 import { DOCUMENT_TIMEZONE } from '@/utils/constants'
 import { formatDocumentNumber, formatLongDate, formatMoney } from '@/utils/format'
@@ -15,26 +16,20 @@ type DocumentRow = Pick<
  * Every invoice and credit note of the workspace, newest first, each with the signed link the
  * page minted for it. Only an admin ever receives this list. A document still being prepared (no
  * PDF yet) says so instead of linking nowhere; a stored PDF with no link says it is unavailable,
- * and one line asks for a reload. Dates in Sofia time, the documents' own.
+ * and one line asks for a reload. Each is named as its PDF names it (`documentKindLabel`,
+ * src/lib/billing/copy.ts); dates in Sofia time, the documents' own.
  */
 export function BillingDocuments({ documents }: { documents: DocumentRow[] }) {
   const linksMissing = documents.some((document) => document.storage_path && !document.url)
   return (
-    <FormSection
-      legend="Invoices"
-      description="Every invoice and credit note, as issued at payment. Download links work for an hour."
-    >
+    <FormSection legend={BILLING_DOCUMENTS.legend} description={BILLING_DOCUMENTS.description}>
       <div className="col-span-12">
         {documents.length === 0 ? (
-          <p className="text-caption text-text2">
-            No documents yet — the first payment creates one.
-          </p>
+          <p className="text-caption text-text2">{BILLING_DOCUMENTS.empty}</p>
         ) : (
           <>
             {linksMissing && (
-              <p className="text-caption text-text2">
-                Download links could not be made just now. Reload the page to try again.
-              </p>
+              <p className="text-caption text-text2">{BILLING_DOCUMENTS.linksMissing}</p>
             )}
             <table className="w-full text-body">
               <tbody>
@@ -43,9 +38,7 @@ export function BillingDocuments({ documents }: { documents: DocumentRow[] }) {
                     <td className="py-3 font-medium tabular-nums text-ink">
                       {formatDocumentNumber(document.number)}
                     </td>
-                    <td className="py-3 text-text2">
-                      {document.kind === 'invoice' ? 'Invoice' : 'Credit note'}
-                    </td>
+                    <td className="py-3 text-text2">{documentKindLabel(document.kind)}</td>
                     <td className="py-3 text-text2">
                       {formatLongDate(new Date(document.issued_at), DOCUMENT_TIMEZONE)}
                     </td>
@@ -58,11 +51,13 @@ export function BillingDocuments({ documents }: { documents: DocumentRow[] }) {
                           href={document.url}
                           className="text-forest underline decoration-forest/40 underline-offset-2"
                         >
-                          Download
+                          {BILLING_DOCUMENTS.download}
                         </a>
                       ) : (
                         <span className="text-text3">
-                          {document.storage_path ? 'Unavailable' : 'Preparing…'}
+                          {document.storage_path
+                            ? BILLING_DOCUMENTS.unavailable
+                            : BILLING_DOCUMENTS.preparing}
                         </span>
                       )}
                     </td>

@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-const mocks = vi.hoisted(() => ({ read: vi.fn() }))
+const mocks = vi.hoisted(() => ({ read: vi.fn(), list: vi.fn() }))
 
 /**
  * Next's data cache as far as these cases need it: a resolved value is stored per argument list
@@ -26,12 +26,14 @@ vi.mock('react', async (importActual) => ({
 vi.mock('@/lib/supabase/admin', () => ({
   createAdminSupabaseClient: () => ({
     from: () => ({
-      select: () => ({ eq: () => ({ maybeSingle: () => mocks.read() }) }),
+      select: () => ({
+        eq: () => ({ maybeSingle: () => mocks.read(), order: () => mocks.list() }),
+      }),
     }),
   }),
 }))
 
-import { getCachedAgency, getCachedEntitlement } from '../cache'
+import { getCachedAgency, getCachedAgencyClients, getCachedEntitlement } from '../cache'
 
 describe('getCachedAgency', () => {
   beforeEach(() => {
@@ -57,5 +59,18 @@ describe('getCachedAgency', () => {
     const entitlement = await getCachedEntitlement('gone')
     expect(entitlement.state).toBe('locked')
     expect(entitlement.canSpend).toBe(false)
+  })
+})
+
+describe('getCachedAgencyClients', () => {
+  beforeEach(() => mocks.list.mockReset())
+
+  it('throws a failed read rather than store "no clients" for a minute, and reads again', async () => {
+    mocks.list
+      .mockResolvedValueOnce({ data: null, error: { message: 'timeout' } })
+      .mockResolvedValueOnce({ data: [{ id: 'c1' }], error: null })
+    await expect(getCachedAgencyClients('a2')).rejects.toThrow(/agency clients read failed/)
+    expect(await getCachedAgencyClients('a2')).toEqual([{ id: 'c1' }])
+    expect(mocks.list).toHaveBeenCalledTimes(2)
   })
 })

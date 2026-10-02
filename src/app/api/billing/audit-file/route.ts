@@ -2,15 +2,9 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { unauthorizedCron } from '@/lib/cron/authorize-cron'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import { fetchSaleDocumentsBetween } from '@/lib/billing/documents'
-import {
-  AuditFileError,
-  auditMonthSchema,
-  buildAuditFile,
-  documentsOfMonth,
-  monthReadRange,
-} from '@/lib/billing/audit-file'
-import { documentIds } from '@/lib/billing/document-render'
-import { COMPANY } from '@/utils/constants'
+import { AuditFileError, auditMonthSchema, buildAuditFile } from '@/lib/billing/audit-file'
+import { DOCUMENT_TIMEZONE } from '@/utils/constants'
+import { getMonthRange } from '@/utils/date-helpers'
 
 /**
  * The founder's download of one month's Н-18 audit file, for upload at inetdec.nra.bg by the
@@ -31,23 +25,9 @@ export async function GET(request: NextRequest) {
   const month = parsed.data
 
   try {
-    const { fromIso, toIso } = monthReadRange(month)
-    const documents = documentsOfMonth(
-      await fetchSaleDocumentsBetween(createAdminSupabaseClient(), fromIso, toIso),
-      month
-    )
-    const ids = documentIds()
-    const xml = buildAuditFile({
-      seller: {
-        eik: COMPANY.uic,
-        eShopNumber: ids.eShopNumber,
-        domain: COMPANY.domain,
-        stripeAccountId: ids.stripeAccountId,
-      },
-      month,
-      documents,
-      createdOn: new Date(),
-    })
+    const { from, to } = getMonthRange(month, DOCUMENT_TIMEZONE)
+    const documents = await fetchSaleDocumentsBetween(createAdminSupabaseClient(), from, to)
+    const xml = buildAuditFile({ month, documents, createdOn: new Date() })
     if (!xml) return new NextResponse(null, { status: 204 })
 
     return new NextResponse(xml, {

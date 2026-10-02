@@ -86,7 +86,8 @@ describe('generationGate — whether a new run may start at all', () => {
     const trial = entitlementFor(trialRow(NOW), NOW)
     const limit = trial.limits.image
     expect(generationGate(trial, used(0, limit - 4), { posts: 1, images: 4 })).toEqual({
-      refusal: '1 post still waiting for pictures needs 4 AI images; you have 4 left this period.',
+      refusal:
+        '1 post still waiting for pictures needs 4 AI images; you have 4 left this period. Choose a plan to keep generating.',
       wayOut: true,
     })
   })

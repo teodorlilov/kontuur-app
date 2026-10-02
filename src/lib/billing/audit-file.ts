@@ -1,10 +1,11 @@
 import { z } from 'zod'
 import { escapeHtml } from '@/lib/email/layout'
 import type { SaleDocumentColumns } from '@/lib/queries/select-columns'
-import { DOCUMENT_TIMEZONE, MS_PER_DAY } from '@/utils/constants'
+import { COMPANY, DOCUMENT_TIMEZONE } from '@/utils/constants'
 import { toDateKey } from '@/utils/date-helpers'
 import { centsToDecimal } from '@/utils/format'
-import { parseDocumentLines, taxPointOf } from './document-schemas'
+import { documentIds } from './document-render'
+import { parseDocumentLines } from './document-schemas'
 
 /**
  * A month the NRA's schema (docs/n18/dec_audit.xsd) cannot carry as it stands — a question for the
@@ -35,38 +36,6 @@ function monthParts(month: string): { year: string; month: string } {
   const [, year, monthDigits] = MONTH_PATTERN.exec(month) ?? []
   if (!year || !monthDigits) throw new Error(`${month} is not a YYYY-MM month`)
   return { year, month: monthDigits }
-}
-
-interface AuditSeller {
-  eik: string
-  eShopNumber: string
-  domain: string
-  stripeAccountId: string
-}
-
-/**
- * The half-open UTC range that surely contains every instant of a Sofia calendar month — a day
- * of slack on each side, so the read is one query and `documentsOfMonth` does the exact cut. Throws
- * on a month `auditMonthSchema` refuses.
- */
-export function monthReadRange(month: string): { fromIso: string; toIso: string } {
-  const parts = monthParts(month)
-  const year = Number(parts.year)
-  const monthNumber = Number(parts.month)
-  return {
-    fromIso: new Date(Date.UTC(year, monthNumber - 1, 1) - MS_PER_DAY).toISOString(),
-    toIso: new Date(Date.UTC(year, monthNumber, 1) + MS_PER_DAY).toISOString(),
-  }
-}
-
-/** The documents whose Sofia issue date falls in `month` — a document is filed in the month it was issued. */
-export function documentsOfMonth(
-  documents: SaleDocumentColumns[],
-  month: string
-): SaleDocumentColumns[] {
-  return documents.filter((document) =>
-    toDateKey(new Date(document.issued_at), DOCUMENT_TIMEZONE).startsWith(month)
-  )
 }
 
 function dateOf(date: Date): string {
@@ -104,12 +73,13 @@ function splitVat(vatCents: number, netCents: number[]): number[] {
 }
 
 /**
- * One sale as an order: its date is the payment's (the tax point), its document date the issue's.
- * The schema takes the VAT rate as a whole percentage (`art_vat_rate`, an integer), so a document
- * at a fractional rate — some member states' OSS rates — is refused with the question for the
- * accountant rather than rounded into a false line.
+ * One sale as an order: its date is the payment's (the tax point), its document date the issue's,
+ * its POS the Stripe account the charge went through. The schema takes the VAT rate as a whole
+ * percentage (`art_vat_rate`, an integer), so a document at a fractional rate — some member
+ * states' OSS rates — is refused with the question for the accountant rather than rounded into a
+ * false line.
  */
-function orderOf(document: SaleDocumentColumns, seller: AuditSeller): string {
+function orderOf(document: SaleDocumentColumns, stripeAccountId: string): string {
   if (!Number.isInteger(document.vat_rate)) {
     throw new AuditFileError(
       `Document ${document.number} carries VAT at ${document.vat_rate} %, but the audit file takes whole percentages only. Ask the accountant how to report it.`
@@ -145,7 +115,7 @@ function orderOf(document: SaleDocumentColumns, seller: AuditSeller): string {
   return (
     '<orderenum>' +
     element('ord_n', document.stripe_invoice_id ?? '') +
-    element('ord_d', dateOf(taxPointOf(document))) +
+    element('ord_d', dateOf(new Date(document.tax_event_at))) +
     element('doc_n', document.number) +
     element('doc_date', dateOf(new Date(document.issued_at))) +
     `<art>${articles.join('')}</art>` +
@@ -154,7 +124,7 @@ function orderOf(document: SaleDocumentColumns, seller: AuditSeller): string {
     element('ord_vat', centsToDecimal(document.vat_cents)) +
     element('ord_total2', centsToDecimal(document.gross_cents)) +
     element('paym', PAYMENT_VIRTUAL_POS) +
-    element('pos_n', seller.stripeAccountId) +
+    element('pos_n', stripeAccountId) +
     element('trans_n', document.stripe_charge_id ?? '') +
     element('proc_id', PROCESSOR) +
     '</orderenum>'
@@ -167,7 +137,7 @@ function refundOf(document: SaleDocumentColumns): string {
     '<rorderenum>' +
     element('r_ord_n', document.stripe_invoice_id ?? '') +
     element('r_amount', centsToDecimal(document.gross_cents)) +
-    element('r_date', dateOf(taxPointOf(document))) +
+    element('r_date', dateOf(new Date(document.tax_event_at))) +
     element('r_paym', REFUND_TO_CARD) +
     '</rorderenum>'
   )
@@ -175,19 +145,18 @@ function refundOf(document: SaleDocumentColumns): string {
 
 /**
  * One month's standardised audit file, as `docs/n18/dec_audit.xsd` describes it (Приложение 38):
- * the shop header, one order per invoice document with its lines, one refund per credit note,
- * and `r_ord`, the number of orders returned in whole or in part — distinct invoices, however
- * many notes each had. Amounts in euro with two decimals, summing exactly or throwing — a wrong
- * file never leaves the machine. Null when the month holds no document. A month of refunds and
- * no sale throws `AuditFileError`: the schema requires at least one order. `month` is one
- * `auditMonthSchema` accepts; any other throws. Pure.
+ * the shop header (the seller's UIC and domain from `COMPANY`, src/utils/constants.ts), one order
+ * per invoice document with its lines, one refund per credit note, and `r_ord`, the number of
+ * orders returned in whole or in part — distinct invoices, however many notes each had. Amounts in
+ * euro with two decimals, summing exactly or throwing — a wrong file never leaves the machine.
+ * Null when the month holds no document. A month of refunds and no sale throws `AuditFileError`:
+ * the schema requires at least one order. `month` is one `auditMonthSchema` accepts; any other
+ * throws. Pure given `ids`, which default to `documentIds()` as `renderSaleDocumentHtml`'s do.
  */
-export function buildAuditFile(input: {
-  seller: AuditSeller
-  month: string
-  documents: SaleDocumentColumns[]
-  createdOn: Date
-}): string | null {
+export function buildAuditFile(
+  input: { month: string; documents: SaleDocumentColumns[]; createdOn: Date },
+  ids: { eShopNumber: string; stripeAccountId: string } = documentIds()
+): string | null {
   const invoices = input.documents.filter((document) => document.kind === 'invoice')
   const creditNotes = input.documents.filter((document) => document.kind === 'credit_note')
   if (invoices.length === 0 && creditNotes.length === 0) return null
@@ -202,14 +171,14 @@ export function buildAuditFile(input: {
   const xml =
     '<?xml version="1.0" encoding="windows-1251"?>' +
     '<audit>' +
-    element('eik', input.seller.eik) +
-    element('e_shop_n', input.seller.eShopNumber) +
-    element('domain_name', input.seller.domain) +
+    element('eik', COMPANY.uic) +
+    element('e_shop_n', ids.eShopNumber) +
+    element('domain_name', COMPANY.domain) +
     element('e_shop_type', 1) +
     element('creation_date', dateOf(input.createdOn)) +
     element('mon', month) +
     element('god', year) +
-    `<order>${invoices.map((document) => orderOf(document, input.seller)).join('')}</order>` +
+    `<order>${invoices.map((document) => orderOf(document, ids.stripeAccountId)).join('')}</order>` +
     element('r_ord', new Set(creditNotes.map((document) => document.stripe_invoice_id)).size) +
     `<rorder>${creditNotes.map(refundOf).join('')}</rorder>` +
     element('r_total', centsToDecimal(refundTotal)) +

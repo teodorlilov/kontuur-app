@@ -48,14 +48,17 @@ describe('createCheckoutSession', () => {
     stripe.pricesRetrieve.mockResolvedValue(PLAN_PRICE)
   })
 
-  it('opens a session for the plan’s price and the quantity asked for', async () => {
+  it('opens a session for the plan’s price and the client slots asked for, in flexible billing mode', async () => {
     expect(await createCheckoutSession(INPUT)).toBe('https://checkout.stripe.com/c/1')
     expect(stripe.subscriptionsList).toHaveBeenCalledWith({ customer: 'cus_1', limit: 100 })
     expect(stripe.sessionsCreate).toHaveBeenCalledWith(
       expect.objectContaining({
         customer: 'cus_1',
         line_items: [{ price: 'price_1', quantity: 3 }],
-        subscription_data: { metadata: { agency_id: 'a1' } },
+        subscription_data: {
+          billing_mode: { type: 'flexible' },
+          metadata: { agency_id: 'a1' },
+        },
       })
     )
   })

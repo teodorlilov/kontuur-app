@@ -90,9 +90,7 @@ const _fetchFacebookNarrative = unstable_cache(
     agencyId: string
   ): Promise<NarrativeResult | null> => {
     void syncStamp
-    return runAsSpender({ agencyId, clientId: args.clientId, flow: 'analytics' }, () =>
-      resolveNarrative(FB_NARRATIVE, args)
-    )
+    return runAsSpender({ agencyId, flow: 'analytics' }, () => resolveNarrative(FB_NARRATIVE, args))
   },
   ['facebook-narrative-v1', 'facebook'],
   { revalidate: 86_400, tags: [FB_METRICS_TAG] }

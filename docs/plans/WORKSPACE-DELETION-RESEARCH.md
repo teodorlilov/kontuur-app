@@ -1,5 +1,7 @@
 # Workspace deletion — research report (2026-09-18)
 
+> Superseded in part by docs/plans/CLIENT-SLOTS.md (2026-09-30): `quantity-sync.ts`, `billedSubscriptionId` and the per-client quantity sync named below are gone; a client delete no longer reaches Stripe.
+
 Scope: what a real "Delete workspace" (the disabled button at `src/features/settings/components/account-tab.tsx:119-127`) must touch. A workspace is one `agencies` row; members are `users` rows with `agency_id`; clients hang off agencies; everything else hangs off clients or users. Nothing below is proposed code — it is what the code and schema were found to require, with the file and line where each fact was read.
 
 Two things readers first believed and then disproved are listed at the end of §4 so they are not reintroduced.

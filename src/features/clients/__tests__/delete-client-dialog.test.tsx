@@ -78,7 +78,7 @@ describe('DeleteClientDialog', () => {
 
   it('names what the delete does to the bill before the name is typed', () => {
     const notice =
-      "Your plan bills one client fewer from its renewal on 1 October 2026. This period's allowance stays as it is."
+      'This frees one of your 3 client slots. Your plan still bills for 3; to pay for fewer, lower your slots in Plan & billing.'
     setup({ notice })
     expect(screen.getByText(notice)).toBeInTheDocument()
   })

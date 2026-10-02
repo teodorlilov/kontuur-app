@@ -2,8 +2,7 @@ import { hasCyrillic } from '@/lib/canvas/font-library'
 import { formatRelativeTime, parseTimestamp } from '@/utils/format'
 import { cn } from '@/utils/cn'
 import { GatedAction } from '@/components/ui/gated-action'
-import type { AddBrandGate } from '@/lib/billing/copy'
-import type { GenerateGate } from '@/lib/billing/post-allowance'
+import type { PlanGate } from '@/lib/billing/copy'
 import {
   HeaderMeta,
   MetaFlag,
@@ -21,9 +20,9 @@ interface DashboardHeaderProps {
   oldestPendingAt: string | null
   failedCount: number
   /** Whether a run may start (`generationGate`) — the CTA carries its refusal and way out. */
-  generate: GenerateGate
-  /** What "Add client" says: its refusal or what a client costs, and its way out (`addBrandGate`). */
-  addClient: AddBrandGate
+  generate: PlanGate
+  /** What "Add client" says: its refusal, if any, and its way out (`addBrandGate`). */
+  addClient: PlanGate
 }
 
 /** Time-of-day greeting in the agency's own timezone. */
@@ -43,8 +42,9 @@ function resolveGreeting(timezone: string): string {
  * Cyrillic name stays in the sans face. The meta line leads with whatever needs the reader today —
  * the date sits in the rail. "Add client" and "Generate posts" are refused in place, with the
  * reason (`GatedAction`), and link to Plan & billing only when a plan is the way past the refusal
- * (`AddBrandGate.wayOut`, src/lib/billing/copy.ts; `GenerateGate.wayOut`,
- * src/lib/billing/post-allowance.ts) — never for a member, nor for a figure that could not be read.
+ * (`PlanGate.wayOut`, src/lib/billing/copy.ts): Add client never for a member (`addBrandGate`),
+ * Generate never for a figure that could not be read (`generationGate`,
+ * src/lib/billing/post-allowance.ts).
  */
 export function DashboardHeader({
   agencyName,
@@ -100,7 +100,6 @@ export function DashboardHeader({
               href="/clients/new"
               label="Add client"
               refusal={addClient.refusal}
-              note={addClient.note}
               refusalId="add-client-refusal"
               variant="secondary"
               wayOut={addClient.wayOut}

@@ -25,7 +25,7 @@ vi.mock('@/lib/supabase/admin', () => ({
   }),
 }))
 
-import { getCachedUserRecord } from '../helpers'
+import { getCachedUserRecord, verifyAdminRole } from '../helpers'
 
 /**
  * The cached user record and the one state it must not trust: a cached "no row".
@@ -55,5 +55,26 @@ describe('getCachedUserRecord', () => {
   it('is null only when the row really is missing', async () => {
     expect(await getCachedUserRecord('user-1')).toBeNull()
     expect(mocks.freshReads).toBe(1)
+  })
+})
+
+/**
+ * A caller's client whose `users` role read answers `result`. WHY as: only the chain
+ * `verifyAdminRole` builds exists.
+ */
+function roleClient(result: { data: { role: string } | null; error: { message: string } | null }) {
+  return {
+    from: () => ({ select: () => ({ eq: () => ({ maybeSingle: async () => result }) }) }),
+  } as never
+}
+
+describe('verifyAdminRole', () => {
+  it('answers from the fresh row, and fails closed, logged, when the read fails', async () => {
+    const logged = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    const admin = roleClient({ data: { role: 'admin' }, error: null })
+    const failed = roleClient({ data: null, error: { message: 'timeout' } })
+    expect(await verifyAdminRole(admin, 'user-1')).toBe(true)
+    expect(await verifyAdminRole(failed, 'user-1')).toBe(false)
+    expect(logged).toHaveBeenCalledWith('[auth] admin role check failed for user-1:', 'timeout')
   })
 })

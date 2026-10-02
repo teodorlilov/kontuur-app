@@ -3,16 +3,15 @@ import 'server-only'
 import type { Message } from '@anthropic-ai/sdk/resources'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import { anthropicCostCents, falCostCents, tavilyCostCents, type AnthropicUsage } from './ai-prices'
-import { currentSpender } from './spend-context'
+import type { Spender } from './spend-context'
 
 /**
  * What every provider call actually cost, added to `ai_usage_daily` (migration 20260852) for the
- * spender in scope — agency, day, provider, model, feature. Aggregate rows, so a day of heavy use
- * is a handful of upserts per agency and the table never needs sweeping.
+ * spender the provider wrapper passes — agency, day, provider, model, feature. Aggregate rows, so a
+ * day of heavy use is a handful of upserts per agency and the table never needs sweeping.
  *
- * Telemetry, not a gate: it never throws and never blocks the call it records. A missing spender
- * is recorded under a null agency rather than dropped, because the gap itself is worth seeing —
- * the provider wrappers are what refuse to spend without one.
+ * Telemetry, not a gate: it never throws and never blocks the call it records. The wrappers have
+ * already refused a call with no spender (`requireSpender`, src/lib/billing/spend-context.ts).
  */
 
 type Recorded =
@@ -32,13 +31,12 @@ export function anthropicUsageOf(message: Message): AnthropicUsage {
 }
 
 /**
- * Adds one call to today's row for the current spender. WHY as: the generated type of
- * `p_agency_id` is `string`, but `add_ai_usage` takes NULL for a call that belongs to no agency
- * (the global brief) and its unique index coalesces it (migration 20260852); a sentinel uuid
- * would fail the foreign key instead.
+ * Adds one call to today's row for `spender`. WHY as: the generated type of `p_agency_id` is
+ * `string`, but `add_ai_usage` takes NULL for a call that belongs to no agency (the global brief)
+ * and its unique index coalesces it (migration 20260852); a sentinel uuid would fail the foreign
+ * key instead.
  */
-export async function recordAiUsage(call: Recorded): Promise<void> {
-  const spender = currentSpender()
+export async function recordAiUsage(spender: Spender, call: Recorded): Promise<void> {
   const usage: AnthropicUsage =
     call.provider === 'anthropic'
       ? call.usage
@@ -56,13 +54,13 @@ export async function recordAiUsage(call: Recorded): Promise<void> {
         ? falCostCents(call.model)
         : tavilyCostCents()
   try {
-    const agencyId = (spender?.agencyId ?? null) as unknown as string
+    const agencyId = spender.agencyId as unknown as string
     const { error } = await createAdminSupabaseClient().rpc('add_ai_usage', {
       p_agency_id: agencyId,
       p_day: new Date().toISOString().slice(0, 10),
       p_provider: call.provider,
       p_model: call.provider === 'tavily' ? 'search' : call.model,
-      p_flow: spender?.flow ?? 'unattributed',
+      p_flow: spender.flow,
       p_calls: 1,
       p_input_tokens: usage.inputTokens,
       p_output_tokens: usage.outputTokens,

@@ -6,7 +6,12 @@ import { CheckCircleIcon, ClockCircleIcon } from '@solar-icons/react/linear'
 import { Icon } from '@/components/ui/icon'
 import { StatusPill } from '@/components/ui/status-pill'
 import { toast } from '@/components/ui/toast'
-import { CHECKOUT_ARRIVAL, type PlanFact } from '@/lib/billing/copy'
+import {
+  CHECKOUT_ARRIVAL,
+  CHECKOUT_CANCELLED,
+  PLAN_SECTION,
+  type PlanFact,
+} from '@/lib/billing/copy'
 import { cn } from '@/utils/cn'
 import { clearQueryParams } from '@/utils/url'
 
@@ -49,7 +54,7 @@ export function CheckoutReturn({ billingReturn, paid, activated }: CheckoutRetur
   useEffect(() => {
     if (!returned) return
     clearQueryParams(['billing'])
-    if (returned === 'cancelled') toast('Checkout was cancelled — nothing was charged.')
+    if (returned === 'cancelled') toast(CHECKOUT_CANCELLED)
   }, [returned])
 
   useEffect(() => {
@@ -116,7 +121,7 @@ export function CheckoutReturn({ billingReturn, paid, activated }: CheckoutRetur
         <div className="flex items-center gap-2.5">
           <h2 className="text-title font-semibold text-ink">{words.title}</h2>
           <StatusPill tone={moment === 'active' ? 'ok' : 'warn'}>
-            {moment === 'active' ? 'Active' : CHECKOUT_ARRIVAL[moment].pill}
+            {moment === 'active' ? PLAN_SECTION.states.active : CHECKOUT_ARRIVAL[moment].pill}
           </StatusPill>
         </div>
         <p className="mt-1 text-body text-text2">{words.text}</p>

@@ -10,7 +10,6 @@ const mocks = vi.hoisted(() => ({
   deliverSaleDocument: vi.fn(),
   after: vi.fn((work: () => unknown) => void work()),
   remindPaymentFailed: vi.fn(),
-  syncSubscriptionQuantity: vi.fn(),
 }))
 vi.mock('next/server', async (importOriginal) => ({
   ...(await importOriginal<typeof import('next/server')>()),
@@ -33,9 +32,6 @@ vi.mock('@/lib/billing/stripe', () => ({
 }))
 vi.mock('@/lib/billing/subscription-store', () => ({
   applySubscriptionSnapshot: mocks.applySubscriptionSnapshot,
-}))
-vi.mock('@/lib/billing/quantity-sync', () => ({
-  syncSubscriptionQuantity: mocks.syncSubscriptionQuantity,
 }))
 
 /** The billing_events table as a map, so a delivery can find what an earlier one left behind. */
@@ -103,7 +99,6 @@ describe('POST /api/billing/webhook', () => {
     mocks.issueCreditNote.mockResolvedValue({ id: 'doc_2', agency_id: 'a1' })
     mocks.deliverSaleDocument.mockResolvedValue('delivered')
     mocks.remindPaymentFailed.mockResolvedValue({ outcome: 'emailed' })
-    mocks.syncSubscriptionQuantity.mockResolvedValue(undefined)
   })
 
   it('rejects a body Stripe did not sign, before recording anything', async () => {
@@ -293,101 +288,14 @@ describe('POST /api/billing/webhook', () => {
     expect(rows.get('evt_1')?.error).toBeNull()
   })
 
-  describe('the quantity after a snapshot', () => {
-    const SUBSCRIPTION = {
-      id: 'sub_1',
-      items: { data: [{ quantity: 3, current_period_start: 1_788_000_000 }] },
-    }
-    const PAID_RENEWAL = {
-      id: 'in_1',
-      amount_paid: 0,
-      parent: { subscription_details: { subscription: 'sub_1' } },
-    }
-
-    beforeEach(() => mocks.retrieve.mockResolvedValue(SUBSCRIPTION))
-
-    it('reconciles a new subscription either way for clients changed during Checkout, against the count and period bought', async () => {
-      mocks.applySubscriptionSnapshot.mockResolvedValue({ agencyId: 'a1', outcome: 'started' })
-      mocks.constructEvent.mockReturnValue(event('customer.subscription.created', { id: 'sub_1' }))
-      await deliver()
-      expect(mocks.syncSubscriptionQuantity).toHaveBeenCalledWith(admin, 'a1', 'sub_1', {
-        direction: 'both',
-        paid: 3,
-        paidFor: '2026-08-29T10:40:00.000Z',
-      })
-    })
-
-    it('lowers only, after a paid period — a delete whose own decrease failed stops being billed', async () => {
-      mocks.applySubscriptionSnapshot.mockResolvedValue({ agencyId: 'a1', outcome: 'period_paid' })
-      mocks.constructEvent.mockReturnValue(event('invoice.paid', PAID_RENEWAL))
-      await deliver()
-      expect(mocks.syncSubscriptionQuantity).toHaveBeenCalledWith(admin, 'a1', 'sub_1', {
-        direction: 'decrease',
-      })
-    })
-
-    it('lowers the count before a renewal is invoiced, not a period later: re-fetches, snapshots with no invoice, decreases', async () => {
-      const upcoming = {
-        amount_due: 8700,
-        parent: { subscription_details: { subscription: 'sub_1' } },
-      }
-      mocks.constructEvent.mockReturnValue(event('invoice.upcoming', upcoming))
-      const response = await deliver()
-      expect(await response.json()).toEqual({ received: true, outcome: 'written' })
-      expect(mocks.retrieve).toHaveBeenCalledWith('sub_1')
-      expect(mocks.applySubscriptionSnapshot).toHaveBeenCalledWith(admin, SUBSCRIPTION)
-      expect(mocks.syncSubscriptionQuantity).toHaveBeenCalledTimes(1)
-      expect(mocks.syncSubscriptionQuantity).toHaveBeenCalledWith(admin, 'a1', 'sub_1', {
-        direction: 'decrease',
-      })
-      expect(mocks.issueSaleDocument).not.toHaveBeenCalled()
-      expect(mocks.remindPaymentFailed).not.toHaveBeenCalled()
-      expect(rows.get('evt_1')?.processed_at).toEqual(expect.any(String))
-    })
-
-    it('lowers before a renewal any open subscription the row owns, a locked workspace’s included, never an ended or foreign one', async () => {
-      const upcoming = { parent: { subscription_details: { subscription: 'sub_1' } } }
-      mocks.retrieve.mockResolvedValue({ ...SUBSCRIPTION, status: 'unpaid' })
-      mocks.constructEvent.mockReturnValue(event('invoice.upcoming', upcoming))
-      await deliver()
-      expect(mocks.syncSubscriptionQuantity).toHaveBeenCalledTimes(1)
-
-      mocks.retrieve.mockResolvedValue({ ...SUBSCRIPTION, status: 'canceled' })
-      mocks.constructEvent.mockReturnValue(event('invoice.upcoming', upcoming, 'evt_2'))
-      await deliver()
-      mocks.retrieve.mockResolvedValue(SUBSCRIPTION)
-      mocks.applySubscriptionSnapshot.mockResolvedValue({ agencyId: 'a1', outcome: 'conflict' })
-      mocks.constructEvent.mockReturnValue(event('invoice.upcoming', upcoming, 'evt_3'))
-      await deliver()
-      expect(mocks.syncSubscriptionQuantity).toHaveBeenCalledTimes(1)
-    })
-
-    it('ignores an upcoming invoice with no subscription, and fetches nothing', async () => {
-      mocks.constructEvent.mockReturnValue(event('invoice.upcoming', { parent: null }))
-      expect(await (await deliver()).json()).toEqual({ received: true, outcome: 'ignored' })
-      expect(mocks.retrieve).not.toHaveBeenCalled()
-      expect(mocks.applySubscriptionSnapshot).not.toHaveBeenCalled()
-      expect(mocks.syncSubscriptionQuantity).not.toHaveBeenCalled()
-    })
-
-    it('leaves the quantity alone on any other snapshot', async () => {
-      mocks.constructEvent.mockReturnValue(event('customer.subscription.updated', { id: 'sub_1' }))
-      await deliver()
-      expect(mocks.syncSubscriptionQuantity).not.toHaveBeenCalled()
-    })
-
-    it('puts a failed reconcile on the event’s one line at error level and answers done', async () => {
-      mocks.applySubscriptionSnapshot.mockResolvedValue({ agencyId: 'a1', outcome: 'started' })
-      mocks.syncSubscriptionQuantity.mockRejectedValue(new Error('rate limited'))
-      mocks.constructEvent.mockReturnValue(event('customer.subscription.created', { id: 'sub_1' }))
-      const response = await deliver()
-      expect(response.status).toBe(200)
-      expect(console.error).toHaveBeenCalledTimes(1)
-      expect(console.error).toHaveBeenCalledWith(
-        '[billing:webhook] customer.subscription.created evt_1: started — quantity reconcile failed: rate limited'
-      )
-      expect(rows.get('evt_1')?.processed_at).toEqual(expect.any(String))
-    })
+  it("ignores an upcoming invoice: the slot count is only ever the admin's to change", async () => {
+    mocks.constructEvent.mockReturnValue(
+      event('invoice.upcoming', { parent: { subscription_details: { subscription: 'sub_1' } } })
+    )
+    expect(await (await deliver()).json()).toEqual({ received: true, outcome: 'ignored' })
+    expect(mocks.retrieve).not.toHaveBeenCalled()
+    expect(mocks.applySubscriptionSnapshot).not.toHaveBeenCalled()
+    expect(rows.get('evt_1')?.processed_at).toEqual(expect.any(String))
   })
 
   it('logs a subscription conflict with both ids, once, at error level', async () => {

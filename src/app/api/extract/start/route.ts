@@ -59,7 +59,7 @@ export async function POST(request: Request) {
   const { agencyId, userId } = auth
   const limited = aiRateLimitResponse('analyze-url', userId)
   if (limited) return limited
-  const refused = await requireEntitledRoute(agencyId, 'create')
+  const refused = await requireEntitledRoute(agencyId, 'spend')
   if (refused) return refused
 
   const parsed = startExtractionSchema.safeParse(await request.json().catch(() => null))

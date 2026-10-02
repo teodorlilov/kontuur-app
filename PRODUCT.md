@@ -65,12 +65,11 @@ Surfaces: Dashboard, Clients, Generate (full-screen wizard), Review queue, Calen
 
 **Technical constraints:** multi-tenancy is enforced by Row Level Security scoped to `agency_id` on every table, so anything user-facing must be reachable under RLS; server routes that bypass it use an admin client and scope queries by hand. UI never imports AI logic directly — everything crosses a server boundary.
 
-**Pricing as implemented:** two tiers at €49 and €99, with a 14-day free trial and no credit card required. Stripe billing fields exist as scaffolding only.
+**Pricing as implemented:** one paid plan, €29 per client slot per month excl. VAT — the agency chooses how many client slots to pay for, and a solo workspace pays for its one business — after a 14-day free trial with no card required (docs/plans/CLIENT-SLOTS.md).
 
 **Open / undecided — do not invent answers:**
 
 - **Instagram self-serve OAuth works.** The Meta Access Verification block recorded on 2026-07-29 is resolved as of 2026-07-30; clients connect through the normal flow with no workaround. A low connected-client count is therefore an ordinary onboarding gap the user can fix themselves, not a structural dead end — surfaces should offer Connect directly rather than routing around a failure.
-- Billing and plan enforcement are scaffolding, not a shipped flow.
 - No confirmed accessibility standard has been set (see below).
 
 ## Brand Commitments

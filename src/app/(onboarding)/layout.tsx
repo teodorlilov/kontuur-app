@@ -17,7 +17,7 @@ export default async function OnboardingLayout({ children }: { children: React.R
   const userId = await requireAuthUserId()
   const record = await getCachedUserRecord(userId)
   const entitlement = record ? await getCachedEntitlement(record.agency_id) : null
-  if (!entitlement?.canCreate) redirect(PLAN_AND_BILLING_PATH)
+  if (!entitlement?.canSpend) redirect(PLAN_AND_BILLING_PATH)
 
   return <AuthProvider>{children}</AuthProvider>
 }

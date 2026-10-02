@@ -58,7 +58,7 @@ export const BILLING_DOCUMENTS_BUCKET = 'billing-documents'
  * The company behind Kontuur, as every invoice and filing must name it (ЗДДС чл. 114) — under
  * its registered Latin name, since every document is in English. Read by the sale documents
  * (src/lib/billing/document-render.ts), by the NRA audit file for the UIC and the shop's domain
- * (src/app/api/billing/audit-file/route.ts), and by the Privacy and Terms pages for the
+ * (src/lib/billing/audit-file.ts), and by the Privacy and Terms pages for the
  * operator's name, the contact block and the platform's domain (src/app/(marketing)/privacy and
  * terms).
  */

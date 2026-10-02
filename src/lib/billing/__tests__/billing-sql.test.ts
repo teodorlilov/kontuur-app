@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import path from 'node:path'
 import { PGlite } from '@electric-sql/pglite'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
@@ -15,6 +15,9 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest'
  */
 
 const MIGRATIONS = path.join(process.cwd(), 'supabase', 'migrations')
+
+/** Migrations written but held until a deploy is live (supabase/held), replayed as if applied. */
+const HELD = path.join(process.cwd(), 'supabase', 'held')
 
 const PLATFORM = `
   set timezone to 'UTC';
@@ -44,6 +47,7 @@ const IN_GRACE = '00000000-0000-4000-8000-000000000003'
 const WAS_PRO = '00000000-0000-4000-8000-000000000004'
 const PAUSED = '00000000-0000-4000-8000-000000000005'
 const SIGNED_UP_WITHOUT_DEFAULT = '00000000-0000-4000-8000-000000000006'
+const PAYING = '00000000-0000-4000-8000-000000000009'
 const FORGED = '00000000-0000-4000-8000-0000000000f1'
 
 /**
@@ -105,7 +109,14 @@ const HISTORY: Step[] = [
   },
   { file: '20260861_billing_review_additive.sql' },
   { file: '20260862_billing_review_cleanup.sql' },
-  { file: '20260864_clients_delete_admin_only.sql' },
+  {
+    file: '20260864_clients_delete_admin_only.sql',
+    then: `insert into agencies
+      (id, name, mode, stripe_subscription_id, subscription_status, subscription_quantity)
+      values ('${PAYING}', 'Paying', 'agency', 'sub_paying', 'active', 3);`,
+  },
+  { file: '20260865_client_slots.sql' },
+  { file: '20260866_sale_documents_one_link.sql' },
 ]
 
 let db: PGlite
@@ -125,7 +136,8 @@ async function databaseAfter(steps: Step[]): Promise<PGlite> {
 }
 
 function migration(file: string): string {
-  return readFileSync(path.join(MIGRATIONS, file), 'utf8')
+  const applied = path.join(MIGRATIONS, file)
+  return readFileSync(existsSync(applied) ? applied : path.join(HELD, file), 'utf8')
 }
 
 async function keyOf(id: string): Promise<string | null> {
@@ -438,7 +450,7 @@ describe('invites', () => {
 
 describe('clients — only the service role deletes', () => {
   it('takes DELETE from the tenant roles and leaves them SELECT and UPDATE, over the grants the platform gives every public table', async () => {
-    const granted = await databaseAfter(HISTORY.slice(0, -1))
+    const granted = await databaseAfter(HISTORY.slice(0, -2))
     await granted.exec('grant all on public.clients to anon, authenticated, service_role')
     await granted.exec(migration('20260864_clients_delete_admin_only.sql'))
     const { rows } = await granted.query<Record<string, boolean>>(
@@ -455,5 +467,67 @@ describe('clients — only the service role deletes', () => {
       tenant_select: true,
       service_delete: true,
     })
+  })
+})
+
+describe('20260865 — client slots', () => {
+  it('backfills a subscribed workspace with the count it paid for, and leaves a trial without', async () => {
+    const { rows } = await db.query<{ id: string; client_slots: number | null }>(
+      'select id, client_slots from agencies where id = any($1::uuid[])',
+      [[PAYING, TRIAL_ENDING]]
+    )
+    expect(Object.fromEntries(rows.map((row) => [row.id, row.client_slots]))).toEqual({
+      [PAYING]: 3,
+      [TRIAL_ENDING]: null,
+    })
+  })
+
+  it('takes a hand-set 0 from Stripe and refuses a negative count', async () => {
+    await db.exec(`update agencies set client_slots = 0 where id = '${TRIAL_ENDING}'`)
+    await expect(
+      db.exec(`update agencies set client_slots = -1 where id = '${TRIAL_ENDING}'`)
+    ).rejects.toThrow()
+  })
+
+  it('runs again without raising a count the snapshot has since lowered below the paid one', async () => {
+    await db.exec(`update agencies set client_slots = 2 where id = '${PAYING}'`)
+    await db.exec(migration('20260865_client_slots.sql'))
+    const { rows } = await db.query<{ client_slots: number }>(
+      'select client_slots from agencies where id = $1',
+      [PAYING]
+    )
+    expect(rows[0]?.client_slots).toBe(2)
+  })
+})
+
+describe('20260866 — one link and one date per document', () => {
+  it('drops refunds and created_at, and keys the delivery retry on issued_at', async () => {
+    const { rows: columns } = await db.query<{ column_name: string }>(
+      `select column_name from information_schema.columns
+       where table_name = 'sale_documents' and column_name in ('refunds', 'created_at')`
+    )
+    expect(columns).toEqual([])
+    const { rows: indexes } = await db.query<{ indexdef: string }>(
+      `select indexdef from pg_indexes where indexname = 'sale_documents_undelivered'`
+    )
+    expect(indexes[0]?.indexdef).toMatch(/\(issued_at\) WHERE \(delivered_at IS NULL\)/)
+  })
+
+  it('issues a credit note against its invoice by the Stripe invoice id alone', async () => {
+    const invoice = await issue(invoicePayload('in_refunded'))
+    const note = await issue(
+      invoicePayload('in_refunded', {
+        kind: 'credit_note',
+        stripe_credit_note_id: 'cn_1',
+        stripe_refund_id: 're_1',
+      })
+    )
+    expect(note.id).not.toBe(invoice.id)
+    expect(BigInt(note.number)).toBe(BigInt(invoice.number) + BigInt(1))
+  })
+
+  it('runs again without harm', async () => {
+    await db.exec(migration('20260866_sale_documents_one_link.sql'))
+    expect((await issue(invoicePayload('in_after_rerun'))).id).toBeTruthy()
   })
 })

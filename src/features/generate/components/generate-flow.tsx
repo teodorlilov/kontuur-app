@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { UsersGroupRoundedIcon } from '@solar-icons/react/line-duotone'
 import { Icon } from '@/components/ui/icon'
 import { toast } from '@/components/ui/toast'
-import { ActionLink } from '@/components/ui/action-link'
+import { GatedAction } from '@/components/ui/gated-action'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { EmptyState } from '@/components/layout/empty-state'
 import { readNDJSONStream } from '@/utils/stream'
@@ -29,7 +29,7 @@ import {
   runCeiling,
 } from '@/lib/billing/post-allowance'
 import type { OwedImages } from '@/lib/billing/copy'
-import type { GenerateGate } from '@/lib/billing/post-allowance'
+import type { PlanGate } from '@/lib/billing/copy'
 import { toPostType, visualSlots } from '@/lib/visual/visual-backlog'
 import type { Allowance } from '@/lib/billing/plans'
 import { useUnloadGuard } from '@/hooks/use-unload-guard'
@@ -64,7 +64,9 @@ interface GenerateFlowProps {
    */
   allowance: { limits: Allowance; committed: Allowance; owed: OwedImages }
   /** Whether a run may start at all (`generationGate`) — the form gives way to its refusal. */
-  gate: GenerateGate
+  gate: PlanGate
+  /** What "Add your first client" says with no client yet (`addBrandGate`, src/lib/billing/copy.ts). */
+  addClient: PlanGate
   /** Drafts still waiting for review, per client — rows the last runs left behind. */
   waitingDrafts?: WaitingDrafts[]
   /** The server's render instant — the rows' "2h ago" keys off it so SSR and hydration agree. */
@@ -98,6 +100,7 @@ export function GenerateFlow({
   timeZone,
   allowance,
   gate,
+  addClient,
   initialClients,
   initialClientData,
   initialTargetPostCount,
@@ -523,7 +526,7 @@ export function GenerateFlow({
     router.push('/dashboard')
   }
 
-  if (clients.length === 0) return <NoClientsState />
+  if (clients.length === 0) return <NoClientsState addClient={addClient} />
 
   const clientMeta = [selectedClient?.niche, selectedClient?.language, preloadedClientData?.tone]
     .filter(Boolean)
@@ -643,14 +646,27 @@ export function GenerateFlow({
   )
 }
 
-function NoClientsState() {
+/**
+ * A workspace with no client yet. Its one action is refused in place, with the reason, when the
+ * person may not add one now (`GatedAction`) — a member, or a workspace in its trial's grace —
+ * rather than linking to a setup flow that would send them away.
+ */
+function NoClientsState({ addClient }: { addClient: PlanGate }) {
   return (
     <EmptyState
       className="flex-1"
       icon={<Icon glyph={UsersGroupRoundedIcon} size="hero" />}
       title="No clients yet"
       description="Add your first client before generating posts."
-      action={<ActionLink href="/clients/new">Add your first client</ActionLink>}
+      action={
+        <GatedAction
+          href="/clients/new"
+          label="Add your first client"
+          refusal={addClient.refusal}
+          refusalId="no-clients-add-refusal"
+          wayOut={addClient.wayOut}
+        />
+      }
     />
   )
 }

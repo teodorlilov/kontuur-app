@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { TypedConfirmDialog } from '@/components/ui/typed-confirm-dialog'
 import { toast } from '@/components/ui/toast'
 import { deleteWorkspace } from '@/features/settings/actions/workspace-actions'
+import { WORKSPACE_NOT_DELETED } from '@/lib/billing/copy'
 import { GOODBYE_PATH } from '@/utils/constants'
 import { pluralise } from '@/utils/format'
 
@@ -52,7 +53,7 @@ export function DeleteWorkspaceDialog({
       window.location.assign(GOODBYE_PATH)
     } catch (err) {
       console.error('[workspace:delete] action threw:', err)
-      toast.error('Could not delete the workspace. Please try again.')
+      toast.error(WORKSPACE_NOT_DELETED)
       setIsDeleting(false)
     }
   }

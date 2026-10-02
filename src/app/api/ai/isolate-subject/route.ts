@@ -36,9 +36,8 @@ export async function POST(request: Request) {
   if (foreignPath) return foreignPath
 
   try {
-    const cutoutUrl = await runAsSpender(
-      { agencyId: auth.agencyId, clientId: destination.clientId, flow: 'editor' },
-      () => removeImageBackground(publicPostImageUrl(body.storagePath))
+    const cutoutUrl = await runAsSpender({ agencyId: auth.agencyId, flow: 'editor' }, () =>
+      removeImageBackground(publicPostImageUrl(body.storagePath))
     )
     const buffer = await downloadFalFile(cutoutUrl)
     const { publicUrl, storagePath } = await destination.upload(buffer, 'image/png', 'cutout.png')

@@ -4,7 +4,7 @@ import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { getCachedAgency, getCachedAgencyClients, getCachedEntitlement } from '@/lib/queries/cache'
 import { readUsage } from '@/lib/billing/usage'
 import { generationGate } from '@/lib/billing/post-allowance'
-import { NOTHING_OWED } from '@/lib/billing/copy'
+import { NOTHING_OWED, addBrandGate } from '@/lib/billing/copy'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import { fetchOwedImages, owedImagesOf, sumOwed } from '@/lib/visual/owed-images'
 import {
@@ -40,7 +40,10 @@ interface PageProps {
  * read shows nothing waiting rather than hiding the wizard behind its own resume.
  */
 export default async function GeneratePage({ searchParams }: PageProps) {
-  const [{ agencyId }, { ideaId, client }] = await Promise.all([requireSessionUser(), searchParams])
+  const [{ agencyId, role }, { ideaId, client }] = await Promise.all([
+    requireSessionUser(),
+    searchParams,
+  ])
   const supabase = await createServerSupabaseClient()
 
   const [clients, initialIdea, agency, entitlement] = await Promise.all([
@@ -73,7 +76,7 @@ export default async function GeneratePage({ searchParams }: PageProps) {
   ])
   const waitingDrafts: WaitingDrafts[] = drafts?.groups ?? []
   const owed = drafts && reviewOwed ? sumOwed([owedImagesOf(drafts.posts), reviewOwed]) : null
-  requireBusinessSetup(agency?.mode, clients.length, entitlement.canCreate)
+  requireBusinessSetup(agency?.mode, clients.length, entitlement.canSpend)
 
   if (ideaId && !initialIdea) notFound()
 
@@ -118,6 +121,7 @@ export default async function GeneratePage({ searchParams }: PageProps) {
         owed: owed ?? NOTHING_OWED,
       }}
       gate={generationGate(entitlement, usage.committed, owed)}
+      addClient={addBrandGate(entitlement, clients.length, role)}
       initialIdea={initialIdea ?? undefined}
       initialClientId={requestedClientId}
       initialSources={initialSources}

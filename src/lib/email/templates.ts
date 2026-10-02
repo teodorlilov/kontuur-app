@@ -1,5 +1,5 @@
 import { formatDocumentNumber, formatLongDate, formatMoney, pluralise } from '@/utils/format'
-import { REMINDER_COPY } from '@/lib/billing/copy'
+import { documentKindLabel, REMINDER_COPY } from '@/lib/billing/copy'
 import type { BillingReminderType } from '@/types/api'
 import type { SaleDocumentColumns } from '@/lib/queries/select-columns'
 import { DOCUMENT_TIMEZONE } from '@/utils/constants'
@@ -76,25 +76,26 @@ export function reminderEmail(
 
 /**
  * The invoice or credit note, sent to the payer at the moment of payment with the PDF attached
- * — the document Наредба Н-18 asks to be handed over electronically (чл. 52о ал. 5). The date is
- * written in Sofia time, the document's own. `planUrl` is null for a document of a deleted
- * workspace: there is no Plan & billing to point at, so the email carries no button and asks the
- * payer to keep the attachment.
+ * — the document Наредба Н-18 asks to be handed over electronically (чл. 52о ал. 5) — named as
+ * its PDF names it (`documentKindLabel`, src/lib/billing/copy.ts). The date is written in Sofia
+ * time, the document's own. `planUrl` is null for a document of a deleted workspace: there is no
+ * Plan & billing to point at, so the email carries no button and asks the payer to keep the
+ * attachment.
  */
 export function documentEmail(
   document: Pick<SaleDocumentColumns, 'kind' | 'number' | 'gross_cents' | 'issued_at'>,
   planUrl: string | null
 ): EmailContent {
-  const invoice = document.kind === 'invoice'
-  const noun = invoice ? 'invoice' : 'credit note'
+  const label = documentKindLabel(document.kind)
+  const noun = label.toLowerCase()
   const number = formatDocumentNumber(document.number)
   const amount = formatMoney(document.gross_cents)
   const date = formatLongDate(new Date(document.issued_at), DOCUMENT_TIMEZONE)
-  const attached = `${strong(`${invoice ? 'Invoice' : 'Credit note'} No. ${number}`)} for ${strong(amount)}, dated ${date}, is attached as a PDF.`
+  const attached = `${strong(`${label} No. ${number}`)} for ${strong(amount)}, dated ${date}, is attached as a PDF.`
   return {
-    subject: invoice ? 'Your invoice from Kontuur' : 'Your credit note from Kontuur',
-    preview: `${invoice ? 'Invoice' : 'Credit note'} ${number} for ${amount} is attached.`,
-    label: invoice ? 'Invoice' : 'Credit note',
+    subject: `Your ${noun} from Kontuur`,
+    preview: `${label} ${number} for ${amount} is attached.`,
+    label,
     headline: { lead: `Your ${noun} is`, accent: 'attached' },
     signoff: SIGNOFF,
     ...(planUrl

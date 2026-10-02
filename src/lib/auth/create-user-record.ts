@@ -24,7 +24,6 @@ interface UserInput {
 }
 
 interface CreateUserRecordResult {
-  agencyId: string
   isInvited: boolean
 }
 
@@ -40,7 +39,10 @@ interface CreateUserRecordResult {
  * finds accounts by it) and a business name, with a mode of `agency` or `solo` (absent means
  * `agency`), and gets an admin row, no client (onboarding
  * makes the first, `createClient` in src/features/clients/actions/client-actions.ts) and a trial
- * end from `TRIAL_DAYS`, because migration 20260862 drops that column's default.
+ * end from `TRIAL_DAYS`, because migration 20260862 drops that column's default. Answers whether
+ * the login joined through an invite, which the auth callback (src/app/auth/callback/page.tsx)
+ * sends on to set a password; a login that already has a row writes nothing and answers not
+ * invited.
  */
 export async function createUserRecord(
   admin: AdminClient,
@@ -48,13 +50,13 @@ export async function createUserRecord(
 ): Promise<CreateUserRecordResult> {
   const { data: existing, error: existingError } = await admin
     .from('users')
-    .select('agency_id')
+    .select('id')
     .eq('id', user.id)
     .maybeSingle()
   if (existingError) throw new Error(`user lookup failed: ${existingError.message}`)
 
   if (existing) {
-    return { agencyId: existing.agency_id, isInvited: false }
+    return { isInvited: false }
   }
 
   const { data: invite, error: inviteError } = await admin
@@ -83,7 +85,7 @@ export async function createUserRecord(
         acceptError.message
       )
     }
-    return { agencyId: invite.agency_id, isInvited: true }
+    return { isInvited: true }
   }
 
   const parsed = accountMetadataSchema.safeParse(user.user_metadata)
@@ -116,5 +118,5 @@ export async function createUserRecord(
   })
   if (userError) throw new Error(`user insert failed: ${userError.message}`)
 
-  return { agencyId, isInvited: false }
+  return { isInvited: false }
 }

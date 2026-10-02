@@ -14,7 +14,6 @@ interface TeamTabProps {
   members: TeamMember[]
   currentUserId: string
   currentUserRole: string
-  agencyMode: 'agency' | 'solo'
 }
 
 /**
@@ -23,7 +22,7 @@ interface TeamTabProps {
  * removal that answers ok is done, so the dialog closes; its notice, when it has one, says what
  * could not be finished.
  */
-export function TeamTab({ members, currentUserId, currentUserRole, agencyMode }: TeamTabProps) {
+export function TeamTab({ members, currentUserId, currentUserRole }: TeamTabProps) {
   const router = useRouter()
   const isAdmin = currentUserRole === 'admin'
   const [pendingRemoval, setPendingRemoval] = useState<TeamMember | null>(null)
@@ -42,10 +41,6 @@ export function TeamTab({ members, currentUserId, currentUserRole, agencyMode }:
       toast.error(result.error)
     }
     setRemoving(false)
-  }
-
-  if (agencyMode === 'solo') {
-    return <p className="py-6 text-body text-text2">Team management is available in agency mode.</p>
   }
 
   return (

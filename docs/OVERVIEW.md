@@ -245,7 +245,7 @@ in `supabase/migrations/`. Nineteen tables, grouped by domain:
 
 | Table      | Purpose                                                                                                                                     |
 | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| `agencies` | Tenant root. Holds `mode` (agency/solo), `plan`, `plan_client_limit`, `timezone`, `trial_ends_at`, and Stripe billing fields (scaffolding). |
+| `agencies` | Tenant root. Holds `mode` (agency/solo), `plan`, `timezone`, `trial_ends_at`, and the Stripe billing fields: `client_slots` (the cap and what the next renewal bills), `subscription_quantity` (slots paid this period), the subscription, its status and period (docs/plans/CLIENT-SLOTS.md). |
 | `users`    | App user linked to an `agency_id` with a `role` (admin/member). Mirrors the Supabase auth user.                                             |
 
 ### Clients & brand
@@ -485,6 +485,7 @@ footer), plus privacy, terms, data-deletion and goodbye pages, `sitemap.ts`, and
 | Tavily           | Web trend search during research                | `TAVILY_API_URL_KEY`                                                                     |
 | Jina AI Reader   | Website content extraction                      | `JINA_API_KEY` (optional)                                                                |
 | Vercel           | Hosting + cron                                  | `CRON_SECRET`, `NEXT_PUBLIC_APP_URL`                                                     |
+| Stripe           | Checkout, client slots, the portal, invoices    | `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_ID`, `STRIPE_ACCOUNT_ID`     |
 
 > Instagram publishing depends on Meta App Review for three Instagram permissions — see the
 > project memory and Meta developer console for current review status.
@@ -500,6 +501,7 @@ Configured in `vercel.json`, all authenticated with `Authorization: Bearer $CRON
 | `GET /api/cron/generate`       | hourly `0 * * * *`        | For each active posting schedule whose day + hour slot (agency timezone) has passed today and has no generation run since the slot: research → generate → validate → save `pending_review` → notify agency → distill the style memo (skipped when fresh). Before all that, the week's global platform brief if no row exists for this UTC Monday yet. `maxDuration: 300s`. |
 | `GET /api/cron/visuals`        | hourly `10 * * * *`       | Paint missing visuals for `pending_review` posts (quality-gated, attempt-capped backlog) so drafts arrive in the queue as finished creatives. `maxDuration: 300s`.                                                                                                                                                             |
 | `GET /api/cron/publish`        | every 5 min `*/5 * * * *` | Publish every `status='scheduled'` post whose `scheduled_at` has passed (24h catch-up window; older posts are marked failed), grouped by client, to Instagram; atomic claim against double-publishing, retry up to 3 attempts. `maxDuration: 300s`.                                                                            |
+| `GET /api/cron/billing`        | daily `0 8 * * *`         | Release allowance reservations a killed run never settled; send the trial, grace and paused reminders (bell + email, once each); retry delivery of any invoice or credit note nobody received. Spends nothing. `maxDuration: 60s`. |
 | `GET /api/cron/refresh-tokens` | daily `30 8 * * *`        | Refresh Instagram long-lived tokens expiring within 14 days; notify the agency (7-day cooldown) when a refresh fails and the account needs reconnecting. `maxDuration: 300s`.                                                                                                                                                  |
 
 ---
@@ -522,8 +524,10 @@ All under `src/app/api/`. Representative map (each handler authenticates and sco
   `canva/designs`, `canva/designs/[designId]/export`
 - **Analytics** — `analytics/report`, `analytics/report/[reportId]`
 - **Settings** — `settings/account`, `settings/team`, `settings/team/invite`
+- **Billing** — `billing/webhook` (Stripe events), `billing/audit-file` (the monthly NRA file;
+  docs/n18/README.md). Plan changes are server actions, not routes.
 - **Auth** — `auth/signup`, `auth/forgot-password`
-- **Cron** — `cron/generate`, `cron/visuals`, `cron/publish`, `cron/refresh-tokens`
+- **Cron** — `cron/generate`, `cron/visuals`, `cron/publish`, `cron/refresh-tokens`, `cron/billing`
 
 ---
 
@@ -536,7 +540,9 @@ See [`.env.example`](../.env.example) for the authoritative list with comments. 
 `META_INSTAGRAM_APP_ID` · `META_INSTAGRAM_APP_SECRET` · `META_REDIRECT_URI` ·
 `RESEND_API_KEY` · `RESEND_FROM_EMAIL` · `NEXT_PUBLIC_APP_URL` · `CRON_SECRET` ·
 `JINA_API_KEY` · `TAVILY_API_URL_KEY` · `CANVA_CLIENT_ID` · `CANVA_CLIENT_SECRET` ·
-`CANVA_REDIRECT_URI` · `CHROME_EXECUTABLE_PATH` (brand-kit extraction only)
+`CANVA_REDIRECT_URI` · `CHROME_EXECUTABLE_PATH` (brand-kit extraction only) · `STRIPE_SECRET_KEY` ·
+`STRIPE_WEBHOOK_SECRET` · `STRIPE_PRICE_ID` · `STRIPE_ACCOUNT_ID` · `NRA_ESHOP_NUMBER` ·
+`STRIPE_TEST_CLOCK` (test mode only)
 
 Rule: anything without the `NEXT_PUBLIC_` prefix is server-only and must never reach the client.
 
@@ -595,7 +601,6 @@ Auth redirect URLs at the deployed domain, and the two cron jobs run automatical
 
 ## 15. Known gaps / roadmap
 
-- **Billing** — Stripe fields exist on `agencies` but billing is scaffolding, not wired up.
 - **Publishing reach** — auto-publish targets Instagram; other platforms are generated/scheduled
   but not auto-published.
 - **Meta App Review** — live Instagram publishing/analytics depend on approved Meta permissions.

@@ -116,7 +116,12 @@ export function minDateKey(a: string, b: string): string {
 
 /** A Unix timestamp in seconds — how Stripe gives every date — as an ISO instant. */
 export function isoFromUnixSeconds(seconds: number): string {
-  return new Date(seconds * 1000).toISOString()
+  return dateFromUnixSeconds(seconds).toISOString()
+}
+
+/** The instant a Unix timestamp in seconds — Stripe's unit — names. */
+export function dateFromUnixSeconds(seconds: number): Date {
+  return new Date(seconds * 1000)
 }
 
 /**
@@ -221,6 +226,25 @@ export function getWeekRange(
   }
 }
 
+/** The 'YYYY-MM-DD' key of the first day of a month, `month` counted from 1. */
+function firstOf(year: number, month: number): string {
+  return `${String(year).padStart(4, '0')}-${String(month).padStart(2, '0')}-01`
+}
+
+/**
+ * Half-open [from, to) instants covering the 'YYYY-MM' `month` in `timeZone` — the same zoned
+ * midnights `getWeekRange` takes, so a row dated in the zone's month is inside the range and no
+ * other is. A month past 12, like '2026-13', throws (an invalid date) rather than read as another.
+ */
+export function getMonthRange(month: string, timeZone?: string): { from: string; to: string } {
+  const [year = 0, monthNumber = 1] = month.split('-').map(Number)
+  const next = monthNumber === 12 ? firstOf(year + 1, 1) : firstOf(year, monthNumber + 1)
+  return {
+    from: getZonedDayStart(`${month}-01`, timeZone).toISOString(),
+    to: getZonedDayStart(next, timeZone).toISOString(),
+  }
+}
+
 /**
  * Instants at which the current and previous calendar month begin in
  * `timeZone`. "Published this month" is a claim about the reader's month, not
@@ -232,8 +256,6 @@ export function getMonthBoundaries(timeZone?: string): {
 } {
   const [year = 0, month = 1] = toDateKey(new Date(), timeZone).split('-').map(Number)
   const previous = month === 1 ? { year: year - 1, month: 12 } : { year, month: month - 1 }
-  const firstOf = (y: number, m: number) =>
-    `${String(y).padStart(4, '0')}-${String(m).padStart(2, '0')}-01`
 
   return {
     monthStart: getZonedDayStart(firstOf(year, month), timeZone).toISOString(),

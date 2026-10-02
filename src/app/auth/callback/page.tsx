@@ -5,6 +5,15 @@ import { createUserRecord } from '@/lib/auth/create-user-record'
 import { SIGN_IN_PATH } from '@/utils/constants'
 import { InviteHandler } from './invite-handler'
 
+/**
+ * Where an emailed auth link lands. A PKCE code (signup confirmation, password reset) is exchanged
+ * for a session: a reset goes on to set its new password; any other login is provisioned by
+ * `createUserRecord` (src/lib/auth/create-user-record.ts), which is the one check for an existing
+ * row and writes nothing for one, and an invitee goes on to set a password, everyone else to the
+ * dashboard. A failed exchange (an expired link) opens the sign-in dialog with the reason in
+ * `error`, so the visitor is told why rather than shown a blank form. With no code, the link is an
+ * invite whose session rides in the URL hash, which only the browser can read (`InviteHandler`).
+ */
 export default async function AuthCallbackPage({
   searchParams,
 }: {
@@ -15,12 +24,10 @@ export default async function AuthCallbackPage({
   const type = typeof params.type === 'string' ? params.type : null
 
   if (code) {
-    // PKCE flow (signup, password reset)
     const supabase = await createServerSupabaseClient()
     const { error } = await supabase.auth.exchangeCodeForSession(code)
 
     if (!error) {
-      // Password reset flow — send user to set their new password
       if (type === 'recovery') {
         redirect('/setup-password')
       }
@@ -30,39 +37,17 @@ export default async function AuthCallbackPage({
       } = await supabase.auth.getUser()
 
       if (user) {
-        // maybeSingle: "no row yet" is the normal first-visit state, not an error.
-        const { data: existingUser, error: lookupError } = await supabase
-          .from('users')
-          .select('id')
-          .eq('id', user.id)
-          .maybeSingle()
-        if (lookupError) throw new Error(`user lookup failed: ${lookupError.message}`)
-
-        if (!existingUser) {
-          const admin = createAdminSupabaseClient()
-          const result = await createUserRecord(admin, {
-            id: user.id,
-            email: user.email ?? '',
-            user_metadata: user.user_metadata ?? {},
-          })
-
-          if (result.isInvited) {
-            redirect('/setup-password')
-          }
-        }
-
-        redirect('/dashboard')
+        const { isInvited } = await createUserRecord(createAdminSupabaseClient(), {
+          id: user.id,
+          email: user.email ?? '',
+          user_metadata: user.user_metadata ?? {},
+        })
+        redirect(isInvited ? '/setup-password' : '/dashboard')
       }
     }
 
-    // Straight to the sign-in dialog with the reason attached. This used to be
-    // `/login?error=confirmation_failed`, and nothing on that page ever read
-    // the param — an expired confirmation link dropped a visitor on a blank
-    // sign-in form with no explanation at all.
     redirect(`${SIGN_IN_PATH}&error=confirmation_failed`)
   }
 
-  // No code param — implicit flow (invite link with hash fragment tokens).
-  // Render client component to handle hash-based session.
   return <InviteHandler />
 }

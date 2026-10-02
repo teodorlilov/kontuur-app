@@ -1,9 +1,10 @@
 import {
   NOTHING_OWED,
   OWED_IMAGES_UNKNOWN,
+  allowanceUsedUp,
   cannotSpendNotice,
-  postsLeft,
   type OwedImages,
+  type PlanGate,
 } from './copy'
 import type { Entitlement } from './entitlement'
 import { meteredLimit, type Allowance, type AllowanceKind } from './plans'
@@ -81,31 +82,30 @@ export function postsAffordable(
 }
 
 /**
- * A Generate control's answer: why no run may start (null when one may), and whether Plan &
- * billing is the way past it — the shape of `AddBrandGate` (copy.ts).
- */
-export interface GenerateGate {
-  refusal: string | null
-  wayOut: boolean
-}
-
-/**
  * Whether a new run may start at all — the one answer for every Generate control (the dashboard's,
  * the wizard's form). A workspace that cannot spend is told why (`cannotSpendNotice`); owed
  * pictures that could not be read (`owed` null) are unknown, not zero, so no run is offered on
- * them while the image pool is metered, and no plan would change that; otherwise the cheapest post there is — one picture — is
- * measured against what is left once the pictures earlier posts still owe are set aside. A dearer
- * format that no longer fits is not a refusal here: the wizard's stepper and panel refuse at the
- * chosen format.
+ * them while the image pool is metered, and no plan would change that; otherwise the cheapest post
+ * there is — one picture — is measured against what is left once the pictures earlier posts still
+ * owe are set aside, and refused in the words the server's 402 uses for it (`allowanceUsedUp`). A
+ * dearer format that no longer fits is not a refusal here: the wizard's stepper and panel refuse
+ * at the chosen format.
  */
 export function generationGate(
   entitlement: Pick<
     Entitlement,
-    'canSpend' | 'state' | 'paymentFailed' | 'trialEndsAt' | 'graceEndsAt' | 'timezone' | 'limits'
+    | 'canSpend'
+    | 'state'
+    | 'paymentFailed'
+    | 'trialEndsAt'
+    | 'graceEndsAt'
+    | 'resetsOn'
+    | 'timezone'
+    | 'limits'
   >,
   committed: Allowance,
   owed: OwedImages | null
-): GenerateGate {
+): PlanGate {
   const notice = cannotSpendNotice(entitlement)
   if (notice) return { refusal: notice.text, wayOut: true }
   const imagesLeft = poolLeft(entitlement.limits, committed, 'image')
@@ -115,12 +115,14 @@ export function generationGate(
     committedWithOwed(committed, owed ?? NOTHING_OWED),
     1
   )
-  if (posts === null || posts > 0) return { refusal: null, wayOut: true }
-  const refusal = postsLeft(
-    0,
+  if (posts === null || limiting === null || posts > 0) return { refusal: null, wayOut: true }
+  const refusal = allowanceUsedUp(
     limiting,
-    0,
-    imagesLeft === null || owed === null ? undefined : { left: imagesLeft, perPost: 1, owed }
+    committed[limiting],
+    entitlement.limits[limiting],
+    1,
+    entitlement,
+    owed ?? undefined
   )
   return { refusal, wayOut: true }
 }

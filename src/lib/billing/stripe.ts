@@ -22,6 +22,19 @@ export function stripeClient(): Stripe {
 }
 
 /**
+ * Every line of an invoice. A retrieved invoice embeds only "the first handful" of its lines
+ * (node_modules/stripe/esm/resources/Invoices.d.ts:115), and pending prorations sort ahead of the
+ * subscription's own line (Invoices.d.ts:322), so a renewal carrying many of them would lose its
+ * renewal line: when `has_more` says the embedded list stops short, the whole list is paged in.
+ */
+export async function invoiceLines(invoice: Stripe.Invoice): Promise<Stripe.InvoiceLineItem[]> {
+  if (!invoice.lines.has_more) return invoice.lines.data
+  return stripeClient()
+    .invoices.listLineItems(invoice.id, { limit: 100 })
+    .autoPagingToArray({ limit: 10_000 })
+}
+
+/**
  * The one price a workspace can buy, per client per month, created by hand in the Dashboard for
  * each mode and named here by its id, so test and live differ by one env var.
  */

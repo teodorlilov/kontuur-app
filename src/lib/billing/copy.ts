@@ -1,13 +1,17 @@
 import { MS_PER_DAY } from '@/utils/constants'
 import { formatDocumentNumber, formatLongDate, formatMoney, pluralise } from '@/utils/format'
 import type { BillingReminderType, NotificationType } from '@/types/api'
-import type { Entitlement, EntitlementState } from './entitlement'
+import { brandCap, type Entitlement, type EntitlementState } from './entitlement'
 import {
   GRACE_DAYS,
+  MAX_CLIENT_SLOTS,
   PLAN_LABELS,
   PRO_PLAN,
   TRIAL_NOTICE_DAYS,
-  billableQuantity,
+  chargesToday,
+  monthlyCents,
+  proRataCents,
+  slotChange,
   type AllowanceKind,
 } from './plans'
 
@@ -51,8 +55,9 @@ function allUsed(kind: AllowanceKind, quota: number | null): string {
   return `You've used all ${quota ?? 'your'} ${ALLOWANCE_NOUNS[kind]} for this period.`
 }
 
-function tooFew(kind: AllowanceKind, left: number, needed: number): string {
-  return `You have ${pluralise(left, ALLOWANCE_NOUN[kind])} left this period and this needs ${needed}.`
+/** "You have 2 posts left this period and this needs 3." — `counted` is the count in its own noun. */
+function tooFew(counted: string, needed: number): string {
+  return `You have ${counted} left this period and this needs ${needed}.`
 }
 
 /**
@@ -80,16 +85,26 @@ export interface ImagePool {
 }
 
 /**
- * Why `neededImages` cannot be painted from the pool: the waiting posts, when the run would fit
- * without them; otherwise what is left against what is needed; and only an empty pool is "all
- * used". Never names more left than there is.
+ * Why a spend of `needed` cannot be paid from a pool with `left`: the pictures waiting posts owe,
+ * when the spend alone would fit; otherwise what is left against what is needed; and only an empty
+ * pool is "all used", naming its size when the caller knows it (`quota`). Never names more left
+ * than there is. The one chooser for the server's refusals and the wizard's picture line; the
+ * wizard's draft line counts posts and words its own (`postsLeft`).
  */
-function imagesShort(neededImages: number, pool: ImagePool): string {
-  const { left, owed } = pool
-  if (neededImages <= left && owed.images > 0) return owedImagesWaiting(owed, left)
-  if (left > 0) return tooFew('image', left, neededImages)
-  return allUsed('image', null)
+function shortfall(
+  kind: AllowanceKind,
+  left: number,
+  needed: number,
+  quota: number | null,
+  owed?: OwedImages
+): string {
+  if (kind === 'image' && owed && owed.images > 0 && needed <= left) {
+    return owedImagesWaiting(owed, left)
+  }
+  if (left > 0 && needed > left) return tooFew(pluralise(left, ALLOWANCE_NOUN[kind]), needed)
+  return allUsed(kind, quota)
 }
+
 /**
  * The set-aside sentence: what the waiting posts need beside what the pool still holds, so a
  * refusal caused by them names them — and never claims more is left than is.
@@ -112,9 +127,9 @@ function wayForward(refused: Refusable): string {
 }
 
 /**
- * The one sentence a refused spend shows, wherever it is refused. A pool with something left
- * says so — "2 left and this needs 3" — rather than claiming it is empty. Pictures earlier posts
- * still owe are named only when they are the cause: when the spend alone would fit.
+ * The one sentence a refused spend shows, wherever it is refused — the 402s, the scheduled run's
+ * bell and every Generate control (`generationGate`, post-allowance.ts): why it is short
+ * (`shortfall`), then how the allowance comes back (`wayForward`).
  */
 export function allowanceUsedUp(
   kind: AllowanceKind,
@@ -124,25 +139,16 @@ export function allowanceUsedUp(
   refused: Refusable,
   owed?: OwedImages
 ): string {
-  const left = Math.max(0, quota - used)
-  const sentence =
-    kind === 'image' && owed && owed.images > 0 && needed <= left
-      ? owedImagesWaiting(owed, left)
-      : left > 0 && needed > left
-        ? tooFew(kind, left, needed)
-        : allUsed(kind, quota)
-  return sentence + wayForward(refused)
+  return shortfall(kind, Math.max(0, quota - used), needed, quota, owed) + wayForward(refused)
 }
 
 /**
- * What the wizard says about what a run may still make, before the server is asked: how many
- * posts are left, or — when the run wants more than that — the refusal the server would answer
- * with. `left` is the posts affordable at the chosen format with the owed pictures set aside, and
- * `limiting` the pool that ran out first (`postsAffordable`, post-allowance.ts), so an empty image
- * pool is named as one rather than reported as missing drafts. When pictures are what binds and
- * `pool` says what is left of them, the sentence is about pictures (`imagesShort`): the waiting
- * posts only when the run would fit without them, otherwise what the run — at least one post of
- * this format — needs against what is left.
+ * The wizard's live line about what a run at the chosen format may still make (`CountSteppers`,
+ * `RunPanel`): how many posts are left, or why the run is short. `left` is the posts affordable
+ * with the owed pictures set aside, and `limiting` the pool that ran out first
+ * (`postsAffordable`, post-allowance.ts), so an empty image pool is named as one rather than
+ * reported as missing drafts; when pictures bind and `pool` says what is left of them, the
+ * sentence is `shortfall`'s for the run's pictures — at least one post of this format.
  */
 export function postsLeft(
   left: number,
@@ -152,18 +158,19 @@ export function postsLeft(
 ): string {
   const short = left === 0 || needed > left
   if (short && limiting === 'image' && pool) {
-    return imagesShort(Math.max(needed, 1) * pool.perPost, pool)
+    return shortfall('image', pool.left, Math.max(needed, 1) * pool.perPost, null, pool.owed)
   }
   if (left === 0) return allUsed(limiting ?? 'draft', null)
   const posts = pluralise(left, 'post')
-  if (needed > left) return `You have ${posts} left this period and this needs ${needed}.`
+  if (needed > left) return tooFew(posts, needed)
   return `${posts} left this period`
 }
 
 /**
  * The visuals cron's bell for posts in the review queue it could not paint because the image
- * pool cannot pay for them whole — once per period (`images_waiting:<period>`), with the count of
- * the posts this tick found, and the way the pictures come back.
+ * pool cannot pay for them whole — once per period and pool size (`ringImagesWaiting`,
+ * src/lib/visual/paint-backlog.ts), with the count of the posts this tick found, and the way the
+ * pictures come back.
  */
 export function imagesWaiting(count: number, refused: Refusable): string {
   const verb = count === 1 ? 'is' : 'are'
@@ -172,8 +179,9 @@ export function imagesWaiting(count: number, refused: Refusable): string {
 }
 
 /**
- * The 80 % warning's sentence. `settleUsage` keys the bell by period and pool, so it lands once a
- * period whatever the sentence says; the trial has one period.
+ * The 80 % warning's sentence. `settleUsage` (src/lib/billing/usage.ts) keys the bell by period,
+ * pool and pool size, so it lands once per pool size whatever the sentence says; the trial has one
+ * period.
  */
 export function allowanceWarning(
   kind: AllowanceKind,
@@ -201,15 +209,25 @@ export function brandsLabel(mode: Entitlement['mode']): string {
   return mode === 'solo' ? 'Business' : 'Clients'
 }
 
-/** Why a new brand was refused — the trial's cap, and the way past it. The paid plan has no cap. */
+/**
+ * Why a new brand was refused — the plan's cap, and the way past it: a solo workspace holds its one
+ * business on every plan, the paid plan's client slots (docs/plans/CLIENT-SLOTS.md) take a slot
+ * more, and the trial's clients take a plan.
+ */
 function brandCapReached(entitlement: Entitlement): string {
   const { plan, mode, brands } = entitlement
-  return `${PLAN_LABELS[plan]} includes ${brands === 1 ? 'one' : brands} ${brandWord(mode, brands)}. Choose a plan to add more.`
+  if (mode === 'solo') return 'Your plan covers one business.'
+  if (plan === 'pro') {
+    return brands === 1
+      ? 'Your one client slot is in use. Add a slot to add more.'
+      : `All ${brands} client slots are in use. Add a slot to add more.`
+  }
+  return `${PLAN_LABELS[plan]} includes ${pluralise(brands, 'client')}. Choose a plan to add more.`
 }
 
 /**
- * Adding a client is charged pro rata and deleting one lowers the next renewal and cannot be
- * undone, so both are for admins (`clientRosterRefusal`).
+ * A client takes one of the plan's slots and deleting one cannot be undone, so adding and deleting
+ * are for admins (`clientRosterRefusal`).
  */
 export const CLIENTS_ADMINS_ONLY = 'Only admins can add or delete clients.'
 
@@ -225,9 +243,10 @@ export function clientRosterRefusal(role: string): string | null {
 
 /**
  * Why one more brand is refused right now, or null when it may be added: a member never may
- * (`clientRosterRefusal`, asked first, whatever the plan or the count), then the plan decides. One
- * rule for the action that creates the brand and the button that leads to it, so the button never
- * promises what the action then refuses.
+ * (`clientRosterRefusal`, asked first, whatever the plan or the count); a workspace that cannot
+ * spend is pointed at the one action `cannotSpendNotice` names for it — a card to update while its
+ * plan is still open, a plan otherwise; then the cap decides. One rule for the action that creates
+ * the brand and the button that leads to it, so the button never promises what the action refuses.
  */
 export function addBrandRefusal(
   entitlement: Entitlement,
@@ -236,12 +255,12 @@ export function addBrandRefusal(
 ): string | null {
   const roster = clientRosterRefusal(role)
   if (roster) return roster
-  if (!entitlement.canCreate) {
-    return entitlement.mode === 'solo'
-      ? 'Choose a plan to set up your business.'
-      : 'Choose a plan to add clients.'
+  const paused = cannotSpendNotice(entitlement)
+  if (paused) {
+    return `${paused.cta} to ${entitlement.mode === 'solo' ? 'set up your business' : 'add clients'}.`
   }
-  if (entitlement.brandsUnlimited || brandCount < entitlement.brands) return null
+  const cap = brandCap(entitlement)
+  if (cap === null || brandCount < cap) return null
   return brandCapReached(entitlement)
 }
 
@@ -260,6 +279,9 @@ export function deleteWorkspaceRefusal(
     ? 'Cancel your plan first, under Plan & billing. It ends at once and the failed payment is not collected; you can delete the workspace right after.'
     : 'Cancel your plan first, under Plan & billing. You keep access until it ends, and can delete the workspace right after.'
 }
+
+/** A workspace delete that failed — the action's answer and the dialog's, for a fault the person cannot fix. */
+export const WORKSPACE_NOT_DELETED = 'Could not delete the workspace. Please try again.'
 
 /**
  * What pausing does to what was made, in the one wording every sentence about it uses. A paused
@@ -284,8 +306,8 @@ export function cancelPlanConsequence(
     return `Your plan ends now and the failed payment is not collected; ${WORKSPACE_PAUSES}. You can delete it any time.`
   }
   const ends = entitlement.resetsOn
-    ? `${planEndsOn(entitlement.resetsOn, entitlement.timezone)} and nothing more is charged.`
-    : 'Your plan ends with the current period and nothing more is charged.'
+    ? `${planEndsOn(entitlement.resetsOn, entitlement.timezone)}.`
+    : 'Your plan ends with the current period.'
   return `${ends} You keep full access until then; after that ${WORKSPACE_PAUSES}. You can delete it any time.`
 }
 
@@ -295,6 +317,20 @@ export const NO_PLAN_TO_CANCEL = 'There is no running plan to cancel.'
 /** Keeping asks for a plan that is set to end and has not ended yet. */
 export const NO_PLAN_TO_KEEP = 'Your plan is not set to end.'
 
+/** The plan-end control's labels (`PlanEndControl`, src/features/settings/components/plan-end-control.tsx). */
+export const PLAN_END = {
+  cancel: 'Cancel plan',
+  keep: 'Keep plan',
+  confirmTitle: 'Cancel your plan',
+  stay: 'Keep it',
+} as const
+
+/** The toast after the plan's end changed (`setPlanEndingAction`): ended at once, set to end, or kept. */
+export function planEndingChanged(endedNow: boolean, ending: boolean): string {
+  if (endedNow) return 'Your plan has ended.'
+  return ending ? 'Your plan is set to end.' : 'Your plan continues.'
+}
+
 /**
  * The one extra line the delete confirmation carries while a cancelled plan is still running —
  * the customer has paid for days that deletion gives up — or null when there is no such plan.
@@ -302,101 +338,282 @@ export const NO_PLAN_TO_KEEP = 'Your plan is not set to end.'
 export function deleteWorkspaceNotice(
   entitlement: Pick<Entitlement, 'endsOn' | 'timezone'>
 ): string | null {
-  return entitlement.endsOn
-    ? `${planEndsOn(entitlement.endsOn, entitlement.timezone)}; nothing more will be charged.`
-    : null
+  return entitlement.endsOn ? `${planEndsOn(entitlement.endsOn, entitlement.timezone)}.` : null
 }
 
 /**
- * What choosing the plan will bill, beside the Choose plan button: the price per client and how
- * many clients the workspace has today — Checkout's quantity (`billableQuantity`).
+ * What a gated control says: why it is refused (null when it is not), and whether Plan & billing is
+ * the way past the refusal. One shape for Add client (`addBrandGate`) and Generate
+ * (`generationGate`, src/lib/billing/post-allowance.ts), drawn by `GatedAction`
+ * (src/components/ui/gated-action.tsx).
  */
-export function checkoutSummary(mode: Entitlement['mode'], clientCount: number): string {
-  const count = billableQuantity(clientCount)
-  return `${formatMoney(PRO_PLAN.priceCents)} a month per ${brandWord(mode, 1)} excl. VAT · ${count} ${brandWord(mode, count)} today`
+export interface PlanGate {
+  refusal: string | null
+  wayOut: boolean
 }
-
-/**
- * Under the Add-client button on a paid workspace: what one more costs. Null on the trial and on
- * house, where a new client costs nothing, and when the workspace cannot create. A client within
- * the count already paid for this period costs nothing until renewal — the quantity sync charges
- * only above it (`syncSubscriptionQuantity`, src/lib/billing/quantity-sync.ts). That count is
- * honoured only while its period is still running (`resetsOn`, null while a renewal is unpaid),
- * the same test the sync makes against Stripe's period. The exact pro-rata figure is on the
- * invoice.
- */
-export function addBrandCost(
-  entitlement: Pick<Entitlement, 'plan' | 'canCreate' | 'brands' | 'resetsOn'>,
-  brandCount: number,
-  now: Date = new Date()
-): string | null {
-  if (entitlement.plan !== 'pro' || !entitlement.canCreate) return null
-  const price = formatMoney(PRO_PLAN.priceCents)
-  const paidPeriodRunning = entitlement.resetsOn !== null && now < entitlement.resetsOn
-  return paidPeriodRunning && brandCount < entitlement.brands
-    ? `Already paid for this period; adds ${price} a month excl. VAT from renewal.`
-    : `Adds ${price} a month excl. VAT, charged pro rata today.`
-}
-
-/**
- * What an "Add client" control says: why it is refused, or what the new client costs, and whether
- * Plan & billing is the way past a refusal (`wayOut`).
- */
-export type AddBrandGate = { refusal: string | null; note: string | null; wayOut: boolean }
 
 /**
  * Everything an "Add client" control says, for the person looking at it (`role`). One answer for
  * every place the control appears — the roster, the dashboard, the command palette — so none of
- * them offers what `createClient` then refuses or charges without saying so. `wayOut` is whether
- * this person may change the roster (`clientRosterRefusal`): an admin's every refusal is the
- * plan's, which Plan & billing changes; a member's is not, so no control sends a member there.
+ * them offers what `createClient` then refuses. `wayOut` is whether this person may change the
+ * roster (`clientRosterRefusal`): an admin's every refusal is the plan's, which Plan & billing
+ * changes; a member's is not, so no control sends a member there.
  */
-export function addBrandGate(
-  entitlement: Entitlement,
-  brandCount: number,
-  role: string
-): AddBrandGate {
+export function addBrandGate(entitlement: Entitlement, brandCount: number, role: string): PlanGate {
   return {
     refusal: addBrandRefusal(entitlement, brandCount, role),
-    note: addBrandCost(entitlement, brandCount),
     wayOut: clientRosterRefusal(role) === null,
   }
 }
 
 /**
- * What deleting a client does to the bill, said in the delete confirmation. Null where
- * `addBrandCost` is — on the trial, on house, and when the workspace cannot create — and while the
- * plan is set to end, since no renewal is left to change. Otherwise the renewal bills one client
- * fewer and this period's allowance stays, because the decrease is never credited
- * (`syncSubscriptionQuantity`, src/lib/billing/quantity-sync.ts) — unless this is the last
- * client: the plan bills at least one (`billableQuantity`) until it is cancelled under Plan &
- * billing.
+ * What deleting a client does to the bill, said in the delete confirmation: the slot is freed and
+ * the bill stays, since only the slot count sets what the plan bills (docs/plans/CLIENT-SLOTS.md).
+ * Null off the paid plan, on a solo workspace, when the workspace cannot spend, while the plan is
+ * set to end — where lowering the slots is not offered (`slotsUnavailable`) — and while the
+ * workspace holds more clients than slots (`clientCount`), where a delete frees none and the
+ * Clients meter already shows the overrun in red.
  */
 export function deleteClientNotice(
-  entitlement: Pick<Entitlement, 'plan' | 'canCreate' | 'planEnding' | 'resetsOn' | 'timezone'>,
+  entitlement: Pick<Entitlement, 'plan' | 'mode' | 'canSpend' | 'planEnding' | 'brands'>,
   clientCount: number
 ): string | null {
-  if (entitlement.plan !== 'pro' || !entitlement.canCreate || entitlement.planEnding) return null
-  if (billableQuantity(clientCount - 1) === billableQuantity(clientCount)) {
-    return 'Your plan keeps billing for one client until you cancel it under Plan & billing.'
+  const { plan, mode, canSpend, planEnding, brands } = entitlement
+  if (plan !== 'pro' || mode === 'solo' || !canSpend || planEnding || clientCount > brands) {
+    return null
   }
-  const renewal = entitlement.resetsOn
-    ? `renewal on ${formatLongDate(entitlement.resetsOn, entitlement.timezone)}`
-    : 'next renewal'
-  return `Your plan bills one client fewer from its ${renewal}. This period's allowance stays as it is.`
+  return brands === 1
+    ? 'This frees your client slot. Your plan still bills for one client until you cancel it in Plan & billing.'
+    : `This frees one of your ${brands} client slots. Your plan still bills for ${brands}; to pay for fewer, lower your slots in Plan & billing.`
 }
 
-/** A client whose charge a declined card refused — the card's own words, then the way on. */
+/**
+ * What a number of client slots costs a month, beside the slot control
+ * (`ClientSlotsControl`, src/features/settings/components/client-slots-control.tsx): the count
+ * times the price, or a solo workspace's one business.
+ */
+export function slotsSummary(mode: Entitlement['mode'], slots: number): string {
+  const price = formatMoney(PRO_PLAN.priceCents)
+  if (mode === 'solo') return `${price} a month excl. VAT for your business`
+  return `${pluralise(slots, 'client')} × ${price} = ${formatMoney(monthlyCents(slots))} a month excl. VAT`
+}
+
+/** What a slot change's confirm is worked out from; `period` is the row's, and it ends at the renewal. */
+interface SlotChangeInput {
+  from: number
+  to: number
+  paid: number
+  period: { start: Date; end: Date }
+  timezone: string
+  now: Date
+}
+
+/**
+ * The confirm the slot control shows before a change (`ClientSlotsControl`): its title, the
+ * sentence, and the two buttons. The kind and the charged slots come from `slotChange` and the
+ * amount from `proRataCents` (src/lib/billing/plans.ts) — the rules `setClientSlots` writes with —
+ * so the confirm and the charge cannot disagree. The amount is an estimate net of VAT; Stripe's
+ * invoice carries the exact figure.
+ */
+export function slotChangeConsequence(input: SlotChangeInput): {
+  title: string
+  body: string
+  confirm: string
+  cancel: string
+} {
+  const { from, to, paid } = input
+  const change = slotChange(from, to, paid)
+  const step = Math.abs(to - from)
+  const slots = pluralise(step, 'client slot')
+  const buttons = step === 1 ? 'slot' : 'slots'
+  const renewal = formatLongDate(input.period.end, input.timezone)
+  const monthly = `From ${renewal} you pay ${formatMoney(monthlyCents(to))} a month excl. VAT for ${pluralise(to, 'client')}.`
+  const cancel = `Keep ${from}`
+  if (change.kind === 'lower') {
+    return {
+      title: `Remove ${slots}`,
+      body: `${monthly} Nothing is refunded, and this period's allowance stays as it is. From now on the workspace holds at most ${pluralise(to, 'client')}.`,
+      confirm: `Remove ${buttons}`,
+      cancel,
+    }
+  }
+  if (change.kind !== 'raise') {
+    return {
+      title: `Add ${slots}`,
+      body: `You already paid for ${paid} this period, so nothing is charged today. ${monthly}`,
+      confirm: `Add ${buttons}`,
+      cancel,
+    }
+  }
+  const cents = proRataCents(change.charged, input.period, input.now)
+  const free = step - change.charged
+  const alreadyPaid =
+    free > 0 ? ` ${free} of them ${free === 1 ? 'is' : 'are'} already paid for this period.` : ''
+  const today = chargesToday(change.charged, input.period, input.now)
+    ? `About ${formatMoney(cents)} excl. VAT is charged today for the rest of this period, with its own invoice.`
+    : `About ${formatMoney(cents)} excl. VAT for the rest of this period is added to your invoice on ${renewal}, since it is below the smallest amount a card can be charged.`
+  return {
+    title: `Add ${slots}`,
+    body: `${today}${alreadyPaid} ${monthly}`,
+    confirm: `Add ${buttons}`,
+    cancel,
+  }
+}
+
+/**
+ * What a slot change did (`setClientSlots`, src/lib/billing/client-slots.ts): charged at once, left
+ * on the renewal invoice, restored uncharged, lowered from the renewal, or nothing to change.
+ */
+export type SlotChangeOutcome = 'charged' | 'on_renewal' | 'restored' | 'lowered' | 'same'
+
+/**
+ * The toast after a slot change, from what the server says it did. A restore below what this
+ * period paid for (`paid`) is worded from the renewal, as a lower is: the period keeps its count.
+ */
+export function slotsChanged(outcome: SlotChangeOutcome, to: number, paid: number): string {
+  const count = pluralise(to, 'client')
+  if (outcome === 'charged') {
+    return `You now pay for ${count}. The invoice for the rest of this period is on its way by email.`
+  }
+  if (outcome === 'on_renewal') {
+    return `You now pay for ${count}. The amount for the rest of this period is added to your next invoice.`
+  }
+  if (outcome === 'restored') {
+    return to < paid
+      ? `From your next renewal you pay for ${count}. Nothing was charged.`
+      : `You now pay for ${count} again. Nothing was charged.`
+  }
+  if (outcome === 'lowered') {
+    return `From your next renewal you pay for ${count}. Nothing was charged or refunded.`
+  }
+  return 'Your client slots are unchanged.'
+}
+
+/**
+ * A lower, or a first Checkout, below the clients the workspace already has — or below one, which
+ * no delete can reach (`billableQuantity`, src/lib/billing/plans.ts).
+ */
+export function slotsBelowClients(clientCount: number): string {
+  if (clientCount <= 1) return 'A plan pays for at least one client.'
+  return `You have ${pluralise(clientCount, 'client')}. Delete a client first to pay for fewer.`
+}
+
+/**
+ * The line under the slot stepper: the room left above the clients held, or, at the floor, why it
+ * goes no lower — before a first Checkout as the plain floor, on a running plan as the way to it.
+ * Nothing while the workspace holds more clients than slots: the Clients meter shows that in red.
+ */
+export function slotsHint(
+  phase: 'checkout' | 'change',
+  slots: number,
+  clientCount: number
+): string | null {
+  if (slots < clientCount) return null
+  if (slots > clientCount) {
+    return `Room for ${pluralise(slots - clientCount, 'more client')} before you need another slot.`
+  }
+  if (phase === 'checkout' && clientCount > 1) {
+    return `You have ${pluralise(clientCount, 'client')}, so you pay for at least ${clientCount}.`
+  }
+  return slotsBelowClients(clientCount)
+}
+
+/** A slot change or a slot count asked of a workspace with no paid plan. */
+export const SLOTS_NEED_PLAN = 'Choose a plan first.'
+
+/** A solo workspace always pays for its one business — it has no slot count to choose. */
+export const SLOTS_SOLO = 'A solo workspace pays for its one business.'
+
+/** A slot count that is not a whole number of slots — only a hand-made request sends one. */
+export const SLOTS_INVALID = 'Invalid number of client slots'
+
+/** A raise past `MAX_CLIENT_SLOTS` (src/lib/billing/plans.ts). */
+export const SLOTS_TOO_MANY = `A workspace can pay for at most ${MAX_CLIENT_SLOTS} client slots.`
+
+/** Stripe's count is not the one the page showed: another window changed it first. */
+export const SLOTS_CHANGED_ELSEWHERE =
+  'Your client slots were changed in another window. Reload the page and try again.'
+
+/** The plan renewed after the page was drawn, so its confirm priced a period that has ended. */
+export const SLOTS_PAGE_STALE =
+  'Your plan has renewed since this page loaded. Reload the page to see its new period.'
+
+/**
+ * Stripe has started the new period and its renewal is not paid yet (`setClientSlots`): Stripe
+ * takes a renewal's payment about an hour after the period starts, and the page says so.
+ */
+export const SLOTS_RENEWAL_PENDING =
+  'Your plan is renewing, and its payment is taken within about an hour. Reload this page after that to change your client slots.'
+
+/**
+ * Why the client slots cannot be changed at `now`, or null when they can: a change needs the paid
+ * plan, active and not set to end, on an agency workspace, inside a period that has not run out
+ * (docs/plans/CLIENT-SLOTS.md) — past its end the renewal is still being paid, and Stripe has moved
+ * to a period the row does not know yet. One answer for the slot control and
+ * `setClientSlotsAction`, so a stale tab is refused in the words the page shows; `setClientSlots`
+ * asks Stripe the same about its own period.
+ */
+export function slotsUnavailable(
+  entitlement: Pick<
+    Entitlement,
+    'plan' | 'mode' | 'state' | 'paymentFailed' | 'planEnding' | 'endsOn' | 'resetsOn' | 'timezone'
+  >,
+  now: Date
+): string | null {
+  const { plan, mode, state, paymentFailed, planEnding, endsOn, resetsOn, timezone } = entitlement
+  if (plan === 'house') return 'The Internal plan has no client slots to change.'
+  if (mode === 'solo') return SLOTS_SOLO
+  if (paymentFailed) return `Your last payment failed. ${UPDATE_YOUR_CARD}`
+  if (planEnding && endsOn) {
+    return `${planEndsOn(endsOn, timezone)}. Keep your plan to change its client slots.`
+  }
+  if (state !== 'active') return WORKSPACE_LOCKED
+  if (resetsOn && now >= resetsOn) return SLOTS_RENEWAL_PENDING
+  return null
+}
+
+/**
+ * The slot control's labels (`ClientSlotsControl`, src/features/settings/components/
+ * client-slots-control.tsx): before a first Checkout the count is what Checkout sells, after it
+ * the client slots the plan holds.
+ */
+export const SLOTS_CONTROL = {
+  beforeLabel: 'Clients to pay for',
+  afterLabel: 'Client slots',
+  help: 'Your plan holds this many clients.',
+  fewer: 'One slot fewer',
+  more: 'One slot more',
+  change: 'Change',
+  choose: 'Choose plan',
+} as const
+
+/** A lower waiting for the renewal: the period keeps what it paid for until then. */
+export function slotsPendingLower(
+  paid: number,
+  ordered: number,
+  renewsOn: Date,
+  timezone: string
+): string {
+  return `You pay for ${paid} until ${formatLongDate(renewsOn, timezone)}, then ${ordered}.`
+}
+
+/** The button that opens Stripe's portal for the card, the address and the tax ID (`PlanActions`). */
+export const MANAGE_BILLING = 'Manage billing'
+
+/** A card declined on a slot raise — the card's own words, then the way on. */
 export function cardDeclined(stripeMessage: string): string {
-  return `The card on file was declined: ${stripeMessage} Update it in Plan & billing and try again.`
+  return `The card on file was declined: ${stripeMessage} Update it under ${MANAGE_BILLING} and try again.`
 }
 
-/** A client whose charge failed for any other reason; Stripe's error is logged as its cause. */
-export const CLIENT_NOT_ADDED = 'The new client could not be added to your plan. Please try again.'
+/**
+ * The bank asked to confirm a slot raise's payment (3-D Secure), which the app cannot take yet:
+ * Stripe refused the change whole (`setClientSlots`), so nothing was charged and nothing moved.
+ */
+export const SLOTS_BANK_CONFIRMATION =
+  'Your bank asked to confirm this payment, which Kontuur cannot take yet. Nothing was charged and your client slots are unchanged.'
 
-/** Two changes to the paid client count at once: the second waits, then gives way with this. */
-export const QUANTITY_SYNC_BUSY =
-  'Another change to your plan is in progress. Try again in a moment.'
+/** Two slot changes at once: the second gives way with this (`setClientSlots`). */
+export const SLOTS_BUSY = 'Another change to your plan is in progress. Try again in a moment.'
 
 /** A workspace with an open subscription, or on house, asking for Checkout again. */
 export const PLAN_ALREADY_ACTIVE = 'This workspace already has a plan. Manage it in Plan & billing.'
@@ -450,6 +667,9 @@ export const CHECKOUT_ARRIVAL = {
   },
 } as const
 
+/** Checkout was left without paying (`CheckoutReturn`). */
+export const CHECKOUT_CANCELLED = 'Checkout was cancelled — nothing was charged.'
+
 /**
  * The same card once the row says the plan is live: the plan by name, the facts a person wants
  * to see confirmed — how many clients, what a month costs, when it renews — and where the
@@ -463,7 +683,7 @@ export function checkoutActivated(
     { label: brandsLabel(entitlement.mode), value: String(entitlement.brands) },
     {
       label: 'A month',
-      value: `${formatMoney(PRO_PLAN.priceCents * entitlement.brands)} excl. VAT`,
+      value: `${formatMoney(monthlyCents(entitlement.brands))} excl. VAT`,
     },
   ]
   if (entitlement.resetsOn) {
@@ -477,6 +697,11 @@ export function checkoutActivated(
     ? `Invoice No. ${formatDocumentNumber(invoice.number)} is on its way${where} and is listed under Invoices below.`
     : 'Your invoice is on its way by email and will be listed under Invoices below.'
   return { title: `You’re on ${PLAN_LABELS[entitlement.plan]}`, facts, text }
+}
+
+/** What a sale document is called, from its `kind` — its PDF's title, its email and the Invoices list. */
+export function documentKindLabel(kind: string): string {
+  return kind === 'invoice' ? 'Invoice' : 'Credit note'
 }
 
 /** The trial-grace sentence: when the trial ended, and until when scheduled posts still go out. */
@@ -580,13 +805,8 @@ export const WORKSPACE_LOCKED_DETAIL =
   'The workspace keeps everything you made. Once a plan is active, posts due in the last day go out; older ones are marked failed in the calendar for you to reschedule.'
 
 /** The bell and the email once a trial's grace has run out — dated, so a redelivered tick lands once. */
-export function workspacePaused(
-  entitlement: Pick<Entitlement, 'graceEndsAt' | 'timezone'>
-): string {
-  const on = entitlement.graceEndsAt
-    ? ` on ${formatLongDate(entitlement.graceEndsAt, entitlement.timezone)}`
-    : ''
-  return `Your workspace was paused${on}. ${CHOOSE_PLAN_AGAIN}`
+export function workspacePaused(pausedOn: Date, timeZone: string): string {
+  return `Your workspace was paused on ${formatLongDate(pausedOn, timeZone)}. ${CHOOSE_PLAN_AGAIN}`
 }
 
 /**
@@ -637,12 +857,12 @@ export const REMINDER_COPY: Record<
 
 /**
  * Titles for the bell rows about the workspace's plan rather than one client's content.
- * `allowance_reached` has two raisers: the generate cron, once per workspace, period and pool, naming
- * the first client the empty pool stopped (`notifyAllowanceExhausted`, keyed
- * `allowance_reached:<period>:<kind>`, src/lib/generation/scheduled-run.ts), and the visuals cron,
- * once per period, naming no client (`ringImagesWaiting`, keyed `images_waiting:<period>`,
- * src/lib/visual/paint-backlog.ts). The pool is the workspace's, so no client leads a billing title
- * and every one of these rows opens Plan & billing (`OPEN_PLAN_AND_BILLING`).
+ * `allowance_reached` has two raisers: the generate cron, once per workspace, period, pool and
+ * pool size, naming the first client the empty pool stopped (`notifyAllowanceExhausted`,
+ * src/lib/generation/scheduled-run.ts), and the visuals cron, once per period and image pool size,
+ * naming no client (`ringImagesWaiting`, src/lib/visual/paint-backlog.ts). The pool is the
+ * workspace's, so no client leads a billing title and every one of these rows opens Plan & billing
+ * (`OPEN_PLAN_AND_BILLING`).
  */
 export const BILLING_NOTIFICATION_TITLES: Partial<Record<NotificationType, string>> = {
   allowance_warning: 'An allowance is nearly used up',
@@ -682,4 +902,19 @@ export const PLAN_SECTION = {
     endsOn: 'Ends on',
     renewsOn: 'Renews on',
   },
+} as const
+
+/**
+ * The Invoices section's words (`BillingDocuments`, src/features/settings/components/
+ * billing-documents.tsx); each row's name is `documentKindLabel`'s.
+ */
+export const BILLING_DOCUMENTS = {
+  legend: 'Invoices',
+  description:
+    'Every invoice and credit note, as issued at payment. Download links work for an hour.',
+  empty: 'No documents yet — the first payment creates one.',
+  linksMissing: 'Download links could not be made just now. Reload the page to try again.',
+  download: 'Download',
+  unavailable: 'Unavailable',
+  preparing: 'Preparing…',
 } as const

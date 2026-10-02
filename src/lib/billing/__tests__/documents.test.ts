@@ -12,6 +12,7 @@ const mocks = vi.hoisted(() => ({
   renderSaleDocumentHtml: vi.fn(),
 }))
 vi.mock('../stripe', () => ({
+  invoiceLines: (invoice: Stripe.Invoice) => Promise.resolve(invoice.lines.data),
   stripeClient: () => ({
     invoices: { retrieve: mocks.invoicesRetrieve },
     taxRates: { retrieve: mocks.taxRatesRetrieve },
@@ -97,10 +98,6 @@ function makeAdmin(rows: SaleDocumentColumns[] = [], failures: Failures = {}) {
           data: rows.find((row) => filters.every((f) => f(row))) ?? null,
           error: null,
         }),
-      then: (resolve: (value: { data: SaleDocumentColumns[]; error: null }) => void) => {
-        reads.push(read)
-        resolve({ data: matching(), error: null })
-      },
     }
     return query
   }
@@ -207,7 +204,6 @@ const DOCUMENT: SaleDocumentColumns = {
   stripe_credit_note_id: null,
   stripe_charge_id: 'ch_1',
   stripe_refund_id: null,
-  refunds: null,
   issued_at: '2025-10-01T01:00:05.000Z',
   tax_event_at: '2025-10-01T01:00:00.000Z',
   customer: { name: 'Acme OOD', email: 'billing@acme.bg', address: null, taxIds: [] },
@@ -220,7 +216,6 @@ const DOCUMENT: SaleDocumentColumns = {
   storage_path: null,
   delivered_at: null,
   delivery_error: null,
-  created_at: '2025-10-01T01:00:05.000Z',
 }
 
 describe('vatBasisOf — the legal basis of the VAT line', () => {
@@ -426,6 +421,7 @@ const note = (overrides: Record<string, unknown> = {}) =>
     invoice: 'in_1',
     created: 1_760_000_000,
     subtotal: 950,
+    total_excluding_tax: 950,
     total: 1140,
     total_taxes: [{ amount: 190 }],
     refunds: [{ refund: 're_1', amount_refunded: 1140 }],
@@ -437,7 +433,7 @@ const note = (overrides: Record<string, unknown> = {}) =>
 describe('issueCreditNote', () => {
   beforeEach(() => vi.clearAllMocks())
 
-  it('refunds the invoice document by reference, keeping its customer, basis and rate, dated by the note', async () => {
+  it('refunds the invoice document by its number and date, keeping its customer, basis and rate, dated by the note', async () => {
     mocks.creditNotesRetrieve.mockResolvedValue(note())
     const { admin, rpc } = makeAdmin([DOCUMENT])
     const document = await issueCreditNote(admin, 'cn_1')
@@ -449,7 +445,6 @@ describe('issueCreditNote', () => {
       stripe_credit_note_id: 'cn_1',
       stripe_charge_id: 'ch_1',
       stripe_refund_id: 're_1',
-      refunds: 'doc_1',
       tax_event_at: '2025-10-09T08:53:20.000Z',
       customer: DOCUMENT.customer,
       net_cents: 950,
@@ -457,7 +452,28 @@ describe('issueCreditNote', () => {
       gross_cents: 1140,
       vat_rate: 20,
       vat_basis: 'domestic',
+      lines: [
+        expect.objectContaining({
+          description: 'Credit note to invoice No. 1000000001 of 1 October 2025',
+          netCents: 950,
+        }),
+      ],
     })
+  })
+
+  it('states the net after an invoice-level discount, as the invoice it refunds does', async () => {
+    mocks.creditNotesRetrieve.mockResolvedValue(
+      note({
+        subtotal: 2900,
+        total_excluding_tax: 1450,
+        total: 1740,
+        total_taxes: [{ amount: 290 }],
+        refunds: [{ refund: 're_1', amount_refunded: 1740 }],
+      })
+    )
+    const { admin, rpc } = makeAdmin([DOCUMENT])
+    await issueCreditNote(admin, 'cn_1')
+    expect(rpc[0]).toMatchObject({ net_cents: 1450, vat_cents: 290, gross_cents: 1740 })
   })
 
   it('documents a chargeback the bank won — the whole total out of band — on the original charge, with no refund', async () => {
@@ -623,7 +639,7 @@ describe('retryUndeliveredDocuments and listDocumentDownloads', () => {
     return {
       ...DOCUMENT,
       id,
-      created_at: `2025-01-${String(day).padStart(2, '0')}T00:00:00.000Z`,
+      issued_at: `2025-01-${String(day).padStart(2, '0')}T00:00:00.000Z`,
       customer: { name: 'Acme OOD', email, address: null, taxIds: [] },
     }
   }
@@ -631,7 +647,7 @@ describe('retryUndeliveredDocuments and listDocumentDownloads', () => {
   it('takes every stale undelivered document through delivery, oldest first', async () => {
     const { admin, reads } = makeAdmin([stale('doc_new', 3), stale('doc_old', 1)])
     expect(await retryUndeliveredDocuments(admin, LATER)).toEqual({ retried: 2, delivered: 2 })
-    expect(reads[0]).toEqual({ order: ['created_at', 'id'], range: [0, 999] })
+    expect(reads[0]).toEqual({ order: ['issued_at', 'id'], range: [0, 999] })
     expect(mocks.sendEmail.mock.calls.map(([email]) => email.idempotencyKey)).toEqual([
       'document:doc_old',
       'document:doc_new',

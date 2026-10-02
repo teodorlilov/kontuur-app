@@ -75,7 +75,7 @@ const EXEMPT: Record<string, string> = {
  * Mirrors that predate this guard: debt, not exemptions, and the list may only ever shrink.
  *
  * It is empty. Every mirror the guard has surfaced is derived, `AgencyInfo` included — it is
- * `AgencySettingsColumns` (src/types/api.ts). A new mirror is derived, or goes in EXEMPT with the
+ * `AgencyColumns` (src/types/api.ts). A new mirror is derived, or goes in EXEMPT with the
  * reason it is not a projection; it never goes here. The array stays, empty, so that rule has a
  * place to be read, and the staleness check below still fails on an entry that is no longer a
  * mirror. Rationale for past entries: docs/TECH-DEBT.md §7.3.

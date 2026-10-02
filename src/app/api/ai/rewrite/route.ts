@@ -78,7 +78,7 @@ export async function POST(request: Request) {
     if ('error' in clientResult)
       return NextResponse.json({ error: clientResult.error }, { status: 404 })
 
-    const spender = { agencyId, clientId: body.clientId, flow: 'rewrite' as const }
+    const spender = { agencyId, flow: 'rewrite' as const }
     try {
       const result = await runMetered(spender, async () => {
         await reserveUsage(spender, 'rewrite', 1)

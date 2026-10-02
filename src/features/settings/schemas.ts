@@ -33,3 +33,18 @@ export const accountSettingsSchema = z.object({
 
 /** Server-action arg: whether the plan is to end at its period end (true) or be kept (false). */
 export const setPlanEndingSchema = z.boolean()
+
+/** Server-action arg: a number of client slots — Checkout's, or either side of a change. */
+export const clientSlotsSchema = z.number().int().min(0)
+
+/**
+ * Server-action arg: a slot change, from the count the person saw to the one they chose, with the
+ * start of the period its confirm was priced on.
+ */
+export const slotChangeSchema = z.object({
+  from: clientSlotsSchema,
+  to: clientSlotsSchema,
+  periodStart: z.string(),
+})
+
+export type SlotChangeInput = z.infer<typeof slotChangeSchema>

@@ -1,24 +1,20 @@
 import { describe, expect, it } from 'vitest'
 import type { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import { fetchEntitledClients } from '../entitled-clients'
+import { trialRow } from './fixtures'
 
 const NOW_PLUS = (days: number) => new Date(Date.now() + days * 86_400_000).toISOString()
 
 /** Three agencies: a live trial, one in its grace (publishes, cannot spend), one long paused. */
-const AGENCIES = [
-  { id: 'live', timezone: 'UTC', plan: 'trial', mode: 'agency', trial_ends_at: NOW_PLUS(5) },
-  { id: 'grace', timezone: 'UTC', plan: 'trial', mode: 'agency', trial_ends_at: NOW_PLUS(-2) },
-  { id: 'paused', timezone: 'UTC', plan: 'trial', mode: 'agency', trial_ends_at: NOW_PLUS(-40) },
-].map((row) => ({
-  stripe_customer_id: null,
-  stripe_subscription_id: null,
-  subscription_status: null,
-  subscription_quantity: null,
-  current_period_start: null,
-  current_period_end: null,
-  cancel_at_period_end: false,
-  past_due_since: null,
-  ...row,
+const AGENCIES = (
+  [
+    ['live', 5],
+    ['grace', -2],
+    ['paused', -40],
+  ] as const
+).map(([id, days]) => ({
+  id,
+  ...trialRow(new Date(), { timezone: 'UTC', trial_ends_at: NOW_PLUS(days) }),
 }))
 
 const CLIENTS = [
@@ -78,8 +74,8 @@ describe('fetchEntitledClients', () => {
 
   it('skips the clients read entirely when no agency is entitled', async () => {
     const { admin, reads } = makeAdmin()
-    const creators = await fetchEntitledClients(admin, 'create')
-    expect([...creators.keys()]).toEqual(['c-live'])
+    const spenders = await fetchEntitledClients(admin, 'spend')
+    expect([...spenders.keys()]).toEqual(['c-live'])
     expect(reads).toEqual(['agencies', 'clients'])
 
     const none = makeAdmin()

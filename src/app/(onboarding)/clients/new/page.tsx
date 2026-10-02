@@ -8,7 +8,7 @@ import { ClientSetupFlow } from '@/features/onboarding/components/client-setup-f
  * A solo workspace arrives here on its first run, by the redirect in `requireBusinessSetup`
  * (features/onboarding/lib), and gets second-person copy, its business name pre-filled and no
  * way to leave; agency arrives by link. "First run" is solo AND no client yet: a solo workspace
- * that already has its client (a reload after saving, the palette's "Add client") gets the
+ * that already has its client (a reload after saving, the address typed, or Back) gets the
  * ordinary page with Cancel and Discard instead — this page never redirects, so it can never
  * form a loop with the gate.
  */

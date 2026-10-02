@@ -12,8 +12,6 @@ import type { AdminClient } from '@/lib/supabase/admin'
 import type { Database } from '@/types/database'
 import { isoFromUnixSeconds } from '@/utils/date-helpers'
 import { chargedMoney, deliverSaleDocument, issueCreditNote, issueSaleDocument } from './documents'
-import { hasSubscriptionEnded } from './entitlement'
-import { syncSubscriptionQuantity } from './quantity-sync'
 import { remindPaymentFailed } from './reminders'
 import { stripeClient } from './stripe'
 import { applySubscriptionSnapshot } from './subscription-store'
@@ -25,7 +23,7 @@ interface Handled {
   outcome: string
   /**
    * What the log line should add to the outcome — both ids of a subscription conflict, the
-   * invoice of an undocumented sale, how a failed payment's reminder went, a failed reconcile.
+   * invoice of an undocumented sale, how a failed payment's reminder went.
    */
   detail?: string
   /** The boundary logs at error level when the event needs someone's eyes. */
@@ -107,53 +105,6 @@ export async function finishBillingEvent(
 }
 
 /**
- * Bring Stripe's quantity to the client count after a snapshot that may have left them apart,
- * while the subscription is open (`hasSubscriptionEnded`). A new subscription may move either way
- * (clients changed while Checkout was open), charging only above what it was bought for, in that
- * period. The row's own subscription is only lowered, never raised, after a paid period or with a
- * renewal ahead (`renewalAhead`,
- * an upcoming invoice), so a delete whose own decrease failed is not billed another period; a
- * decrease never charges, so a locked workspace is lowered too. A failure comes back as a sentence
- * for the log line and the event still succeeds: an under-count heals on the next add, an
- * over-count before the next renewal or once it is paid (`syncSubscriptionQuantity`).
- */
-async function reconcileQuantity(
-  admin: AdminClient,
-  snapshot: Handled,
-  subscription: Stripe.Subscription,
-  renewalAhead = false
-): Promise<string | null> {
-  const { agencyId, outcome } = snapshot
-  const lowers = outcome === 'period_paid' || (renewalAhead && outcome === 'written')
-  if (!agencyId || hasSubscriptionEnded(subscription.status)) return null
-  if (outcome !== 'started' && !lowers) return null
-  const item = subscription.items.data[0]
-  const change: Parameters<typeof syncSubscriptionQuantity>[3] =
-    outcome === 'started'
-      ? {
-          direction: 'both',
-          paid: item?.quantity ?? 1,
-          paidFor: item ? isoFromUnixSeconds(item.current_period_start) : null,
-        }
-      : { direction: 'decrease' }
-  return syncSubscriptionQuantity(admin, agencyId, subscription.id, change).then(
-    () => null,
-    (err: unknown) =>
-      `quantity reconcile failed: ${err instanceof Error ? err.message : String(err)}`
-  )
-}
-
-/** The event's outcome with one more sentence for its log line, at error level when it needs eyes. */
-function withDetail(handled: Handled, said: string | null, needsEyes: boolean): Handled {
-  if (!said) return handled
-  return {
-    ...handled,
-    detail: [handled.detail, said].filter(Boolean).join('; '),
-    ...(needsEyes ? { level: 'error' as const } : {}),
-  }
-}
-
-/**
  * A paid invoice that took money but gets no document — one this app did not create, such as an
  * invoice made in the Stripe Dashboard, which the runbook does not support (docs/n18/README.md).
  * The boundary logs it at error level with the invoice; the event succeeds, since retrying cannot
@@ -180,7 +131,11 @@ function withReminder(
   const failed = reminded.outcome === 'send_failed'
   const said = failed ? `reminder send_failed: ${reminded.error}` : `reminder ${reminded.outcome}`
   const needsEyes = failed || reminded.outcome === 'unwritten' || reminded.outcome === 'no_admin'
-  return withDetail(snapshot, said, needsEyes)
+  return {
+    ...snapshot,
+    detail: [snapshot.detail, said].filter(Boolean).join('; '),
+    ...(needsEyes ? { level: 'error' as const } : {}),
+  }
 }
 
 /**
@@ -189,9 +144,9 @@ function withReminder(
  * never matters. A paid invoice of a subscription this app made becomes its document
  * (`issueSaleDocument` decides which), delivered after the response, even one paid after its
  * workspace was deleted (`no_workspace`); one that took money with no such subscription is an
- * `undocumentedSale`. An upcoming invoice arrives only while Stripe Billing → Subscriptions sends
- * upcoming-renewal events (docs/n18/README.md); it is what lowers the count before a renewal. A
- * failure throws, for the caller to stamp on the row.
+ * `undocumentedSale`. Stripe's quantity is never written here: only the admin's slot change
+ * sets it (`setClientSlots`, src/lib/billing/client-slots.ts). A failure throws, for the caller to
+ * stamp on the row.
  */
 export async function handleEvent(admin: AdminClient, event: Stripe.Event): Promise<Handled> {
   const stripe = stripeClient()
@@ -200,12 +155,10 @@ export async function handleEvent(admin: AdminClient, event: Stripe.Event): Prom
     case 'customer.subscription.updated':
     case 'customer.subscription.deleted': {
       const subscription = await stripe.subscriptions.retrieve(event.data.object.id)
-      const snapshot = await applySubscriptionSnapshot(admin, subscription)
-      return withDetail(snapshot, await reconcileQuantity(admin, snapshot, subscription), true)
+      return applySubscriptionSnapshot(admin, subscription)
     }
     case 'invoice.paid':
-    case 'invoice.payment_failed':
-    case 'invoice.upcoming': {
+    case 'invoice.payment_failed': {
       const invoice = event.data.object
       const paid = event.type === 'invoice.paid'
       const subscriptionId = subscriptionIdOf(invoice)
@@ -215,16 +168,9 @@ export async function handleEvent(admin: AdminClient, event: Stripe.Event): Prom
           : { agencyId: null, outcome: 'ignored' }
       }
       const subscription = await stripe.subscriptions.retrieve(subscriptionId)
-      const applied = paid
+      const snapshot = paid
         ? await applySubscriptionSnapshot(admin, subscription, invoice)
         : await applySubscriptionSnapshot(admin, subscription)
-      const reconciled = await reconcileQuantity(
-        admin,
-        applied,
-        subscription,
-        event.type === 'invoice.upcoming'
-      )
-      const snapshot = withDetail(applied, reconciled, true)
       if (paid && (snapshot.agencyId !== null || snapshot.outcome === 'no_workspace')) {
         const document = await issueSaleDocument(admin, {
           invoiceId: invoice.id,

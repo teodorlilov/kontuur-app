@@ -36,7 +36,7 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
   if (!site.ok) return site.response
 
   const stored = await fetchVisualIdentity(id)
-  const result = await runAsSpender({ agencyId, clientId: id, flow: 'onboarding' }, () =>
+  const result = await runAsSpender({ agencyId, flow: 'onboarding' }, () =>
     extractIdentity({
       url: site.websiteUrl,
       ...(stored?.style ? { currentStyle: stored.style } : {}),
